@@ -201,7 +201,7 @@
         }
 
         .output-panel {
-            min-height: 300px;
+            /* The min-height property is now controlled by the splitter */
         }
 
         #output-script {
@@ -304,6 +304,10 @@
             display: flex;
             flex-direction: row;
         }
+
+        .generated-script-header {
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 
@@ -313,10 +317,14 @@
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Interactive Effect Builder</a>
             <div class="d-flex">
-                <button class="btn btn-outline-primary me-2" id="save-ws-btn" data-bs-toggle="tooltip"
-                    title="Save Workspace to Browser Storage"><i class="bi bi-save"></i> Save</button>
-                <button class="btn btn-outline-secondary" id="load-ws-btn" data-bs-toggle="tooltip"
-                    title="Load Workspace from Browser Storage"><i class="bi bi-folder2-open"></i> Load</button>
+                <div class="d-flex">
+                    <button class="btn btn-outline-primary me-2" id="save-ws-btn" data-bs-toggle="tooltip"
+                        title="Save Workspace to Browser Storage"><i class="bi bi-save"></i> Save</button>
+                    <button class="btn btn-outline-secondary me-2" id="load-ws-btn" data-bs-toggle="tooltip"
+                        title="Load Workspace from Browser Storage"><i class="bi bi-folder2-open"></i> Load</button>
+                    <button class="btn btn-outline-success" id="export-btn" data-bs-toggle="tooltip"
+                        title="Export complete HTML file"><i class="bi bi-download"></i> Export</button>
+                </div>
             </div>
         </div>
     </nav>
@@ -380,6 +388,12 @@
                                     data-bs-toggle="tooltip" title="Match Size of First Selected"><i
                                         class="bi bi-fullscreen"></i></button>
                             </div>
+                            <div class="btn-group btn-group-sm ms-auto mb-1" role="group">
+                                <button type="button" class="btn btn-outline-secondary" id="collapse-code-btn"
+                                    data-bs-toggle="tooltip" title="Toggle Code Panel">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="flex-grow-1 p-3" style="min-height: 0; position: relative;">
@@ -389,7 +403,7 @@
                     </div>
                 </div>
                 <div id="right-panel-bottom" class="output-panel d-flex flex-column p-3 border-top border-secondary">
-                    <h5 class="text-gray-100">Generated Script Header</h5>
+                    <h5 class="text-gray-100 generated-script-header">Generated Script Header</h5>
                     <textarea id="output-script" class="form-control flex-grow-1" readonly></textarea>
                     <button class="btn btn-primary mt-2" id="copy-btn" data-bs-toggle="tooltip"
                         title="Copy the generated meta tags to your clipboard"> <i class="bi bi-clipboard"></i> Copy to
@@ -770,6 +784,8 @@
             const loadProjectModalEl = document.getElementById('load-project-modal');
             const loadProjectModal = new bootstrap.Modal(loadProjectModalEl);
             const loadProjectList = document.getElementById('load-project-list');
+            const collapseCodeBtn = document.getElementById('collapse-code-btn');
+            const exportBtn = document.getElementById('export-btn');
 
             // --- State Variables ---
             let configStore = [];
@@ -783,9 +799,11 @@
             let initialDragState = [];
             let constrainToCanvas = true;
             const projectPrefix = 'effectBuilderProject_';
+            let verticalSplit, horizontalSplit;
+            let lastHSizes, lastVSizes;
+            let isCodePanelCollapsed = false;
 
             // --- Helper Functions ---
-
             function parseMetaToConfig(metaElement) {
                 const config = {};
                 for (const attr of metaElement.attributes) {
@@ -1302,6 +1320,61 @@
                 ];
             }
 
+            async function exportFile() {
+                const exportButton = document.getElementById('export-btn');
+                exportButton.disabled = true;
+                exportButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Exporting...';
+
+                // Use the direct "raw" URL for the file content, which is more reliable.
+                const templateUrl = 'https://raw.githubusercontent.com/joseamirandavelez/EffectClass/main/EffectClass/EffectClass.html';
+
+                try {
+                    // 1. Fetch the template file's raw text content.
+                    const response = await fetch(templateUrl);
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.statusText}`);
+                    }
+                    const templateHtml = await response.text();
+
+                    // 2. Get the new meta tags generated by our app.
+                    const newMetaBlock = document.getElementById('output-script').value;
+
+                    // 3. Find and replace the meta tag block in the template.
+                    const headRegex = /<head>([\s\S]*?)<\/head>/;
+                    const headMatch = templateHtml.match(headRegex);
+
+                    if (!headMatch) {
+                        throw new Error("Could not find <head> tag in the template.");
+                    }
+
+                    const titleRegex = /<title>([\s\S]*?)<\/title>/;
+                    const titleMatch = headMatch[1].match(titleRegex);
+                    const titleTag = titleMatch ? titleMatch[0] : '<title>Effect</title>';
+
+                    // 4. Construct the new <head> and the final HTML file content.
+                    const newHeadContent = `<head>\n\n    ${titleTag}\n\n    ${newMetaBlock}\n\n</head>`;
+                    const finalHtml = templateHtml.replace(headRegex, newHeadContent);
+
+                    // 5. Trigger the download.
+                    const blob = new Blob([finalHtml], { type: 'text/html' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    const effectTitle = getControlValues()['title'] || 'MyEffect';
+                    link.download = `${effectTitle.replace(/ /g, '_')}.html`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+
+                } catch (error) {
+                    console.error('Export failed:', error);
+                    alert(`Export failed: ${error.message}`);
+                } finally {
+                    // Restore the button's original state.
+                    exportButton.disabled = false;
+                    exportButton.innerHTML = '<i class="bi bi-download"></i> Export';
+                }
+            }
             // --- Event Listeners ---
 
             form.addEventListener('input', (e) => {
@@ -1647,14 +1720,28 @@
                 canvasContainer.style.cursor = 'default';
             });
 
+            collapseCodeBtn.addEventListener('click', () => {
+                isCodePanelCollapsed = !isCodePanelCollapsed;
+                const icon = collapseCodeBtn.querySelector('i');
+                if (isCodePanelCollapsed) {
+                    verticalSplit.collapse(1);
+                    icon.className = 'bi bi-chevron-up';
+                } else {
+                    verticalSplit.setSizes(lastHSizes);
+                    icon.className = 'bi bi-chevron-down';
+                }
+            });
+
+            exportBtn.addEventListener('click', exportFile);
+
             function init() {
                 const template = document.getElementById('initial-config');
                 const metaElements = Array.from(template.content.querySelectorAll('meta'));
                 configStore = metaElements.map(parseMetaToConfig);
+
                 createInitialObjects();
                 renderForm();
                 updateAll();
-                drawFrame();
                 new bootstrap.Tooltip(document.body, { selector: "[data-bs-toggle='tooltip']", trigger: 'hover' });
                 updateToolbarState();
                 requestAnimationFrame(animate);
@@ -1664,22 +1751,27 @@
                 const initialVSizes = savedVSizes ? JSON.parse(savedVSizes) : [30, 70];
                 const initialHSizes = savedHSizes ? JSON.parse(savedHSizes) : [75, 25];
 
-                Split(['#left-panel', '#right-panel'], {
+                lastHSizes = initialHSizes;
+                lastVSizes = initialVSizes;
+
+                horizontalSplit = Split(['#left-panel', '#right-panel'], {
                     sizes: initialVSizes,
                     minSize: [400, 500],
                     gutterSize: 8,
                     onDragEnd: function (sizes) {
                         setCookie('split-v-sizes', JSON.stringify(sizes), 365);
+                        lastVSizes = sizes;
                     }
                 });
 
-                Split(['#right-panel-top', '#right-panel-bottom'], {
+                verticalSplit = Split(['#right-panel-top', '#right-panel-bottom'], {
                     direction: 'vertical',
                     sizes: initialHSizes,
-                    minSize: 200,
+                    minSize: [200, 0],
                     gutterSize: 8,
                     onDragEnd: function (sizes) {
                         setCookie('split-h-sizes', JSON.stringify(sizes), 365);
+                        lastHSizes = sizes;
                     }
                 });
             }
