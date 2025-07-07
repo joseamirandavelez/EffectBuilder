@@ -10,10 +10,10 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 
     <template id="initial-config">
-        <meta name="title" label="Title" type="text" default="Effect Class">
-        <meta name="description" label="Description" type="text" default="This class aims to help developers design their own effects in an easy and efficient way.">
-        <meta name="publisher" label="Developer Name" type="text" default="Jose Miranda">
-        <meta name="enableAnimation" label="Enable Animation" type="boolean" default="true">
+        <title>Effect Builder</title>
+        <meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
+        <meta publisher="Jose Miranda" />
+        <meta property="enableAnimation" label="Enable Animation" type="boolean" default="true">
         <meta property="obj1_shape" label="Object 1: Shape" type="combobox" values="rectangle,circle,ring" default="rectangle">
         <meta property="obj1_x" label="Object 1: X Position" type="number" min="0" max="1280" default="0">
         <meta property="obj1_y" label="Object 1: Y Position" type="number" min="0" max="800" default="400">
@@ -85,7 +85,7 @@
         <meta property="obj4_innerDiameter" label="Object 4: Inner Diameter" type="number" min="5" max="1270" default="200">
         <meta property="obj4_numberOfSegments" label="Object 4: Segments" type="number" min="1" max="50" default="6">
         <meta property="obj4_angularWidth" label="Object 4: Segment Angle" type="number" min="1" max="90" default="40">
-        <meta property="obj4_rotationSpeed" label="Object 4: Rotation Speed" type="number" min="-100" max="100" default="10">
+        <meta property="obj4_rotationSpeed" label="Object 4: Rotation Speed" type="number" min="-100" max="100" default="-10">
         <meta property="obj4_animationSpeed" label="Object 4: Animation Speed" type="number" min="1" max="50" default="2">
         <meta property="obj4_scrollDir" label="Object 4: Scroll Direction" type="combobox" values="right,left,up,down" default="down">
         <meta property="obj4_gradType" label="Object 4: Fill Type" type="combobox" values="solid,linear,radial,alternating" default="alternating">
@@ -933,8 +933,30 @@
             // --- Helper Functions ---
             function parseMetaToConfig(metaElement) {
                 const config = {};
-                for (const attr of metaElement.attributes) {
-                    config[attr.name] = attr.value;
+                const tagName = metaElement.tagName.toLowerCase();
+
+                // Handle the new, simpler tag formats
+                if (metaElement.hasAttribute('description')) {
+                    config.name = 'description';
+                    config.label = 'Description';
+                    config.type = 'text';
+                    config.default = metaElement.getAttribute('description');
+                } else if (metaElement.hasAttribute('publisher')) {
+                    config.name = 'publisher';
+                    config.label = 'Developer Name';
+                    config.type = 'text';
+                    config.default = metaElement.getAttribute('publisher');
+                } else if (tagName === 'title') {
+                    config.name = 'title';
+                    config.label = 'Title';
+                    config.type = 'text';
+                    config.default = metaElement.textContent;
+                }
+                // Handle the standard property tags
+                else {
+                    for (const attr of metaElement.attributes) {
+                        config[attr.name] = attr.value;
+                    }
                 }
                 return config;
             }
@@ -1267,18 +1289,33 @@
                 configStore.forEach(config => {
                     const propOrName = config.property || config.name;
                     const value = values[propOrName];
-                    let line = `<meta ${propOrName.startsWith('obj') ? 'property' : 'name'}="${propOrName}"`;
-                    Object.keys(config).forEach(attrName => {
-                        if (attrName !== 'property' && attrName !== 'name' && attrName !== 'default' && attrName !== 'class') {
-                            line += ` ${attrName}="${config[attrName]}"`;
-                        }
-                    });
-                    line += ` default="${value}">\n`;
+                    let line = '';
+
+                    // Handle the simple tag formats
+                    if (propOrName === 'title') {
+                        line = `<title>${value}</title>\n`;
+                    } else if (propOrName === 'description') {
+                        line = `<meta description="${value}" />\n`;
+                    } else if (propOrName === 'publisher') {
+                        line = `<meta publisher="${value}" />\n`;
+                    }
+                    // Handle the standard property/name tags
+                    else {
+                        // UPDATED LOGIC: Always use 'property' for 'obj...' OR 'enableAnimation'
+                        const attrType = (propOrName.startsWith('obj') || propOrName === 'enableAnimation') ? 'property' : 'name';
+                        line = `<meta ${attrType}="${propOrName}"`;
+
+                        Object.keys(config).forEach(attrName => {
+                            if (attrName !== 'property' && attrName !== 'name' && attrName !== 'default' && attrName !== 'class') {
+                                line += ` ${attrName}="${config[attrName]}"`;
+                            }
+                        });
+                        line += ` default="${value}">\n`;
+                    }
                     scriptHTML += line;
                 });
                 outputScriptArea.value = scriptHTML.trim();
             }
-
             function getCanvasCoordinates(event) {
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
@@ -1487,22 +1524,17 @@
                     const templateHtml = await response.text();
                     const newMetaBlock = document.getElementById('output-script').value;
                     const headRegex = /<head>([\s\S]*?)<\/head>/;
-                    const headMatch = templateHtml.match(headRegex);
 
-                    if (!headMatch) {
-                        throw new Error("Could not find <head> tag in the template.");
-                    }
-
-                    const titleRegex = /<title>([\s\S]*?)<\/title>/;
-                    const titleMatch = headMatch[1].match(titleRegex);
-                    const titleTag = titleMatch ? titleMatch[0] : '<title>Effect</title>';
-
-                    const newHeadContent = `<head>\n\n    ${titleTag}\n\n    ${newMetaBlock}\n\n</head>`;
+                    // The newMetaBlock already contains the correct <title> tag from the UI.
+                    // We can directly replace the entire head content.
+                    const newHeadContent = `<head>\n\n    ${newMetaBlock}\n\n</head>`;
                     const finalHtml = templateHtml.replace(headRegex, newHeadContent);
 
                     const blob = new Blob([finalHtml], { type: 'text/html' });
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(blob);
+
+                    // Use the current title from the UI for the filename.
                     const effectTitle = getControlValues()['title'] || 'MyEffect';
                     link.download = `${effectTitle.replace(/ /g, '_')}.html`;
                     document.body.appendChild(link);
@@ -1518,7 +1550,6 @@
                     exportButton.innerHTML = '<i class="bi bi-download"></i> Export';
                 }
             }
-
 
             // --- Event Listeners ---
 
@@ -1924,7 +1955,7 @@
 
             function init() {
                 const template = document.getElementById('initial-config');
-                const metaElements = Array.from(template.content.querySelectorAll('meta'));
+                const metaElements = Array.from(template.content.querySelectorAll('meta, title'));
                 configStore = metaElements.map(parseMetaToConfig);
 
                 createInitialObjects();
