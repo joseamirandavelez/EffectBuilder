@@ -8,138 +8,138 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
     <template id="initial-config">
-        <title>Effect Builder</title>
         <meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
         <meta publisher="Jose Miranda" />
         <meta property="enableAnimation" label="Enable Animation" type="boolean" default="true">
-        <meta property="obj1_shape" objectName="Matrix" label="Object 1: Shape" type="combobox" values="rectangle,circle,ring" default="rectangle">
-        <meta property="obj1_x" objectName="Matrix" label="Object 1: X Position" type="number" min="0" max="1280" default="0">
-        <meta property="obj1_y" objectName="Matrix" label="Object 1: Y Position" type="number" min="0" max="800" default="400">
-        <meta property="obj1_width" objectName="Matrix" label="Object 1: Width/Outer Diameter" type="number" min="10" max="1280" default="640">
-        <meta property="obj1_height" objectName="Matrix" label="Object 1: Height" type="number" min="10" max="800" default="400">
-        <meta property="obj1_innerDiameter" objectName="Matrix" label="Object 1: Inner Diameter" type="number" min="5" max="1270" default="200">
-        <meta property="obj1_numberOfSegments" objectName="Matrix" label="Object 1: Segments" type="number" min="1" max="50" default="12">
-        <meta property="obj1_angularWidth" objectName="Matrix" label="Object 1: Segment Angle" type="number" min="1" max="90" default="20">
-        <meta property="obj1_rotationSpeed" objectName="Matrix" label="Object 1: Rotation Speed" type="number" min="-100" max="100" default="0">
-        <meta property="obj1_animationSpeed" objectName="Matrix" label="Object 1: Animation Speed" type="number" min="1" max="50" default="10">
-        <meta property="obj1_scrollDir" objectName="Matrix" label="Object 1: Scroll Direction" type="combobox" values="right,left,up,down" default="right">
-        <meta property="obj1_gradType" objectName="Matrix" label="Object 1: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="random">
-        <meta property="obj1_useSharpGradient" objectName="Matrix" label="Object 1: Use Sharp Gradient" type="boolean" default="false">
-        <meta property="obj1_gradientStop" objectName="Matrix" label="Object 1: Gradient Stop %" type="number" min="0" max="100" default="50">
-        <meta property="obj1_gradColor1" objectName="Matrix" label="Object 1: Color 1" type="color" default="#00ff00">
-        <meta property="obj1_gradColor2" objectName="Matrix" label="Object 1: Color 2" type="color" default="#d400ff">
-        <meta property="obj1_cycleColors" objectName="Matrix" label="Object 1: Cycle Colors" type="boolean" default="false">
-        <meta property="obj1_cycleSpeed" objectName="Matrix" label="Object 1: Color Cycle Speed" type="number" min="1" max="10" default="10">
-        <meta property="obj1_numberOfRows" objectName="Matrix" label="Object 1: Number of Rows" type="number" min="1" max="100" default="16">
-        <meta property="obj1_numberOfColumns" objectName="Matrix" label="Object 1: Number of Columns" type="number" min="1" max="100" default="16">
-        <meta property="obj1_phaseOffset" objectName="Matrix" label="Object 1: Phase Offset" type="number" min="0" max="100" default="10">
-        <meta property="obj2_shape" objectName="Object 2" label="Object 2: Shape" type="combobox" values="rectangle,circle,ring" default="ring">
-        <meta property="obj2_x" objectName="Object 2" label="Object 2: X Position" type="number" min="0" max="1280" default="966">
-        <meta property="obj2_y" objectName="Object 2" label="Object 2: Y Position" type="number" min="0" max="800" default="7">
-        <meta property="obj2_width" objectName="Object 2" label="Object 2: Width/Outer Diameter" type="number" min="10" max="1280" default="300">
-        <meta property="obj2_height" objectName="Object 2" label="Object 2: Height" type="number" min="10" max="800" default="300">
-        <meta property="obj2_innerDiameter" objectName="Object 2" label="Object 2: Inner Diameter" type="number" min="5" max="1270" default="200">
-        <meta property="obj2_numberOfSegments" objectName="Object 2" label="Object 2: Segments" type="number" min="1" max="50" default="6">
-        <meta property="obj2_angularWidth" objectName="Object 2" label="Object 2: Segment Angle" type="number" min="1" max="90" default="40">
-        <meta property="obj2_rotationSpeed" objectName="Object 2" label="Object 2: Rotation Speed" type="number" min="-100" max="100" default="10">
-        <meta property="obj2_animationSpeed" objectName="Object 2" label="Object 2: Animation Speed" type="number" min="1" max="50" default="2">
-        <meta property="obj2_scrollDir" objectName="Object 2" label="Object 2: Scroll Direction" type="combobox" values="right,left,up,down" default="down">
-        <meta property="obj2_gradType" objectName="Object 2" label="Object 2: Fill Type" type="combobox" values="solid,linear,radial,alternating" default="alternating">
-        <meta property="obj2_useSharpGradient" objectName="Object 2" label="Object 2: Use Sharp Gradient" type="boolean" default="false">
-        <meta property="obj2_gradientStop" objectName="Object 2" label="Object 2: Gradient Stop %" type="number" min="0" max="100" default="51">
-        <meta property="obj2_gradColor1" objectName="Object 2" label="Object 2: Color 1" type="color" default="#00ff00">
-        <meta property="obj2_gradColor2" objectName="Object 2" label="Object 2: Color 2" type="color" default="#d400ff">
-        <meta property="obj2_cycleColors" objectName="Object 2" label="Object 2: Cycle Colors" type="boolean" default="false">
-        <meta property="obj2_cycleSpeed" objectName="Object 2" label="Object 2: Color Cycle Speed" type="number" min="1" max="10" default="10">
-        <meta property="obj2_numberOfRows" objectName="Object 2" label="Object 2: Number of Rows" type="number" min="1" max="100" default="1">
-        <meta property="obj2_numberOfColumns" objectName="Object 2" label="Object 2: Number of Columns" type="number" min="1" max="100" default="1">
-        <meta property="obj2_phaseOffset" objectName="Object 2" label="Object 2: Phase Offset" type="number" min="0" max="100" default="10">
-        <meta property="obj3_shape" objectName="Object 3" label="Object 3: Shape" type="combobox" values="rectangle,circle,ring" default="circle">
-        <meta property="obj3_x" objectName="Object 3" label="Object 3: X Position" type="number" min="0" max="1280" default="1060">
-        <meta property="obj3_y" objectName="Object 3" label="Object 3: Y Position" type="number" min="0" max="800" default="101">
-        <meta property="obj3_width" objectName="Object 3" label="Object 3: Width/Outer Diameter" type="number" min="10" max="1280" default="112">
-        <meta property="obj3_height" objectName="Object 3" label="Object 3: Height" type="number" min="10" max="800" default="112">
-        <meta property="obj3_innerDiameter" objectName="Object 3" label="Object 3: Inner Diameter" type="number" min="5" max="1270" default="100">
-        <meta property="obj3_numberOfSegments" objectName="Object 3" label="Object 3: Segments" type="number" min="1" max="50" default="12">
-        <meta property="obj3_angularWidth" objectName="Object 3" label="Object 3: Segment Angle" type="number" min="1" max="90" default="15">
-        <meta property="obj3_rotationSpeed" objectName="Object 3" label="Object 3: Rotation Speed" type="number" min="-100" max="100" default="0">
-        <meta property="obj3_animationSpeed" objectName="Object 3" label="Object 3: Animation Speed" type="number" min="1" max="50" default="5">
-        <meta property="obj3_scrollDir" objectName="Object 3" label="Object 3: Scroll Direction" type="combobox" values="right,left,up,down" default="left">
-        <meta property="obj3_gradType" objectName="Object 3" label="Object 3: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="radial">
-        <meta property="obj3_useSharpGradient" objectName="Object 3" label="Object 3: Use Sharp Gradient" type="boolean" default="true">
-        <meta property="obj3_gradientStop" objectName="Object 3" label="Object 3: Gradient Stop %" type="number" min="0" max="100" default="100">
-        <meta property="obj3_gradColor1" objectName="Object 3" label="Object 3: Color 1" type="color" default="#00ff00">
-        <meta property="obj3_gradColor2" objectName="Object 3" label="Object 3: Color 2" type="color" default="#d400ff">
-        <meta property="obj3_cycleColors" objectName="Object 3" label="Object 3: Cycle Colors" type="boolean" default="false">
-        <meta property="obj3_cycleSpeed" objectName="Object 3" label="Object 3: Color Cycle Speed" type="number" min="1" max="10" default="10">
-        <meta property="obj3_numberOfRows" objectName="Object 3" label="Object 3: Number of Rows" type="number" min="1" max="100" default="1">
-        <meta property="obj3_numberOfColumns" objectName="Object 3" label="Object 3: Number of Columns" type="number" min="1" max="100" default="1">
-        <meta property="obj3_phaseOffset" objectName="Object 3" label="Object 3: Phase Offset" type="number" min="0" max="100" default="10">
-        <meta property="obj4_shape" objectName="Object 4" label="Object 4: Shape" type="combobox" values="rectangle,circle,ring" default="ring">
-        <meta property="obj4_x" objectName="Object 4" label="Object 4: X Position" type="number" min="0" max="1280" default="958">
-        <meta property="obj4_y" objectName="Object 4" label="Object 4: Y Position" type="number" min="0" max="800" default="350">
-        <meta property="obj4_width" objectName="Object 4" label="Object 4: Width/Outer Diameter" type="number" min="10" max="1280" default="300">
-        <meta property="obj4_height" objectName="Object 4" label="Object 4: Height" type="number" min="10" max="800" default="300">
-        <meta property="obj4_innerDiameter" objectName="Object 4" label="Object 4: Inner Diameter" type="number" min="5" max="1270" default="200">
-        <meta property="obj4_numberOfSegments" objectName="Object 4" label="Object 4: Segments" type="number" min="1" max="50" default="6">
-        <meta property="obj4_angularWidth" objectName="Object 4" label="Object 4: Segment Angle" type="number" min="1" max="90" default="40">
-        <meta property="obj4_rotationSpeed" objectName="Object 4" label="Object 4: Rotation Speed" type="number" min="-100" max="100" default="-10">
-        <meta property="obj4_animationSpeed" objectName="Object 4" label="Object 4: Animation Speed" type="number" min="1" max="50" default="2">
-        <meta property="obj4_scrollDir" objectName="Object 4" label="Object 4: Scroll Direction" type="combobox" values="right,left,up,down" default="down">
-        <meta property="obj4_gradType" objectName="Object 4" label="Object 4: Fill Type" type="combobox" values="solid,linear,radial,alternating" default="alternating">
-        <meta property="obj4_useSharpGradient" objectName="Object 4" label="Object 4: Use Sharp Gradient" type="boolean" default="false">
-        <meta property="obj4_gradientStop" objectName="Object 4" label="Object 4: Gradient Stop %" type="number" min="0" max="100" default="51">
-        <meta property="obj4_gradColor1" objectName="Object 4" label="Object 4: Color 1" type="color" default="#00ff00">
-        <meta property="obj4_gradColor2" objectName="Object 4" label="Object 4: Color 2" type="color" default="#d400ff">
-        <meta property="obj4_cycleColors" objectName="Object 4" label="Object 4: Cycle Colors" type="boolean" default="false">
-        <meta property="obj4_cycleSpeed" objectName="Object 4" label="Object 4: Color Cycle Speed" type="number" min="1" max="10" default="10">
-        <meta property="obj4_numberOfRows" objectName="Object 4" label="Object 4: Number of Rows" type="number" min="1" max="100" default="1">
-        <meta property="obj4_numberOfColumns" objectName="Object 4" label="Object 4: Number of Columns" type="number" min="1" max="100" default="1">
-        <meta property="obj4_phaseOffset" objectName="Object 4" label="Object 4: Phase Offset" type="number" min="0" max="100" default="10">
-        <meta property="obj5_shape" objectName="Object 5" label="Object 5: Shape" type="combobox" values="rectangle,circle,ring" default="circle">
-        <meta property="obj5_x" objectName="Object 5" label="Object 5: X Position" type="number" min="0" max="1280" default="1052">
-        <meta property="obj5_y" objectName="Object 5" label="Object 5: Y Position" type="number" min="0" max="800" default="444">
-        <meta property="obj5_width" objectName="Object 5" label="Object 5: Width/Outer Diameter" type="number" min="10" max="1280" default="112">
-        <meta property="obj5_height" objectName="Object 5" label="Object 5: Height" type="number" min="10" max="800" default="112">
-        <meta property="obj5_innerDiameter" objectName="Object 5" label="Object 5: Inner Diameter" type="number" min="5" max="1270" default="100">
-        <meta property="obj5_numberOfSegments" objectName="Object 5" label="Object 5: Segments" type="number" min="1" max="50" default="12">
-        <meta property="obj5_angularWidth" objectName="Object 5" label="Object 5: Segment Angle" type="number" min="1" max="90" default="15">
-        <meta property="obj5_rotationSpeed" objectName="Object 5" label="Object 5: Rotation Speed" type="number" min="-100" max="100" default="0">
-        <meta property="obj5_animationSpeed" objectName="Object 5" label="Object 5: Animation Speed" type="number" min="1" max="50" default="5">
-        <meta property="obj5_scrollDir" objectName="Object 5" label="Object 5: Scroll Direction" type="combobox" values="right,left,up,down" default="left">
-        <meta property="obj5_gradType" objectName="Object 5" label="Object 5: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="radial">
-        <meta property="obj5_useSharpGradient" objectName="Object 5" label="Object 5: Use Sharp Gradient" type="boolean" default="true">
-        <meta property="obj5_gradientStop" objectName="Object 5" label="Object 5: Gradient Stop %" type="number" min="0" max="100" default="100">
-        <meta property="obj5_gradColor1" objectName="Object 5" label="Object 5: Color 1" type="color" default="#00ff00">
-        <meta property="obj5_gradColor2" objectName="Object 5" label="Object 5: Color 2" type="color" default="#d400ff">
-        <meta property="obj5_cycleColors" objectName="Object 5" label="Object 5: Cycle Colors" type="boolean" default="false">
-        <meta property="obj5_cycleSpeed" objectName="Object 5" label="Object 5: Color Cycle Speed" type="number" min="1" max="10" default="10">
-        <meta property="obj5_numberOfRows" objectName="Object 5" label="Object 5: Number of Rows" type="number" min="1" max="100" default="1">
-        <meta property="obj5_numberOfColumns" objectName="Object 5" label="Object 5: Number of Columns" type="number" min="1" max="100" default="1">
-        <meta property="obj5_phaseOffset" objectName="Object 5" label="Object 5: Phase Offset" type="number" min="0" max="100" default="10">
-        <meta property="obj6_shape" objectName="Strimer" label="Object 6: Shape" type="combobox" values="rectangle,circle,ring" default="rectangle">
-        <meta property="obj6_x" objectName="Strimer" label="Object 6: X Position" type="number" min="0" max="1280" default="0">
-        <meta property="obj6_y" objectName="Strimer" label="Object 6: Y Position" type="number" min="0" max="800" default="0">
-        <meta property="obj6_width" objectName="Strimer" label="Object 6: Width/Outer Diameter" type="number" min="10" max="1280" default="640">
-        <meta property="obj6_height" objectName="Strimer" label="Object 6: Height" type="number" min="10" max="800" default="400">
-        <meta property="obj6_innerDiameter" objectName="Strimer" label="Object 6: Inner Diameter" type="number" min="5" max="1270" default="200">
-        <meta property="obj6_numberOfSegments" objectName="Strimer" label="Object 6: Segments" type="number" min="1" max="50" default="8">
-        <meta property="obj6_angularWidth" objectName="Strimer" label="Object 6: Segment Angle" type="number" min="1" max="90" default="20">
-        <meta property="obj6_rotationSpeed" objectName="Strimer" label="Object 6: Rotation Speed" type="number" min="-100" max="100" default="0">
-        <meta property="obj6_animationSpeed" objectName="Strimer" label="Object 6: Animation Speed" type="number" min="1" max="50" default="23">
-        <meta property="obj6_scrollDir" objectName="Strimer" label="Object 6: Scroll Direction" type="combobox" values="right,left,up,down" default="right">
-        <meta property="obj6_gradType" objectName="Strimer" label="Object 6: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear">
-        <meta property="obj6_useSharpGradient" objectName="Strimer" label="Object 6: Use Sharp Gradient" type="boolean" default="true">
-        <meta property="obj6_gradientStop" objectName="Strimer" label="Object 6: Gradient Stop %" type="number" min="0" max="100" default="50">
-        <meta property="obj6_gradColor1" objectName="Strimer" label="Object 6: Color 1" type="color" default="#00ff00">
-        <meta property="obj6_gradColor2" objectName="Strimer" label="Object 6: Color 2" type="color" default="#d400ff">
-        <meta property="obj6_cycleColors" objectName="Strimer" label="Object 6: Cycle Colors" type="boolean" default="false">
-        <meta property="obj6_cycleSpeed" objectName="Strimer" label="Object 6: Color Cycle Speed" type="number" min="1" max="10" default="10">
-        <meta property="obj6_numberOfRows" objectName="Strimer" label="Object 6: Number of Rows" type="number" min="1" max="100" default="8">
-        <meta property="obj6_numberOfColumns" objectName="Strimer" label="Object 6: Number of Columns" type="number" min="1" max="100" default="1">
-        <meta property="obj6_phaseOffset" objectName="Strimer" label="Object 6: Phase Offset" type="number" min="0" max="100" default="10">
+        <meta property="obj1_shape" label="Matrix: Shape" type="combobox" values="rectangle,circle,ring" default="rectangle">
+        <meta property="obj1_x" label="Matrix: X Position" type="number" min="0" max="1280" default="0">
+        <meta property="obj1_y" label="Matrix: Y Position" type="number" min="0" max="800" default="400">
+        <meta property="obj1_width" label="Matrix: Width/Outer Diameter" type="number" min="10" max="1280" default="640">
+        <meta property="obj1_height" label="Matrix: Height" type="number" min="10" max="800" default="400">
+        <meta property="obj1_innerDiameter" label="Matrix: Inner Diameter" type="number" min="5" max="1270" default="200">
+        <meta property="obj1_numberOfSegments" label="Matrix: Segments" type="number" min="1" max="50" default="12">
+        <meta property="obj1_angularWidth" label="Matrix: Segment Angle" type="number" min="1" max="90" default="20">
+        <meta property="obj1_rotationSpeed" label="Matrix: Rotation Speed" type="number" min="-100" max="100" default="0">
+        <meta property="obj1_animationSpeed" label="Matrix: Animation Speed" type="number" min="1" max="50" default="10">
+        <meta property="obj1_scrollDir" label="Matrix: Scroll Direction" type="combobox" values="right,left,up,down" default="right">
+        <meta property="obj1_gradType" label="Matrix: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="random">
+        <meta property="obj1_useSharpGradient" label="Matrix: Use Sharp Gradient" type="boolean" default="false">
+        <meta property="obj1_gradientStop" label="Matrix: Gradient Stop %" type="number" min="0" max="100" default="50">
+        <meta property="obj1_gradColor1" label="Matrix: Color 1" type="color" default="#00ff00">
+        <meta property="obj1_gradColor2" label="Matrix: Color 2" type="color" default="#d400ff">
+        <meta property="obj1_cycleColors" label="Matrix: Cycle Colors" type="boolean" default="false">
+        <meta property="obj1_cycleSpeed" label="Matrix: Color Cycle Speed" type="number" min="1" max="10" default="10">
+        <meta property="obj1_numberOfRows" label="Matrix: Number of Rows" type="number" min="1" max="100" default="16">
+        <meta property="obj1_numberOfColumns" label="Matrix: Number of Columns" type="number" min="1" max="100" default="16">
+        <meta property="obj1_phaseOffset" label="Matrix: Phase Offset" type="number" min="0" max="100" default="10">
+        <meta property="obj6_shape" label="Strimer: Shape" type="combobox" values="rectangle,circle,ring" default="rectangle">
+        <meta property="obj6_x" label="Strimer: X Position" type="number" min="0" max="1280" default="0">
+        <meta property="obj6_y" label="Strimer: Y Position" type="number" min="0" max="800" default="0">
+        <meta property="obj6_width" label="Strimer: Width/Outer Diameter" type="number" min="10" max="1280" default="640">
+        <meta property="obj6_height" label="Strimer: Height" type="number" min="10" max="800" default="400">
+        <meta property="obj6_innerDiameter" label="Strimer: Inner Diameter" type="number" min="5" max="1270" default="200">
+        <meta property="obj6_numberOfSegments" label="Strimer: Segments" type="number" min="1" max="50" default="8">
+        <meta property="obj6_angularWidth" label="Strimer: Segment Angle" type="number" min="1" max="90" default="20">
+        <meta property="obj6_rotationSpeed" label="Strimer: Rotation Speed" type="number" min="-100" max="100" default="0">
+        <meta property="obj6_animationSpeed" label="Strimer: Animation Speed" type="number" min="1" max="50" default="23">
+        <meta property="obj6_scrollDir" label="Strimer: Scroll Direction" type="combobox" values="right,left,up,down" default="right">
+        <meta property="obj6_gradType" label="Strimer: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear">
+        <meta property="obj6_useSharpGradient" label="Strimer: Use Sharp Gradient" type="boolean" default="true">
+        <meta property="obj6_gradientStop" label="Strimer: Gradient Stop %" type="number" min="0" max="100" default="50">
+        <meta property="obj6_gradColor1" label="Strimer: Color 1" type="color" default="#00ff00">
+        <meta property="obj6_gradColor2" label="Strimer: Color 2" type="color" default="#d400ff">
+        <meta property="obj6_cycleColors" label="Strimer: Cycle Colors" type="boolean" default="false">
+        <meta property="obj6_cycleSpeed" label="Strimer: Color Cycle Speed" type="number" min="1" max="10" default="10">
+        <meta property="obj6_numberOfRows" label="Strimer: Number of Rows" type="number" min="1" max="100" default="8">
+        <meta property="obj6_numberOfColumns" label="Strimer: Number of Columns" type="number" min="1" max="100" default="1">
+        <meta property="obj6_phaseOffset" label="Strimer: Phase Offset" type="number" min="0" max="100" default="10">
+        <meta property="obj3_shape" label="Top Fan Center: Shape" type="combobox" values="rectangle,circle,ring" default="circle">
+        <meta property="obj3_x" label="Top Fan Center: X Position" type="number" min="0" max="1280" default="1060">
+        <meta property="obj3_y" label="Top Fan Center: Y Position" type="number" min="0" max="800" default="101">
+        <meta property="obj3_width" label="Top Fan Center: Width/Outer Diameter" type="number" min="10" max="1280" default="112">
+        <meta property="obj3_height" label="Top Fan Center: Height" type="number" min="10" max="800" default="112">
+        <meta property="obj3_innerDiameter" label="Top Fan Center: Inner Diameter" type="number" min="5" max="1270" default="100">
+        <meta property="obj3_numberOfSegments" label="Top Fan Center: Segments" type="number" min="1" max="50" default="12">
+        <meta property="obj3_angularWidth" label="Top Fan Center: Segment Angle" type="number" min="1" max="90" default="15">
+        <meta property="obj3_rotationSpeed" label="Top Fan Center: Rotation Speed" type="number" min="-100" max="100" default="0">
+        <meta property="obj3_animationSpeed" label="Top Fan Center: Animation Speed" type="number" min="1" max="50" default="5">
+        <meta property="obj3_scrollDir" label="Top Fan Center: Scroll Direction" type="combobox" values="right,left,up,down" default="left">
+        <meta property="obj3_gradType" label="Top Fan Center: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="radial">
+        <meta property="obj3_useSharpGradient" label="Top Fan Center: Use Sharp Gradient" type="boolean" default="true">
+        <meta property="obj3_gradientStop" label="Top Fan Center: Gradient Stop %" type="number" min="0" max="100" default="100">
+        <meta property="obj3_gradColor1" label="Top Fan Center: Color 1" type="color" default="#00ff00">
+        <meta property="obj3_gradColor2" label="Top Fan Center: Color 2" type="color" default="#d400ff">
+        <meta property="obj3_cycleColors" label="Top Fan Center: Cycle Colors" type="boolean" default="false">
+        <meta property="obj3_cycleSpeed" label="Top Fan Center: Color Cycle Speed" type="number" min="1" max="10" default="10">
+        <meta property="obj3_numberOfRows" label="Top Fan Center: Number of Rows" type="number" min="1" max="100" default="1">
+        <meta property="obj3_numberOfColumns" label="Top Fan Center: Number of Columns" type="number" min="1" max="100" default="1">
+        <meta property="obj3_phaseOffset" label="Top Fan Center: Phase Offset" type="number" min="0" max="100" default="10">
+        <meta property="obj2_shape" label="Top Fan Ring: Shape" type="combobox" values="rectangle,circle,ring" default="ring">
+        <meta property="obj2_x" label="Top Fan Ring: X Position" type="number" min="0" max="1280" default="966">
+        <meta property="obj2_y" label="Top Fan Ring: Y Position" type="number" min="0" max="800" default="7">
+        <meta property="obj2_width" label="Top Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300">
+        <meta property="obj2_height" label="Top Fan Ring: Height" type="number" min="10" max="800" default="300">
+        <meta property="obj2_innerDiameter" label="Top Fan Ring: Inner Diameter" type="number" min="5" max="1270" default="200">
+        <meta property="obj2_numberOfSegments" label="Top Fan Ring: Segments" type="number" min="1" max="50" default="6">
+        <meta property="obj2_angularWidth" label="Top Fan Ring: Segment Angle" type="number" min="1" max="90" default="40">
+        <meta property="obj2_rotationSpeed" label="Top Fan Ring: Rotation Speed" type="number" min="-100" max="100" default="10">
+        <meta property="obj2_animationSpeed" label="Top Fan Ring: Animation Speed" type="number" min="1" max="50" default="2">
+        <meta property="obj2_scrollDir" label="Top Fan Ring: Scroll Direction" type="combobox" values="right,left,up,down" default="down">
+        <meta property="obj2_gradType" label="Top Fan Ring: Fill Type" type="combobox" values="solid,linear,radial,alternating" default="alternating">
+        <meta property="obj2_useSharpGradient" label="Top Fan Ring: Use Sharp Gradient" type="boolean" default="false">
+        <meta property="obj2_gradientStop" label="Top Fan Ring: Gradient Stop %" type="number" min="0" max="100" default="51">
+        <meta property="obj2_gradColor1" label="Top Fan Ring: Color 1" type="color" default="#00ff00">
+        <meta property="obj2_gradColor2" label="Top Fan Ring: Color 2" type="color" default="#d400ff">
+        <meta property="obj2_cycleColors" label="Top Fan Ring: Cycle Colors" type="boolean" default="false">
+        <meta property="obj2_cycleSpeed" label="Top Fan Ring: Color Cycle Speed" type="number" min="1" max="10" default="10">
+        <meta property="obj2_numberOfRows" label="Top Fan Ring: Number of Rows" type="number" min="1" max="100" default="1">
+        <meta property="obj2_numberOfColumns" label="Top Fan Ring: Number of Columns" type="number" min="1" max="100" default="1">
+        <meta property="obj2_phaseOffset" label="Top Fan Ring: Phase Offset" type="number" min="0" max="100" default="10">
+        <meta property="obj5_shape" label="Bottom Fan Center: Shape" type="combobox" values="rectangle,circle,ring" default="circle">
+        <meta property="obj5_x" label="Bottom Fan Center: X Position" type="number" min="0" max="1280" default="1052">
+        <meta property="obj5_y" label="Bottom Fan Center: Y Position" type="number" min="0" max="800" default="444">
+        <meta property="obj5_width" label="Bottom Fan Center: Width/Outer Diameter" type="number" min="10" max="1280" default="112">
+        <meta property="obj5_height" label="Bottom Fan Center: Height" type="number" min="10" max="800" default="112">
+        <meta property="obj5_innerDiameter" label="Bottom Fan Center: Inner Diameter" type="number" min="5" max="1270" default="100">
+        <meta property="obj5_numberOfSegments" label="Bottom Fan Center: Segments" type="number" min="1" max="50" default="12">
+        <meta property="obj5_angularWidth" label="Bottom Fan Center: Segment Angle" type="number" min="1" max="90" default="15">
+        <meta property="obj5_rotationSpeed" label="Bottom Fan Center: Rotation Speed" type="number" min="-100" max="100" default="0">
+        <meta property="obj5_animationSpeed" label="Bottom Fan Center: Animation Speed" type="number" min="1" max="50" default="5">
+        <meta property="obj5_scrollDir" label="Bottom Fan Center: Scroll Direction" type="combobox" values="right,left,up,down" default="left">
+        <meta property="obj5_gradType" label="Bottom Fan Center: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="radial">
+        <meta property="obj5_useSharpGradient" label="Bottom Fan Center: Use Sharp Gradient" type="boolean" default="true">
+        <meta property="obj5_gradientStop" label="Bottom Fan Center: Gradient Stop %" type="number" min="0" max="100" default="100">
+        <meta property="obj5_gradColor1" label="Bottom Fan Center: Color 1" type="color" default="#00ff00">
+        <meta property="obj5_gradColor2" label="Bottom Fan Center: Color 2" type="color" default="#d400ff">
+        <meta property="obj5_cycleColors" label="Bottom Fan Center: Cycle Colors" type="boolean" default="false">
+        <meta property="obj5_cycleSpeed" label="Bottom Fan Center: Color Cycle Speed" type="number" min="1" max="10" default="10">
+        <meta property="obj5_numberOfRows" label="Bottom Fan Center: Number of Rows" type="number" min="1" max="100" default="1">
+        <meta property="obj5_numberOfColumns" label="Bottom Fan Center: Number of Columns" type="number" min="1" max="100" default="1">
+        <meta property="obj5_phaseOffset" label="Bottom Fan Center: Phase Offset" type="number" min="0" max="100" default="10">
+        <meta property="obj4_shape" label="Bottom Fan Ring: Shape" type="combobox" values="rectangle,circle,ring" default="ring">
+        <meta property="obj4_x" label="Bottom Fan Ring: X Position" type="number" min="0" max="1280" default="958">
+        <meta property="obj4_y" label="Bottom Fan Ring: Y Position" type="number" min="0" max="800" default="350">
+        <meta property="obj4_width" label="Bottom Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300">
+        <meta property="obj4_height" label="Bottom Fan Ring: Height" type="number" min="10" max="800" default="300">
+        <meta property="obj4_innerDiameter" label="Bottom Fan Ring: Inner Diameter" type="number" min="5" max="1270" default="200">
+        <meta property="obj4_numberOfSegments" label="Bottom Fan Ring: Segments" type="number" min="1" max="50" default="6">
+        <meta property="obj4_angularWidth" label="Bottom Fan Ring: Segment Angle" type="number" min="1" max="90" default="40">
+        <meta property="obj4_rotationSpeed" label="Bottom Fan Ring: Rotation Speed" type="number" min="-100" max="100" default="-10">
+        <meta property="obj4_animationSpeed" label="Bottom Fan Ring: Animation Speed" type="number" min="1" max="50" default="2">
+        <meta property="obj4_scrollDir" label="Bottom Fan Ring: Scroll Direction" type="combobox" values="right,left,up,down" default="down">
+        <meta property="obj4_gradType" label="Bottom Fan Ring: Fill Type" type="combobox" values="solid,linear,radial,alternating" default="alternating">
+        <meta property="obj4_useSharpGradient" label="Bottom Fan Ring: Use Sharp Gradient" type="boolean" default="false">
+        <meta property="obj4_gradientStop" label="Bottom Fan Ring: Gradient Stop %" type="number" min="0" max="100" default="51">
+        <meta property="obj4_gradColor1" label="Bottom Fan Ring: Color 1" type="color" default="#00ff00">
+        <meta property="obj4_gradColor2" label="Bottom Fan Ring: Color 2" type="color" default="#d400ff">
+        <meta property="obj4_cycleColors" label="Bottom Fan Ring: Cycle Colors" type="boolean" default="false">
+        <meta property="obj4_cycleSpeed" label="Bottom Fan Ring: Color Cycle Speed" type="number" min="1" max="10" default="10">
+        <meta property="obj4_numberOfRows" label="Bottom Fan Ring: Number of Rows" type="number" min="1" max="100" default="1">
+        <meta property="obj4_numberOfColumns" label="Bottom Fan Ring: Number of Columns" type="number" min="1" max="100" default="1">
+        <meta property="obj4_phaseOffset" label="Bottom Fan Ring: Phase Offset" type="number" min="0" max="100" default="10">
     </template>
 
     <style>
@@ -224,6 +224,11 @@
         .form-check-input:checked {
             background-color: #3182ce;
             border-color: #3182ce;
+        }
+
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+            opacity: 1;
         }
 
         #canvas-container {
@@ -460,6 +465,62 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="save-project-modal" tabindex="-1" aria-labelledby="saveProjectModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="saveProjectModalLabel">Save Project</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="save-project-name-input" class="form-label">Project Name:</label>
+                        <input type="text" class="form-control" id="save-project-name-input" placeholder="Enter a name for your project...">
+                    </div>
+                    <hr>
+                    <p class="text-light">Existing Projects:</p>
+                    <ul class="list-group" id="save-project-existing-list">
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-save-btn">Save Project</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="notification-modal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="notificationModalLabel">Success</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="notification-modal-body">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="confirm-overwrite-modal" tabindex="-1" aria-labelledby="confirmOverwriteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmOverwriteModalLabel">Confirm Overwrite</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirm-overwrite-modal-body">
+                    A project with this name already exists. Do you want to overwrite it?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-overwrite-btn">Overwrite</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
@@ -642,7 +703,8 @@
                     this.hue2 += this.cycleSpeed;
                 }
                 if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
-                    const directionMultiplier = this.gradType.includes('radial') ? 1 : ((this.scrollDirection === 'left' || this.scrollDirection === 'up') ? 1 : -1);
+                    // This logic is now corrected.
+                    const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
                     this.scrollOffset += this.animationSpeed * directionMultiplier * 0.01;
                     this.scrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
                 }
@@ -913,6 +975,18 @@
             const loadProjectList = document.getElementById('load-project-list');
             const collapseCodeBtn = document.getElementById('collapse-code-btn');
             const exportBtn = document.getElementById('export-btn');
+            const saveProjectModalEl = document.getElementById('save-project-modal');
+            const saveProjectModal = new bootstrap.Modal(saveProjectModalEl);
+            const saveProjectNameInput = document.getElementById('save-project-name-input');
+            const confirmSaveBtn = document.getElementById('confirm-save-btn');
+            const existingProjectList = document.getElementById('save-project-existing-list');
+            const notificationModalEl = document.getElementById('notification-modal');
+            const notificationModal = new bootstrap.Modal(notificationModalEl);
+            const notificationModalBody = document.getElementById('notification-modal-body');
+            const confirmOverwriteModalEl = document.getElementById('confirm-overwrite-modal');
+            const confirmOverwriteModal = new bootstrap.Modal(confirmOverwriteModalEl);
+            const confirmOverwriteBtn = document.getElementById('confirm-overwrite-btn');
+            let projectToSave = {}; // Temporary variable to hold data between modals
 
             // --- State Variables ---
             let configStore = [];
@@ -931,6 +1005,11 @@
             let isCodePanelCollapsed = false;
 
             // --- Helper Functions ---
+            function showNotification(message) {
+                notificationModalBody.textContent = message;
+                notificationModal.show();
+            }
+
             function parseMetaToConfig(metaElement) {
                 const config = {};
                 const tagName = metaElement.tagName.toLowerCase();
@@ -1081,9 +1160,21 @@
                     if (tooltip) tooltip.dispose();
                 });
 
+                // Store the current state of collapsed panels
+                const collapseStates = {};
+                const allCollapses = form.querySelectorAll('.collapse');
+                allCollapses.forEach(el => {
+                    const fieldset = el.closest('fieldset');
+                    if (fieldset) {
+                        const id = parseInt(fieldset.dataset.objectId, 10);
+                        collapseStates[id] = el.classList.contains('show');
+                    }
+                });
+
                 const grouped = groupConfigs(configStore);
                 form.innerHTML = '';
 
+                // Render general settings
                 const generalFieldset = document.createElement('fieldset');
                 generalFieldset.className = 'border border-gray-600 p-4 mb-4 rounded-lg';
                 const generalLegend = document.createElement('legend');
@@ -1093,16 +1184,25 @@
                 grouped.general.forEach(conf => generalFieldset.appendChild(createFormControl(conf)));
                 form.appendChild(generalFieldset);
 
-                Object.keys(grouped.objects).sort((a, b) => a - b).forEach(id => {
-                    const objectForName = objects.find(o => o.id == id);
-                    const objectName = objectForName ? objectForName.name : `Object ${id}`;
+                // Render object panels in the order of the objects array
+                objects.forEach(obj => {
+                    const id = obj.id;
                     const objectConfigs = grouped.objects[id];
+                    if (!objectConfigs) return; // Skip if no configs for this object
+
+                    const objectName = obj.name || `Object ${id}`;
                     const fieldset = document.createElement('fieldset');
                     fieldset.className = 'border border-gray-600 p-3 mb-4 rounded-lg';
                     fieldset.dataset.objectId = id;
 
                     const legendContainer = document.createElement('legend');
                     legendContainer.className = 'float-none w-auto px-2 d-flex justify-content-between align-items-center w-100';
+
+                    const dragHandle = document.createElement('div');
+                    dragHandle.className = 'drag-handle me-2 text-gray-400';
+                    dragHandle.style.cursor = 'grab';
+                    dragHandle.innerHTML = '<i class="bi bi-grip-vertical"></i>';
+                    legendContainer.appendChild(dragHandle);
 
                     const nameSpan = document.createElement('span');
                     nameSpan.className = 'object-name text-lg font-semibold text-gray-100 flex-grow-1 me-2';
@@ -1116,7 +1216,7 @@
                     controlsGroup.className = 'd-flex align-items-center flex-shrink-0';
 
                     const lockButton = document.createElement('button');
-                    const isLocked = objectForName ? objectForName.locked : false;
+                    const isLocked = obj.locked || false;
                     lockButton.className = `btn btn-sm btn-lock ${isLocked ? 'btn-warning' : 'btn-outline-secondary'} d-flex align-items-center justify-content-center p-0 ms-2`;
                     lockButton.style.width = '28px';
                     lockButton.style.height = '28px';
@@ -1134,19 +1234,19 @@
 
                     const collapseId = `collapse-obj-${id}`;
                     const collapseButton = document.createElement('button');
-                    collapseButton.className = 'btn btn-sm btn-outline-secondary ms-2 legend-button collapsed d-flex align-items-center justify-content-center p-0';
+                    collapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${collapseStates[id] ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
                     collapseButton.style.width = '28px';
                     collapseButton.style.height = '28px';
                     collapseButton.type = 'button';
                     collapseButton.dataset.bsToggle = 'collapse';
                     collapseButton.dataset.bsTarget = `#${collapseId}`;
-                    collapseButton.setAttribute('aria-expanded', 'false');
+                    collapseButton.setAttribute('aria-expanded', collapseStates[id] ? 'true' : 'false');
                     controlsGroup.appendChild(collapseButton);
                     legendContainer.appendChild(controlsGroup);
 
                     const collapseWrapper = document.createElement('div');
                     collapseWrapper.id = collapseId;
-                    collapseWrapper.className = 'collapse p-3';
+                    collapseWrapper.className = `collapse p-3 ${collapseStates[id] ? 'show' : ''}`;
 
                     const groups = {
                         'Shape & Position': ['shape', 'x', 'y', 'width', 'height'],
@@ -1184,31 +1284,85 @@
 
                 setFormValues(getControlValues());
                 new bootstrap.Tooltip(document.body, { selector: "[data-bs-toggle='tooltip']", trigger: 'hover' });
+
+                // Ensure Sortable.js recognizes the new DOM structure
+                const sortable = Sortable.get(form);
+                if (sortable) {
+                    sortable.option('store', {
+                        get: function () {
+                            return objects.map(obj => obj.id.toString());
+                        },
+                        set: function (sortable) {
+                            // Handled by onEnd
+                        }
+                    });
+                }
             }
 
-            function rebuildFromState() {
-                const grouped = groupConfigs(configStore);
-                const newConfigStore = [...grouped.general];
-                let newId = 1;
-                const newObjects = [];
-                Object.keys(grouped.objects).sort((a, b) => a - b).forEach(oldId => {
-                    const configsForOldId = grouped.objects[oldId];
-                    const oldObject = objects.find(o => o.id == oldId);
-                    if (oldObject) { oldObject.id = newId; newObjects.push(oldObject); }
-                    configsForOldId.forEach(conf => {
+            function syncAndRenumberState() {
+                const oldObjects = [...objects];
+                const generalConfigs = configStore.filter(c => !(c.property || c.name).startsWith('obj'));
+
+                configStore = [...generalConfigs];
+                objects = [];
+
+                oldObjects.forEach((oldObj, index) => {
+                    const newId = index + 1;
+                    const oldId = oldObj.id;
+
+                    const originalConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${oldId}_`));
+
+                    const newConfigs = originalConfigs.map(conf => {
                         const newConf = { ...conf };
-                        const propOrName = newConf.property || newConf.name;
-                        newConf[propOrName.startsWith('obj') ? 'property' : 'name'] = propOrName.replace(/obj\d+_/, `obj${newId}_`);
-                        newConf.label = conf.label.replace(/Object \d+/, `Object ${newId}`);
-                        newConfigStore.push(newConf);
+                        newConf.property = conf.property.replace(`obj${oldId}_`, `obj${newId}_`);
+                        const labelParts = conf.label.split(':');
+                        newConf.label = `Object ${newId}:${labelParts.slice(1).join(':')}`;
+                        return newConf;
                     });
-                    newId++;
+
+                    configStore.push(...newConfigs);
+
+                    obj.id = newId;
+                    obj.name = `Object ${newId}`;
+                    objects.push(obj);
                 });
-                configStore = newConfigStore;
-                objects = newObjects;
+
                 renderForm();
                 updateAll();
-                drawFrame(); // Ensure canvas is updated
+                drawFrame();
+            }
+
+            function initializeSortable() {
+                const formEl = document.getElementById('controls-form');
+                new Sortable(formEl, {
+                    animation: 150,
+                    handle: '.drag-handle',
+                    draggable: 'fieldset[data-object-id]',
+                    onEnd: function (evt) {
+                        if (evt.oldIndex === evt.newIndex) return;
+
+                        // Get the new order from the DOM
+                        const fieldsets = Array.from(formEl.querySelectorAll('fieldset[data-object-id]'));
+                        const newOrder = fieldsets.map(fieldset => parseInt(fieldset.dataset.objectId, 10));
+
+                        // Reorder objects array to match DOM
+                        const oldObjects = [...objects];
+                        objects = newOrder.map(id => oldObjects.find(obj => obj.id === id)).filter(obj => obj);
+
+                        // Rebuild configStore
+                        const configSnapshot = [...configStore];
+                        const generalConfigs = configSnapshot.filter(c => !(c.property || c.name).startsWith('obj'));
+                        const newObjectConfigs = objects.flatMap(obj =>
+                            configSnapshot.filter(c => c.property && c.property.startsWith(`obj${obj.id}_`))
+                        );
+                        configStore = [...generalConfigs, ...newObjectConfigs];
+
+                        // Re-render form to ensure UI matches the objects array
+                        renderForm();
+                        generateOutputScript();
+                        drawFrame();
+                    }
+                });
             }
 
             function getControlValues() {
@@ -1248,14 +1402,20 @@
                 const values = getControlValues();
                 const grouped = groupConfigs(configStore);
                 const finalStates = [];
-                Object.keys(grouped.objects).forEach(id => {
-                    const existingObject = objects.find(o => o.id == id);
+
+                // Iterate through the 'objects' array to preserve its current order
+                objects.forEach(obj => {
+                    const id = obj.id;
+                    if (!grouped.objects[id]) return; // Failsafe for deleted objects
+
+                    const existingObject = obj;
                     const config = {
                         id: parseInt(id),
                         gradient: {},
-                        name: existingObject ? existingObject.name : `Object ${id}`,
-                        locked: existingObject ? existingObject.locked : false
+                        name: existingObject.name,
+                        locked: existingObject.locked
                     };
+
                     grouped.objects[id].forEach(conf => {
                         let key = conf.property.replace(`obj${id}_`, '');
                         let value = values[conf.property];
@@ -1271,6 +1431,7 @@
                             config[key] = value;
                         }
                     });
+
                     config.gradientDirection = (config.scrollDirection === 'up' || config.scrollDirection === 'down') ? 'vertical' : 'horizontal';
                     config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
                     const speed = config.animationSpeed || 0;
@@ -1280,6 +1441,7 @@
                     }
                     finalStates.push(config);
                 });
+
                 return finalStates;
             }
 
@@ -1297,24 +1459,12 @@
                         line = `<meta description="${value}" />\n`;
                     } else if (propOrName === 'publisher') {
                         line = `<meta publisher="${value}" />\n`;
-                    }
-                    else {
+                    } else {
                         const attrType = (propOrName.startsWith('obj') || propOrName === 'enableAnimation') ? 'property' : 'name';
                         line = `<meta ${attrType}="${propOrName}"`;
 
-                        // Add the objectName attribute if it's an object property
-                        if (propOrName.startsWith('obj')) {
-                            const idMatch = propOrName.match(/^obj(\d+)_/);
-                            if (idMatch) {
-                                const id = parseInt(idMatch[1], 10);
-                                const shape = objects.find(o => o.id === id);
-                                if (shape) {
-                                    line += ` objectName="${shape.name}"`;
-                                }
-                            }
-                        }
-
                         Object.keys(config).forEach(attrName => {
+                            // This check now excludes objectName from being written
                             if (attrName !== 'property' && attrName !== 'name' && attrName !== 'default' && attrName !== 'class' && attrName !== 'objectname') {
                                 line += ` ${attrName}="${config[attrName]}"`;
                             }
@@ -1326,6 +1476,26 @@
                 outputScriptArea.value = scriptHTML.trim();
             }
 
+            form.addEventListener('blur', (e) => {
+                if (e.target.classList.contains('object-name')) {
+                    const id = parseInt(e.target.dataset.id, 10);
+                    const newName = e.target.textContent || 'Unnamed';
+                    const obj = objects.find(o => o.id === id);
+                    if (obj) {
+                        obj.name = newName;
+
+                        // Update the label for all configs of this object
+                        configStore.forEach(conf => {
+                            if (conf.property && conf.property.startsWith(`obj${id}_`)) {
+                                const labelParts = conf.label.split(':');
+                                conf.label = `${newName}:${labelParts[1]}`;
+                            }
+                        });
+
+                        generateOutputScript();
+                    }
+                }
+            }, true);
             function getCanvasCoordinates(event) {
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
@@ -1417,10 +1587,10 @@
                 Object.keys(grouped.objects).forEach(id => {
                     const config = { id: parseInt(id), gradient: {} };
 
-                    // On first load, use the objectName from the meta tag if it exists
+                    // Get the name from the label (e.g., "Object 1: Shape" -> "Object 1")
                     const representativeConfig = grouped.objects[id][0];
-                    if (representativeConfig.objectname) { // Note: attributes are lowercase
-                        config.name = representativeConfig.objectname;
+                    if (representativeConfig && representativeConfig.label.includes(':')) {
+                        config.name = representativeConfig.label.split(':')[0];
                     }
 
                     grouped.objects[id].forEach(conf => {
@@ -1452,9 +1622,15 @@
                 });
                 objects = initialStates.map(state => new Shape({ ...state, ctx }));
             }
+
             function loadWorkspace(workspace) {
+                // 1. Load the exact configuration and object data from the saved file.
                 configStore = workspace.configs;
+
+                // 2. Create the shape instances based on the loaded configuration.
                 createInitialObjects();
+
+                // 3. Restore the specific names and lock states for each object.
                 if (workspace.objects) {
                     workspace.objects.forEach(savedObj => {
                         const obj = objects.find(o => o.id === savedObj.id);
@@ -1464,22 +1640,35 @@
                         }
                     });
                 }
+
+                // 4. Redraw the entire left panel with the correct controls.
                 renderForm();
+
+                // 5. CRITICAL FIX: Loop through the new controls and set their values
+                //    to match the data you just loaded.
                 for (const config of configStore) {
                     const key = config.property || config.name;
                     const el = form.elements[key];
                     if (el) {
                         if (el.type === 'checkbox') {
-                            el.checked = config.default === 'true' || config.default === true;
+                            el.checked = (config.default === true || config.default === 'true');
                         } else {
                             el.value = config.default;
                         }
+                        // Also update any sliders associated with number inputs
                         if (el.type === 'number') {
                             const slider = document.getElementById(`${el.id}_slider`);
                             if (slider) slider.value = el.value;
                         }
+                        // Also update any hex inputs associated with color pickers
+                        if (el.type === 'color') {
+                            const hexInput = document.getElementById(`${el.id}_hex`);
+                            if (hexInput) hexInput.value = el.value;
+                        }
                     }
                 }
+
+                // 6. Finally, update the canvas and code panel.
                 updateAll();
                 drawFrame();
             }
@@ -1567,6 +1756,7 @@
                 }
             }
 
+
             // --- Event Listeners ---
 
             form.addEventListener('input', (e) => {
@@ -1650,11 +1840,14 @@
                 if (deleteBtn) {
                     e.preventDefault();
                     const idToDelete = parseInt(deleteBtn.dataset.id, 10);
+
+                    // Remove the object and its configuration
                     selectedObjectIds = selectedObjectIds.filter(id => id !== idToDelete);
-                    updateToolbarState();
                     configStore = configStore.filter(conf => !(conf.property || conf.name).startsWith(`obj${idToDelete}_`));
                     objects = objects.filter(o => o.id !== idToDelete);
-                    rebuildFromState();
+
+                    // Rebuild the entire state to re-number all remaining objects
+                    syncAndRenumberState();
                 }
                 if (duplicateBtn) {
                     e.preventDefault();
@@ -1701,21 +1894,94 @@
                 }
             }, true);
 
-            copyBtn.addEventListener('click', () => { navigator.clipboard.writeText(outputScriptArea.value).then(() => { copyToast.show(); }); });
-            document.getElementById('save-ws-btn').addEventListener('click', () => {
-                const name = prompt("Enter a name for your project:");
-                if (!name) return;
-                const key = `${projectPrefix}${name}`;
-                if (localStorage.getItem(key)) {
-                    if (!confirm(`A project named "${name}" already exists. Overwrite?`)) { return; }
-                }
-                const workspace = {
-                    configs: configStore.map(c => ({ ...c, default: getControlValues()[c.property || c.name] })),
-                    objects: objects.map(o => ({ id: o.id, name: o.name, locked: o.locked }))
-                };
-                localStorage.setItem(key, JSON.stringify(workspace));
-                alert(`Project "${name}" saved!`);
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(outputScriptArea.value).then(() => {
+                    showNotification("Script header copied to clipboard!");
+                });
             });
+            document.getElementById('save-ws-btn').addEventListener('click', () => {
+                // Clear previous input
+                saveProjectNameInput.value = '';
+
+                // Populate the list of existing projects
+                existingProjectList.innerHTML = '';
+                let hasProjects = false;
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key.startsWith(projectPrefix)) {
+                        hasProjects = true;
+                        const projectName = key.replace(projectPrefix, '');
+                        const li = document.createElement('li');
+
+                        // Make the list item clickable
+                        li.className = 'list-group-item list-group-item-action bg-dark text-light';
+                        li.textContent = projectName;
+                        li.style.cursor = 'pointer';
+                        li.addEventListener('click', () => {
+                            saveProjectNameInput.value = projectName;
+                        });
+
+                        existingProjectList.appendChild(li);
+                    }
+                }
+                if (!hasProjects) {
+                    existingProjectList.innerHTML = '<li class="list-group-item bg-dark text-white-50">No saved projects yet.</li>';
+                }
+
+                // Show the save modal
+                saveProjectModal.show();
+            });
+
+            confirmSaveBtn.addEventListener('click', () => {
+                const name = saveProjectNameInput.value.trim();
+                if (!name) {
+                    showNotification("Please enter a project name.");
+                    return;
+                }
+
+                const key = `${projectPrefix}${name}`;
+                const currentValues = getControlValues();
+                const configsToSave = configStore.map(conf => {
+                    const newConf = { ...conf };
+                    const propOrName = newConf.property || newConf.name;
+                    if (currentValues[propOrName] !== undefined) {
+                        newConf.default = currentValues[propOrName];
+                    }
+                    return newConf;
+                });
+
+                projectToSave = {
+                    key: key,
+                    name: name,
+                    workspace: {
+                        configs: configsToSave,
+                        objects: objects.map(o => ({ id: o.id, name: o.name, locked: o.locked }))
+                    }
+                };
+
+                saveProjectModal.hide();
+
+                if (localStorage.getItem(key)) {
+                    // If project exists, show the overwrite modal after a short delay
+                    setTimeout(() => confirmOverwriteModal.show(), 300);
+                } else {
+                    // If it's a new project, save it directly and show success after a short delay
+                    localStorage.setItem(projectToSave.key, JSON.stringify(projectToSave.workspace));
+                    setTimeout(() => showNotification(`Project "${projectToSave.name}" saved!`), 300);
+                }
+            });
+
+            confirmOverwriteBtn.addEventListener('click', () => {
+                if (projectToSave.key) {
+                    localStorage.setItem(projectToSave.key, JSON.stringify(projectToSave.workspace));
+                    confirmOverwriteModal.hide();
+
+                    // Show the success notification after a short delay
+                    setTimeout(() => showNotification(`Project "${projectToSave.name}" saved!`), 300);
+                }
+            });
+
+
             document.getElementById('load-ws-btn').addEventListener('click', () => {
                 loadProjectList.innerHTML = '';
                 let hasProjects = false;
@@ -2012,6 +2278,8 @@
                         lastHSizes = sizes;
                     }
                 });
+
+                initializeSortable(); // Add this line at the end
             }
 
             init();
