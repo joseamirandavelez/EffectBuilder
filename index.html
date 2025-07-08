@@ -360,6 +360,44 @@
         .generated-script-header {
             margin-bottom: 5px;
         }
+
+        .modal-body h6 {
+            color: #38bdf8;
+            /* Light Blue for subheadings */
+            font-weight: 600;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #4a5568;
+            padding-bottom: 0.25rem;
+        }
+
+        .modal-body ul {
+            list-style-type: none;
+            padding-left: 1rem;
+        }
+
+        .modal-body li {
+            margin-bottom: 0.5rem;
+            padding-left: 1.25rem;
+            position: relative;
+        }
+
+        .modal-body li::before {
+            content: '\f280';
+            /* Bootstrap Icons chevron right */
+            font-family: 'bootstrap-icons';
+            position: absolute;
+            left: 0;
+            color: #38bdf8;
+        }
+
+        .modal-body kbd {
+            background-color: #4a5568;
+            border-radius: 0.25rem;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.8em;
+            border: 1px solid #5a6678;
+        }
     </style>
 </head>
 
@@ -370,6 +408,8 @@
             <a class="navbar-brand" href="#">Interactive Effect Builder</a>
             <div class="d-flex">
                 <div class="d-flex">
+                    <button class="btn btn-outline-info me-2" id="help-btn"><i class="bi bi-question-circle"></i> Help</button>
+                    <button class="btn btn-outline-light me-2" id="about-btn"><i class="bi bi-info-circle"></i> About</button>
                     <button class="btn btn-outline-primary me-2" id="save-ws-btn" data-bs-toggle="tooltip" title="Save Workspace to Browser Storage"><i class="bi bi-save"></i> Save</button>
                     <button class="btn btn-outline-secondary me-2" id="load-ws-btn" data-bs-toggle="tooltip" title="Load Workspace from Browser Storage"><i class="bi bi-folder2-open"></i> Load</button>
                     <button class="btn btn-outline-success" id="export-btn" data-bs-toggle="tooltip" title="Export complete HTML file"><i class="bi bi-download"></i> Export</button>
@@ -517,6 +557,85 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-danger" id="confirm-overwrite-btn">Overwrite</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal fade" id="help-modal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="helpModalLabel"><i class="bi bi-question-circle me-2"></i>How to Use the Effect Builder</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>The Controls Panel (Left)</h6>
+                    <p>This is where you manage all the objects in your scene.</p>
+                    <ul>
+                        <li><strong>Add New Object:</strong> Use the green button at the bottom to add a new shape to the canvas.</li>
+                        <li><strong>Object Panels:</strong> Each object gets its own collapsible panel. Click the object's name to expand or collapse its properties.</li>
+                        <li><strong>Rename:</strong> Click directly on an object's name (e.g., "Object 1") to edit it.</li>
+                        <li><strong>Reorder:</strong> Click and drag the <i class="bi bi-grip-vertical"></i> icon to change the rendering order of the objects.</li>
+                        <li><strong>Lock/Unlock:</strong> Use the <i class="bi bi-unlock-fill"></i> / <i class="bi bi-lock-fill"></i> button to prevent an object from being moved or resized on the canvas.</li>
+                        <li><strong>Duplicate/Delete:</strong> Use the menu button (<i class="bi bi-list"></i>) to access options for duplicating or deleting an object.</li>
+                    </ul>
+
+                    <h6>The Canvas (Center)</h6>
+                    <p>This is the visual editor where you can directly manipulate objects.</p>
+                    <ul>
+                        <li><strong>Select:</strong> Click on an object to select it. Its properties will appear in the Controls Panel.</li>
+                        <li><strong>Multi-Select:</strong> Hold <kbd>Shift</kbd> or <kbd>Ctrl</kbd> while clicking to select multiple objects.</li>
+                        <li><strong>Drag:</strong> Click and drag a selected object to move it.</li>
+                        <li><strong>Resize:</strong> Click and drag the handles on the corners and sides of a selected object to resize it.</li>
+                    </ul>
+
+                    <h6>The Code Panel (Bottom Right)</h6>
+                    <p>This panel shows the generated HTML meta tags that represent your effect. This is the code you would copy and use in another project.</p>
+                    <ul>
+                        <li><strong>Copy to Clipboard:</strong> Use this button to copy all the generated code.</li>
+                    </ul>
+
+                    <h6>Main Toolbar (Top)</h6>
+                    <ul>
+                        <li><strong>Save:</strong> Opens a dialog to save your entire workspace (all objects and settings) to your browser's local storage.</li>
+                        <li><strong>Load:</strong> Opens a dialog to load a previously saved workspace.</li>
+                        <li><strong>Export:</strong> Generates and downloads a complete, standalone HTML file of your effect.</li>
+                    </ul>
+                    <h6>How to install the effect in SignalRGB</h6>
+                    <ul>
+                        <li>Move the html file generated by this tool to your 'Documents\WhirlwindFX\Effects' folder. Preferably within a folder with the same name as the file for organization.</li>
+                        <li>Restart SignalRGB</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Got it!</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal fade" id="about-modal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="aboutModalLabel"><i class="bi bi-info-circle me-2"></i>About This Tool</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Interactive Effect Builder</h6>
+                    <img src="srgbieb_crop.png">
+                    <p>This tool is designed to help developers create and customize complex visual effects for SignalRGB using a simple graphical interface. The output is a set of standard HTML meta tags that can be easily integrated into the <a href="https://github.com/joseamirandavelez/EffectClass">EffectClass</a> effect template. The tool can also export the whole effect for you.</p>
+                    </br>
+                    <p>This website or it's developer is not associated with SignalRGB.</p>
+                    </br>
+                    <hr>
+                    <p class="mb-0"><strong>Developer:</strong> Jose Miranda</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -987,6 +1106,10 @@
             const confirmOverwriteModal = new bootstrap.Modal(confirmOverwriteModalEl);
             const confirmOverwriteBtn = document.getElementById('confirm-overwrite-btn');
             let projectToSave = {}; // Temporary variable to hold data between modals
+            const helpBtn = document.getElementById('help-btn');
+            const aboutBtn = document.getElementById('about-btn');
+            const helpModal = new bootstrap.Modal(document.getElementById('help-modal'));
+            const aboutModal = new bootstrap.Modal(document.getElementById('about-modal'));
 
             // --- State Variables ---
             let configStore = [];
@@ -2237,6 +2360,8 @@
             });
 
             exportBtn.addEventListener('click', exportFile);
+            helpBtn.addEventListener('click', () => helpModal.show());
+            aboutBtn.addEventListener('click', () => aboutModal.show());
 
             function init() {
                 const template = document.getElementById('initial-config');
