@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -7,12 +7,11 @@
     <title>Interactive Effect Builder</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
     <template id="initial-config">
-        <meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
-        <meta publisher="Jose Miranda" />
+        <meta name="description" type="text" label="Description" default="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda">
+        <meta name="publisher" type="text" label="Developer Name" default="Jose Miranda">
         <meta property="enableAnimation" label="Enable Animation" type="boolean" default="true">
         <meta property="obj1_shape" label="Matrix: Shape" type="combobox" values="rectangle,circle,ring" default="rectangle">
         <meta property="obj1_x" label="Matrix: X Position" type="number" min="0" max="1280" default="0">
@@ -24,6 +23,7 @@
         <meta property="obj1_angularWidth" label="Matrix: Segment Angle" type="number" min="1" max="90" default="20">
         <meta property="obj1_rotationSpeed" label="Matrix: Rotation Speed" type="number" min="-100" max="100" default="0">
         <meta property="obj1_animationSpeed" label="Matrix: Animation Speed" type="number" min="1" max="50" default="10">
+        <meta property="obj1_animationMode" label="Matrix: Animation Mode" type="combobox" values="loop,bounce" default="loop">
         <meta property="obj1_scrollDir" label="Matrix: Scroll Direction" type="combobox" values="right,left,up,down" default="right">
         <meta property="obj1_gradType" label="Matrix: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="random">
         <meta property="obj1_useSharpGradient" label="Matrix: Use Sharp Gradient" type="boolean" default="false">
@@ -35,27 +35,28 @@
         <meta property="obj1_numberOfRows" label="Matrix: Number of Rows" type="number" min="1" max="100" default="16">
         <meta property="obj1_numberOfColumns" label="Matrix: Number of Columns" type="number" min="1" max="100" default="16">
         <meta property="obj1_phaseOffset" label="Matrix: Phase Offset" type="number" min="0" max="100" default="10">
-        <meta property="obj6_shape" label="Strimer: Shape" type="combobox" values="rectangle,circle,ring" default="rectangle">
-        <meta property="obj6_x" label="Strimer: X Position" type="number" min="0" max="1280" default="0">
-        <meta property="obj6_y" label="Strimer: Y Position" type="number" min="0" max="800" default="0">
-        <meta property="obj6_width" label="Strimer: Width/Outer Diameter" type="number" min="10" max="1280" default="640">
-        <meta property="obj6_height" label="Strimer: Height" type="number" min="10" max="800" default="400">
-        <meta property="obj6_innerDiameter" label="Strimer: Inner Diameter" type="number" min="5" max="1270" default="200">
-        <meta property="obj6_numberOfSegments" label="Strimer: Segments" type="number" min="1" max="50" default="8">
-        <meta property="obj6_angularWidth" label="Strimer: Segment Angle" type="number" min="1" max="90" default="20">
-        <meta property="obj6_rotationSpeed" label="Strimer: Rotation Speed" type="number" min="-100" max="100" default="0">
-        <meta property="obj6_animationSpeed" label="Strimer: Animation Speed" type="number" min="1" max="50" default="23">
-        <meta property="obj6_scrollDir" label="Strimer: Scroll Direction" type="combobox" values="right,left,up,down" default="right">
-        <meta property="obj6_gradType" label="Strimer: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear">
-        <meta property="obj6_useSharpGradient" label="Strimer: Use Sharp Gradient" type="boolean" default="true">
-        <meta property="obj6_gradientStop" label="Strimer: Gradient Stop %" type="number" min="0" max="100" default="50">
-        <meta property="obj6_gradColor1" label="Strimer: Color 1" type="color" default="#00ff00">
-        <meta property="obj6_gradColor2" label="Strimer: Color 2" type="color" default="#d400ff">
-        <meta property="obj6_cycleColors" label="Strimer: Cycle Colors" type="boolean" default="false">
-        <meta property="obj6_cycleSpeed" label="Strimer: Color Cycle Speed" type="number" min="1" max="10" default="10">
-        <meta property="obj6_numberOfRows" label="Strimer: Number of Rows" type="number" min="1" max="100" default="8">
-        <meta property="obj6_numberOfColumns" label="Strimer: Number of Columns" type="number" min="1" max="100" default="1">
-        <meta property="obj6_phaseOffset" label="Strimer: Phase Offset" type="number" min="0" max="100" default="10">
+        <meta property="obj2_shape" label="Strimer: Shape" type="combobox" values="rectangle,circle,ring" default="rectangle">
+        <meta property="obj2_x" label="Strimer: X Position" type="number" min="0" max="1280" default="0">
+        <meta property="obj2_y" label="Strimer: Y Position" type="number" min="0" max="800" default="0">
+        <meta property="obj2_width" label="Strimer: Width/Outer Diameter" type="number" min="10" max="1280" default="640">
+        <meta property="obj2_height" label="Strimer: Height" type="number" min="10" max="800" default="400">
+        <meta property="obj2_innerDiameter" label="Strimer: Inner Diameter" type="number" min="5" max="1270" default="200">
+        <meta property="obj2_numberOfSegments" label="Strimer: Segments" type="number" min="1" max="50" default="8">
+        <meta property="obj2_angularWidth" label="Strimer: Segment Angle" type="number" min="1" max="90" default="20">
+        <meta property="obj2_rotationSpeed" label="Strimer: Rotation Speed" type="number" min="-100" max="100" default="0">
+        <meta property="obj2_animationSpeed" label="Strimer: Animation Speed" type="number" min="1" max="50" default="32">
+        <meta property="obj2_animationMode" label="Strimer: Animation Mode" type="combobox" values="loop,bounce" default="bounce">
+        <meta property="obj2_scrollDir" label="Strimer: Scroll Direction" type="combobox" values="right,left,up,down" default="right">
+        <meta property="obj2_gradType" label="Strimer: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear">
+        <meta property="obj2_useSharpGradient" label="Strimer: Use Sharp Gradient" type="boolean" default="true">
+        <meta property="obj2_gradientStop" label="Strimer: Gradient Stop %" type="number" min="0" max="100" default="50">
+        <meta property="obj2_gradColor1" label="Strimer: Color 1" type="color" default="#00ff00">
+        <meta property="obj2_gradColor2" label="Strimer: Color 2" type="color" default="#d400ff">
+        <meta property="obj2_cycleColors" label="Strimer: Cycle Colors" type="boolean" default="false">
+        <meta property="obj2_cycleSpeed" label="Strimer: Color Cycle Speed" type="number" min="1" max="10" default="10">
+        <meta property="obj2_numberOfRows" label="Strimer: Number of Rows" type="number" min="1" max="100" default="8">
+        <meta property="obj2_numberOfColumns" label="Strimer: Number of Columns" type="number" min="1" max="100" default="1">
+        <meta property="obj2_phaseOffset" label="Strimer: Phase Offset" type="number" min="0" max="100" default="10">
         <meta property="obj3_shape" label="Top Fan Center: Shape" type="combobox" values="rectangle,circle,ring" default="circle">
         <meta property="obj3_x" label="Top Fan Center: X Position" type="number" min="0" max="1280" default="1060">
         <meta property="obj3_y" label="Top Fan Center: Y Position" type="number" min="0" max="800" default="101">
@@ -66,6 +67,7 @@
         <meta property="obj3_angularWidth" label="Top Fan Center: Segment Angle" type="number" min="1" max="90" default="15">
         <meta property="obj3_rotationSpeed" label="Top Fan Center: Rotation Speed" type="number" min="-100" max="100" default="0">
         <meta property="obj3_animationSpeed" label="Top Fan Center: Animation Speed" type="number" min="1" max="50" default="5">
+        <meta property="obj3_animationMode" label="Top Fan Center: Animation Mode" type="combobox" values="loop,bounce" default="loop">
         <meta property="obj3_scrollDir" label="Top Fan Center: Scroll Direction" type="combobox" values="right,left,up,down" default="left">
         <meta property="obj3_gradType" label="Top Fan Center: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="radial">
         <meta property="obj3_useSharpGradient" label="Top Fan Center: Use Sharp Gradient" type="boolean" default="true">
@@ -77,27 +79,28 @@
         <meta property="obj3_numberOfRows" label="Top Fan Center: Number of Rows" type="number" min="1" max="100" default="1">
         <meta property="obj3_numberOfColumns" label="Top Fan Center: Number of Columns" type="number" min="1" max="100" default="1">
         <meta property="obj3_phaseOffset" label="Top Fan Center: Phase Offset" type="number" min="0" max="100" default="10">
-        <meta property="obj2_shape" label="Top Fan Ring: Shape" type="combobox" values="rectangle,circle,ring" default="ring">
-        <meta property="obj2_x" label="Top Fan Ring: X Position" type="number" min="0" max="1280" default="966">
-        <meta property="obj2_y" label="Top Fan Ring: Y Position" type="number" min="0" max="800" default="7">
-        <meta property="obj2_width" label="Top Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300">
-        <meta property="obj2_height" label="Top Fan Ring: Height" type="number" min="10" max="800" default="300">
-        <meta property="obj2_innerDiameter" label="Top Fan Ring: Inner Diameter" type="number" min="5" max="1270" default="200">
-        <meta property="obj2_numberOfSegments" label="Top Fan Ring: Segments" type="number" min="1" max="50" default="6">
-        <meta property="obj2_angularWidth" label="Top Fan Ring: Segment Angle" type="number" min="1" max="90" default="40">
-        <meta property="obj2_rotationSpeed" label="Top Fan Ring: Rotation Speed" type="number" min="-100" max="100" default="10">
-        <meta property="obj2_animationSpeed" label="Top Fan Ring: Animation Speed" type="number" min="1" max="50" default="2">
-        <meta property="obj2_scrollDir" label="Top Fan Ring: Scroll Direction" type="combobox" values="right,left,up,down" default="down">
-        <meta property="obj2_gradType" label="Top Fan Ring: Fill Type" type="combobox" values="solid,linear,radial,alternating" default="alternating">
-        <meta property="obj2_useSharpGradient" label="Top Fan Ring: Use Sharp Gradient" type="boolean" default="false">
-        <meta property="obj2_gradientStop" label="Top Fan Ring: Gradient Stop %" type="number" min="0" max="100" default="51">
-        <meta property="obj2_gradColor1" label="Top Fan Ring: Color 1" type="color" default="#00ff00">
-        <meta property="obj2_gradColor2" label="Top Fan Ring: Color 2" type="color" default="#d400ff">
-        <meta property="obj2_cycleColors" label="Top Fan Ring: Cycle Colors" type="boolean" default="false">
-        <meta property="obj2_cycleSpeed" label="Top Fan Ring: Color Cycle Speed" type="number" min="1" max="10" default="10">
-        <meta property="obj2_numberOfRows" label="Top Fan Ring: Number of Rows" type="number" min="1" max="100" default="1">
-        <meta property="obj2_numberOfColumns" label="Top Fan Ring: Number of Columns" type="number" min="1" max="100" default="1">
-        <meta property="obj2_phaseOffset" label="Top Fan Ring: Phase Offset" type="number" min="0" max="100" default="10">
+        <meta property="obj4_shape" label="Top Fan Ring: Shape" type="combobox" values="rectangle,circle,ring" default="ring">
+        <meta property="obj4_x" label="Top Fan Ring: X Position" type="number" min="0" max="1280" default="966">
+        <meta property="obj4_y" label="Top Fan Ring: Y Position" type="number" min="0" max="800" default="7">
+        <meta property="obj4_width" label="Top Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300">
+        <meta property="obj4_height" label="Top Fan Ring: Height" type="number" min="10" max="800" default="300">
+        <meta property="obj4_innerDiameter" label="Top Fan Ring: Inner Diameter" type="number" min="5" max="1270" default="200">
+        <meta property="obj4_numberOfSegments" label="Top Fan Ring: Segments" type="number" min="1" max="50" default="6">
+        <meta property="obj4_angularWidth" label="Top Fan Ring: Segment Angle" type="number" min="1" max="90" default="40">
+        <meta property="obj4_rotationSpeed" label="Top Fan Ring: Rotation Speed" type="number" min="-100" max="100" default="10">
+        <meta property="obj4_animationSpeed" label="Top Fan Ring: Animation Speed" type="number" min="1" max="50" default="2">
+        <meta property="obj4_animationMode" label="Top Fan Ring: Animation Mode" type="combobox" values="loop,bounce" default="loop">
+        <meta property="obj4_scrollDir" label="Top Fan Ring: Scroll Direction" type="combobox" values="right,left,up,down" default="down">
+        <meta property="obj4_gradType" label="Top Fan Ring: Fill Type" type="combobox" values="solid,linear,radial,alternating" default="alternating">
+        <meta property="obj4_useSharpGradient" label="Top Fan Ring: Use Sharp Gradient" type="boolean" default="false">
+        <meta property="obj4_gradientStop" label="Top Fan Ring: Gradient Stop %" type="number" min="0" max="100" default="51">
+        <meta property="obj4_gradColor1" label="Top Fan Ring: Color 1" type="color" default="#00ff00">
+        <meta property="obj4_gradColor2" label="Top Fan Ring: Color 2" type="color" default="#d400ff">
+        <meta property="obj4_cycleColors" label="Top Fan Ring: Cycle Colors" type="boolean" default="false">
+        <meta property="obj4_cycleSpeed" label="Top Fan Ring: Color Cycle Speed" type="number" min="1" max="10" default="10">
+        <meta property="obj4_numberOfRows" label="Top Fan Ring: Number of Rows" type="number" min="1" max="100" default="1">
+        <meta property="obj4_numberOfColumns" label="Top Fan Ring: Number of Columns" type="number" min="1" max="100" default="1">
+        <meta property="obj4_phaseOffset" label="Top Fan Ring: Phase Offset" type="number" min="0" max="100" default="10">
         <meta property="obj5_shape" label="Bottom Fan Center: Shape" type="combobox" values="rectangle,circle,ring" default="circle">
         <meta property="obj5_x" label="Bottom Fan Center: X Position" type="number" min="0" max="1280" default="1052">
         <meta property="obj5_y" label="Bottom Fan Center: Y Position" type="number" min="0" max="800" default="444">
@@ -108,6 +111,7 @@
         <meta property="obj5_angularWidth" label="Bottom Fan Center: Segment Angle" type="number" min="1" max="90" default="15">
         <meta property="obj5_rotationSpeed" label="Bottom Fan Center: Rotation Speed" type="number" min="-100" max="100" default="0">
         <meta property="obj5_animationSpeed" label="Bottom Fan Center: Animation Speed" type="number" min="1" max="50" default="5">
+        <meta property="obj5_animationMode" label="Bottom Fan Center: Animation Mode" type="combobox" values="loop,bounce" default="loop">
         <meta property="obj5_scrollDir" label="Bottom Fan Center: Scroll Direction" type="combobox" values="right,left,up,down" default="left">
         <meta property="obj5_gradType" label="Bottom Fan Center: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="radial">
         <meta property="obj5_useSharpGradient" label="Bottom Fan Center: Use Sharp Gradient" type="boolean" default="true">
@@ -119,27 +123,28 @@
         <meta property="obj5_numberOfRows" label="Bottom Fan Center: Number of Rows" type="number" min="1" max="100" default="1">
         <meta property="obj5_numberOfColumns" label="Bottom Fan Center: Number of Columns" type="number" min="1" max="100" default="1">
         <meta property="obj5_phaseOffset" label="Bottom Fan Center: Phase Offset" type="number" min="0" max="100" default="10">
-        <meta property="obj4_shape" label="Bottom Fan Ring: Shape" type="combobox" values="rectangle,circle,ring" default="ring">
-        <meta property="obj4_x" label="Bottom Fan Ring: X Position" type="number" min="0" max="1280" default="958">
-        <meta property="obj4_y" label="Bottom Fan Ring: Y Position" type="number" min="0" max="800" default="350">
-        <meta property="obj4_width" label="Bottom Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300">
-        <meta property="obj4_height" label="Bottom Fan Ring: Height" type="number" min="10" max="800" default="300">
-        <meta property="obj4_innerDiameter" label="Bottom Fan Ring: Inner Diameter" type="number" min="5" max="1270" default="200">
-        <meta property="obj4_numberOfSegments" label="Bottom Fan Ring: Segments" type="number" min="1" max="50" default="6">
-        <meta property="obj4_angularWidth" label="Bottom Fan Ring: Segment Angle" type="number" min="1" max="90" default="40">
-        <meta property="obj4_rotationSpeed" label="Bottom Fan Ring: Rotation Speed" type="number" min="-100" max="100" default="-10">
-        <meta property="obj4_animationSpeed" label="Bottom Fan Ring: Animation Speed" type="number" min="1" max="50" default="2">
-        <meta property="obj4_scrollDir" label="Bottom Fan Ring: Scroll Direction" type="combobox" values="right,left,up,down" default="down">
-        <meta property="obj4_gradType" label="Bottom Fan Ring: Fill Type" type="combobox" values="solid,linear,radial,alternating" default="alternating">
-        <meta property="obj4_useSharpGradient" label="Bottom Fan Ring: Use Sharp Gradient" type="boolean" default="false">
-        <meta property="obj4_gradientStop" label="Bottom Fan Ring: Gradient Stop %" type="number" min="0" max="100" default="51">
-        <meta property="obj4_gradColor1" label="Bottom Fan Ring: Color 1" type="color" default="#00ff00">
-        <meta property="obj4_gradColor2" label="Bottom Fan Ring: Color 2" type="color" default="#d400ff">
-        <meta property="obj4_cycleColors" label="Bottom Fan Ring: Cycle Colors" type="boolean" default="false">
-        <meta property="obj4_cycleSpeed" label="Bottom Fan Ring: Color Cycle Speed" type="number" min="1" max="10" default="10">
-        <meta property="obj4_numberOfRows" label="Bottom Fan Ring: Number of Rows" type="number" min="1" max="100" default="1">
-        <meta property="obj4_numberOfColumns" label="Bottom Fan Ring: Number of Columns" type="number" min="1" max="100" default="1">
-        <meta property="obj4_phaseOffset" label="Bottom Fan Ring: Phase Offset" type="number" min="0" max="100" default="10">
+        <meta property="obj6_shape" label="Bottom Fan Ring: Shape" type="combobox" values="rectangle,circle,ring" default="ring">
+        <meta property="obj6_x" label="Bottom Fan Ring: X Position" type="number" min="0" max="1280" default="958">
+        <meta property="obj6_y" label="Bottom Fan Ring: Y Position" type="number" min="0" max="800" default="350">
+        <meta property="obj6_width" label="Bottom Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300">
+        <meta property="obj6_height" label="Bottom Fan Ring: Height" type="number" min="10" max="800" default="300">
+        <meta property="obj6_innerDiameter" label="Bottom Fan Ring: Inner Diameter" type="number" min="5" max="1270" default="200">
+        <meta property="obj6_numberOfSegments" label="Bottom Fan Ring: Segments" type="number" min="1" max="50" default="6">
+        <meta property="obj6_angularWidth" label="Bottom Fan Ring: Segment Angle" type="number" min="1" max="90" default="40">
+        <meta property="obj6_rotationSpeed" label="Bottom Fan Ring: Rotation Speed" type="number" min="-100" max="100" default="-10">
+        <meta property="obj6_animationSpeed" label="Bottom Fan Ring: Animation Speed" type="number" min="1" max="50" default="2">
+        <meta property="obj6_animationMode" label="Bottom Fan Ring: Animation Mode" type="combobox" values="loop,bounce" default="loop">
+        <meta property="obj6_scrollDir" label="Bottom Fan Ring: Scroll Direction" type="combobox" values="right,left,up,down" default="down">
+        <meta property="obj6_gradType" label="Bottom Fan Ring: Fill Type" type="combobox" values="solid,linear,radial,alternating" default="alternating">
+        <meta property="obj6_useSharpGradient" label="Bottom Fan Ring: Use Sharp Gradient" type="boolean" default="false">
+        <meta property="obj6_gradientStop" label="Bottom Fan Ring: Gradient Stop %" type="number" min="0" max="100" default="51">
+        <meta property="obj6_gradColor1" label="Bottom Fan Ring: Color 1" type="color" default="#00ff00">
+        <meta property="obj6_gradColor2" label="Bottom Fan Ring: Color 2" type="color" default="#d400ff">
+        <meta property="obj6_cycleColors" label="Bottom Fan Ring: Cycle Colors" type="boolean" default="false">
+        <meta property="obj6_cycleSpeed" label="Bottom Fan Ring: Color Cycle Speed" type="number" min="1" max="10" default="10">
+        <meta property="obj6_numberOfRows" label="Bottom Fan Ring: Number of Rows" type="number" min="1" max="100" default="1">
+        <meta property="obj6_numberOfColumns" label="Bottom Fan Ring: Number of Columns" type="number" min="1" max="100" default="1">
+        <meta property="obj6_phaseOffset" label="Bottom Fan Ring: Phase Offset" type="number" min="0" max="100" default="10">
     </template>
 
     <style>
@@ -149,95 +154,11 @@
             overflow: hidden;
         }
 
-        body {
-            background-color: #1a1a1a;
-            color: #f8f9fa;
-        }
-
-        .form-control,
-        .form-select,
-        .form-control:disabled {
-            background-color: #2d3748;
-            color: #e2e8f0;
-            border-color: #4a5568;
-            transition: all 0.2s ease;
-        }
-
-        .form-control:focus,
-        .form-select:focus {
-            background-color: #4a5568;
-            color: #e2e8f0;
-            border-color: #3182ce;
-            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.3);
-        }
-
-        .form-control-color {
-            width: 80px;
-            height: 40px;
-            border-radius: 8px;
-            border: 2px solid #4a5568;
-            cursor: pointer;
-        }
-
-        .form-control-color::-webkit-color-swatch {
-            border-radius: 6px;
-            border: none;
-        }
-
-        .input-group .form-control[type="number"] {
-            width: 100px;
-            border-radius: 8px 0 0 8px;
-            background-color: #2d3748;
-            border-right: none;
-        }
-
-        .input-group .form-range {
-            background-color: transparent;
-            border: none;
-            padding: 0 10px;
-            accent-color: #3182ce;
-        }
-
-        .input-group .form-range::-webkit-slider-thumb {
-            background-color: #3182ce;
-            border: 2px solid #e2e8f0;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        .form-select {
-            border-radius: 8px;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23e2e8f0' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
-        }
-
-        .form-check-input {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            background-color: #2d3748;
-            border: 2px solid #4a5568;
-            cursor: pointer;
-        }
-
-        .form-check-input:checked {
-            background-color: #3182ce;
-            border-color: #3182ce;
-        }
-
-        .form-control::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-            opacity: 1;
-        }
-
         #canvas-container {
             position: relative;
             background-color: #222;
             aspect-ratio: 1280 / 800;
             cursor: default;
-
-            /* New sizing logic for robust aspect ratio scaling */
             width: auto;
             height: auto;
             max-width: 100%;
@@ -252,36 +173,14 @@
             left: 0;
         }
 
-        .output-panel {
-            /* The min-height property is now controlled by the splitter */
-        }
-
-        #output-script {
-            font-family: monospace;
-            white-space: pre;
-            background-color: #222;
-            color: #f8f9fa;
-        }
-
-        .toast-container,
-        .modal {
-            z-index: 1090;
-        }
-
         .legend-button {
             background: none;
             border: none;
-            color: #e2e8f0;
+            color: inherit;
             padding: 0;
-            font-size: 1.2rem;
-            font-weight: 600;
             width: 100%;
             text-align: left;
             transition: color 0.2s ease;
-        }
-
-        .legend-button:hover {
-            color: #3182ce;
         }
 
         .legend-button:not(.collapsed)::after {
@@ -296,52 +195,32 @@
             float: right;
         }
 
-        .toolbar {
-            background-color: #212529;
-            padding: 0.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .toolbar .btn {
-            color: #e2e8f0;
-            border-radius: 6px;
-            transition: background-color 0.2s ease;
-        }
-
-        .toolbar .btn:hover {
-            background-color: #4a5568;
-        }
-
-        .object-name {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            background-color: #2d3748;
-            transition: background-color 0.2s ease;
-        }
-
         .object-name:focus {
-            background-color: #4a5568;
             outline: none;
-            box-shadow: 0 0 0 2px #3182ce;
-        }
-
-        #load-project-list .list-group-item {
-            cursor: pointer;
-            background-color: #2d3748;
-            border-color: #4a5568;
-            transition: background-color 0.2s ease;
-        }
-
-        #load-project-list .list-group-item:hover {
-            background-color: #4a5568;
+            box-shadow: 0 0 0 2px var(--bs-primary);
         }
 
         .gutter {
-            background-color: #4a5568;
-            background-repeat: no-repeat;
-            background-position: 50%;
+            background-color: var(--bs-tertiary-bg);
+            transition: background-color 0.2s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gutter:hover {
+            background-color: var(--bs-primary);
+        }
+
+        /* [FIX] Style the icon tag directly */
+        .gutter i {
+            color: var(--bs-secondary-color);
+            font-size: 1.25rem;
+            transition: color 0.2s ease-in-out;
+        }
+
+        .gutter:hover i {
+            color: var(--bs-light);
         }
 
         .gutter.gutter-horizontal {
@@ -357,73 +236,70 @@
             flex-direction: row;
         }
 
-        .generated-script-header {
-            margin-bottom: 5px;
+        .editable-name-area {
+            /* [FIX] Add padding and rounding for the hover effect */
+            padding: 2px 6px;
+            border-radius: 5px;
+            transition: background-color 0.2s ease-in-out;
         }
 
-        .modal-body h6 {
-            color: #38bdf8;
-            /* Light Blue for subheadings */
-            font-weight: 600;
-            margin-top: 1rem;
-            margin-bottom: 0.5rem;
-            border-bottom: 1px solid #4a5568;
-            padding-bottom: 0.25rem;
+        .editable-name-area:hover {
+            /* [FIX] Change the cursor to a text icon and add a subtle background */
+            cursor: text;
+            background-color: var(--bs-tertiary-bg);
         }
 
-        .modal-body ul {
-            list-style-type: none;
-            padding-left: 1rem;
+        .editable-name-area .bi-pencil-fill {
+            /* [FIX] Make the pencil icon subtle by default */
+            opacity: 0.5;
+            transition: opacity 0.2s ease-in-out;
         }
 
-        .modal-body li {
-            margin-bottom: 0.5rem;
-            padding-left: 1.25rem;
-            position: relative;
-        }
-
-        .modal-body li::before {
-            content: '\f280';
-            /* Bootstrap Icons chevron right */
-            font-family: 'bootstrap-icons';
-            position: absolute;
-            left: 0;
-            color: #38bdf8;
-        }
-
-        .modal-body kbd {
-            background-color: #4a5568;
-            border-radius: 0.25rem;
-            padding: 0.1rem 0.4rem;
-            font-size: 0.8em;
-            border: 1px solid #5a6678;
+        .editable-name-area:hover .bi-pencil-fill {
+            /* [FIX] Make the pencil icon fully visible on hover */
+            opacity: 1;
         }
     </style>
 </head>
 
 <body class="d-flex flex-column vh-100">
-
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Interactive Effect Builder</a>
             <div class="d-flex">
-                <div class="d-flex">
-                    <button class="btn btn-outline-info me-2" id="help-btn"><i class="bi bi-question-circle"></i> Help</button>
-                    <button class="btn btn-outline-light me-2" id="about-btn"><i class="bi bi-info-circle"></i> About</button>
-                    <button class="btn btn-outline-primary me-2" id="save-ws-btn" data-bs-toggle="tooltip" title="Save Workspace to Browser Storage"><i class="bi bi-save"></i> Save</button>
-                    <button class="btn btn-outline-secondary me-2" id="load-ws-btn" data-bs-toggle="tooltip" title="Load Workspace from Browser Storage"><i class="bi bi-folder2-open"></i> Load</button>
+                <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-info" type="button" id="theme-dropdown-button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi" id="theme-icon"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><button class="dropdown-item d-flex align-items-center" type="button" data-bs-theme-value="light">
+                                    <i class="bi bi-sun-fill me-2"></i>Light<i class="bi bi-check2 ms-auto d-none"></i>
+                                </button></li>
+                            <li><button class="dropdown-item d-flex align-items-center" type="button" data-bs-theme-value="dark">
+                                    <i class="bi bi-moon-stars-fill me-2"></i>Dark<i class="bi bi-check2 ms-auto d-none"></i>
+                                </button></li>
+                            <li><button class="dropdown-item d-flex align-items-center" type="button" data-bs-theme-value="auto">
+                                    <i class="bi bi-circle-half me-2"></i>Auto<i class="bi bi-check2 ms-auto d-none"></i>
+                                </button></li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-outline-info" id="help-btn" data-bs-toggle="modal" data-bs-target="#help-modal"><i class="bi bi-question-circle"></i> Help</button>
+                    <button class="btn btn-outline-info" id="about-btn" data-bs-toggle="modal" data-bs-target="#about-modal"><i class="bi bi-info-circle"></i> About</button>
+                    <button class="btn btn-outline-primary" id="save-ws-btn" data-bs-toggle="tooltip" title="Save Workspace to Browser Storage"><i class="bi bi-save"></i> Save</button>
+                    <button class="btn btn-outline-secondary" id="load-ws-btn" data-bs-toggle="tooltip" title="Load Workspace from Browser Storage"><i class="bi bi-folder2-open"></i> Load</button>
                     <button class="btn btn-outline-success" id="export-btn" data-bs-toggle="tooltip" title="Export complete HTML file"><i class="bi bi-download"></i> Export</button>
                 </div>
             </div>
         </div>
     </nav>
 
-    <div class="container-fluid flex-grow-1 overflow-hidden">
+    <div class="container-fluid flex-grow-1 overflow-hidden p-0">
         <div class="h-100" id="main-split">
-            <div id="left-panel" class="h-100 py-3 border-end border-secondary" style="overflow: auto;">
+            <div id="left-panel" class="h-100 p-3 border-end bg-body-tertiary" style="overflow: auto;">
                 <div class="h-100 d-flex flex-column">
                     <div class="flex-grow-1 overflow-auto pe-2">
-                        <h4 class="text-gray-100">Controls</h4>
+                        <h4 class="text-body-emphasis">Controls</h4>
                         <form id="controls-form"></form>
                     </div>
                     <div class="mt-3">
@@ -435,8 +311,8 @@
 
             <div id="right-panel" class="d-flex flex-column h-100">
                 <div id="right-panel-top" class="d-flex flex-column" style="overflow: auto; min-height: 0;">
-                    <div class="p-3">
-                        <div id="toolbar" class="toolbar d-flex flex-wrap">
+                    <div class="p-0">
+                        <div id="toolbar" class="bg-body-tertiary p-2 rounded d-flex flex-wrap">
                             <div class="btn-group btn-group-sm me-2 mb-1" role="group">
                                 <button type="button" class="btn btn-primary" id="constrain-btn" data-bs-toggle="tooltip" title="Toggle Constrain to Canvas"><i class="bi bi-magnet-fill"></i></button>
                             </div>
@@ -456,31 +332,35 @@
                                 <button type="button" class="btn btn-outline-warning" data-action="match-both" data-bs-toggle="tooltip" title="Match Size of First Selected"><i class="bi bi-fullscreen"></i></button>
                                 <button type="button" class="btn btn-outline-info" data-action="fit-canvas" data-bs-toggle="tooltip" title="Fit to Canvas"><i class="bi bi-arrows-fullscreen"></i></button>
                             </div>
-                            <div class="btn-group btn-group-sm ms-auto mb-1" role="group">
+                            <!-- <div class="btn-group btn-group-sm ms-auto mb-1" role="group">
                                 <button type="button" class="btn btn-outline-secondary" id="collapse-code-btn" data-bs-toggle="tooltip" title="Toggle Code Panel">
                                     <i class="bi bi-chevron-down"></i>
                                 </button>
-                            </div>
+                            </div> -->
                         </div>
                     </div>
-                    <div class="flex-grow-1 p-3" style="min-height: 0; position: relative;">
-                        <div id="canvas-container">
+                    <div class="flex-grow-1 bg-body-tertiary" style="min-height: 0; position: relative;">
+                        <div id="canvas-container" class="mx-auto border border-secondary">
                             <canvas id="signalCanvas"></canvas>
                         </div>
                     </div>
                 </div>
-                <div id="right-panel-bottom" class="output-panel d-flex flex-column p-3 border-top border-secondary">
-                    <h5 class="text-gray-100 generated-script-header">Generated Script Header</h5>
-                    <textarea id="output-script" class="form-control flex-grow-1" readonly></textarea>
-                    <button class="btn btn-primary mt-2" id="copy-btn" data-bs-toggle="tooltip" title="Copy the generated meta tags to your clipboard"> <i class="bi bi-clipboard"></i> Copy to
-                        Clipboard </button>
+                <div id="right-panel-bottom" class="output-panel d-flex flex-column p-3 border-top bg-body-tertiary">
+                    <h5 class="text-body-emphasis mb-2">Generated Script Header</h5>
+
+                    <div class="d-flex flex-grow-1">
+                        <textarea id="output-script" class="form-control flex-grow-1" readonly></textarea>
+                        <button class="btn btn-primary ms-2" id="copy-btn" ...>
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="copy-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div id="copy-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5000">
             <div class="toast-header bg-success text-white">
                 <strong class="me-auto">Success</strong>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
@@ -493,10 +373,10 @@
 
     <div class="modal fade" id="load-project-modal" tabindex="-1" aria-labelledby="loadProjectModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-white">
+            <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="loadProjectModalLabel">Load Project</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p>Select a project to load. This will overwrite your current workspace.</p>
@@ -507,10 +387,10 @@
     </div>
     <div class="modal fade" id="save-project-modal" tabindex="-1" aria-labelledby="saveProjectModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-white">
+            <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="saveProjectModalLabel">Save Project</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
@@ -518,7 +398,7 @@
                         <input type="text" class="form-control" id="save-project-name-input" placeholder="Enter a name for your project...">
                     </div>
                     <hr>
-                    <p class="text-light">Existing Projects:</p>
+                    <p>Existing Projects:</p>
                     <ul class="list-group" id="save-project-existing-list">
                     </ul>
                 </div>
@@ -531,10 +411,10 @@
     </div>
     <div class="modal fade" id="notification-modal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-white">
+            <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="notificationModalLabel">Success</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" id="notification-modal-body">
                 </div>
@@ -546,10 +426,10 @@
     </div>
     <div class="modal fade" id="confirm-overwrite-modal" tabindex="-1" aria-labelledby="confirmOverwriteModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-white">
+            <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="confirmOverwriteModalLabel">Confirm Overwrite</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" id="confirm-overwrite-modal-body">
                     A project with this name already exists. Do you want to overwrite it?
@@ -562,18 +442,17 @@
         </div>
     </div>
 
-    <!-- Help Modal -->
     <div class="modal fade" id="help-modal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-            <div class="modal-content bg-dark text-white">
+            <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="helpModalLabel"><i class="bi bi-question-circle me-2"></i>How to Use the Effect Builder</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <h6>The Controls Panel (Left)</h6>
+                    <h6 class="text-info">The Controls Panel (Left)</h6>
                     <p>This is where you manage all the objects in your scene.</p>
-                    <ul>
+                    <ul class="list-unstyled">
                         <li><strong>Add New Object:</strong> Use the green button at the bottom to add a new shape to the canvas.</li>
                         <li><strong>Object Panels:</strong> Each object gets its own collapsible panel. Click the object's name to expand or collapse its properties.</li>
                         <li><strong>Rename:</strong> Click directly on an object's name (e.g., "Object 1") to edit it.</li>
@@ -582,29 +461,29 @@
                         <li><strong>Duplicate/Delete:</strong> Use the menu button (<i class="bi bi-list"></i>) to access options for duplicating or deleting an object.</li>
                     </ul>
 
-                    <h6>The Canvas (Center)</h6>
+                    <h6 class="text-info mt-4">The Canvas (Center)</h6>
                     <p>This is the visual editor where you can directly manipulate objects.</p>
-                    <ul>
+                    <ul class="list-unstyled">
                         <li><strong>Select:</strong> Click on an object to select it. Its properties will appear in the Controls Panel.</li>
                         <li><strong>Multi-Select:</strong> Hold <kbd>Shift</kbd> or <kbd>Ctrl</kbd> while clicking to select multiple objects.</li>
                         <li><strong>Drag:</strong> Click and drag a selected object to move it.</li>
                         <li><strong>Resize:</strong> Click and drag the handles on the corners and sides of a selected object to resize it.</li>
                     </ul>
 
-                    <h6>The Code Panel (Bottom Right)</h6>
+                    <h6 class="text-info mt-4">The Code Panel (Bottom Right)</h6>
                     <p>This panel shows the generated HTML meta tags that represent your effect. This is the code you would copy and use in another project.</p>
-                    <ul>
+                    <ul class="list-unstyled">
                         <li><strong>Copy to Clipboard:</strong> Use this button to copy all the generated code.</li>
                     </ul>
 
-                    <h6>Main Toolbar (Top)</h6>
-                    <ul>
+                    <h6 class="text-info mt-4">Main Toolbar (Top)</h6>
+                    <ul class="list-unstyled">
                         <li><strong>Save:</strong> Opens a dialog to save your entire workspace (all objects and settings) to your browser's local storage.</li>
                         <li><strong>Load:</strong> Opens a dialog to load a previously saved workspace.</li>
                         <li><strong>Export:</strong> Generates and downloads a complete, standalone HTML file of your effect.</li>
                     </ul>
-                    <h6>How to install the effect in SignalRGB</h6>
-                    <ul>
+                    <h6 class="text-info mt-4">How to install the effect in SignalRGB</h6>
+                    <ul class="list-unstyled">
                         <li>Move the html file generated by this tool to your 'Documents\WhirlwindFX\Effects' folder. Preferably within a folder with the same name as the file for organization.</li>
                         <li>Restart SignalRGB</li>
                     </ul>
@@ -616,21 +495,18 @@
         </div>
     </div>
 
-    <!-- About Modal -->
     <div class="modal fade" id="about-modal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-white">
+            <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="aboutModalLabel"><i class="bi bi-info-circle me-2"></i>About This Tool</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <h6>Interactive Effect Builder</h6>
-                    <img src="srgbieb_crop.png">
+                    <img src="srgbieb_crop.png" class="img-fluid rounded mb-3">
                     <p>This tool is designed to help developers create and customize complex visual effects for SignalRGB using a simple graphical interface. The output is a set of standard HTML meta tags that can be easily integrated into the <a href="https://github.com/joseamirandavelez/EffectClass">EffectClass</a> effect template. The tool can also export the whole effect for you.</p>
-                    </br>
-                    <p>This website or it's developer is not associated with SignalRGB.</p>
-                    </br>
+                    <p>This website or its developer is not associated with SignalRGB.</p>
                     <hr>
                     <p class="mb-0"><strong>Developer:</strong> Jose Miranda</p>
                 </div>
@@ -706,7 +582,7 @@
                 id, name, shape, x, y, width, height, gradient, gradType,
                 gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx,
                 innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked,
-                numberOfRows, numberOfColumns, phaseOffset
+                numberOfRows, numberOfColumns, phaseOffset, animationMode
             }) {
                 this.id = id;
                 this.name = name || `Object ${id}`;
@@ -722,10 +598,16 @@
                 this.cycleColors = cycleColors || false;
                 this.cycleSpeed = cycleSpeed || 0;
                 this.animationSpeed = animationSpeed || 0;
+                this.animationMode = animationMode || 'loop';
+                this.isReversing = false; // [FIX] Ensure this is initialized
+                this.animationState = 'scrolling';
+                this.waitTimer = 0;
                 this.ctx = ctx;
                 this.hue1 = 0;
                 this.hue2 = 90;
                 this.scrollOffset = 0;
+                this.animationState = 'scrolling'; // Can be 'scrolling' or 'waiting'
+                this.waitTimer = 0; // A countdown timer for the delay
                 this.innerDiameter = innerDiameter;
                 this.angularWidth = angularWidth;
                 this.numberOfSegments = numberOfSegments;
@@ -821,18 +703,66 @@
                     this.hue1 += this.cycleSpeed;
                     this.hue2 += this.cycleSpeed;
                 }
+
                 if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
-                    // This logic is now corrected.
-                    const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
-                    this.scrollOffset += this.animationSpeed * directionMultiplier * 0.01;
-                    this.scrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
+                    const increment = this.animationSpeed * 0.01;
+
+                    if (this.animationMode === 'bounce') {
+                        // Define the boundaries
+                        const bandWidth = this.gradientStop / 100.0;
+                        const forwardBoundary = 1.0;
+                        const reverseBoundary = 0.0;
+
+                        // Calculate the position of the last cell's tail
+                        const lastCellIndex = Math.max(0, (this.numberOfRows * this.numberOfColumns) - 1);
+                        const phaseIncrement = this.phaseOffset / 100.0;
+                        const lastCellTailPosition = this.scrollOffset + (lastCellIndex * phaseIncrement) + bandWidth;
+
+                        if (this.animationState === 'scrolling') {
+                            if (this.isReversing) {
+                                this.scrollOffset -= increment;
+                            } else {
+                                this.scrollOffset += increment;
+                            }
+
+                            // [FIX] Forward bounce: Triggered when the FIRST cell's head reaches the end.
+                            if (!this.isReversing && this.scrollOffset >= forwardBoundary) {
+                                this.scrollOffset = forwardBoundary; // Clamp
+                                this.animationState = 'waiting';
+                                this.waitTimer = 60;
+                            }
+                            // [FIX] Reverse bounce: Triggered when the LAST cell's tail reaches the start.
+                            else if (this.isReversing && lastCellTailPosition <= reverseBoundary) {
+                                // Clamp the offset so the tail is perfectly at the boundary
+                                this.scrollOffset = reverseBoundary - bandWidth - (lastCellIndex * phaseIncrement);
+                                this.animationState = 'waiting';
+                                this.waitTimer = 60;
+                            }
+                        } else if (this.animationState === 'waiting') {
+                            this.waitTimer--;
+                            if (this.waitTimer <= 0) {
+                                this.isReversing = !this.isReversing;
+                                this.animationState = 'scrolling';
+                            }
+                        }
+                    } else { // Default 'loop' mode
+                        const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
+                        this.scrollOffset += increment * directionMultiplier;
+                        this.scrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
+                    }
                 }
+
                 this.rotationAngle += (this.rotationSpeed / 1000);
             }
 
             createFillStyle(phase = 0) {
                 const phaseIncrement = this.phaseOffset / 100.0;
-                const effectiveScrollOffset = (this.scrollOffset + phase * phaseIncrement) % 1.0;
+                const effectiveScrollOffset = this.scrollOffset + phase * phaseIncrement;
+
+                const p = this.animationMode === 'loop' ?
+                    (effectiveScrollOffset % 1.0 + 1.0) % 1.0 :
+                    effectiveScrollOffset;
+
                 const c1 = this.cycleColors ? `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color1;
                 const c2 = this.cycleColors ? `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color2;
                 const isLinear = this.gradType && this.gradType.includes('linear');
@@ -850,30 +780,48 @@
                         grad = this.ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
                     }
 
-                    const p = effectiveScrollOffset;
-
                     if (this.useSharpGradient) {
                         const stopRatio = this.gradientStop / 100.0;
-                        const p1 = p;
-                        const p2 = (p + stopRatio) % 1.0;
 
-                        if (p2 > p1) { // Normal case, no wrapping
+                        if (this.animationMode === 'loop') {
+                            // [FIX] New logic to handle sharp gradients wrapping correctly
+                            const p1 = p;
+                            const p2 = p1 + stopRatio;
+
+                            if (p2 > 1.0) { // This is the wrap-around case
+                                const wrapped_p2 = p2 - 1.0;
+                                grad.addColorStop(0, c1);
+                                grad.addColorStop(wrapped_p2, c1);
+                                grad.addColorStop(wrapped_p2, c2);
+                                grad.addColorStop(p1, c2);
+                                grad.addColorStop(p1, c1);
+                                grad.addColorStop(1, c1);
+                            } else { // This is the standard case (no wrapping)
+                                grad.addColorStop(0, c2);
+                                grad.addColorStop(p1, c2);
+                                grad.addColorStop(p1, c1);
+                                grad.addColorStop(p2, c1);
+                                grad.addColorStop(p2, c2);
+                                grad.addColorStop(1, c2);
+                            }
+                        } else { // Logic for bounce/pass-through modes
+                            const p1 = p;
+                            const p2 = p1 + stopRatio;
+
+                            const clamped_p1 = Math.max(0, Math.min(1, p1));
+                            const clamped_p2 = Math.max(0, Math.min(1, p2));
+
                             grad.addColorStop(0, c2);
-                            grad.addColorStop(p1, c2);
-                            grad.addColorStop(p1, c1);
-                            grad.addColorStop(p2, c1);
-                            grad.addColorStop(p2, c2);
+                            if (clamped_p1 > 0) grad.addColorStop(clamped_p1, c2);
+                            if (clamped_p1 < clamped_p2) {
+                                grad.addColorStop(clamped_p1, c1);
+                                grad.addColorStop(clamped_p2, c1);
+                            }
+                            if (clamped_p2 < 1) grad.addColorStop(clamped_p2, c2);
                             grad.addColorStop(1, c2);
-                        } else { // Wrapped case
-                            grad.addColorStop(0, c1);
-                            grad.addColorStop(p2, c1);
-                            grad.addColorStop(p2, c2);
-                            grad.addColorStop(p1, c2);
-                            grad.addColorStop(p1, c1);
-                            grad.addColorStop(1, c1);
                         }
-                    } else {
-                        // Smooth gradient logic
+
+                    } else { // Smooth gradient logic
                         const stops = [];
                         stops.push({ pos: 0, color: getPatternColor(0 - p, c1, c2) });
                         for (let i = -2; i <= 2; i++) {
@@ -894,7 +842,7 @@
                     const centerY = this.y + this.height / 2;
                     const maxRadius = Math.max(this.width, this.height) / 2;
                     const grad = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
-                    const wave = 1 - Math.abs(2 * effectiveScrollOffset - 1);
+                    const wave = 1 - Math.abs(2 * p - 1);
 
                     if (this.useSharpGradient) {
                         const stopPoint = (this.gradientStop / 100) * wave;
@@ -928,7 +876,6 @@
                 this.ctx.rotate(this.rotationAngle);
                 this.ctx.translate(-centerX, -centerY);
 
-                // Handle ring and grid rectangles as special cases
                 if (this.shape === 'ring') {
                     const outerRadius = this.width / 2;
                     const innerRadius = this.innerDiameter / 2;
@@ -969,11 +916,10 @@
                     const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
 
                     if (isRandom) {
-                        this.randomColorTimer -= 1; // Decrement the timer by a fixed amount each frame.
+                        this.randomColorTimer -= 1;
                         if (this.randomColorTimer <= 0) {
                             this.cellColors = [];
-                            // Reset the timer based on the cycle speed. Higher speed = shorter timer.
-                            const rawSpeed = this.animationSpeed * 25; // Revert scaling to get 1-10 value
+                            const rawSpeed = this.animationSpeed * 25;
                             this.randomColorTimer = Math.max(1, 200 / rawSpeed);
                         }
                     }
@@ -1002,7 +948,6 @@
                         }
                     }
                 } else {
-                    // Default drawing for simple rectangles and circles
                     this.ctx.beginPath();
                     switch (this.shape) {
                         case 'rectangle':
@@ -1016,9 +961,8 @@
                     this.ctx.fill();
                 }
 
-                this.ctx.restore(); // Restore from rotation
+                this.ctx.restore();
 
-                // --- Selection Handles & Lock Icon ---
                 if (isSelected && !this.locked) {
                     this.ctx.save();
                     this.ctx.translate(centerX, centerY);
@@ -1052,7 +996,7 @@
                     this.ctx.restore();
                 }
 
-                this.ctx.restore(); // Final restore
+                this.ctx.restore();
             }
 
             isPointInside(px, py) {
@@ -1074,7 +1018,6 @@
             }
         }
         document.addEventListener('DOMContentLoaded', function () {
-            // --- Canvas and DOM element references ---
             const canvas = document.getElementById('signalCanvas');
             const canvasContainer = document.getElementById('canvas-container');
             const ctx = canvas.getContext('2d');
@@ -1105,17 +1048,15 @@
             const confirmOverwriteModalEl = document.getElementById('confirm-overwrite-modal');
             const confirmOverwriteModal = new bootstrap.Modal(confirmOverwriteModalEl);
             const confirmOverwriteBtn = document.getElementById('confirm-overwrite-btn');
-            let projectToSave = {}; // Temporary variable to hold data between modals
+            let projectToSave = {};
             const helpBtn = document.getElementById('help-btn');
             const aboutBtn = document.getElementById('about-btn');
             const helpModal = new bootstrap.Modal(document.getElementById('help-modal'));
             const aboutModal = new bootstrap.Modal(document.getElementById('about-modal'));
 
-            // --- State Variables ---
             let configStore = [];
             let objects = [];
             let selectedObjectIds = [];
-
             let isDragging = false;
             let isResizing = false;
             let activeResizeHandle = null;
@@ -1127,7 +1068,80 @@
             let lastHSizes, lastVSizes;
             let isCodePanelCollapsed = false;
 
-            // --- Helper Functions ---
+            // --- START: Color Mode Switcher Logic ---
+
+            const getStoredTheme = () => localStorage.getItem('theme');
+            const setStoredTheme = theme => localStorage.setItem('theme', theme);
+
+            const getPreferredTheme = () => {
+                const storedTheme = getStoredTheme();
+                if (storedTheme) {
+                    return storedTheme;
+                }
+                // Default to 'auto' if no theme is stored
+                return 'auto';
+            };
+
+            const setTheme = theme => {
+                if (theme === 'auto') {
+                    document.documentElement.setAttribute('data-bs-theme', (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+                } else {
+                    document.documentElement.setAttribute('data-bs-theme', theme);
+                }
+            };
+
+            const updateThemeSwitcherUI = (theme) => {
+                const themeIcon = document.getElementById('theme-icon');
+                const themeButtons = document.querySelectorAll('[data-bs-theme-value]');
+
+                // Set main button icon
+                if (theme === 'auto') {
+                    themeIcon.className = 'bi bi-circle-half';
+                } else if (theme === 'dark') {
+                    themeIcon.className = 'bi bi-moon-stars-fill';
+                } else {
+                    themeIcon.className = 'bi bi-sun-fill';
+                }
+
+                // Update active state and checkmarks in dropdown
+                themeButtons.forEach(button => {
+                    const checkmark = button.querySelector('.bi-check2');
+                    if (button.getAttribute('data-bs-theme-value') === theme) {
+                        button.classList.add('active');
+                        checkmark.classList.remove('d-none');
+                    } else {
+                        button.classList.remove('active');
+                        checkmark.classList.add('d-none');
+                    }
+                });
+            };
+
+            // Set initial theme on page load
+            const initialTheme = getPreferredTheme();
+            setTheme(initialTheme);
+            updateThemeSwitcherUI(initialTheme);
+
+
+            // Listen for OS theme changes to update 'auto' mode
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                if (getPreferredTheme() === 'auto') {
+                    setTheme('auto');
+                }
+            });
+
+            // Add click listeners to dropdown items
+            document.querySelectorAll('[data-bs-theme-value]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const theme = button.getAttribute('data-bs-theme-value');
+                    setStoredTheme(theme);
+                    setTheme(theme);
+                    updateThemeSwitcherUI(theme);
+                });
+            });
+
+            // --- END: Color Mode Switcher Logic ---
+
+
             function showNotification(message) {
                 notificationModalBody.textContent = message;
                 notificationModal.show();
@@ -1135,27 +1149,17 @@
 
             function parseMetaToConfig(metaElement) {
                 const config = {};
-                const tagName = metaElement.tagName.toLowerCase();
+                const nameAttr = metaElement.getAttribute('name');
 
-                // Handle the new, simpler tag formats
-                if (metaElement.hasAttribute('description')) {
-                    config.name = 'description';
-                    config.label = 'Description';
-                    config.type = 'text';
-                    config.default = metaElement.getAttribute('description');
-                } else if (metaElement.hasAttribute('publisher')) {
-                    config.name = 'publisher';
-                    config.label = 'Developer Name';
-                    config.type = 'text';
-                    config.default = metaElement.getAttribute('publisher');
-                } else if (tagName === 'title') {
-                    config.name = 'title';
-                    config.label = 'Title';
-                    config.type = 'text';
-                    config.default = metaElement.textContent;
-                }
-                // Handle the standard property tags
-                else {
+                if (nameAttr) {
+                    config.name = nameAttr;
+                    config.default = metaElement.getAttribute('content') || metaElement.getAttribute('default'); // Fallback for properties
+                    config.type = 'text'; // Assume text for these simple metas
+
+                    if (nameAttr === 'title') config.label = 'Title';
+                    else if (nameAttr === 'description') config.label = 'Description';
+                    else if (nameAttr === 'publisher') config.label = 'Developer Name';
+                } else {
                     for (const attr of metaElement.attributes) {
                         config[attr.name] = attr.value;
                     }
@@ -1169,9 +1173,11 @@
                     const key = config.property || config.name;
                     if (key.startsWith('obj')) {
                         const match = key.match(/^obj(\d+)_/);
-                        const id = match[1];
-                        if (!grouped.objects[id]) grouped.objects[id] = [];
-                        grouped.objects[id].push(config);
+                        if (match) {
+                            const id = match[1];
+                            if (!grouped.objects[id]) grouped.objects[id] = [];
+                            grouped.objects[id].push(config);
+                        }
                     } else {
                         grouped.general.push(config);
                     }
@@ -1186,18 +1192,22 @@
                 formGroup.className = 'mb-3';
                 const labelEl = document.createElement('label');
                 labelEl.htmlFor = controlId;
-                labelEl.className = 'block text-sm font-medium text-gray-300';
-                labelEl.textContent = label.substring(label.indexOf(':') + 1).trim() || label;
+                labelEl.className = 'form-label';
+
+                if (label) {
+                    labelEl.textContent = label.includes(':') ? label.substring(label.indexOf(':') + 1).trim() : label;
+                    labelEl.title = `Controls the ${label.toLowerCase()}`;
+                }
                 labelEl.dataset.bsToggle = 'tooltip';
-                labelEl.title = `Controls the ${label.toLowerCase()}`;
                 formGroup.appendChild(labelEl);
 
                 if (type === 'number') {
                     const inputGroup = document.createElement('div');
-                    inputGroup.className = 'flex items-center space-x-2';
+                    inputGroup.className = 'd-flex align-items-center';
                     const input = document.createElement('input');
                     input.id = controlId;
-                    input.className = 'form-control w-24 bg-gray-700 text-gray-200 border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
+                    input.className = 'form-control';
+                    input.style.width = '100px';
                     input.name = controlId;
                     input.type = 'number';
                     input.value = defaultValue;
@@ -1206,7 +1216,7 @@
                     input.step = '1';
                     const slider = document.createElement('input');
                     slider.type = 'range';
-                    slider.className = 'form-range flex-1 bg-transparent';
+                    slider.className = 'form-range flex-grow-1 ms-2';
                     slider.id = `${controlId}_slider`;
                     slider.name = `${controlId}_slider`;
                     if (min) slider.min = min;
@@ -1218,7 +1228,7 @@
                 } else if (type === 'text') {
                     const input = document.createElement('input');
                     input.id = controlId;
-                    input.className = 'form-control w-full bg-gray-700 text-gray-200 border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
+                    input.className = 'form-control';
                     input.name = controlId;
                     input.type = 'text';
                     input.value = defaultValue;
@@ -1227,7 +1237,7 @@
                     const vals = values.split(',');
                     const select = document.createElement('select');
                     select.id = controlId;
-                    select.className = 'form-select w-full bg-gray-700 text-gray-200 border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
+                    select.className = 'form-select';
                     select.name = controlId;
                     vals.forEach(val => {
                         const option = document.createElement('option');
@@ -1249,7 +1259,9 @@
                     const checkLabel = document.createElement('label');
                     checkLabel.className = 'form-check-label';
                     checkLabel.htmlFor = controlId;
-                    checkLabel.textContent = label.substring(label.indexOf(':') + 1).trim() || label;
+                    if (label) {
+                        checkLabel.textContent = label.includes(':') ? label.substring(label.indexOf(':') + 1).trim() : label;
+                    }
                     checkGroup.appendChild(check);
                     checkGroup.appendChild(checkLabel);
                     formGroup.appendChild(checkGroup);
@@ -1283,10 +1295,12 @@
                     if (tooltip) tooltip.dispose();
                 });
 
-                // Store the current state of collapsed panels
                 const collapseStates = {};
-                const allCollapses = form.querySelectorAll('.collapse');
-                allCollapses.forEach(el => {
+                const generalCollapseEl = form.querySelector('#collapse-general');
+                collapseStates.general = generalCollapseEl ? generalCollapseEl.classList.contains('show') : true;
+
+                const allObjectCollapses = form.querySelectorAll('.collapse[id^="collapse-obj-"]');
+                allObjectCollapses.forEach(el => {
                     const fieldset = el.closest('fieldset');
                     if (fieldset) {
                         const id = parseInt(fieldset.dataset.objectId, 10);
@@ -1294,50 +1308,85 @@
                     }
                 });
 
-                const grouped = groupConfigs(configStore);
                 form.innerHTML = '';
 
-                // Render general settings
+                const grouped = groupConfigs(configStore);
+
+                // --- General Settings Panel ---
                 const generalFieldset = document.createElement('fieldset');
-                generalFieldset.className = 'border border-gray-600 p-4 mb-4 rounded-lg';
-                const generalLegend = document.createElement('legend');
-                generalLegend.className = 'float-none w-auto px-2 text-lg font-semibold text-gray-100';
-                generalLegend.textContent = 'General Settings';
-                generalFieldset.appendChild(generalLegend);
-                grouped.general.forEach(conf => generalFieldset.appendChild(createFormControl(conf)));
+                generalFieldset.className = 'border p-2 mb-3 rounded';
+                const generalHeaderBar = document.createElement('div');
+                generalHeaderBar.className = 'd-flex justify-content-between align-items-center w-100 px-2';
+                const generalHeaderText = document.createElement('span');
+                generalHeaderText.className = 'fs-5 fw-semibold';
+                generalHeaderText.textContent = 'General Settings';
+                generalHeaderBar.appendChild(generalHeaderText);
+                const generalCollapseId = 'collapse-general';
+                const generalCollapseButton = document.createElement('button');
+                const showGeneral = collapseStates.general;
+                generalCollapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showGeneral ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
+                generalCollapseButton.style.width = '28px';
+                generalCollapseButton.style.height = '28px';
+                generalCollapseButton.type = 'button';
+                generalCollapseButton.dataset.bsToggle = 'collapse';
+                generalCollapseButton.dataset.bsTarget = `#${generalCollapseId}`;
+                generalCollapseButton.setAttribute('aria-expanded', showGeneral);
+                generalHeaderBar.appendChild(generalCollapseButton);
+                const generalCollapseWrapper = document.createElement('div');
+                generalCollapseWrapper.id = generalCollapseId;
+                generalCollapseWrapper.className = `collapse p-3 ${showGeneral ? 'show' : ''}`;
+                const generalSeparator = document.createElement('hr');
+                generalSeparator.className = 'mt-2 mb-3';
+                generalCollapseWrapper.appendChild(generalSeparator);
+                grouped.general.forEach(conf => generalCollapseWrapper.appendChild(createFormControl(conf)));
+                generalFieldset.appendChild(generalHeaderBar);
+                generalFieldset.appendChild(generalCollapseWrapper);
                 form.appendChild(generalFieldset);
 
-                // Render object panels in the order of the objects array
+
+                // --- Object Panels ---
                 objects.forEach(obj => {
                     const id = obj.id;
                     const objectConfigs = grouped.objects[id];
-                    if (!objectConfigs) return; // Skip if no configs for this object
+                    if (!objectConfigs) return;
 
                     const objectName = obj.name || `Object ${id}`;
                     const fieldset = document.createElement('fieldset');
-                    fieldset.className = 'border border-gray-600 p-3 mb-4 rounded-lg';
+                    fieldset.className = 'border p-2 mb-3 rounded';
                     fieldset.dataset.objectId = id;
 
-                    const legendContainer = document.createElement('legend');
-                    legendContainer.className = 'float-none w-auto px-2 d-flex justify-content-between align-items-center w-100';
-
+                    const headerBar = document.createElement('div');
+                    headerBar.className = 'd-flex align-items-center w-100 px-2';
                     const dragHandle = document.createElement('div');
-                    dragHandle.className = 'drag-handle me-2 text-gray-400';
+                    dragHandle.className = 'drag-handle me-2 text-body-secondary';
                     dragHandle.style.cursor = 'grab';
                     dragHandle.innerHTML = '<i class="bi bi-grip-vertical"></i>';
-                    legendContainer.appendChild(dragHandle);
-
+                    headerBar.appendChild(dragHandle);
+                    const editableArea = document.createElement('div');
+                    editableArea.className = 'editable-name-area d-flex align-items-center';
                     const nameSpan = document.createElement('span');
-                    nameSpan.className = 'object-name text-lg font-semibold text-gray-100 flex-grow-1 me-2';
+                    nameSpan.className = 'object-name fs-5 fw-semibold';
                     nameSpan.style.minWidth = '0';
                     nameSpan.contentEditable = true;
                     nameSpan.dataset.id = id;
                     nameSpan.textContent = objectName;
-                    legendContainer.appendChild(nameSpan);
-
+                    editableArea.appendChild(nameSpan);
+                    const pencilIcon = document.createElement('i');
+                    pencilIcon.className = 'bi bi-pencil-fill ms-2';
+                    pencilIcon.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        nameSpan.focus();
+                        const range = document.createRange();
+                        const selection = window.getSelection();
+                        range.selectNodeContents(nameSpan);
+                        range.collapse(false);
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                    });
+                    editableArea.appendChild(pencilIcon);
+                    headerBar.appendChild(editableArea);
                     const controlsGroup = document.createElement('div');
-                    controlsGroup.className = 'd-flex align-items-center flex-shrink-0';
-
+                    controlsGroup.className = 'd-flex align-items-center flex-shrink-0 ms-auto';
                     const lockButton = document.createElement('button');
                     const isLocked = obj.locked || false;
                     lockButton.className = `btn btn-sm btn-lock ${isLocked ? 'btn-warning' : 'btn-outline-secondary'} d-flex align-items-center justify-content-center p-0 ms-2`;
@@ -1349,58 +1398,87 @@
                     lockButton.title = isLocked ? 'Unlock Object' : 'Lock Object';
                     lockButton.innerHTML = `<i class="bi ${isLocked ? 'bi-lock-fill' : 'bi-unlock-fill'}"></i>`;
                     controlsGroup.appendChild(lockButton);
-
                     const dropdown = document.createElement('div');
                     dropdown.className = 'dropdown';
                     dropdown.innerHTML = `<button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center p-0" style="width: 28px; height: 28px;" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-list fs-5"></i></button><ul class="dropdown-menu dropdown-menu-dark"><li><a class="dropdown-item btn-duplicate" href="#" data-id="${id}"><i class="bi bi-copy me-2"></i>Duplicate</a></li><li><a class="dropdown-item btn-delete text-danger" href="#" data-id="${id}"><i class="bi bi-trash me-2"></i>Delete</a></li></ul>`;
                     controlsGroup.appendChild(dropdown);
-
                     const collapseId = `collapse-obj-${id}`;
                     const collapseButton = document.createElement('button');
-                    collapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${collapseStates[id] ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
+                    const showObject = collapseStates[id] !== false;
+                    collapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showObject ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
                     collapseButton.style.width = '28px';
                     collapseButton.style.height = '28px';
                     collapseButton.type = 'button';
                     collapseButton.dataset.bsToggle = 'collapse';
                     collapseButton.dataset.bsTarget = `#${collapseId}`;
-                    collapseButton.setAttribute('aria-expanded', collapseStates[id] ? 'true' : 'false');
+                    collapseButton.setAttribute('aria-expanded', showObject);
                     controlsGroup.appendChild(collapseButton);
-                    legendContainer.appendChild(controlsGroup);
+                    headerBar.appendChild(controlsGroup);
 
                     const collapseWrapper = document.createElement('div');
                     collapseWrapper.id = collapseId;
-                    collapseWrapper.className = `collapse p-3 ${collapseStates[id] ? 'show' : ''}`;
+                    collapseWrapper.className = `collapse p-3 ${showObject ? 'show' : ''}`;
+                    const separator = document.createElement('hr');
+                    separator.className = 'mt-2 mb-3';
+                    collapseWrapper.appendChild(separator);
 
+                    // [FIX] New, more logical grouping for controls
                     const groups = {
-                        'Shape & Position': ['shape', 'x', 'y', 'width', 'height'],
-                        'Ring Properties': ['innerDiameter', 'numberOfSegments', 'angularWidth'],
-                        'Subdivision Properties': ['numberOfRows', 'numberOfColumns', 'phaseOffset'],
-                        'Fill & Color': ['gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2'],
-                        'Animation': ['rotationSpeed', 'animationSpeed', 'scrollDir', 'cycleColors', 'cycleSpeed']
+                        'Transform & Shape': ['shape', 'x', 'y', 'width', 'height', 'rotationSpeed'],
+                        'Fill Style': ['gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2'],
+                        'Animation': ['animationMode', 'animationSpeed', 'scrollDir', 'cycleColors', 'cycleSpeed']
                     };
 
+                    const shapeConf = objectConfigs.find(c => c.property.endsWith('_shape'));
+                    const currentShape = shapeConf ? shapeConf.default : 'rectangle';
+
+                    // Render standard groups
                     for (const groupName in groups) {
                         const groupContainer = document.createElement('div');
                         groupContainer.className = 'control-group mb-4';
                         const groupHeader = document.createElement('h6');
-                        groupHeader.className = 'text-gray-400 text-sm font-bold border-bottom border-gray-600 pb-1 mb-3';
+                        groupHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
                         groupHeader.textContent = groupName;
                         groupContainer.appendChild(groupHeader);
-
                         const propsInGroup = groups[groupName];
                         objectConfigs
                             .filter(conf => {
+                                if (!conf.property) return false;
                                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
                                 return propsInGroup.includes(propName);
                             })
                             .forEach(conf => groupContainer.appendChild(createFormControl(conf)));
-
                         if (groupContainer.children.length > 1) {
                             collapseWrapper.appendChild(groupContainer);
                         }
                     }
 
-                    fieldset.appendChild(legendContainer);
+                    // [FIX] Conditionally render shape-specific groups
+                    const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
+                    const gridSettings = ['numberOfRows', 'numberOfColumns', 'phaseOffset'];
+
+                    const ringGroup = document.createElement('div');
+                    ringGroup.className = 'control-group mb-4 ring-settings-group';
+                    ringGroup.style.display = currentShape === 'ring' ? 'block' : 'none';
+                    const ringHeader = document.createElement('h6');
+                    ringHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
+                    ringHeader.textContent = 'Ring Settings';
+                    ringGroup.appendChild(ringHeader);
+                    objectConfigs.filter(c => ringSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => ringGroup.appendChild(createFormControl(c)));
+                    collapseWrapper.appendChild(ringGroup);
+
+                    const gridGroup = document.createElement('div');
+                    gridGroup.className = 'control-group mb-4 grid-settings-group';
+                    gridGroup.style.display = currentShape === 'rectangle' ? 'block' : 'none';
+                    const gridHeader = document.createElement('h6');
+                    gridHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
+                    gridHeader.textContent = 'Grid Settings';
+                    gridGroup.appendChild(gridHeader);
+                    objectConfigs.filter(c => gridSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => gridGroup.appendChild(createFormControl(c)));
+                    collapseWrapper.appendChild(gridGroup);
+
+
+                    fieldset.appendChild(headerBar);
                     fieldset.appendChild(collapseWrapper);
                     form.appendChild(fieldset);
                 });
@@ -1408,16 +1486,13 @@
                 setFormValues(getControlValues());
                 new bootstrap.Tooltip(document.body, { selector: "[data-bs-toggle='tooltip']", trigger: 'hover' });
 
-                // Ensure Sortable.js recognizes the new DOM structure
                 const sortable = Sortable.get(form);
                 if (sortable) {
                     sortable.option('store', {
                         get: function () {
                             return objects.map(obj => obj.id.toString());
                         },
-                        set: function (sortable) {
-                            // Handled by onEnd
-                        }
+                        set: function (sortable) { }
                     });
                 }
             }
@@ -1464,15 +1539,12 @@
                     onEnd: function (evt) {
                         if (evt.oldIndex === evt.newIndex) return;
 
-                        // Get the new order from the DOM
                         const fieldsets = Array.from(formEl.querySelectorAll('fieldset[data-object-id]'));
                         const newOrder = fieldsets.map(fieldset => parseInt(fieldset.dataset.objectId, 10));
 
-                        // Reorder objects array to match DOM
                         const oldObjects = [...objects];
                         objects = newOrder.map(id => oldObjects.find(obj => obj.id === id)).filter(obj => obj);
 
-                        // Rebuild configStore
                         const configSnapshot = [...configStore];
                         const generalConfigs = configSnapshot.filter(c => !(c.property || c.name).startsWith('obj'));
                         const newObjectConfigs = objects.flatMap(obj =>
@@ -1480,7 +1552,6 @@
                         );
                         configStore = [...generalConfigs, ...newObjectConfigs];
 
-                        // Re-render form to ensure UI matches the objects array
                         renderForm();
                         generateOutputScript();
                         drawFrame();
@@ -1526,10 +1597,9 @@
                 const grouped = groupConfigs(configStore);
                 const finalStates = [];
 
-                // Iterate through the 'objects' array to preserve its current order
                 objects.forEach(obj => {
                     const id = obj.id;
-                    if (!grouped.objects[id]) return; // Failsafe for deleted objects
+                    if (!grouped.objects[id]) return;
 
                     const existingObject = obj;
                     const config = {
@@ -1573,27 +1643,18 @@
                 let scriptHTML = '';
                 configStore.forEach(config => {
                     const propOrName = config.property || config.name;
+                    if (!propOrName) return;
                     const value = values[propOrName];
                     let line = '';
 
-                    if (propOrName === 'title') {
-                        line = `<title>${value}</title>\n`;
-                    } else if (propOrName === 'description') {
-                        line = `<meta description="${value}" />\n`;
-                    } else if (propOrName === 'publisher') {
-                        line = `<meta publisher="${value}" />\n`;
-                    } else {
-                        const attrType = (propOrName.startsWith('obj') || propOrName === 'enableAnimation') ? 'property' : 'name';
-                        line = `<meta ${attrType}="${propOrName}"`;
+                    // Reconstruct the meta tag from its config object to preserve all attributes.
+                    const attrs = Object.keys(config)
+                        .filter(attr => attr !== 'default') // 'default' is handled separately
+                        .map(attrName => `${attrName}="${config[attrName]}"`)
+                        .join(' ');
 
-                        Object.keys(config).forEach(attrName => {
-                            // This check now excludes objectName from being written
-                            if (attrName !== 'property' && attrName !== 'name' && attrName !== 'default' && attrName !== 'class' && attrName !== 'objectname') {
-                                line += ` ${attrName}="${config[attrName]}"`;
-                            }
-                        });
-                        line += ` default="${value}">\n`;
-                    }
+                    line = `<meta ${attrs} default="${value}">\n`;
+
                     scriptHTML += line;
                 });
                 outputScriptArea.value = scriptHTML.trim();
@@ -1606,19 +1667,17 @@
                     const obj = objects.find(o => o.id === id);
                     if (obj) {
                         obj.name = newName;
-
-                        // Update the label for all configs of this object
                         configStore.forEach(conf => {
                             if (conf.property && conf.property.startsWith(`obj${id}_`)) {
                                 const labelParts = conf.label.split(':');
                                 conf.label = `${newName}:${labelParts[1]}`;
                             }
                         });
-
                         generateOutputScript();
                     }
                 }
             }, true);
+
             function getCanvasCoordinates(event) {
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
@@ -1709,8 +1768,6 @@
                 const initialStates = [];
                 Object.keys(grouped.objects).forEach(id => {
                     const config = { id: parseInt(id), gradient: {} };
-
-                    // Get the name from the label (e.g., "Object 1: Shape" -> "Object 1")
                     const representativeConfig = grouped.objects[id][0];
                     if (representativeConfig && representativeConfig.label.includes(':')) {
                         config.name = representativeConfig.label.split(':')[0];
@@ -1747,13 +1804,9 @@
             }
 
             function loadWorkspace(workspace) {
-                // 1. Load the exact configuration and object data from the saved file.
                 configStore = workspace.configs;
-
-                // 2. Create the shape instances based on the loaded configuration.
                 createInitialObjects();
 
-                // 3. Restore the specific names and lock states for each object.
                 if (workspace.objects) {
                     workspace.objects.forEach(savedObj => {
                         const obj = objects.find(o => o.id === savedObj.id);
@@ -1763,12 +1816,8 @@
                         }
                     });
                 }
-
-                // 4. Redraw the entire left panel with the correct controls.
                 renderForm();
 
-                // 5. CRITICAL FIX: Loop through the new controls and set their values
-                //    to match the data you just loaded.
                 for (const config of configStore) {
                     const key = config.property || config.name;
                     const el = form.elements[key];
@@ -1778,20 +1827,16 @@
                         } else {
                             el.value = config.default;
                         }
-                        // Also update any sliders associated with number inputs
                         if (el.type === 'number') {
                             const slider = document.getElementById(`${el.id}_slider`);
                             if (slider) slider.value = el.value;
                         }
-                        // Also update any hex inputs associated with color pickers
                         if (el.type === 'color') {
                             const hexInput = document.getElementById(`${el.id}_hex`);
                             if (hexInput) hexInput.value = el.value;
                         }
                     }
                 }
-
-                // 6. Finally, update the canvas and code panel.
                 updateAll();
                 drawFrame();
             }
@@ -1823,6 +1868,7 @@
                     { property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', default: '20', min: '1', max: '90' },
                     { property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100' },
                     { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '1', max: '50' },
+                    { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,pass-through', default: 'loop' },
                     { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down' },
                     { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,alternating,random' },
                     { property: `obj${newId}_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false' },
@@ -1853,16 +1899,13 @@
                     const newMetaBlock = document.getElementById('output-script').value;
                     const headRegex = /<head>([\s\S]*?)<\/head>/;
 
-                    // The newMetaBlock already contains the correct <title> tag from the UI.
-                    // We can directly replace the entire head content.
-                    const newHeadContent = `<head>\n\n    ${newMetaBlock}\n\n</head>`;
+                    const newHeadContent = `<head>\n\n    ${newMetaBlock}\n\n</head>`;
                     const finalHtml = templateHtml.replace(headRegex, newHeadContent);
 
                     const blob = new Blob([finalHtml], { type: 'text/html' });
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(blob);
 
-                    // Use the current title from the UI for the filename.
                     const effectTitle = getControlValues()['title'] || 'MyEffect';
                     link.download = `${effectTitle.replace(/ /g, '_')}.html`;
                     document.body.appendChild(link);
@@ -1879,8 +1922,6 @@
                 }
             }
 
-
-            // --- Event Listeners ---
 
             form.addEventListener('input', (e) => {
                 const target = e.target;
@@ -1902,17 +1943,19 @@
                     }
                 }
 
+                // [FIX] Updated logic to show/hide the new conditional groups
                 if (target.name && target.name.includes('_shape')) {
                     const objectId = target.name.match(/obj(\d+)_/)[1];
                     const shapeValue = target.value;
                     const fieldset = form.querySelector(`fieldset[data-object-id="${objectId}"]`);
                     if (fieldset) {
-                        const ringControls = fieldset.querySelector('.control-group:nth-of-type(2)');
-                        const subdivisionControls = fieldset.querySelector('.control-group:nth-of-type(3)');
+                        const ringControls = fieldset.querySelector('.ring-settings-group');
+                        const gridControls = fieldset.querySelector('.grid-settings-group');
                         const heightControl = fieldset.querySelector(`[id*="obj${objectId}_height"]`).closest('.mb-3');
-                        if (ringControls) ringControls.style.display = shapeValue === 'ring' ? '' : 'none';
-                        if (subdivisionControls) subdivisionControls.style.display = shapeValue === 'rectangle' ? '' : 'none';
-                        if (heightControl) heightControl.style.display = shapeValue === 'rectangle' || shapeValue === 'strimer' ? '' : 'none';
+
+                        if (ringControls) ringControls.style.display = shapeValue === 'ring' ? 'block' : 'none';
+                        if (gridControls) gridControls.style.display = shapeValue === 'rectangle' ? 'block' : 'none';
+                        if (heightControl) heightControl.style.display = shapeValue === 'rectangle' ? 'block' : 'none';
                     }
                 }
 
@@ -1964,12 +2007,10 @@
                     e.preventDefault();
                     const idToDelete = parseInt(deleteBtn.dataset.id, 10);
 
-                    // Remove the object and its configuration
                     selectedObjectIds = selectedObjectIds.filter(id => id !== idToDelete);
                     configStore = configStore.filter(conf => !(conf.property || conf.name).startsWith(`obj${idToDelete}_`));
                     objects = objects.filter(o => o.id !== idToDelete);
 
-                    // Rebuild the entire state to re-number all remaining objects
                     syncAndRenumberState();
                 }
                 if (duplicateBtn) {
@@ -2005,28 +2046,14 @@
                 }
             });
 
-            form.addEventListener('blur', (e) => {
-                if (e.target.classList.contains('object-name')) {
-                    const id = parseInt(e.target.dataset.id, 10);
-                    const newName = e.target.textContent || 'Unnamed';
-                    const obj = objects.find(o => o.id === id);
-                    if (obj) {
-                        obj.name = newName;
-                        generateOutputScript(); // Refresh the code panel
-                    }
-                }
-            }, true);
-
             copyBtn.addEventListener('click', () => {
                 navigator.clipboard.writeText(outputScriptArea.value).then(() => {
                     showNotification("Script header copied to clipboard!");
                 });
             });
-            document.getElementById('save-ws-btn').addEventListener('click', () => {
-                // Clear previous input
-                saveProjectNameInput.value = '';
 
-                // Populate the list of existing projects
+            document.getElementById('save-ws-btn').addEventListener('click', () => {
+                saveProjectNameInput.value = '';
                 existingProjectList.innerHTML = '';
                 let hasProjects = false;
                 for (let i = 0; i < localStorage.length; i++) {
@@ -2035,9 +2062,7 @@
                         hasProjects = true;
                         const projectName = key.replace(projectPrefix, '');
                         const li = document.createElement('li');
-
-                        // Make the list item clickable
-                        li.className = 'list-group-item list-group-item-action bg-dark text-light';
+                        li.className = 'list-group-item list-group-item-action';
                         li.textContent = projectName;
                         li.style.cursor = 'pointer';
                         li.addEventListener('click', () => {
@@ -2048,10 +2073,8 @@
                     }
                 }
                 if (!hasProjects) {
-                    existingProjectList.innerHTML = '<li class="list-group-item bg-dark text-white-50">No saved projects yet.</li>';
+                    existingProjectList.innerHTML = '<li class="list-group-item disabled">No saved projects yet.</li>';
                 }
-
-                // Show the save modal
                 saveProjectModal.show();
             });
 
@@ -2085,10 +2108,8 @@
                 saveProjectModal.hide();
 
                 if (localStorage.getItem(key)) {
-                    // If project exists, show the overwrite modal after a short delay
                     setTimeout(() => confirmOverwriteModal.show(), 300);
                 } else {
-                    // If it's a new project, save it directly and show success after a short delay
                     localStorage.setItem(projectToSave.key, JSON.stringify(projectToSave.workspace));
                     setTimeout(() => showNotification(`Project "${projectToSave.name}" saved!`), 300);
                 }
@@ -2098,12 +2119,9 @@
                 if (projectToSave.key) {
                     localStorage.setItem(projectToSave.key, JSON.stringify(projectToSave.workspace));
                     confirmOverwriteModal.hide();
-
-                    // Show the success notification after a short delay
                     setTimeout(() => showNotification(`Project "${projectToSave.name}" saved!`), 300);
                 }
             });
-
 
             document.getElementById('load-ws-btn').addEventListener('click', () => {
                 loadProjectList.innerHTML = '';
@@ -2114,10 +2132,11 @@
                         hasProjects = true;
                         const projectName = key.replace(projectPrefix, '');
                         const li = document.createElement('li');
-                        li.className = 'list-group-item bg-dark text-white d-flex justify-content-between align-items-center';
+                        li.className = 'list-group-item d-flex justify-content-between align-items-center';
                         const nameSpan = document.createElement('span');
                         nameSpan.textContent = projectName;
                         nameSpan.style.cursor = "pointer";
+                        nameSpan.className = "flex-grow-1";
                         nameSpan.onclick = () => {
                             const savedData = localStorage.getItem(key);
                             if (savedData) {
@@ -2141,10 +2160,11 @@
                     }
                 }
                 if (!hasProjects) {
-                    loadProjectList.innerHTML = '<li class="list-group-item bg-dark text-white-50">No saved projects found.</li>';
+                    loadProjectList.innerHTML = '<li class="list-group-item disabled">No saved projects found.</li>';
                 }
                 loadProjectModal.show();
             });
+
             toolbar.addEventListener('click', e => {
                 const button = e.target.closest('button');
                 if (!button || button.disabled || button.id === 'constrain-btn') return;
@@ -2174,40 +2194,22 @@
                 }
                 updateFormFromShapes();
             });
+
             addObjectBtn.addEventListener('click', () => {
                 const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
-                const templateConf = configStore.filter(c => c.property && c.property.startsWith('obj1_'));
-                let newConfigs;
-                if (templateConf.length === 0) {
-                    newConfigs = getDefaultObjectConfig(newId);
-                } else {
-                    const values = getControlValues();
-                    newConfigs = templateConf.map(conf => {
-                        const newConf = { ...conf };
-                        newConf.property = newConf.property.replace('obj1_', `obj${newId}_`);
-                        newConf.label = newConf.label.replace(/Object \d+/, `Object ${newId}`);
-                        switch (newConf.property) {
-                            case `obj${newId}_x`: newConf.default = '10'; break;
-                            case `obj${newId}_y`: newConf.default = '10'; break;
-                            case `obj${newId}_width`: newConf.default = '200'; break;
-                            case `obj${newId}_height`: newConf.default = '150'; break;
-                            case `obj${newId}_shape`: newConf.default = 'rectangle'; break;
-                            case `obj${newId}_gradColor1`: newConf.default = '#cccccc'; break;
-                            case `obj${newId}_gradColor2`: newConf.default = '#888888'; break;
-                            default: newConf.default = values[conf.property];
-                        }
-                        return newConf;
-                    });
-                }
+                const newConfigs = getDefaultObjectConfig(newId);
                 configStore.push(...newConfigs);
+                createInitialObjects();
                 renderForm();
                 updateAll();
             });
+
             constrainBtn.addEventListener('click', () => {
                 constrainToCanvas = !constrainToCanvas;
                 constrainBtn.classList.toggle('btn-primary', constrainToCanvas);
                 constrainBtn.classList.toggle('btn-outline-secondary', !constrainToCanvas);
             });
+
             canvasContainer.addEventListener('mousedown', e => {
                 const { x, y } = getCanvasCoordinates(e);
                 if (selectedObjectIds.length === 1) {
@@ -2261,6 +2263,7 @@
                 updateToolbarState();
                 syncPanelsWithSelection();
             });
+
             canvasContainer.addEventListener('mousemove', e => {
                 e.preventDefault();
                 const { x, y } = getCanvasCoordinates(e);
@@ -2347,26 +2350,46 @@
                 canvasContainer.style.cursor = 'default';
             });
 
-            collapseCodeBtn.addEventListener('click', () => {
-                isCodePanelCollapsed = !isCodePanelCollapsed;
-                const icon = collapseCodeBtn.querySelector('i');
-                if (isCodePanelCollapsed) {
-                    verticalSplit.collapse(1);
-                    icon.className = 'bi bi-chevron-up';
-                } else {
-                    verticalSplit.setSizes(lastHSizes);
-                    icon.className = 'bi bi-chevron-down';
-                }
-            });
+            // collapseCodeBtn.addEventListener('click', () => {
+            //     isCodePanelCollapsed = !isCodePanelCollapsed;
+            //     const icon = collapseCodeBtn.querySelector('i');
+            //     if (isCodePanelCollapsed) {
+            //         verticalSplit.collapse(1);
+            //         icon.className = 'bi bi-chevron-up';
+            //     } else {
+            //         verticalSplit.setSizes(lastHSizes);
+            //         icon.className = 'bi bi-chevron-down';
+            //     }
+            // });
 
             exportBtn.addEventListener('click', exportFile);
-            helpBtn.addEventListener('click', () => helpModal.show());
-            aboutBtn.addEventListener('click', () => aboutModal.show());
 
             function init() {
                 const template = document.getElementById('initial-config');
-                const metaElements = Array.from(template.content.querySelectorAll('meta, title'));
+                const metaElements = Array.from(template.content.querySelectorAll('meta'));
                 configStore = metaElements.map(parseMetaToConfig);
+
+                // [FIX] This script cleans up obsolete properties and updates the animation mode.
+                configStore = configStore.filter(c => !(c.property && (c.property.includes('pingpongMin') || c.property.includes('pingpongMax'))));
+
+                const objectIds = [...new Set(
+                    configStore
+                        .filter(c => c.property && c.property.startsWith('obj'))
+                        .map(c => c.property.match(/obj(\d+)_/)[1])
+                )];
+
+                objectIds.forEach(id => {
+                    const animModeConf = configStore.find(c => c.property === `obj${id}_animationMode`);
+                    if (animModeConf) {
+                        animModeConf.values = 'loop,bounce';
+                    } else {
+                        const getLabelPrefix = () => {
+                            const shapeConf = configStore.find(c => c.property === `obj${id}_shape`);
+                            return shapeConf ? shapeConf.label.split(':')[0] : `Object ${id}`;
+                        };
+                        configStore.push({ property: `obj${id}_animationMode`, label: `${getLabelPrefix()}: Animation Mode`, type: 'combobox', values: 'loop,bounce', default: 'loop' });
+                    }
+                });
 
                 createInitialObjects();
                 renderForm();
@@ -2386,7 +2409,15 @@
                 horizontalSplit = Split(['#left-panel', '#right-panel'], {
                     sizes: initialVSizes,
                     minSize: [400, 500],
-                    gutterSize: 8,
+                    gutterSize: 12,
+                    gutter: (index, direction) => {
+                        const gutter = document.createElement('div');
+                        gutter.className = `gutter gutter-${direction}`;
+                        const icon = document.createElement('i');
+                        icon.className = 'bi bi-three-dots-vertical';
+                        gutter.appendChild(icon);
+                        return gutter;
+                    },
                     onDragEnd: function (sizes) {
                         setCookie('split-v-sizes', JSON.stringify(sizes), 365);
                         lastVSizes = sizes;
@@ -2396,15 +2427,23 @@
                 verticalSplit = Split(['#right-panel-top', '#right-panel-bottom'], {
                     direction: 'vertical',
                     sizes: initialHSizes,
-                    minSize: [200, 0],
-                    gutterSize: 8,
+                    minSize: [200, 150],
+                    gutterSize: 12,
+                    gutter: (index, direction) => {
+                        const gutter = document.createElement('div');
+                        gutter.className = `gutter gutter-${direction}`;
+                        const icon = document.createElement('i');
+                        icon.className = 'bi bi-three-dots';
+                        gutter.appendChild(icon);
+                        return gutter;
+                    },
                     onDragEnd: function (sizes) {
                         setCookie('split-h-sizes', JSON.stringify(sizes), 365);
                         lastHSizes = sizes;
                     }
                 });
 
-                initializeSortable(); // Add this line at the end
+                initializeSortable();
             }
 
             init();
