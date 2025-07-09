@@ -259,6 +259,14 @@
             /* [FIX] Make the pencil icon fully visible on hover */
             opacity: 1;
         }
+
+        .form-range::-webkit-slider-runnable-track {
+            background-color: var(--bs-border-color);
+        }
+
+        .form-range::-moz-range-track {
+            background-color: var(--bs-border-color);
+        }
     </style>
 </head>
 
@@ -1078,8 +1086,8 @@
                 if (storedTheme) {
                     return storedTheme;
                 }
-                // Default to 'auto' if no theme is stored
-                return 'auto';
+                //Change the default for first-time visitors to dark mode
+                return 'dark';
             };
 
             const setTheme = theme => {
@@ -1314,7 +1322,7 @@
 
                 // --- General Settings Panel ---
                 const generalFieldset = document.createElement('fieldset');
-                generalFieldset.className = 'border p-2 mb-3 rounded';
+                generalFieldset.className = 'border p-2 mb-3 rounded bg-body-secondary';
                 const generalHeaderBar = document.createElement('div');
                 generalHeaderBar.className = 'd-flex justify-content-between align-items-center w-100 px-2';
                 const generalHeaderText = document.createElement('span');
@@ -1352,7 +1360,7 @@
 
                     const objectName = obj.name || `Object ${id}`;
                     const fieldset = document.createElement('fieldset');
-                    fieldset.className = 'border p-2 mb-3 rounded';
+                    fieldset.className = 'border p-2 mb-3 rounded bg-body-secondary';
                     fieldset.dataset.objectId = id;
 
                     const headerBar = document.createElement('div');
