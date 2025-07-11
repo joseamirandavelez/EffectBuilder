@@ -23,7 +23,7 @@
         <meta property="obj1_angularWidth" label="Matrix: Segment Angle" type="number" min="1" max="90" default="20">
         <meta property="obj1_rotationSpeed" label="Matrix: Rotation Speed" type="number" min="-100" max="100" default="0">
         <meta property="obj1_animationSpeed" label="Matrix: Animation Speed" type="number" min="1" max="50" default="10">
-        <meta property="obj1_animationMode" label="Matrix: Animation Mode" type="combobox" values="loop,bounce" default="loop">
+        <meta property="obj1_animationMode" label="Matrix: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop">
         <meta property="obj1_scrollDir" label="Matrix: Scroll Direction" type="combobox" values="right,left,up,down" default="right">
         <meta property="obj1_gradType" label="Matrix: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="random">
         <meta property="obj1_useSharpGradient" label="Matrix: Use Sharp Gradient" type="boolean" default="false">
@@ -45,7 +45,7 @@
         <meta property="obj2_angularWidth" label="Strimer: Segment Angle" type="number" min="1" max="90" default="20">
         <meta property="obj2_rotationSpeed" label="Strimer: Rotation Speed" type="number" min="-100" max="100" default="0">
         <meta property="obj2_animationSpeed" label="Strimer: Animation Speed" type="number" min="1" max="50" default="32">
-        <meta property="obj2_animationMode" label="Strimer: Animation Mode" type="combobox" values="loop,bounce" default="bounce">
+        <meta property="obj2_animationMode" label="Strimer: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random">
         <meta property="obj2_scrollDir" label="Strimer: Scroll Direction" type="combobox" values="right,left,up,down" default="right">
         <meta property="obj2_gradType" label="Strimer: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear">
         <meta property="obj2_useSharpGradient" label="Strimer: Use Sharp Gradient" type="boolean" default="true">
@@ -56,7 +56,7 @@
         <meta property="obj2_cycleSpeed" label="Strimer: Color Cycle Speed" type="number" min="1" max="10" default="10">
         <meta property="obj2_numberOfRows" label="Strimer: Number of Rows" type="number" min="1" max="100" default="8">
         <meta property="obj2_numberOfColumns" label="Strimer: Number of Columns" type="number" min="1" max="100" default="1">
-        <meta property="obj2_phaseOffset" label="Strimer: Phase Offset" type="number" min="0" max="100" default="10">
+        <meta property="obj2_phaseOffset" label="Strimer: Phase Offset" type="number" min="0" max="100" default="35">
         <meta property="obj3_shape" label="Top Fan Center: Shape" type="combobox" values="rectangle,circle,ring" default="circle">
         <meta property="obj3_x" label="Top Fan Center: X Position" type="number" min="0" max="1280" default="1060">
         <meta property="obj3_y" label="Top Fan Center: Y Position" type="number" min="0" max="800" default="101">
@@ -67,7 +67,7 @@
         <meta property="obj3_angularWidth" label="Top Fan Center: Segment Angle" type="number" min="1" max="90" default="15">
         <meta property="obj3_rotationSpeed" label="Top Fan Center: Rotation Speed" type="number" min="-100" max="100" default="0">
         <meta property="obj3_animationSpeed" label="Top Fan Center: Animation Speed" type="number" min="1" max="50" default="5">
-        <meta property="obj3_animationMode" label="Top Fan Center: Animation Mode" type="combobox" values="loop,bounce" default="loop">
+        <meta property="obj3_animationMode" label="Top Fan Center: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop">
         <meta property="obj3_scrollDir" label="Top Fan Center: Scroll Direction" type="combobox" values="right,left,up,down" default="left">
         <meta property="obj3_gradType" label="Top Fan Center: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="radial">
         <meta property="obj3_useSharpGradient" label="Top Fan Center: Use Sharp Gradient" type="boolean" default="true">
@@ -89,7 +89,7 @@
         <meta property="obj4_angularWidth" label="Top Fan Ring: Segment Angle" type="number" min="1" max="90" default="40">
         <meta property="obj4_rotationSpeed" label="Top Fan Ring: Rotation Speed" type="number" min="-100" max="100" default="10">
         <meta property="obj4_animationSpeed" label="Top Fan Ring: Animation Speed" type="number" min="1" max="50" default="2">
-        <meta property="obj4_animationMode" label="Top Fan Ring: Animation Mode" type="combobox" values="loop,bounce" default="loop">
+        <meta property="obj4_animationMode" label="Top Fan Ring: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop">
         <meta property="obj4_scrollDir" label="Top Fan Ring: Scroll Direction" type="combobox" values="right,left,up,down" default="down">
         <meta property="obj4_gradType" label="Top Fan Ring: Fill Type" type="combobox" values="solid,linear,radial,alternating" default="alternating">
         <meta property="obj4_useSharpGradient" label="Top Fan Ring: Use Sharp Gradient" type="boolean" default="false">
@@ -111,7 +111,7 @@
         <meta property="obj5_angularWidth" label="Bottom Fan Center: Segment Angle" type="number" min="1" max="90" default="15">
         <meta property="obj5_rotationSpeed" label="Bottom Fan Center: Rotation Speed" type="number" min="-100" max="100" default="0">
         <meta property="obj5_animationSpeed" label="Bottom Fan Center: Animation Speed" type="number" min="1" max="50" default="5">
-        <meta property="obj5_animationMode" label="Bottom Fan Center: Animation Mode" type="combobox" values="loop,bounce" default="loop">
+        <meta property="obj5_animationMode" label="Bottom Fan Center: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop">
         <meta property="obj5_scrollDir" label="Bottom Fan Center: Scroll Direction" type="combobox" values="right,left,up,down" default="left">
         <meta property="obj5_gradType" label="Bottom Fan Center: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="radial">
         <meta property="obj5_useSharpGradient" label="Bottom Fan Center: Use Sharp Gradient" type="boolean" default="true">
@@ -133,7 +133,7 @@
         <meta property="obj6_angularWidth" label="Bottom Fan Ring: Segment Angle" type="number" min="1" max="90" default="40">
         <meta property="obj6_rotationSpeed" label="Bottom Fan Ring: Rotation Speed" type="number" min="-100" max="100" default="-10">
         <meta property="obj6_animationSpeed" label="Bottom Fan Ring: Animation Speed" type="number" min="1" max="50" default="2">
-        <meta property="obj6_animationMode" label="Bottom Fan Ring: Animation Mode" type="combobox" values="loop,bounce" default="loop">
+        <meta property="obj6_animationMode" label="Bottom Fan Ring: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop">
         <meta property="obj6_scrollDir" label="Bottom Fan Ring: Scroll Direction" type="combobox" values="right,left,up,down" default="down">
         <meta property="obj6_gradType" label="Bottom Fan Ring: Fill Type" type="combobox" values="solid,linear,radial,alternating" default="alternating">
         <meta property="obj6_useSharpGradient" label="Bottom Fan Ring: Use Sharp Gradient" type="boolean" default="false">
@@ -514,12 +514,49 @@
                     <h6>Interactive Effect Builder</h6>
                     <img src="srgbieb_crop.png" class="img-fluid rounded mb-3">
                     <p>This tool is designed to help developers create and customize complex visual effects for SignalRGB using a simple graphical interface. The output is a set of standard HTML meta tags that can be easily integrated into the <a href="https://github.com/joseamirandavelez/EffectClass">EffectClass</a> effect template. The tool can also export the whole effect for you.</p>
-                    <p>This website or its developer is not associated with SignalRGB.</p>
+
+                    <p class="small text-body-secondary mt-4">
+                        <strong>Disclaimer:</strong> This tool is an independent project and is not affiliated with, endorsed by, or in any way officially connected with the SignalRGB software or its respective owners. The use of the SignalRGB name is for descriptive purposes only.
+                    </p>
+
                     <hr>
-                    <p class="mb-0"><strong>Developer:</strong> Jose Miranda</p>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <p class="mb-0"><strong>Developer:</strong> Jose Miranda</p>
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#terms-modal">Terms of Usage</a>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="terms-modal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="termsModalLabel"><i class="bi bi-file-text me-2"></i>Terms of Usage</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>By using this Interactive Effect Builder (the "Tool"), you agree to the following terms:</p>
+
+                    <h6 class="mt-4">1. No Warranty</h6>
+                    <p>This Tool is provided "as-is", without any warranties of any kind, express or implied. The developer makes no guarantees regarding its functionality, reliability, or suitability for any particular purpose.</p>
+
+                    <h6 class="mt-4">2. Limitation of Liability</h6>
+                    <p>In no event shall the developer be liable for any claim, damages, or other liability arising from the use of, or inability to use, the Tool.</p>
+
+                    <h6 class="mt-4">3. User Responsibility</h6>
+                    <p>You are solely responsible for the effects you create and their use. It is your responsibility to ensure they comply with the terms of service of any platform or application they are used with, including SignalRGB.</p>
+
+                    <h6 class="mt-4">4. License</h6>
+                    <p>This Tool is free to use, modify, and distribute. Attribution is appreciated but not required.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">I Understand</button>
                 </div>
             </div>
         </div>
@@ -607,15 +644,13 @@
                 this.cycleSpeed = cycleSpeed || 0;
                 this.animationSpeed = animationSpeed || 0;
                 this.animationMode = animationMode || 'loop';
-                this.isReversing = false; // [FIX] Ensure this is initialized
+                this.isReversing = false;
                 this.animationState = 'scrolling';
                 this.waitTimer = 0;
                 this.ctx = ctx;
                 this.hue1 = 0;
                 this.hue2 = 90;
                 this.scrollOffset = 0;
-                this.animationState = 'scrolling'; // Can be 'scrolling' or 'waiting'
-                this.waitTimer = 0; // A countdown timer for the delay
                 this.innerDiameter = innerDiameter;
                 this.angularWidth = angularWidth;
                 this.numberOfSegments = numberOfSegments;
@@ -627,6 +662,8 @@
                 this.numberOfRows = numberOfRows || 1;
                 this.numberOfColumns = numberOfColumns || 1;
                 this.phaseOffset = phaseOffset || 10;
+                this.cellOrder = [];
+                this._shuffleCellOrder();
                 this.handleSize = 8;
                 this.handles = [
                     { name: 'top-left', cursor: 'nwse-resize' }, { name: 'top', cursor: 'ns-resize' }, { name: 'top-right', cursor: 'nesw-resize' },
@@ -635,6 +672,15 @@
                 ];
                 this.randomColorTimer = 0;
                 this.cellColors = [];
+            }
+
+            _shuffleCellOrder() {
+                const totalCells = this.numberOfRows * this.numberOfColumns;
+                this.cellOrder = Array.from({ length: totalCells }, (_, i) => i);
+                for (let i = this.cellOrder.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [this.cellOrder[i], this.cellOrder[j]] = [this.cellOrder[j], this.cellOrder[i]];
+                }
             }
 
             getCenter() { return { x: this.x + this.width / 2, y: this.y + this.height / 2 }; }
@@ -690,11 +736,9 @@
                 const handlePositions = this.getHandlePositions();
                 const h2 = this.handleSize / 2;
                 const localCorner = { x: handlePositions[handleName].x + h2, y: handlePositions[handleName].y + h2 };
-
                 if (this.shape === 'ring') {
                     return localCorner;
                 }
-
                 const center = this.getCenter();
                 const angle = this.rotationAngle;
                 const s = Math.sin(angle);
@@ -714,43 +758,47 @@
 
                 if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
                     const increment = this.animationSpeed * 0.01;
+                    const isBounceMode = this.animationMode.includes('bounce');
 
-                    if (this.animationMode === 'bounce') {
-                        // Define the boundaries
-                        const bandWidth = this.gradientStop / 100.0;
-                        const forwardBoundary = 1.0;
-                        const reverseBoundary = 0.0;
-
-                        // Calculate the position of the last cell's tail
-                        const lastCellIndex = Math.max(0, (this.numberOfRows * this.numberOfColumns) - 1);
-                        const phaseIncrement = this.phaseOffset / 100.0;
-                        const lastCellTailPosition = this.scrollOffset + (lastCellIndex * phaseIncrement) + bandWidth;
-
-                        if (this.animationState === 'scrolling') {
-                            if (this.isReversing) {
-                                this.scrollOffset -= increment;
-                            } else {
-                                this.scrollOffset += increment;
-                            }
-
-                            // [FIX] Forward bounce: Triggered when the FIRST cell's head reaches the end.
-                            if (!this.isReversing && this.scrollOffset >= forwardBoundary) {
-                                this.scrollOffset = forwardBoundary; // Clamp
-                                this.animationState = 'waiting';
-                                this.waitTimer = 60;
-                            }
-                            // [FIX] Reverse bounce: Triggered when the LAST cell's tail reaches the start.
-                            else if (this.isReversing && lastCellTailPosition <= reverseBoundary) {
-                                // Clamp the offset so the tail is perfectly at the boundary
-                                this.scrollOffset = reverseBoundary - bandWidth - (lastCellIndex * phaseIncrement);
-                                this.animationState = 'waiting';
-                                this.waitTimer = 60;
-                            }
-                        } else if (this.animationState === 'waiting') {
+                    if (isBounceMode) {
+                        if (this.animationState === 'waiting') {
                             this.waitTimer--;
                             if (this.waitTimer <= 0) {
                                 this.isReversing = !this.isReversing;
                                 this.animationState = 'scrolling';
+
+                                if (this.animationMode === 'bounce-random') {
+                                    this._shuffleCellOrder();
+                                }
+                            }
+                        } else if (this.animationState === 'scrolling') {
+                            const bandWidth = this.gradientStop / 100.0;
+
+                            if (this.isReversing) {
+                                this.scrollOffset -= increment;
+
+                                // [FIX] This is the new, unified logic for the reverse bounce.
+                                // It checks the position of the SLOWEST possible cell (the one with the maximum phase offset),
+                                // ensuring the entire group of gradients clears the screen before bouncing.
+                                const lastCellIndex = Math.max(0, (this.numberOfRows * this.numberOfColumns) - 1);
+                                const phaseIncrement = this.phaseOffset / 100.0;
+                                const slowestCellTailPosition = this.scrollOffset + (lastCellIndex * phaseIncrement) + bandWidth;
+
+                                if (slowestCellTailPosition <= 0.0) {
+                                    // Clamp the offset to perfectly align the tail of the slowest possible cell
+                                    this.scrollOffset = 0.0 - bandWidth - (lastCellIndex * phaseIncrement);
+                                    this.animationState = 'waiting';
+                                    this.waitTimer = 30;
+                                }
+                            } else { // Moving forward
+                                this.scrollOffset += increment;
+                                // The forward bounce is always triggered when the *first* cell reaches the end.
+                                const forwardBoundary = 1.0;
+                                if (this.scrollOffset >= forwardBoundary) {
+                                    this.scrollOffset = forwardBoundary;
+                                    this.animationState = 'waiting';
+                                    this.waitTimer = 30;
+                                }
                             }
                         }
                     } else { // Default 'loop' mode
@@ -764,39 +812,43 @@
             }
 
             createFillStyle(phase = 0) {
+                let phaseIndex = phase;
+                // [FIX] Apply the correct phasing based on the animation mode
+                if (this.animationMode === 'bounce-random') {
+                    if (this.cellOrder && this.cellOrder.length > phase) {
+                        phaseIndex = this.cellOrder[phase];
+                    }
+                } else if (this.animationMode === 'bounce-reversed' && this.isReversing) {
+                    const lastCellIndex = Math.max(0, (this.numberOfRows * this.numberOfColumns) - 1);
+                    phaseIndex = lastCellIndex - phase;
+                }
+
                 const phaseIncrement = this.phaseOffset / 100.0;
-                const effectiveScrollOffset = this.scrollOffset + phase * phaseIncrement;
+                const effectiveScrollOffset = this.scrollOffset + phaseIndex * phaseIncrement;
 
                 const p = this.animationMode === 'loop' ?
                     (effectiveScrollOffset % 1.0 + 1.0) % 1.0 :
                     effectiveScrollOffset;
-
                 const c1 = this.cycleColors ? `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color1;
                 const c2 = this.cycleColors ? `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color2;
                 const isLinear = this.gradType && this.gradType.includes('linear');
                 const isRadial = this.gradType && this.gradType.includes('radial');
-
                 if (this.gradType === 'alternating') {
-                    return c2;
+                    return (phase % 2 === 0) ? c1 : c2;
                 }
-
                 if (isLinear) {
                     let grad;
                     if (this.gradientDirection === 'horizontal') {
                         grad = this.ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y);
-                    } else { // vertical
+                    } else {
                         grad = this.ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
                     }
-
                     if (this.useSharpGradient) {
                         const stopRatio = this.gradientStop / 100.0;
-
                         if (this.animationMode === 'loop') {
-                            // [FIX] New logic to handle sharp gradients wrapping correctly
                             const p1 = p;
                             const p2 = p1 + stopRatio;
-
-                            if (p2 > 1.0) { // This is the wrap-around case
+                            if (p2 > 1.0) {
                                 const wrapped_p2 = p2 - 1.0;
                                 grad.addColorStop(0, c1);
                                 grad.addColorStop(wrapped_p2, c1);
@@ -804,7 +856,7 @@
                                 grad.addColorStop(p1, c2);
                                 grad.addColorStop(p1, c1);
                                 grad.addColorStop(1, c1);
-                            } else { // This is the standard case (no wrapping)
+                            } else {
                                 grad.addColorStop(0, c2);
                                 grad.addColorStop(p1, c2);
                                 grad.addColorStop(p1, c1);
@@ -812,13 +864,11 @@
                                 grad.addColorStop(p2, c2);
                                 grad.addColorStop(1, c2);
                             }
-                        } else { // Logic for bounce/pass-through modes
+                        } else {
                             const p1 = p;
                             const p2 = p1 + stopRatio;
-
                             const clamped_p1 = Math.max(0, Math.min(1, p1));
                             const clamped_p2 = Math.max(0, Math.min(1, p2));
-
                             grad.addColorStop(0, c2);
                             if (clamped_p1 > 0) grad.addColorStop(clamped_p1, c2);
                             if (clamped_p1 < clamped_p2) {
@@ -828,8 +878,7 @@
                             if (clamped_p2 < 1) grad.addColorStop(clamped_p2, c2);
                             grad.addColorStop(1, c2);
                         }
-
-                    } else { // Smooth gradient logic
+                    } else {
                         const stops = [];
                         stops.push({ pos: 0, color: getPatternColor(0 - p, c1, c2) });
                         for (let i = -2; i <= 2; i++) {
@@ -839,19 +888,17 @@
                             if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
                         }
                         stops.push({ pos: 1, color: getPatternColor(1 - p, c1, c2) });
-
                         const uniqueStops = stops.sort((a, b) => a.pos - b.pos).filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos);
                         uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
                     }
                     return grad;
-
                 } else if (isRadial) {
                     const centerX = this.x + this.width / 2;
                     const centerY = this.y + this.height / 2;
                     const maxRadius = Math.max(this.width, this.height) / 2;
                     const grad = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
-                    const wave = 1 - Math.abs(2 * p - 1);
-
+                    const radialP = (p % 1.0 + 1.0) % 1.0;
+                    const wave = 1 - Math.abs(2 * radialP - 1);
                     if (this.useSharpGradient) {
                         const stopPoint = (this.gradientStop / 100) * wave;
                         grad.addColorStop(0, c1);
@@ -871,42 +918,35 @@
             }
 
             draw(enableAnimation, isSelected) {
-                this.ctx.save(); // Initial save
+                this.ctx.save();
                 if (enableAnimation) {
                     this.updateAnimationState();
                 }
-
                 const centerX = this.x + this.width / 2;
                 const centerY = this.y + this.height / 2;
-
-                this.ctx.save(); // Save for rotation
+                this.ctx.save();
                 this.ctx.translate(centerX, centerY);
                 this.ctx.rotate(this.rotationAngle);
                 this.ctx.translate(-centerX, -centerY);
-
                 if (this.shape === 'ring') {
                     const outerRadius = this.width / 2;
                     const innerRadius = this.innerDiameter / 2;
                     const angleStep = (2 * Math.PI) / this.numberOfSegments;
                     const segmentAngleRad = (this.angularWidth * Math.PI) / 180;
-
                     if (innerRadius >= 0 && innerRadius < outerRadius && this.numberOfSegments > 0) {
                         const isAlternating = this.gradType === 'alternating';
                         const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
                         const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
                         const genericFill = isAlternating ? null : this.createFillStyle();
-
                         for (let i = 0; i < this.numberOfSegments; i++) {
                             this.ctx.beginPath();
                             const startAngle = i * angleStep;
                             const endAngle = startAngle + segmentAngleRad;
-
                             this.ctx.moveTo(centerX + Math.cos(startAngle) * outerRadius, centerY + Math.sin(startAngle) * outerRadius);
                             this.ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle, false);
                             this.ctx.lineTo(centerX + Math.cos(endAngle) * innerRadius, centerY + Math.sin(endAngle) * innerRadius);
                             this.ctx.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
                             this.ctx.closePath();
-
                             if (isAlternating) {
                                 this.ctx.fillStyle = (i % 2 === 0) ? c1 : c2;
                             } else {
@@ -919,10 +959,8 @@
                     const cellWidth = this.width / this.numberOfColumns;
                     const cellHeight = this.height / this.numberOfRows;
                     const isRandom = this.gradType === 'random';
-
                     const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
                     const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-
                     if (isRandom) {
                         this.randomColorTimer -= 1;
                         if (this.randomColorTimer <= 0) {
@@ -931,13 +969,11 @@
                             this.randomColorTimer = Math.max(1, 200 / rawSpeed);
                         }
                     }
-
                     for (let row = 0; row < this.numberOfRows; row++) {
                         for (let col = 0; col < this.numberOfColumns; col++) {
                             const cellX = this.x + col * cellWidth;
                             const cellY = this.y + row * cellHeight;
                             const cellIndex = row * this.numberOfColumns + col;
-
                             if (isRandom) {
                                 if (!this.cellColors[cellIndex]) {
                                     this.cellColors[cellIndex] = Math.random() < 0.5 ? c1 : c2;
@@ -968,9 +1004,7 @@
                     this.ctx.fillStyle = this.createFillStyle();
                     this.ctx.fill();
                 }
-
                 this.ctx.restore();
-
                 if (isSelected && !this.locked) {
                     this.ctx.save();
                     this.ctx.translate(centerX, centerY);
@@ -989,7 +1023,6 @@
                     }
                     this.ctx.restore();
                 }
-
                 if (this.locked) {
                     this.ctx.save();
                     this.ctx.globalAlpha = 0.5;
@@ -1003,7 +1036,6 @@
                     this.ctx.fillText('🔒', centerX, centerY);
                     this.ctx.restore();
                 }
-
                 this.ctx.restore();
             }
 
@@ -1013,6 +1045,9 @@
             }
 
             update(props) {
+                const oldRows = this.numberOfRows;
+                const oldCols = this.numberOfColumns;
+
                 for (const key in props) {
                     if (props[key] !== undefined) {
                         if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
@@ -1023,8 +1058,14 @@
                         }
                     }
                 }
+
+                if (this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols) {
+                    this._shuffleCellOrder();
+                }
             }
         }
+
+
         document.addEventListener('DOMContentLoaded', function () {
             const canvas = document.getElementById('signalCanvas');
             const canvasContainer = document.getElementById('canvas-container');
@@ -1876,7 +1917,7 @@
                     { property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', default: '20', min: '1', max: '90' },
                     { property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100' },
                     { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '1', max: '50' },
-                    { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,pass-through', default: 'loop' },
+                    { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop' },
                     { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down' },
                     { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,alternating,random' },
                     { property: `obj${newId}_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false' },
@@ -2377,9 +2418,6 @@
                 const metaElements = Array.from(template.content.querySelectorAll('meta'));
                 configStore = metaElements.map(parseMetaToConfig);
 
-                // [FIX] This script cleans up obsolete properties and updates the animation mode.
-                configStore = configStore.filter(c => !(c.property && (c.property.includes('pingpongMin') || c.property.includes('pingpongMax'))));
-
                 const objectIds = [...new Set(
                     configStore
                         .filter(c => c.property && c.property.startsWith('obj'))
@@ -2388,14 +2426,15 @@
 
                 objectIds.forEach(id => {
                     const animModeConf = configStore.find(c => c.property === `obj${id}_animationMode`);
+                    const newValues = 'loop,bounce,bounce-reversed,bounce-random';
                     if (animModeConf) {
-                        animModeConf.values = 'loop,bounce';
+                        animModeConf.values = newValues;
                     } else {
                         const getLabelPrefix = () => {
                             const shapeConf = configStore.find(c => c.property === `obj${id}_shape`);
                             return shapeConf ? shapeConf.label.split(':')[0] : `Object ${id}`;
                         };
-                        configStore.push({ property: `obj${id}_animationMode`, label: `${getLabelPrefix()}: Animation Mode`, type: 'combobox', values: 'loop,bounce', default: 'loop' });
+                        configStore.push({ property: `obj${id}_animationMode`, label: `${getLabelPrefix()}: Animation Mode`, type: 'combobox', values: newValues, default: 'loop' });
                     }
                 });
 
@@ -2453,6 +2492,7 @@
 
                 initializeSortable();
             }
+
 
             init();
         });
