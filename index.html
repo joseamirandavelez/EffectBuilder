@@ -2006,24 +2006,23 @@
 
                     // 3. Define the static HTML and CSS parts.
                     const styleContent =
-                        '        canvas {\n' +
-                        '            width: 100%;\n' +
-                        '            height: 100%;\n' +
-                        '            position: absolute;\n' +
-                        '            top: 50%;\n' +
-                        '            left: 50%;\n' +
-                        '            transform: translate(-50%, -50%);\n' +
-                        '            background-color: #222222;\n' +
-                        '        }\n' +
-                        '        body {\n' +
-                        '            background-color: #111111;\n' +
-                        '            overflow: hidden;\n' +
-                        '            margin: 0;\n' +
-                        '        }\n';
+                        '    canvas {\n' +
+                        '        width: 100%;\n' + F
+                    '        height: 100%;\n' +
+                        '        position: absolute;\n' +
+                        '        top: 50%;\n' +
+                        '        left: 50%;\n' +
+                        '        transform: translate(-50%, -50%);\n' +
+                        '    }\n' +
+                        '    body {\n' +
+                        '        background-color: #111111;\n' +
+                        '        overflow: hidden;\n' +
+                        '        margin: 0;\n' +
+                        '        }\n';
 
                     const bodyContent =
                         '<body>\n' +
-                        '    <canvas id="signalCanvas"></canvas>\n' +
+                        '    <canvas id="signalCanvas" width="1280" height="800"></canvas>\n' +
                         '</body>';
 
                     // 4. Get the source code of the required functions and class using .toString().
@@ -2034,106 +2033,105 @@
                     // 5. Construct the self-contained initialization script.
                     const exportedScript =
                         'document.addEventListener(\'DOMContentLoaded\', function () {\n' +
-                        '    const canvas = document.getElementById(\'signalCanvas\');\n' +
-                        '    const ctx = canvas.getContext(\'2d\');\n' +
-                        '    canvas.width = 1280;\n' +
-                        '    canvas.height = 800;\n\n' +
-                        '    let objects = [];\n\n' +
-                        '    // --- Injected Functions & Class Definitions from Builder ---\n' +
-                        '    ' + lerpColorString + '\n\n' +
-                        '    ' + getPatternColorString + '\n\n' +
-                        '    ' + shapeClassString + '\n\n' +
-                        '    // --- Standalone Initialization & Animation Loop ---\n' +
-                        // BUG FIX: Rewrote createInitialObjects to be more robust.
-                        '    function createInitialObjects() {\n' +
-                        '        const objectIds = [];\n' +
-                        '        for (const key in window) {\n' +
-                        '            if (Object.prototype.hasOwnProperty.call(window, key) && key.startsWith(\'obj\') && key.endsWith(\'_shape\')) {\n' +
-                        '                const match = key.match(/^obj(\\\d+)_/);\n' +
-                        '                if (match && match[1]) {\n' +
-                        '                    const id = match[1];\n' +
-                        '                    if (!objectIds.includes(id)) {\n' +
-                        '                        objectIds.push(id);\n' +
-                        '                    }\n' +
-                        '                }\n' +
-                        '            }\n' +
-                        '        }\n' +
-                        '        objectIds.sort((a, b) => a - b);\n' +
-                        '        objects = objectIds.map(id => new Shape({ id: parseInt(id), ctx: ctx }));\n' +
-                        '    }\n\n' +
-                        '    function drawFrame() {\n' +
-                        '        ctx.clearRect(0, 0, canvas.width, canvas.height);\n' +
-                        '        const shouldAnimate = window.enableAnimation;\n\n' +
-                        '        objects.forEach(obj => {\n' +
-                        '            const id = obj.id;\n' +
-                        '            obj.update({\n' +
-                        '                shape: window[\'obj\' + id + \'_shape\'],\n' +
-                        '                x: window[\'obj\' + id + \'_x\'],\n' +
-                        '                y: window[\'obj\' + id + \'_y\'],\n' +
-                        '                width: window[\'obj\' + id + \'_width\'],\n' +
-                        '                height: window[\'obj\' + id + \'_height\'],\n' +
-                        '                innerDiameter: window[\'obj\' + id + \'_innerDiameter\'],\n' +
-                        '                numberOfSegments: window[\'obj\' + id + \'_numberOfSegments\'],\n' +
-                        '                angularWidth: window[\'obj\' + id + \'_angularWidth\'],\n' +
-                        '                rotationSpeed: window[\'obj\' + id + \'_rotationSpeed\'],\n' +
-                        '                animationSpeed: (window[\'obj\' + id + \'_animationSpeed\'] || 0) / 10.0,\n' +
-                        '                animationMode: window[\'obj\' + id + \'_animationMode\'],\n' +
-                        '                scrollDirection: window[\'obj\' + id + \'_scrollDir\'],\n' +
-                        '                gradType: window[\'obj\' + id + \'_gradType\'],\n' +
-                        '                useSharpGradient: window[\'obj\' + id + \'_useSharpGradient\'],\n' +
-                        '                gradientStop: parseFloat(window[\'obj\' + id + \'_gradientStop\']),\n' +
-                        '                gradient: {\n' +
-                        '                    color1: window[\'obj\' + id + \'_gradColor1\'],\n' +
-                        '                    color2: window[\'obj\' + id + \'_gradColor2\']\n' +
-                        '                },\n' +
-                        '                cycleColors: window[\'obj\' + id + \'_cycleColors\'],\n' +
-                        '                cycleSpeed: (window[\'obj\' + id + \'_cycleSpeed\'] || 0) / 50.0,\n' +
-                        '                numberOfRows: window[\'obj\' + id + \'_numberOfRows\'],\n' +
-                        '                numberOfColumns: window[\'obj\' + id + \'_numberOfColumns\'],\n' +
-                        '                phaseOffset: window[\'obj\' + id + \'_phaseOffset\'],\n' +
-                        '            });\n\n' +
-                        '            obj.draw(shouldAnimate);\n' +
-                        '        });\n' +
-                        '    }\n\n' +
-                        '    function animate() {\n' +
-                        '        drawFrame();\n' +
-                        '        requestAnimationFrame(animate);\n' +
-                        '    }\n\n' +
-                        '    function init() {\n' +
-                        '        if (typeof window.areGlobalsSetup === \'undefined\') {\n' +
-                        '            const metaElements = Array.from(document.querySelectorAll(\'head > meta\'));\n' +
-                        '            metaElements.forEach(meta => {\n' +
-                        '                const key = meta.getAttribute(\'property\') || meta.getAttribute(\'name\') || Object.keys(meta.attributes).find(attr => ![\'label\', \'type\', \'default\', \'values\', \'min\', \'max\'].includes(attr.name));\n' +
-                        '                if (key) {\n' +
-                        '                    let value = meta.getAttribute(\'default\') || meta.getAttribute(key);\n' +
-                        '                    const type = meta.getAttribute(\'type\');\n' +
-                        '                    if (type === \'number\') { window[key] = parseFloat(value); }\n' +
-                        '                    else if (type === \'boolean\') { window[key] = (value === \'true\'); }\n' +
-                        '                    else { window[key] = value; }\n' +
-                        '                }\n' +
-                        '            });\n' +
-                        '            window.areGlobalsSetup = true;\n' +
-                        '        }\n' +
-                        '        createInitialObjects();\n' +
-                        '        animate();\n' +
-                        '    }\n\n' +
-                        '    init();\n' +
+                        '    const canvas = document.getElementById(\'signalCanvas\');\n' +
+                        '    const ctx = canvas.getContext(\'2d\');\n' +
+                        '    canvas.width = 1280;\n' +
+                        '    canvas.height = 800;\n\n' +
+                        '    let objects = [];\n\n' +
+                        '    // --- Injected Functions & Class Definitions from Builder ---\n' +
+                        '    ' + lerpColorString + '\n\n' +
+                        '    ' + getPatternColorString + '\n\n' +
+                        '    ' + shapeClassString + '\n\n' +
+                        '    // --- Standalone Initialization & Animation Loop ---\n' +
+                        '    function createInitialObjects() {\n' +
+                        '        const objectIds = [];\n' +
+                        '        for (const key in window) {\n' +
+                        '            if (Object.prototype.hasOwnProperty.call(window, key) && key.startsWith(\'obj\') && key.endsWith(\'_shape\')) {\n' +
+                        '                const match = key.match(/^obj(\\\d+)_/);\n' +
+                        '                if (match && match[1]) {\n' +
+                        '                    const id = match[1];\n' +
+                        '                    if (!objectIds.includes(id)) {\n' +
+                        '                        objectIds.push(id);\n' +
+                        '                    }\n' +
+                        '                }\n' +
+                        '            }\n' +
+                        '        }\n' +
+                        '        objectIds.sort((a, b) => a - b);\n' +
+                        '        objects = objectIds.map(id => new Shape({ id: parseInt(id), ctx: ctx }));\n' +
+                        '    }\n\n' +
+                        '    function drawFrame() {\n' +
+                        '        ctx.clearRect(0, 0, canvas.width, canvas.height);\n' +
+                        '        const shouldAnimate = window.enableAnimation;\n\n' +
+                        '        objects.forEach(obj => {\n' +
+                        '            const id = obj.id;\n' +
+                        '            obj.update({\n' +
+                        '                shape: window[\'obj\' + id + \'_shape\'],\n' +
+                        '                x: window[\'obj\' + id + \'_x\'],\n' +
+                        '                y: window[\'obj\' + id + \'_y\'],\n' +
+                        '                width: window[\'obj\' + id + \'_width\'],\n' +
+                        '                height: window[\'obj\' + id + \'_height\'],\n' +
+                        '                innerDiameter: window[\'obj\' + id + \'_innerDiameter\'],\n' +
+                        '                numberOfSegments: window[\'obj\' + id + \'_numberOfSegments\'],\n' +
+                        '                angularWidth: window[\'obj\' + id + \'_angularWidth\'],\n' +
+                        '                rotationSpeed: window[\'obj\' + id + \'_rotationSpeed\'],\n' +
+                        '                animationSpeed: (window[\'obj\' + id + \'_animationSpeed\'] || 0) / 10.0,\n' +
+                        '                animationMode: window[\'obj\' + id + \'_animationMode\'],\n' +
+                        '                scrollDirection: window[\'obj\' + id + \'_scrollDir\'],\n' +
+                        '                gradType: window[\'obj\' + id + \'_gradType\'],\n' +
+                        '                useSharpGradient: window[\'obj\' + id + \'_useSharpGradient\'],\n' +
+                        '                gradientStop: parseFloat(window[\'obj\' + id + \'_gradientStop\']),\n' +
+                        '                gradient: {\n' +
+                        '                    color1: window[\'obj\' + id + \'_gradColor1\'],\n' +
+                        '                    color2: window[\'obj\' + id + \'_gradColor2\']\n' +
+                        '                },\n' +
+                        '                cycleColors: window[\'obj\' + id + \'_cycleColors\'],\n' +
+                        '                cycleSpeed: (window[\'obj\' + id + \'_cycleSpeed\'] || 0) / 50.0,\n' +
+                        '                numberOfRows: window[\'obj\' + id + \'_numberOfRows\'],\n' +
+                        '                numberOfColumns: window[\'obj\' + id + \'_numberOfColumns\'],\n' +
+                        '                phaseOffset: window[\'obj\' + id + \'_phaseOffset\'],\n' +
+                        '            });\n\n' +
+                        '            obj.draw(shouldAnimate);\n' +
+                        '        });\n' +
+                        '    }\n\n' +
+                        '    function animate() {\n' +
+                        '        drawFrame();\n' +
+                        '        requestAnimationFrame(animate);\n' +
+                        '    }\n\n' +
+                        '    function init() {\n' +
+                        '        if (typeof window.areGlobalsSetup === \'undefined\') {\n' +
+                        '            const metaElements = Array.from(document.querySelectorAll(\'head > meta\'));\n' +
+                        '            metaElements.forEach(meta => {\n' +
+                        '                const key = meta.getAttribute(\'property\') || meta.getAttribute(\'name\') || Object.keys(meta.attributes).find(attr => ![\'label\', \'type\', \'default\', \'values\', \'min\', \'max\'].includes(attr.name));\n' +
+                        '                if (key) {\n' +
+                        '                    let value = meta.getAttribute(\'default\') || meta.getAttribute(key);\n' +
+                        '                    const type = meta.getAttribute(\'type\');\n' +
+                        '                    if (type === \'number\') { window[key] = parseFloat(value); }\n' +
+                        '                    else if (type === \'boolean\') { window[key] = (value === \'true\'); }\n' +
+                        '                    else { window[key] = value; }\n' +
+                        '                }\n' +
+                        '            });\n' +
+                        '            window.areGlobalsSetup = true;\n' +
+                        '        }\n' +
+                        '        createInitialObjects();\n' +
+                        '        animate();\n' +
+                        '    }\n\n' +
+                        '    init();\n' +
                         '});';
 
                     // 6. Assemble the final HTML file content.
                     const finalHtml = '<!DOCTYPE html>\n' +
                         '<html lang="en">\n' +
                         '<head>\n' +
-                        '    <meta charset="UTF-8">\n' +
-                        '    <title>' + effectTitle + '</title>\n' +
+                        '    <meta charset="UTF-8">\n' +
+                        '    <title>' + effectTitle + '</title>\n' +
                         metaTags + '\n' +
-                        '    <style>\n' +
-                        '    ' + styleContent.trim() + '\n' +
-                        '    </style>\n' +
+                        '    <style>\n' +
+                        '    ' + styleContent.trim() + '\n' +
+                        '    </style>\n' +
                         '</head>\n' +
                         bodyContent.trim() + '\n' +
                         '<script>\n' +
-                        '    ' + exportedScript.trim() + '\n' +
+                        '    ' + exportedScript.trim() + '\n' +
                         '<' + '/script>\n' + // Break up closing tag to prevent parsing error
                         '</html>';
 
