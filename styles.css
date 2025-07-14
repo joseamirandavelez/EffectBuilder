@@ -1,0 +1,114 @@
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+}
+
+#canvas-container {
+    position: relative;
+    background-color: #222;
+    aspect-ratio: 1280 / 800;
+    cursor: default;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+#signalCanvas {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.legend-button {
+    background: none;
+    border: none;
+    color: inherit;
+    padding: 0;
+    width: 100%;
+    text-align: left;
+    transition: color 0.2s ease;
+}
+
+.legend-button:not(.collapsed)::after {
+    transform: rotate(-180deg);
+}
+
+.legend-button::after {
+    content: '\f282';
+    font-family: 'bootstrap-icons';
+    display: inline-block;
+    transition: transform 0.2s ease-in-out;
+    float: right;
+}
+
+.object-name:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bs-primary);
+}
+
+.gutter {
+    background-color: var(--bs-tertiary-bg);
+    transition: background-color 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gutter:hover {
+    background-color: var(--bs-primary);
+}
+
+.gutter i {
+    color: var(--bs-secondary-color);
+    font-size: 1.25rem;
+    transition: color 0.2s ease-in-out;
+}
+
+.gutter:hover i {
+    color: var(--bs-light);
+}
+
+.gutter.gutter-horizontal {
+    cursor: ew-resize;
+}
+
+.gutter.gutter-vertical {
+    cursor: ns-resize;
+}
+
+#main-split {
+    display: flex;
+    flex-direction: row;
+}
+
+.editable-name-area {
+    padding: 2px 6px;
+    border-radius: 5px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.editable-name-area:hover {
+    cursor: text;
+    background-color: var(--bs-tertiary-bg);
+}
+
+.editable-name-area .bi-pencil-fill {
+    opacity: 0.5;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.editable-name-area:hover .bi-pencil-fill {
+    opacity: 1;
+}
+
+.form-range::-webkit-slider-runnable-track {
+    background-color: var(--bs-border-color);
+}
+
+.form-range::-moz-range-track {
+    background-color: var(--bs-border-color);
+}
