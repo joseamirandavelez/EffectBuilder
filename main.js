@@ -667,7 +667,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const copyToastEl = document.getElementById('copy-toast');
     const copyToast = new bootstrap.Toast(copyToastEl);
     const toolbar = document.getElementById('toolbar');
-    const addObjectBtn = document.getElementById('add-object-btn');
     const constrainBtn = document.getElementById('constrain-btn');
     const loadProjectModalEl = document.getElementById('load-project-modal');
     const loadProjectModal = new bootstrap.Modal(loadProjectModalEl);
@@ -684,6 +683,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirmOverwriteModalEl = document.getElementById('confirm-overwrite-modal');
     const confirmOverwriteModal = new bootstrap.Modal(confirmOverwriteModalEl);
     const confirmOverwriteBtn = document.getElementById('confirm-overwrite-btn');
+    const shareBtn = document.getElementById('share-btn');
+    const addObjectBtn = document.getElementById('add-object-btn');
+    const confirmImportBtn = document.getElementById('confirm-import-btn');
+    const confirmBtn = document.getElementById('confirm-overwrite-btn');
+    const confirmModalEl = document.getElementById('confirm-overwrite-modal');
 
     // --- State Management ---
     let configStore = [];
@@ -702,14 +706,22 @@ document.addEventListener('DOMContentLoaded', function () {
     let fpsInterval;
     let then;
     let galleryListener = null;
-    let confirmActionCallback = null;
     let lastVisibleDoc = null; // For lazy loading pagination
     let isLoadingMore = false; // To prevent multiple simultaneous loads
     let currentGalleryQuery = null; // To store the query for lazy loading
+    let currentProjectDocId = null; // Tracks the current saved project ID
+    let confirmActionCallback = null; // For the confirmation modal
 
     const galleryOffcanvasEl = document.getElementById('gallery-offcanvas');
     const galleryList = document.getElementById('gallery-project-list');
     const galleryBody = galleryOffcanvasEl.querySelector('.offcanvas-body');
+
+    /**
+     * Updates the enabled/disabled state of the share button.
+     */
+    function updateShareButtonState() {
+        shareBtn.disabled = !currentProjectDocId;
+    }
 
     /**
      * Populates the gallery panel with projects. Can append or replace content.
@@ -782,7 +794,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         'Delete Project',
                         `Are you sure you want to delete your project "${project.name}"? This cannot be undone.`,
                         'Delete',
+                        // FIX: Replace the entire async function below
                         async () => {
+                            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('confirm-overwrite-modal'));
                             try {
                                 await window.deleteDoc(window.doc(window.db, "projects", project.docId));
                                 showToast(`Project "${project.name}" deleted.`, 'info');
@@ -792,8 +806,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
                             } catch (error) {
                                 showToast("Error deleting project.", 'danger');
+                            } finally {
+                                // Ensure the modal is hidden
+                                if (modalInstance) {
+                                    modalInstance.hide();
+                                }
                             }
-                            confirmModal.hide();
                         }
                     );
                 };
@@ -1763,6 +1781,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
         }
+
         renderForm();
 
         for (const config of configStore) {
@@ -1784,6 +1803,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }
+        currentProjectDocId = workspace.docId || null;
+        updateShareButtonState();
         updateAll();
         drawFrame();
     }
@@ -2199,39 +2220,50 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // --- SAVE FUNCTION ---
-    document.getElementById('save-ws-btn').addEventListener('click', () => {
+    /**
+     * SAVE BUTTON: Checks for duplicates before saving.
+     */
+    document.getElementById('save-ws-btn').addEventListener('click', async () => {
         const user = window.auth.currentUser;
         if (!user) {
             showToast("You must be logged in to save.", 'danger');
             return;
         }
 
-        // --- FIX: Get the name from the 'title' control instead of a prompt ---
         syncConfigStoreWithForm();
         const name = getControlValues()['title'] || 'Untitled Effect';
-        const thumbnail = generateThumbnail(document.getElementById('signalCanvas'));
 
+        // Check for duplicates first
+        const q = window.query(window.collection(window.db, "projects"), window.where("userId", "==", user.uid), window.where("name", "==", name.trim()));
+        const querySnapshot = await window.getDocs(q);
+
+        if (!querySnapshot.empty) {
+            showToast(`A project named "${name.trim()}" already exists. Please choose a unique name.`, 'danger');
+            return;
+        }
+
+        // If no duplicate, proceed to save
+        const thumbnail = generateThumbnail(document.getElementById('signalCanvas'));
         const projectData = {
             userId: user.uid,
             creatorName: user.displayName || 'Anonymous',
             isPublic: true,
             createdAt: new Date(),
-            name: name.trim(), // Use the effect title here
+            name: name.trim(),
             thumbnail: thumbnail,
             configs: configStore,
             objects: objects.map(o => ({ id: o.id, name: o.name, locked: o.locked }))
         };
 
-        window.addDoc(window.collection(window.db, "projects"), projectData)
-            .then(() => {
-                // Use the retrieved name in the confirmation message
-                showToast(`Effect "${name.trim()}" was saved publicly!`, 'success');
-            })
-            .catch(error => {
-                console.error("Error saving document: ", error);
-                showToast("Error saving project: " + error.message, 'danger');
-            });
+        try {
+            const docRef = await window.addDoc(window.collection(window.db, "projects"), projectData);
+            currentProjectDocId = docRef.id; // <-- Set the current project ID
+            updateShareButtonState(); // <-- Enable the share button
+            showToast(`Effect "${name.trim()}" was saved!`, 'success');
+        } catch (error) {
+            console.error("Error saving document: ", error);
+            showToast("Error saving project: " + error.message, 'danger');
+        }
     });
 
     // MY PROJECTS BUTTON
@@ -2297,6 +2329,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     addObjectBtn.addEventListener('click', () => {
+        currentProjectDocId = null;
+        updateShareButtonState();
         const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
         const newConfigs = getDefaultObjectConfig(newId);
         configStore.push(...newConfigs);
@@ -2758,27 +2792,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         try {
-            // --- FIX: Use window.doc and window.getDoc ---
             const effectDocRef = window.doc(window.db, "projects", effectId);
             const effectDoc = await window.getDoc(effectDocRef);
 
             if (effectDoc.exists()) {
-                const projectData = effectDoc.data();
+                // FIX: Pass the document ID along with the data
+                const projectData = { docId: effectDoc.id, ...effectDoc.data() };
 
-                // The security rules already prevent non-public docs from being read,
-                // but this check is good practice.
                 if (projectData.isPublic) {
                     loadWorkspace(projectData);
                     showNotification("Shared effect loaded!");
                 } else {
-                    showNotification("This effect is not public.");
+                    showNotification("This effect is not public.", 'danger');
                 }
             } else {
-                showNotification("Shared effect not found.");
+                showNotification("Shared effect not found.", 'danger');
             }
         } catch (error) {
             console.error("Error loading shared effect:", error);
-            showNotification("Could not load the shared effect.");
+            showNotification("Could not load the shared effect.", 'danger');
         }
     }
 
@@ -2899,9 +2931,10 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {string} buttonText - The text for the confirmation button (e.g., "Delete").
      * @param {function} onConfirm - The function to execute when the confirm button is clicked.
      */
+    // In main.js, replace the entire showConfirmModal function with this one:
     function showConfirmModal(title, body, buttonText, onConfirm) {
         const confirmModalEl = document.getElementById('confirm-overwrite-modal');
-        const confirmModal = bootstrap.Modal.getInstance(confirmModalEl) || new bootstrap.Modal(confirmModalEl);
+        const confirmModalInstance = bootstrap.Modal.getInstance(confirmModalEl) || new bootstrap.Modal(confirmModalEl);
         const confirmModalTitle = document.getElementById('confirmOverwriteModalLabel');
         const confirmModalBody = document.getElementById('confirm-overwrite-modal-body');
         const confirmBtn = document.getElementById('confirm-overwrite-btn');
@@ -2909,21 +2942,33 @@ document.addEventListener('DOMContentLoaded', function () {
         confirmModalTitle.textContent = title;
         confirmModalBody.textContent = body;
         confirmBtn.textContent = buttonText;
-        confirmBtn.className = buttonText === 'Delete' ? 'btn btn-danger' : 'btn btn-primary';
+        confirmBtn.className = `btn ${buttonText === 'Delete' ? 'btn-danger' : 'btn-primary'}`;
 
-        // Store the callback function to be executed on click
-        confirmActionCallback = onConfirm;
+        const handleConfirm = () => {
+            if (typeof onConfirm === 'function') {
+                onConfirm();
+            }
+        };
 
-        confirmModalEl.style.zIndex = "1060"; // Ensure it appears over other modals/offcanvas
-        confirmModal.show();
+        confirmBtn.addEventListener('click', handleConfirm, { once: true });
+
+        const handleModalHide = () => {
+            confirmBtn.removeEventListener('click', handleConfirm);
+            confirmModalEl.style.zIndex = "";
+            if (galleryOffcanvasEl.classList.contains('show')) {
+                galleryOffcanvasEl.focus();
+            }
+        };
+
+        confirmModalEl.addEventListener('hidden.bs.modal', handleModalHide, { once: true });
+
+        confirmModalEl.addEventListener('shown.bs.modal', () => {
+            confirmBtn.focus();
+        }, { once: true });
+
+        confirmModalEl.style.zIndex = "1060";
+        confirmModalInstance.show();
     }
-
-    // Add a single, persistent listener to the main confirm button
-    document.getElementById('confirm-overwrite-btn').addEventListener('click', () => {
-        if (typeof confirmActionCallback === 'function') {
-            confirmActionCallback();
-        }
-    });
 
     document.getElementById('confirm-import-btn').addEventListener('click', () => {
         const importText = document.getElementById('import-textarea').value;
@@ -2964,6 +3009,96 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             console.error("Error importing meta tags:", error);
             showToast("Could not parse the provided HTML. Please check the format.", 'danger');
+        }
+    });
+
+    /**
+     * SHARE BUTTON: Opens a modal with the share link if the project is saved.
+     */
+    shareBtn.addEventListener('click', () => {
+        if (!currentProjectDocId) {
+            showToast("Please save the effect before sharing.", 'info');
+            return; // Stop if not saved
+        }
+
+        // If saved, populate the input and show the modal
+        const shareUrl = `${window.location.origin}${window.location.pathname}?effectId=${currentProjectDocId}`;
+        const shareLinkInput = document.getElementById('share-link-input');
+        shareLinkInput.value = shareUrl;
+
+        const shareModal = new bootstrap.Modal(document.getElementById('share-modal'));
+        shareModal.show();
+    });
+
+    /**
+      * COPY SHARE LINK BUTTON: Copies the link from the share modal.
+      */
+    document.getElementById('copy-share-link-btn').addEventListener('click', () => {
+        const shareLinkInput = document.getElementById('share-link-input');
+        navigator.clipboard.writeText(shareLinkInput.value).then(() => {
+            showToast("Link copied to clipboard!", 'success');
+        });
+    });
+
+    /**
+     * ADD NEW OBJECT: Resets the saved state.
+     */
+    addObjectBtn.addEventListener('click', () => {
+        currentProjectDocId = null; // This is a new, unsaved project
+        updateShareButtonState();
+
+        const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
+        const newConfigs = getDefaultObjectConfig(newId);
+        configStore.push(...newConfigs);
+        createInitialObjects();
+        renderForm();
+        updateAll();
+    });
+
+    /**
+     * IMPORT: Resets the saved state.
+     */
+    confirmImportBtn.addEventListener('click', () => {
+        const importText = document.getElementById('import-textarea').value;
+        if (!importText.trim()) {
+            showToast("Text area is empty.", 'danger');
+            return;
+        }
+        try {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = importText;
+            const metaElements = Array.from(tempDiv.querySelectorAll('meta'));
+            if (metaElements.length === 0) {
+                showToast("No valid <meta> tags were found.", 'danger');
+                return;
+            }
+            const importedConfigs = metaElements.map(parseMetaToConfig);
+            const workspace = { configs: importedConfigs, objects: [] };
+
+            loadWorkspace(workspace); // This will call the state reset internally now
+
+            const importModal = bootstrap.Modal.getInstance(document.getElementById('import-meta-modal'));
+            importModal.hide();
+            showToast("Effect imported successfully!", 'success');
+            document.getElementById('import-textarea').value = '';
+
+            // Explicitly reset state after a successful import
+            currentProjectDocId = null;
+            updateShareButtonState();
+            currentProjectDocId = null;
+            updateShareButtonState();
+        } catch (error) {
+            console.error("Error importing meta tags:", error);
+            showToast("Could not parse the provided HTML. Please check the format.", 'danger');
+        }
+    });
+
+    /**
+     * CONFIRMATION MODAL: General listener for confirm button.
+     */
+    confirmBtn.addEventListener('click', () => {
+        if (typeof confirmActionCallback === 'function') {
+            confirmActionCallback();
         }
     });
 

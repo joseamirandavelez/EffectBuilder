@@ -224,7 +224,7 @@
 
                 <!-- Group for Output/Sharing -->
                 <div class="btn-group me-3" role="group" aria-label="Sharing and exporting actions">
-                    <button class="btn btn-outline-info" id="share-btn" data-bs-toggle="tooltip" title="Get a shareable link to this effect"><i class="bi bi-share me-1"></i> Share</button>
+                    <button class="btn btn-outline-info" id="share-btn" title="Get a shareable link to this effect" disabled><i class="bi bi-share me-1"></i> Share</button>
                     <button class="btn btn-outline-success" id="export-btn" data-bs-toggle="tooltip" title="Download complete HTML file"><i class="bi bi-download me-1"></i> Export</button>
                 </div>
 
@@ -435,16 +435,16 @@
                     </ul>
 
                     <h6 class="text-info mt-4">Main Toolbar (Top)</h6>
-                    <p>The main toolbar provides actions for managing, sharing, and exporting your effects. Most actions require you to be signed in.</p>
+                    <p>The main toolbar provides actions for managing, sharing, and exporting your effects. Most cloud actions require you to be signed in.</p>
                     <ul class="list-unstyled">
-                        <li><strong class="text-primary-emphasis"><i class="bi bi-cloud-arrow-up me-1"></i> Save:</strong> Saves your current workspace to the cloud using the name from the "Effect Title" field. This makes it available in the "My Projects" panel.</li>
-                        <li><strong class="text-secondary-emphasis"><i class="bi bi-folder2-open me-1"></i> My Projects:</strong> Opens a side panel showing all effects you have personally saved.</li>
+                        <li><strong class="text-primary-emphasis"><i class="bi bi-cloud-arrow-up me-1"></i> Save:</strong> Saves your current workspace to the cloud. It uses the name from the "Effect Title" field and will prevent you from saving duplicate names.</li>
+                        <li><strong class="text-secondary-emphasis"><i class="bi bi-folder2-open me-1"></i> My Projects:</strong> Opens a side panel showing all effects you have personally saved, sorted by most recent.</li>
                         <li><strong class="text-warning-emphasis"><i class="bi bi-view-list me-1"></i> Browse Gallery:</strong> Opens a side panel showing all public effects created by all users.</li>
                         <li><strong class="text-info-emphasis"><i class="bi bi-box-arrow-in-down me-1"></i> Import:</strong> Opens a dialog where you can paste `
-                            <meta>` tags from an old effect file to load it into the builder for backward compatibility.
+                            <meta>` tags from an old effect file to load it into the builder.
                         </li>
-                        <li><strong class="text-info-emphasis"><i class="bi bi-share me-1"></i> Get Link:</strong> Saves the current effect and copies a unique, shareable URL to your clipboard.</li>
-                        <li><strong class="text-success-emphasis"><i class="bi bi-download me-1"></i> Export File:</strong> Generates and downloads a complete, standalone HTML file of your effect for use in SignalRGB.</li>
+                        <li><strong class="text-info-emphasis"><i class="bi bi-share me-1"></i> Get Link:</strong> This button is enabled only after you save an effect. It opens a modal with a unique, shareable URL for your saved project.</li>
+                        <li><strong class="text-success-emphasis"><i class="bi bi-download me-1"></i> Export:</strong> Generates and downloads a complete, standalone HTML file of your effect for use in SignalRGB.</li>
                     </ul>
 
                     <h6 class="text-info mt-4">How to install the effect in SignalRGB</h6>
@@ -493,8 +493,8 @@
                     </div>
                 </div>
                 <div class="modal-footer justify-content-between">
-                    <span class="small text-body-secondary">Current as of: Monday, July 14, 2025, 7:02 PM AST</span>
-                    <button typeS="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                    <span class="small text-body-secondary">Current as of: Monday, July 14, 2025, 8:20 PM AST</span>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -565,6 +565,26 @@
             <ul class="list-group" id="gallery-project-list">
                 <!-- Projects will be loaded here by JavaScript -->
             </ul>
+        </div>
+    </div>
+
+    <div class="modal fade" id="share-modal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="shareModalLabel"><i class="bi bi-share-fill me-2"></i>Share Your Effect</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Anyone with this link can view and load your effect.</p>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="share-link-input" readonly>
+                        <button class="btn btn-primary" type="button" id="copy-share-link-btn">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
