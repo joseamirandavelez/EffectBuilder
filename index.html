@@ -13,33 +13,73 @@
     <script type="module" src="firebase.js"></script>
 
     <template id="initial-config">
-        <meta title="Effect Class" />
-        <meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
-        <meta publisher="Jose Miranda" />
-        <meta property="enableAnimation" label="Enable Animation" type="boolean" default="true" />
-        <meta property="obj1_shape" label="Strimer: Shape" type="combobox" values="rectangle,circle,ring" default="rectangle" />
-        <meta property="obj1_x" label="Strimer: X Position" type="number" min="0" max="1280" default="0" />
-        <meta property="obj1_y" label="Strimer: Y Position" type="number" min="0" max="800" default="0" />
-        <meta property="obj1_width" label="Strimer: Width/Outer Diameter" type="number" min="10" max="1280" default="640" />
-        <meta property="obj1_height" label="Strimer: Height" type="number" min="10" max="800" default="400" />
-        <meta property="obj1_innerDiameter" label="Strimer: Inner Diameter" type="number" min="5" max="1270" default="200" />
-        <meta property="obj1_numberOfSegments" label="Strimer: Segments" type="number" min="1" max="50" default="8" />
-        <meta property="obj1_angularWidth" label="Strimer: Segment Angle" type="number" min="1" max="360" default="20" />
-        <meta property="obj1_rotationSpeed" label="Strimer: Rotation Speed" type="number" min="-100" max="100" default="0" />
-        <meta property="obj1_animationSpeed" label="Strimer: Animation Speed" type="number" min="1" max="50" default="50" />
-        <meta property="obj1_animationMode" label="Strimer: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
-        <meta property="obj1_scrollDir" label="Strimer: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
-        <meta property="obj1_gradType" label="Strimer: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
-        <meta property="obj1_useSharpGradient" label="Strimer: Use Sharp Gradient" type="boolean" default="true" />
-        <meta property="obj1_gradientStop" label="Strimer: Gradient Stop %" type="number" min="0" max="100" default="72" />
-        <meta property="obj1_gradColor1" label="Strimer: Color 1" type="color" default="#00ff00" />
-        <meta property="obj1_gradColor2" label="Strimer: Color 2" type="color" default="#d400ff" />
-        <meta property="obj1_cycleColors" label="Strimer: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj1_cycleSpeed" label="Strimer: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj1_numberOfRows" label="Strimer: Number of Rows" type="number" min="1" max="100" default="2" />
-        <meta property="obj1_numberOfColumns" label="Strimer: Number of Columns" type="number" min="1" max="100" default="1" />
-        <meta property="obj1_phaseOffset" label="Strimer: Phase Offset" type="number" min="0" max="100" default="100" />
-        <meta property="obj2_shape" label="Matrix: Shape" type="combobox" values="rectangle,circle,ring" default="rectangle" />
+        <meta title="Text Test" />
+<meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
+<meta publisher="Jose Miranda" />
+<meta property="enableAnimation" label="Enable Animation" type="boolean" default="true" />
+<meta property="obj1_shape" label="Text: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
+<meta property="obj1_x" label="Text: X Position" type="number" min="0" max="1280" default="67" />
+<meta property="obj1_y" label="Text: Y Position" type="number" min="0" max="800" default="184" />
+<meta property="obj1_width" label="Text: Width/Outer Diameter" type="number" min="10" max="1280" default="722" />
+<meta property="obj1_height" label="Text: Height" type="number" min="10" max="800" default="596" />
+<meta property="obj1_innerDiameter" label="Text: Inner Diameter" type="number" min="5" max="1270" default="200" />
+<meta property="obj1_numberOfSegments" label="Text: Segments" type="number" min="1" max="50" default="8" />
+<meta property="obj1_angularWidth" label="Text: Segment Angle" type="number" min="1" max="360" default="20" />
+<meta property="obj1_rotationSpeed" label="Text: Rotation Speed" type="number" min="-100" max="100" default="0" />
+<meta property="obj1_animationSpeed" label="Text: Animation Speed" type="number" min="1" max="50" default="50" />
+<meta property="obj1_animationMode" label="Text: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
+<meta property="obj1_scrollDir" label="Text: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
+<meta property="obj1_gradType" label="Text: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
+<meta property="obj1_useSharpGradient" label="Text: Use Sharp Gradient" type="boolean" default="true" />
+<meta property="obj1_gradientStop" label="Text: Gradient Stop %" type="number" min="0" max="100" default="72" />
+<meta property="obj1_gradColor1" label="Text: Color 1" type="color" default="#00ff00" />
+<meta property="obj1_gradColor2" label="Text: Color 2" type="color" default="#d400ff" />
+<meta property="obj1_cycleColors" label="Text: Cycle Colors" type="boolean" default="false" />
+<meta property="obj1_cycleSpeed" label="Text: Color Cycle Speed" type="number" min="1" max="10" default="10" />
+<meta property="obj1_numberOfRows" label="Text: Number of Rows" type="number" min="1" max="100" default="2" />
+<meta property="obj1_numberOfColumns" label="Text: Number of Columns" type="number" min="1" max="100" default="1" />
+<meta property="obj1_phaseOffset" label="Text: Phase Offset" type="number" min="0" max="100" default="100" />
+<meta property="obj1_showTime" label="Show Current Time" type="boolean" default="true" />
+<meta property="obj1_text" label="Text: Content" type="textfield" default="Jose Miranda" />
+<meta property="obj1_textAlign" label="Text: Justification" type="combobox" values="left,center,right" default="" />
+<meta property="obj1_pixelFont" label="Pixel Font Style" type="combobox" values="small,large" default="small" />
+<meta property="obj1_fontSize" label="Text: Size" type="number" min="10" max="400" default="168" />
+<meta property="obj1_textAlign" label="Text: Justification" type="combobox" values="left,center,right" default="" />
+<meta property="obj1_textAnimation" label="Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
+<meta property="obj1_textAnimationSpeed" label="Animation Speed" type="number" min="1" max="100" default="10" />
+<meta property="obj2_shape" label="Text Copy: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
+<meta property="obj2_x" label="Text Copy: X Position" type="number" min="0" max="1280" default="67" />
+<meta property="obj2_y" label="Text Copy: Y Position" type="number" min="0" max="800" default="58" />
+<meta property="obj2_width" label="Text Copy: Width/Outer Diameter" type="number" min="10" max="1280" default="3002" />
+<meta property="obj2_height" label="Text Copy: Height" type="number" min="10" max="800" default="596" />
+<meta property="obj2_innerDiameter" label="Text Copy: Inner Diameter" type="number" min="5" max="1270" default="200" />
+<meta property="obj2_numberOfSegments" label="Text Copy: Segments" type="number" min="1" max="50" default="8" />
+<meta property="obj2_angularWidth" label="Text Copy: Segment Angle" type="number" min="1" max="360" default="20" />
+<meta property="obj2_rotationSpeed" label="Text Copy: Rotation Speed" type="number" min="-100" max="100" default="0" />
+<meta property="obj2_animationSpeed" label="Text Copy: Animation Speed" type="number" min="1" max="50" default="50" />
+<meta property="obj2_animationMode" label="Text Copy: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
+<meta property="obj2_scrollDir" label="Text Copy: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
+<meta property="obj2_gradType" label="Text Copy: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
+<meta property="obj2_useSharpGradient" label="Text Copy: Use Sharp Gradient" type="boolean" default="true" />
+<meta property="obj2_gradientStop" label="Text Copy: Gradient Stop %" type="number" min="0" max="100" default="72" />
+<meta property="obj2_gradColor1" label="Text Copy: Color 1" type="color" default="#00ff00" />
+<meta property="obj2_gradColor2" label="Text Copy: Color 2" type="color" default="#d400ff" />
+<meta property="obj2_cycleColors" label="Text Copy: Cycle Colors" type="boolean" default="false" />
+<meta property="obj2_cycleSpeed" label="Text Copy: Color Cycle Speed" type="number" min="1" max="10" default="10" />
+<meta property="obj2_numberOfRows" label="Text Copy: Number of Rows" type="number" min="1" max="100" default="2" />
+<meta property="obj2_numberOfColumns" label="Text Copy: Number of Columns" type="number" min="1" max="100" default="1" />
+<meta property="obj2_phaseOffset" label="Text Copy: Phase Offset" type="number" min="0" max="100" default="100" />
+<meta property="obj2_text" label="Text Copy: Text" type="textfield" default="Jose Miranda" />
+<meta property="obj2_fontSize" label="Text Copy: Font Size" type="number" min="10" max="400" default="182" />
+<meta property="obj2_textAlign" label="Text Copy: Justification" type="combobox" values="left,center,right" default="left" />
+<meta property="obj2_pixelFont" label="Text Copy: Pixel Font Style" type="combobox" values="small,large" default="large" />
+<meta property="obj2_textAnimation" label="Text Copy: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
+<meta property="obj2_textAnimationSpeed" label="Text Copy: Animation Speed" type="number" min="1" max="100" default="10" />
+<meta property="obj2_showTime" label="Text Copy: Show Current Time" type="boolean" default="true" />
+<meta property="obj2_autoWidth" label="Text Copy: Auto-Width" type="boolean" default="true" />
+
+        <!--
+        <meta property="obj2_shape" label="Matrix: Shape" type="combobox" values="rectangle,circle,ring,text" default="rectangle" />
         <meta property="obj2_x" label="Matrix: X Position" type="number" min="0" max="1280" default="0" />
         <meta property="obj2_y" label="Matrix: Y Position" type="number" min="0" max="800" default="400" />
         <meta property="obj2_width" label="Matrix: Width/Outer Diameter" type="number" min="10" max="1280" default="640" />
@@ -61,7 +101,11 @@
         <meta property="obj2_numberOfRows" label="Matrix: Number of Rows" type="number" min="1" max="100" default="16" />
         <meta property="obj2_numberOfColumns" label="Matrix: Number of Columns" type="number" min="1" max="100" default="16" />
         <meta property="obj2_phaseOffset" label="Matrix: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj3_shape" label="Top Fan Center: Shape" type="combobox" values="rectangle,circle,ring" default="circle" />
+        <meta property="obj1_text" label="Text: Content" type="textarea" default="Hello World" />
+        <meta property="obj1_fontFamily" label="Text: Font" type="combobox" values="Arial,Verdana,Georgia,'Times New Roman','Courier New',Impact,'Comic Sans MS'" default="Arial" />
+        <meta property="obj1_fontSize" label="Text: Size" type="number" min="10" max="400" default="60" />
+        <meta property="obj1_fontWeight" label="Text: Weight" type="combobox" values="normal,bold,bolder,lighter" default="bold" />
+        <meta property="obj3_shape" label="Top Fan Center: Shape" type="combobox" values="rectangle,circle,ring,text" default="circle" />
         <meta property="obj3_x" label="Top Fan Center: X Position" type="number" min="0" max="1280" default="1074" />
         <meta property="obj3_y" label="Top Fan Center: Y Position" type="number" min="0" max="800" default="94" />
         <meta property="obj3_width" label="Top Fan Center: Width/Outer Diameter" type="number" min="10" max="1280" default="112" />
@@ -83,7 +127,11 @@
         <meta property="obj3_numberOfRows" label="Top Fan Center: Number of Rows" type="number" min="1" max="100" default="1" />
         <meta property="obj3_numberOfColumns" label="Top Fan Center: Number of Columns" type="number" min="1" max="100" default="1" />
         <meta property="obj3_phaseOffset" label="Top Fan Center: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj4_shape" label="Top Fan Ring: Shape" type="combobox" values="rectangle,circle,ring" default="ring" />
+        <meta property="obj1_text" label="Text: Content" type="textarea" default="Hello World" />
+        <meta property="obj1_fontFamily" label="Text: Font" type="combobox" values="Arial,Verdana,Georgia,'Times New Roman','Courier New',Impact,'Comic Sans MS'" default="Arial" />
+        <meta property="obj1_fontSize" label="Text: Size" type="number" min="10" max="400" default="60" />
+        <meta property="obj1_fontWeight" label="Text: Weight" type="combobox" values="normal,bold,bolder,lighter" default="bold" />
+        <meta property="obj4_shape" label="Top Fan Ring: Shape" type="combobox" values="rectangle,circle,ring,text" default="ring" />
         <meta property="obj4_x" label="Top Fan Ring: X Position" type="number" min="0" max="1280" default="980" />
         <meta property="obj4_y" label="Top Fan Ring: Y Position" type="number" min="0" max="800" default="0" />
         <meta property="obj4_width" label="Top Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300" />
@@ -105,7 +153,11 @@
         <meta property="obj4_numberOfRows" label="Top Fan Ring: Number of Rows" type="number" min="1" max="100" default="1" />
         <meta property="obj4_numberOfColumns" label="Top Fan Ring: Number of Columns" type="number" min="1" max="100" default="1" />
         <meta property="obj4_phaseOffset" label="Top Fan Ring: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj5_shape" label="Bottom Fan Center: Shape" type="combobox" values="rectangle,circle,ring" default="circle" />
+        <meta property="obj1_text" label="Text: Content" type="textarea" default="Hello World" />
+        <meta property="obj1_fontFamily" label="Text: Font" type="combobox" values="Arial,Verdana,Georgia,'Times New Roman','Courier New',Impact,'Comic Sans MS'" default="Arial" />
+        <meta property="obj1_fontSize" label="Text: Size" type="number" min="10" max="400" default="60" />
+        <meta property="obj1_fontWeight" label="Text: Weight" type="combobox" values="normal,bold,bolder,lighter" default="bold" />
+        <meta property="obj5_shape" label="Bottom Fan Center: Shape" type="combobox" values="rectangle,circle,ring,text" default="circle" />
         <meta property="obj5_x" label="Bottom Fan Center: X Position" type="number" min="0" max="1280" default="1074" />
         <meta property="obj5_y" label="Bottom Fan Center: Y Position" type="number" min="0" max="800" default="594" />
         <meta property="obj5_width" label="Bottom Fan Center: Width/Outer Diameter" type="number" min="10" max="1280" default="112" />
@@ -127,7 +179,11 @@
         <meta property="obj5_numberOfRows" label="Bottom Fan Center: Number of Rows" type="number" min="1" max="100" default="1" />
         <meta property="obj5_numberOfColumns" label="Bottom Fan Center: Number of Columns" type="number" min="1" max="100" default="1" />
         <meta property="obj5_phaseOffset" label="Bottom Fan Center: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj6_shape" label="Bottom Fan Ring: Shape" type="combobox" values="rectangle,circle,ring" default="ring" />
+        <meta property="obj1_text" label="Text: Content" type="textarea" default="Hello World" />
+        <meta property="obj1_fontFamily" label="Text: Font" type="combobox" values="Arial,Verdana,Georgia,'Times New Roman','Courier New',Impact,'Comic Sans MS'" default="Arial" />
+        <meta property="obj1_fontSize" label="Text: Size" type="number" min="10" max="400" default="60" />
+        <meta property="obj1_fontWeight" label="Text: Weight" type="combobox" values="normal,bold,bolder,lighter" default="bold" />
+        <meta property="obj6_shape" label="Bottom Fan Ring: Shape" type="combobox" values="rectangle,circle,ring,text" default="ring" />
         <meta property="obj6_x" label="Bottom Fan Ring: X Position" type="number" min="0" max="1280" default="980" />
         <meta property="obj6_y" label="Bottom Fan Ring: Y Position" type="number" min="0" max="800" default="500" />
         <meta property="obj6_width" label="Bottom Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300" />
@@ -149,7 +205,11 @@
         <meta property="obj6_numberOfRows" label="Bottom Fan Ring: Number of Rows" type="number" min="1" max="100" default="1" />
         <meta property="obj6_numberOfColumns" label="Bottom Fan Ring: Number of Columns" type="number" min="1" max="100" default="1" />
         <meta property="obj6_phaseOffset" label="Bottom Fan Ring: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj7_shape" label="Middle Fan Center: Shape" type="combobox" values="rectangle,circle,ring" default="circle" />
+        <meta property="obj1_text" label="Text: Content" type="textarea" default="Hello World" />
+        <meta property="obj1_fontFamily" label="Text: Font" type="combobox" values="Arial,Verdana,Georgia,'Times New Roman','Courier New',Impact,'Comic Sans MS'" default="Arial" />
+        <meta property="obj1_fontSize" label="Text: Size" type="number" min="10" max="400" default="60" />
+        <meta property="obj1_fontWeight" label="Text: Weight" type="combobox" values="normal,bold,bolder,lighter" default="bold" />
+        <meta property="obj7_shape" label="Middle Fan Center: Shape" type="combobox" values="rectangle,circle,ring,text" default="circle" />
         <meta property="obj7_x" label="Middle Fan Center: X Position" type="number" min="0" max="1280" default="759" />
         <meta property="obj7_y" label="Middle Fan Center: Y Position" type="number" min="0" max="800" default="350" />
         <meta property="obj7_width" label="Middle Fan Center: Width/Outer Diameter" type="number" min="10" max="1280" default="112" />
@@ -171,7 +231,11 @@
         <meta property="obj7_numberOfRows" label="Middle Fan Center: Number of Rows" type="number" min="1" max="100" default="1" />
         <meta property="obj7_numberOfColumns" label="Middle Fan Center: Number of Columns" type="number" min="1" max="100" default="1" />
         <meta property="obj7_phaseOffset" label="Middle Fan Center: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj8_shape" label="Middle Fan Ring: Shape" type="combobox" values="rectangle,circle,ring" default="ring" />
+        <meta property="obj1_text" label="Text: Content" type="textarea" default="Hello World" />
+        <meta property="obj1_fontFamily" label="Text: Font" type="combobox" values="Arial,Verdana,Georgia,'Times New Roman','Courier New',Impact,'Comic Sans MS'" default="Arial" />
+        <meta property="obj1_fontSize" label="Text: Size" type="number" min="10" max="400" default="60" />
+        <meta property="obj1_fontWeight" label="Text: Weight" type="combobox" values="normal,bold,bolder,lighter" default="bold" />
+        <meta property="obj8_shape" label="Middle Fan Ring: Shape" type="combobox" values="rectangle,circle,ring,text" default="ring" />
         <meta property="obj8_x" label="Middle Fan Ring: X Position" type="number" min="0" max="1280" default="665" />
         <meta property="obj8_y" label="Middle Fan Ring: Y Position" type="number" min="0" max="800" default="256" />
         <meta property="obj8_width" label="Middle Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300" />
@@ -193,6 +257,11 @@
         <meta property="obj8_numberOfRows" label="Middle Fan Ring: Number of Rows" type="number" min="1" max="100" default="1" />
         <meta property="obj8_numberOfColumns" label="Middle Fan Ring: Number of Columns" type="number" min="1" max="100" default="1" />
         <meta property="obj8_phaseOffset" label="Middle Fan Ring: Phase Offset" type="number" min="0" max="100" default="10" />
+        <meta property="obj1_text" label="Text: Content" type="textarea" default="Hello World" />
+        <meta property="obj1_fontFamily" label="Text: Font" type="combobox" values="Arial,Verdana,Georgia,'Times New Roman','Courier New',Impact,'Comic Sans MS'" default="Arial" />
+        <meta property="obj1_fontSize" label="Text: Size" type="number" min="10" max="400" default="60" />
+        <meta property="obj1_fontWeight" label="Text: Weight" type="combobox" values="normal,bold,bolder,lighter" default="bold" />
+        -->
     </template>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -203,7 +272,6 @@
     window.dataLayer = window.dataLayer || [];
     function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
-
     gtag('config', 'G-WS7MGSDJSB');
 </script>
 
@@ -557,7 +625,7 @@
 
     <div class="offcanvas offcanvas-end" tabindex="-1" id="gallery-offcanvas" aria-labelledby="galleryOffcanvasLabel" style="width: 700px;">
         <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="galleryOffcanvasLabel"><i class="bi bi-view-list me-2"></i>Public Effects Gallery</h5>
+            <h5 class="offcanvas-title" id="galleryOffcanvasLabel"><i class="bi bi-view-list me-2"></i>Community Gallery</h5>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body">
