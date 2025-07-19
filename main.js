@@ -2939,7 +2939,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const newConfigs = getDefaultObjectConfig(newId);
         configStore.push(...newConfigs);
 
-
         // 2. Create the new Shape object from its config and add it to the main 'objects' array
         const state = { id: newId, name: `Object ${newId}` };
         newConfigs.forEach(conf => {
