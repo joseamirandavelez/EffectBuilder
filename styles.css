@@ -6,7 +6,6 @@ body {
 
 #canvas-container {
     position: relative;
-    background-color: #222;
     aspect-ratio: 1280 / 800;
     cursor: default;
     width: auto;
@@ -113,6 +112,3 @@ body {
     background-color: var(--bs-border-color);
 }
 
-.btn:disabled {
-    opacity: 0.4;
-}
