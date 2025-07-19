@@ -157,7 +157,6 @@ function drawPixelText(ctx, shape) {
 }
 
 
-/**
  * Sets a browser cookie with a given name, value, and expiration in days.
  * @param {string} name - The name of the cookie.
  * @param {string} value - The value to store in the cookie.
@@ -2939,6 +2938,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
         const newConfigs = getDefaultObjectConfig(newId);
         configStore.push(...newConfigs);
+
 
         // 2. Create the new Shape object from its config and add it to the main 'objects' array
         const state = { id: newId, name: `Object ${newId}` };
