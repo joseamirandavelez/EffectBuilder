@@ -29,7 +29,7 @@ const FONT_DATA_4PX = {
         '+': ['000', '010', '111', '010'], '=': ['000', '111', '000', '111'], '*': ['101', '010', '101', '000'],
         '/': ['001', '010', '100', '000'], '\\': ['100', '010', '001', '000'], '#': ['010', '111', '010', '111'],
         '$': ['010', '111', '101', '111'], '%': ['101', '001', '010', '101'], '&': ['010', '101', '010', '101'],
-        ' ': ['000', '000', '000', '000'], // Space
+        ' ': ['000', '000', '000', '000']
     }
 };
 
@@ -81,6 +81,22 @@ const FONT_DATA_5PX = {
         '&': ['01110', '10001', '01110', '10101', '01011']
     }
 };
+
+/**
+ * Creates a debounced function that delays invoking func until after wait milliseconds have elapsed
+ * since the last time the debounced function was invoked.
+ * @param {function} func The function to debounce.
+ * @param {number} [wait=500] The number of milliseconds to delay.
+ * @returns {function} Returns the new debounced function.
+ */
+function debounce(func, wait = 500) {
+    let timeout;
+    return function (...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
 
 function drawPixelText(ctx, shape) {
     const { x, y, width, height, pixelFont, fontSize, textAlign,
@@ -141,7 +157,6 @@ function drawPixelText(ctx, shape) {
 }
 
 
-/**
  * Sets a browser cookie with a given name, value, and expiration in days.
  * @param {string} name - The name of the cookie.
  * @param {string} value - The value to store in the cookie.
@@ -898,6 +913,8 @@ class Shape {
 
 document.addEventListener('DOMContentLoaded', function () {
     // --- DOM Element References ---
+    const undoBtn = document.getElementById('undo-btn');
+    const redoBtn = document.getElementById('redo-btn');
     const canvas = document.getElementById('signalCanvas');
     canvas.width = 1280;
     canvas.height = 800;
@@ -932,6 +949,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirmModalEl = document.getElementById('confirm-overwrite-modal');
 
     // --- State Management ---
+    let isRestoring = false; // Prevents history recording during an undo/redo action
     let configStore = [];
     let objects = [];
     let selectedObjectIds = [];
@@ -957,6 +975,116 @@ document.addEventListener('DOMContentLoaded', function () {
     const galleryOffcanvasEl = document.getElementById('gallery-offcanvas');
     const galleryList = document.getElementById('gallery-project-list');
     const galleryBody = galleryOffcanvasEl.querySelector('.offcanvas-body');
+
+
+    const history = {
+        stack: [],
+        index: -1,
+        maxSize: 50, // Limit the number of undo steps
+
+        /**
+         * Pushes a new state to the history stack.
+         * @param {object} state - A snapshot of the current application state.
+         */
+        push(state) {
+            if (isRestoring) return; // Don't record history when restoring a state
+
+            // If we've undone actions, new actions should clear the "redo" stack
+            if (this.index < this.stack.length - 1) {
+                this.stack = this.stack.slice(0, this.index + 1);
+            }
+
+            this.stack.push(state);
+
+            // Trim the stack if it exceeds the maximum size
+            if (this.stack.length > this.maxSize) {
+                this.stack.shift();
+            }
+
+            this.index = this.stack.length - 1;
+            updateUndoRedoButtons();
+        },
+
+        /**
+         * Moves to the previous state in the history.
+         */
+        undo() {
+            if (this.index > 0) {
+                this.index--;
+                restoreState(this.stack[this.index]);
+            }
+        },
+
+        /**
+         * Moves to the next state in the history (redoes an undo).
+         */
+        redo() {
+            if (this.index < this.stack.length - 1) {
+                this.index++;
+                restoreState(this.stack[this.index]);
+            }
+        },
+    };
+
+    const debouncedRecordHistory = debounce(recordHistory);
+
+    /**
+     * Updates the enabled/disabled state of the undo/redo buttons.
+     */
+    function updateUndoRedoButtons() {
+        if (undoBtn) undoBtn.disabled = history.index <= 0;
+        if (redoBtn) redoBtn.disabled = history.index >= history.stack.length - 1;
+    }
+
+    /**
+     * Captures a serializable snapshot of the application's current state.
+     * @returns {object} The current state snapshot.
+     */
+    function getCurrentState() {
+        // Create a deep, plain-object copy of the objects array
+        const plainObjects = JSON.parse(JSON.stringify(objects, (key, value) => {
+            if (key === 'ctx') return undefined; // Exclude non-serializable canvas context
+            return value;
+        }));
+        // We only need to save the objects and selection for a complete undo state.
+        return {
+            objects: plainObjects,
+            selectedObjectIds: JSON.parse(JSON.stringify(selectedObjectIds))
+        };
+    }
+
+    /**
+     * A wrapper function to simplify recording the current state to history.
+     */
+    function recordHistory() {
+        history.push(getCurrentState());
+    }
+
+    /**
+     * Restores the application to a given state snapshot.
+     * @param {object} state - The state object to restore.
+     */
+    function restoreState(state) {
+        isRestoring = true;
+
+        // Restore objects and selection directly from the history state
+        objects = state.objects.map(data => new Shape({ ...data, ctx }));
+        selectedObjectIds = state.selectedObjectIds;
+
+        // Re-render the entire UI based on the newly restored objects
+        renderForm();
+        updateFormValuesFromObjects(); // This is the new key function to sync the form
+        drawFrame();
+        updateToolbarState();
+        updateUndoRedoButtons();
+
+        isRestoring = false;
+    }
+
+
+
+
+
 
     /**
      * Updates the enabled/disabled state of the share button.
@@ -1618,7 +1746,7 @@ document.addEventListener('DOMContentLoaded', function () {
             form.appendChild(fieldset);
         });
 
-        setFormValues(getControlValues());
+        updateFormValuesFromObjects();
         new bootstrap.Tooltip(document.body, {
             selector: "[data-bs-toggle='tooltip']",
             trigger: 'hover'
@@ -1760,7 +1888,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }
-        updateAll();
     }
 
     /**
@@ -1996,29 +2123,113 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Updates shape objects based on the current form values.
+     * Gathers all form values for a specific object ID.
+     * @param {number} id - The ID of the object to get values for.
+     * @returns {object} An object containing all properties for the shape.
      */
-    function updateShapesFromForm() {
-        const newStates = buildStatesFromConfig();
-        const newObjects = [];
-        newStates.forEach(state => {
-            const existingObj = objects.find(o => o.id === state.id);
-            if (existingObj) {
-                existingObj.update(state);
-                newObjects.push(existingObj);
-            } else {
-                newObjects.push(new Shape({ ...state, ctx }));
+    function getFormValuesForObject(id) {
+        const values = {};
+        const prefix = `obj${id}_`;
+
+        const configs = configStore.filter(c => c.property && c.property.startsWith(prefix));
+
+        configs.forEach(conf => {
+            const key = conf.property.replace(prefix, '');
+            const el = form.elements[conf.property];
+            if (el) {
+                let value;
+                if (el.type === 'checkbox') {
+                    value = el.checked;
+                } else if (el.type === 'number') {
+                    value = el.value === '' ? 0 : parseFloat(el.value);
+                    // RE-ADD ROUNDING for pixel-based values
+                    if (['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'].includes(key)) {
+                        value = Math.round(value);
+                    }
+                } else {
+                    value = el.value;
+                }
+
+                if (key.startsWith('gradColor')) {
+                    if (!values.gradient) values.gradient = {};
+                    values.gradient[key.replace('grad', '').toLowerCase()] = value;
+                } else if (key === 'scrollDir') {
+                    values.scrollDirection = value;
+                } else {
+                    values[key] = value;
+                }
             }
         });
-        objects = newObjects;
+
+        values.gradientDirection = (values.scrollDirection === 'up' || values.scrollDirection === 'down') ? 'vertical' : 'horizontal';
+        values.cycleSpeed = (values.cycleSpeed || 0) / 50.0;
+        values.animationSpeed = (values.animationSpeed || 0) / 10.0;
+        if (values.shape === 'ring') values.height = values.width;
+
+        return values;
+    }
+
+    /**
+     * Reads all values from the form and updates the live 'objects' array.
+     * This is now the primary way user input affects the application state.
+     */
+    function updateObjectsFromForm() {
+        if (isRestoring) return;
+        objects.forEach(obj => {
+            const newProps = getFormValuesForObject(obj.id);
+            obj.update(newProps);
+        });
+        generateOutputScript();
+    }
+
+    /**
+     * Reads all properties from the 'objects' array and updates the form inputs
+     * to match. This is used after an action on the canvas (drag/resize) or
+     * after undo/redo.
+     */
+    function updateFormValuesFromObjects() {
+        objects.forEach(obj => {
+            const fieldset = form.querySelector(`fieldset[data-object-id="${obj.id}"]`);
+            if (!fieldset) return;
+
+            const updateField = (prop, value) => {
+                const input = fieldset.querySelector(`[name="obj${obj.id}_${prop}"]`);
+                if (input) {
+                    if (input.type === 'checkbox') input.checked = value;
+                    else input.value = value;
+
+                    const slider = fieldset.querySelector(`[name="obj${obj.id}_${prop}_slider"]`);
+                    if (slider) slider.value = value;
+
+                    const hexInput = fieldset.querySelector(`[name="obj${obj.id}_${prop}_hex"]`);
+                    if (hexInput) hexInput.value = value;
+                }
+            };
+
+            // This loop now correctly updates all form fields from the object's properties
+            Object.keys(obj).forEach(key => {
+                if (key === 'gradient') {
+                    updateField('gradColor1', obj.gradient.color1);
+                    updateField('gradColor2', obj.gradient.color2);
+                } else if (key === 'animationSpeed') {
+                    updateField(key, obj[key] * 10);
+                } else if (key === 'cycleSpeed') {
+                    updateField(key, obj[key] * 50);
+                } else if (key === 'scrollDirection') {
+                    updateField('scrollDir', obj.scrollDirection);
+                } else if (typeof obj[key] !== 'object' && typeof obj[key] !== 'function') {
+                    updateField(key, obj[key]);
+                }
+            });
+        });
+        generateOutputScript();
     }
 
     /**
      * A master update function that syncs the shapes from the form and regenerates the output script.
      */
     function updateAll() {
-        updateShapesFromForm();
-        generateOutputScript();
+        updateObjectsFromForm();
         drawFrame();
     }
 
@@ -2460,25 +2671,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         updateAll();
+        updateObjectsFromForm(); // Update the live objects from the form
+        drawFrame();             // Redraw the canvas for a live preview
     });
-
-    /**
-     * Synchronizes the central configStore with the current values from the form controls.
-     * This ensures that the 'default' attribute of each config object is always up-to-date
-     * before performing operations that rebuild the state, like duplicating or deleting.
-     */
-    function syncConfigStoreWithForm() {
-        const currentValues = getControlValues();
-        configStore = configStore.map(conf => {
-            const key = conf.property || conf.name;
-            if (currentValues.hasOwnProperty(key)) {
-                const newValue = currentValues[key];
-                // Ensure boolean values are stored as strings, matching how they are read from attributes.
-                conf.default = typeof newValue === 'boolean' ? String(newValue) : newValue;
-            }
-            return conf;
-        });
-    }
 
     form.addEventListener('click', (e) => {
         const fieldset = e.target.closest('fieldset[data-object-id]');
@@ -2532,11 +2727,11 @@ document.addEventListener('DOMContentLoaded', function () {
             objects = objects.filter(o => o.id !== idToDelete);
 
             syncAndRenumberState();
+            recordHistory(); // Record state after deleting
         }
 
         if (duplicateBtn) {
             e.preventDefault();
-            // Sync config with form before duplicating to ensure the copy is from the current state.
             syncConfigStoreWithForm();
 
             const idToCopy = parseInt(duplicateBtn.dataset.id, 10);
@@ -2546,36 +2741,76 @@ document.addEventListener('DOMContentLoaded', function () {
             const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
             const newName = `${objectToCopy.name} Copy`;
 
-            const newConfigs = getDefaultObjectConfig(newId);
-
-            newConfigs.forEach(newConf => {
-                const propName = newConf.property.substring(`obj${newId}_`.length);
-                const oldPropKey = `obj${idToCopy}_${propName}`;
-
-                const oldConf = configStore.find(c => c.property === oldPropKey);
-                if (oldConf) {
-                    newConf.default = oldConf.default;
-                }
-
-                if (propName === 'x') {
+            const configsToCopy = configStore.filter(c => c.property && c.property.startsWith(`obj${idToCopy}_`));
+            const newConfigs = configsToCopy.map(oldConf => {
+                const newConf = { ...oldConf };
+                const propName = oldConf.property.substring(oldConf.property.indexOf('_') + 1);
+                newConf.property = `obj${newId}_${propName}`;
+                newConf.label = `${newName}:${oldConf.label.split(':')[1]}`;
+                if (propName === 'x' || propName === 'y') {
                     newConf.default = parseFloat(newConf.default) + 20;
                 }
-                if (propName === 'y') {
-                    newConf.default = parseFloat(newConf.default) + 20;
-                }
-
-                const labelParts = newConf.label.split(':');
-                newConf.label = `${newName}: ${labelParts.slice(1).join(':').trim()}`;
+                return newConf;
             });
 
             configStore.push(...newConfigs);
 
+            // Create the new object instance and add it to the array
+            const state = { id: newId, name: newName };
+            newConfigs.forEach(conf => {
+                const key = conf.property.replace(`obj${newId}_`, '');
+                let value = conf.default;
+                if (conf.type === 'number') value = parseFloat(value);
+                else if (conf.type === 'boolean') value = (value === 'true');
+                if (key.startsWith('gradColor')) {
+                    if (!state.gradient) state.gradient = {};
+                    state.gradient[key.replace('grad', '').toLowerCase()] = value;
+                } else {
+                    state[key] = value;
+                }
+            });
+            const newShape = new Shape({ ...state, ctx });
+            objects.push(newShape);
+
             selectedObjectIds = [newId];
             renderForm();
-            updateAll(); // This now correctly creates the duplicated object
             syncPanelsWithSelection();
             drawFrame();
             recordHistory();
+        }
+    });
+
+    if (undoBtn) {
+        undoBtn.addEventListener('click', () => history.undo());
+    }
+    if (redoBtn) {
+        redoBtn.addEventListener('click', () => history.redo());
+    }
+
+    document.addEventListener('keydown', (e) => {
+        const target = e.target;
+        // This check is now more specific. It only blocks the shortcut
+        // for text fields, textareas, or content-editable elements
+        // where the user would expect to undo typing.
+        const isTextInput = (target.tagName === 'INPUT' && target.type === 'text') ||
+            target.tagName === 'TEXTAREA' ||
+            target.isContentEditable;
+
+        if (isTextInput) {
+            // Let the browser handle its native undo for typing.
+            return;
+        }
+
+        // For all other cases (sliders, color pickers, number inputs, etc.),
+        // the global undo/redo will now work.
+        if (e.ctrlKey || e.metaKey) { // metaKey for macOS
+            if (e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                history.undo();
+            } else if (e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                history.redo();
+            }
         }
     });
 
@@ -2692,19 +2927,39 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
         }
         updateFormFromShapes();
+        recordHistory(); // Record state after a toolbar action
     });
 
     addObjectBtn.addEventListener('click', () => {
         currentProjectDocId = null;
         updateShareButtonState();
 
+        // 1. Create the config for the new object and add it to the configStore
         const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
         const newConfigs = getDefaultObjectConfig(newId);
         configStore.push(...newConfigs);
 
-        renderForm();
-        updateAll();
 
+        // 2. Create the new Shape object from its config and add it to the main 'objects' array
+        const state = { id: newId, name: `Object ${newId}` };
+        newConfigs.forEach(conf => {
+            const key = conf.property.replace(`obj${newId}_`, '');
+            let value = conf.default;
+            if (conf.type === 'number') value = parseFloat(value);
+            else if (conf.type === 'boolean') value = (value === 'true');
+            if (key.startsWith('gradColor')) {
+                if (!state.gradient) state.gradient = {};
+                state.gradient[key.replace('grad', '').toLowerCase()] = value;
+            } else {
+                state[key] = value;
+            }
+        });
+        const newShape = new Shape({ ...state, ctx });
+        objects.push(newShape);
+
+        // 3. Now that the data is correct, re-render the UI and record history
+        renderForm();
+        drawFrame();
         recordHistory();
     });
 
@@ -3000,22 +3255,29 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {MouseEvent} e - The mouseup event object.
      */
     canvasContainer.addEventListener('mouseup', () => {
-        if (isResizing) {
-            const obj = objects.find(o => o.id === selectedObjectIds[0]);
-            if (obj) {
-                // The object's dimensions are now correct after the mousemove events.
-                // There's no need to call updateAll(), which would revert the changes.
-                obj.isPausedForResize = false;
-            }
-            // This was the problematic line. By removing it, the object's new size is preserved.
-            // updateAll(); 
-        }
+        const wasManipulating = isDragging || isResizing;
+
         isDragging = false;
         isResizing = false;
         activeResizeHandle = null;
 
-        // This function correctly updates the form with the new shape dimensions.
-        updateFormFromShapes();
+        if (wasManipulating) {
+            // RE-ADD THE LOOP to round object properties after manipulation
+            initialDragState.forEach(initial => {
+                const obj = objects.find(o => o.id === initial.id);
+                if (obj) {
+                    obj.x = Math.round(obj.x);
+                    obj.y = Math.round(obj.y);
+                    obj.width = Math.round(obj.width);
+                    obj.height = Math.round(obj.height);
+                    if (obj.innerDiameter) obj.innerDiameter = Math.round(obj.innerDiameter);
+                    if (obj.fontSize) obj.fontSize = Math.round(obj.fontSize);
+                }
+            });
+
+            updateFormValuesFromObjects(); // Sync form with the new, rounded values
+            recordHistory();               // Save the clean state
+        }
     });
 
 
@@ -3106,6 +3368,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         initializeSortable();
         loadSharedEffect();
+        recordHistory(); // Record the initial state of the application
+        updateUndoRedoButtons(); // Set initial button states
     }
 
     // --- SHARE BUTTON LOGIC ---
@@ -3490,6 +3754,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typeof confirmActionCallback === 'function') {
             confirmActionCallback();
         }
+    });
+
+    // This handles committed changes from text boxes, dropdowns, color pickers, and checkboxes.
+    form.addEventListener('change', (e) => {
+        recordHistory();
     });
 
     // Start the application.

@@ -14,70 +14,69 @@
 
     <template id="initial-config">
         <meta title="Text Test" />
-<meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
-<meta publisher="Jose Miranda" />
-<meta property="enableAnimation" label="Enable Animation" type="boolean" default="true" />
-<meta property="obj1_shape" label="Text: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
-<meta property="obj1_x" label="Text: X Position" type="number" min="0" max="1280" default="67" />
-<meta property="obj1_y" label="Text: Y Position" type="number" min="0" max="800" default="184" />
-<meta property="obj1_width" label="Text: Width/Outer Diameter" type="number" min="10" max="1280" default="722" />
-<meta property="obj1_height" label="Text: Height" type="number" min="10" max="800" default="596" />
-<meta property="obj1_innerDiameter" label="Text: Inner Diameter" type="number" min="5" max="1270" default="200" />
-<meta property="obj1_numberOfSegments" label="Text: Segments" type="number" min="1" max="50" default="8" />
-<meta property="obj1_angularWidth" label="Text: Segment Angle" type="number" min="1" max="360" default="20" />
-<meta property="obj1_rotationSpeed" label="Text: Rotation Speed" type="number" min="-100" max="100" default="0" />
-<meta property="obj1_animationSpeed" label="Text: Animation Speed" type="number" min="1" max="50" default="50" />
-<meta property="obj1_animationMode" label="Text: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
-<meta property="obj1_scrollDir" label="Text: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
-<meta property="obj1_gradType" label="Text: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
-<meta property="obj1_useSharpGradient" label="Text: Use Sharp Gradient" type="boolean" default="true" />
-<meta property="obj1_gradientStop" label="Text: Gradient Stop %" type="number" min="0" max="100" default="72" />
-<meta property="obj1_gradColor1" label="Text: Color 1" type="color" default="#00ff00" />
-<meta property="obj1_gradColor2" label="Text: Color 2" type="color" default="#d400ff" />
-<meta property="obj1_cycleColors" label="Text: Cycle Colors" type="boolean" default="false" />
-<meta property="obj1_cycleSpeed" label="Text: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-<meta property="obj1_numberOfRows" label="Text: Number of Rows" type="number" min="1" max="100" default="2" />
-<meta property="obj1_numberOfColumns" label="Text: Number of Columns" type="number" min="1" max="100" default="1" />
-<meta property="obj1_phaseOffset" label="Text: Phase Offset" type="number" min="0" max="100" default="100" />
-<meta property="obj1_showTime" label="Show Current Time" type="boolean" default="true" />
-<meta property="obj1_text" label="Text: Content" type="textfield" default="Jose Miranda" />
-<meta property="obj1_textAlign" label="Text: Justification" type="combobox" values="left,center,right" default="" />
-<meta property="obj1_pixelFont" label="Pixel Font Style" type="combobox" values="small,large" default="small" />
-<meta property="obj1_fontSize" label="Text: Size" type="number" min="10" max="400" default="168" />
-<meta property="obj1_textAlign" label="Text: Justification" type="combobox" values="left,center,right" default="" />
-<meta property="obj1_textAnimation" label="Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-<meta property="obj1_textAnimationSpeed" label="Animation Speed" type="number" min="1" max="100" default="10" />
-<meta property="obj2_shape" label="Text Copy: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
-<meta property="obj2_x" label="Text Copy: X Position" type="number" min="0" max="1280" default="67" />
-<meta property="obj2_y" label="Text Copy: Y Position" type="number" min="0" max="800" default="58" />
-<meta property="obj2_width" label="Text Copy: Width/Outer Diameter" type="number" min="10" max="1280" default="3002" />
-<meta property="obj2_height" label="Text Copy: Height" type="number" min="10" max="800" default="596" />
-<meta property="obj2_innerDiameter" label="Text Copy: Inner Diameter" type="number" min="5" max="1270" default="200" />
-<meta property="obj2_numberOfSegments" label="Text Copy: Segments" type="number" min="1" max="50" default="8" />
-<meta property="obj2_angularWidth" label="Text Copy: Segment Angle" type="number" min="1" max="360" default="20" />
-<meta property="obj2_rotationSpeed" label="Text Copy: Rotation Speed" type="number" min="-100" max="100" default="0" />
-<meta property="obj2_animationSpeed" label="Text Copy: Animation Speed" type="number" min="1" max="50" default="50" />
-<meta property="obj2_animationMode" label="Text Copy: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
-<meta property="obj2_scrollDir" label="Text Copy: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
-<meta property="obj2_gradType" label="Text Copy: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
-<meta property="obj2_useSharpGradient" label="Text Copy: Use Sharp Gradient" type="boolean" default="true" />
-<meta property="obj2_gradientStop" label="Text Copy: Gradient Stop %" type="number" min="0" max="100" default="72" />
-<meta property="obj2_gradColor1" label="Text Copy: Color 1" type="color" default="#00ff00" />
-<meta property="obj2_gradColor2" label="Text Copy: Color 2" type="color" default="#d400ff" />
-<meta property="obj2_cycleColors" label="Text Copy: Cycle Colors" type="boolean" default="false" />
-<meta property="obj2_cycleSpeed" label="Text Copy: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-<meta property="obj2_numberOfRows" label="Text Copy: Number of Rows" type="number" min="1" max="100" default="2" />
-<meta property="obj2_numberOfColumns" label="Text Copy: Number of Columns" type="number" min="1" max="100" default="1" />
-<meta property="obj2_phaseOffset" label="Text Copy: Phase Offset" type="number" min="0" max="100" default="100" />
-<meta property="obj2_text" label="Text Copy: Text" type="textfield" default="Jose Miranda" />
-<meta property="obj2_fontSize" label="Text Copy: Font Size" type="number" min="10" max="400" default="182" />
-<meta property="obj2_textAlign" label="Text Copy: Justification" type="combobox" values="left,center,right" default="left" />
-<meta property="obj2_pixelFont" label="Text Copy: Pixel Font Style" type="combobox" values="small,large" default="large" />
-<meta property="obj2_textAnimation" label="Text Copy: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-<meta property="obj2_textAnimationSpeed" label="Text Copy: Animation Speed" type="number" min="1" max="100" default="10" />
-<meta property="obj2_showTime" label="Text Copy: Show Current Time" type="boolean" default="true" />
-<meta property="obj2_autoWidth" label="Text Copy: Auto-Width" type="boolean" default="true" />
-
+        <meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
+        <meta publisher="Jose Miranda" />
+        <meta property="enableAnimation" label="Enable Animation" type="boolean" default="true" />
+        <meta property="obj1_shape" label="Text: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
+        <meta property="obj1_x" label="Text: X Position" type="number" min="0" max="1280" default="67" />
+        <meta property="obj1_y" label="Text: Y Position" type="number" min="0" max="800" default="184" />
+        <meta property="obj1_width" label="Text: Width/Outer Diameter" type="number" min="10" max="1280" default="722" />
+        <meta property="obj1_height" label="Text: Height" type="number" min="10" max="800" default="596" />
+        <meta property="obj1_innerDiameter" label="Text: Inner Diameter" type="number" min="5" max="1270" default="200" />
+        <meta property="obj1_numberOfSegments" label="Text: Segments" type="number" min="1" max="50" default="8" />
+        <meta property="obj1_angularWidth" label="Text: Segment Angle" type="number" min="1" max="360" default="20" />
+        <meta property="obj1_rotationSpeed" label="Text: Rotation Speed" type="number" min="-100" max="100" default="0" />
+        <meta property="obj1_animationSpeed" label="Text: Animation Speed" type="number" min="1" max="50" default="50" />
+        <meta property="obj1_animationMode" label="Text: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
+        <meta property="obj1_scrollDir" label="Text: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
+        <meta property="obj1_gradType" label="Text: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
+        <meta property="obj1_useSharpGradient" label="Text: Use Sharp Gradient" type="boolean" default="true" />
+        <meta property="obj1_gradientStop" label="Text: Gradient Stop %" type="number" min="0" max="100" default="72" />
+        <meta property="obj1_gradColor1" label="Text: Color 1" type="color" default="#00ff00" />
+        <meta property="obj1_gradColor2" label="Text: Color 2" type="color" default="#d400ff" />
+        <meta property="obj1_cycleColors" label="Text: Cycle Colors" type="boolean" default="false" />
+        <meta property="obj1_cycleSpeed" label="Text: Color Cycle Speed" type="number" min="1" max="10" default="10" />
+        <meta property="obj1_numberOfRows" label="Text: Number of Rows" type="number" min="1" max="100" default="2" />
+        <meta property="obj1_numberOfColumns" label="Text: Number of Columns" type="number" min="1" max="100" default="1" />
+        <meta property="obj1_phaseOffset" label="Text: Phase Offset" type="number" min="0" max="100" default="100" />
+        <meta property="obj1_showTime" label="Show Current Time" type="boolean" default="true" />
+        <meta property="obj1_text" label="Text: Content" type="textfield" default="Jose Miranda" />
+        <meta property="obj1_textAlign" label="Text: Justification" type="combobox" values="left,center,right" default="" />
+        <meta property="obj1_pixelFont" label="Pixel Font Style" type="combobox" values="small,large" default="small" />
+        <meta property="obj1_fontSize" label="Text: Size" type="number" min="10" max="400" default="168" />
+        <meta property="obj1_textAlign" label="Text: Justification" type="combobox" values="left,center,right" default="" />
+        <meta property="obj1_textAnimation" label="Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
+        <meta property="obj1_textAnimationSpeed" label="Animation Speed" type="number" min="1" max="100" default="10" />
+        <meta property="obj2_shape" label="Text Copy: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
+        <meta property="obj2_x" label="Text Copy: X Position" type="number" min="0" max="1280" default="67" />
+        <meta property="obj2_y" label="Text Copy: Y Position" type="number" min="0" max="800" default="58" />
+        <meta property="obj2_width" label="Text Copy: Width/Outer Diameter" type="number" min="10" max="1280" default="3002" />
+        <meta property="obj2_height" label="Text Copy: Height" type="number" min="10" max="800" default="596" />
+        <meta property="obj2_innerDiameter" label="Text Copy: Inner Diameter" type="number" min="5" max="1270" default="200" />
+        <meta property="obj2_numberOfSegments" label="Text Copy: Segments" type="number" min="1" max="50" default="8" />
+        <meta property="obj2_angularWidth" label="Text Copy: Segment Angle" type="number" min="1" max="360" default="20" />
+        <meta property="obj2_rotationSpeed" label="Text Copy: Rotation Speed" type="number" min="-100" max="100" default="0" />
+        <meta property="obj2_animationSpeed" label="Text Copy: Animation Speed" type="number" min="1" max="50" default="50" />
+        <meta property="obj2_animationMode" label="Text Copy: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
+        <meta property="obj2_scrollDir" label="Text Copy: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
+        <meta property="obj2_gradType" label="Text Copy: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
+        <meta property="obj2_useSharpGradient" label="Text Copy: Use Sharp Gradient" type="boolean" default="true" />
+        <meta property="obj2_gradientStop" label="Text Copy: Gradient Stop %" type="number" min="0" max="100" default="72" />
+        <meta property="obj2_gradColor1" label="Text Copy: Color 1" type="color" default="#00ff00" />
+        <meta property="obj2_gradColor2" label="Text Copy: Color 2" type="color" default="#d400ff" />
+        <meta property="obj2_cycleColors" label="Text Copy: Cycle Colors" type="boolean" default="false" />
+        <meta property="obj2_cycleSpeed" label="Text Copy: Color Cycle Speed" type="number" min="1" max="10" default="10" />
+        <meta property="obj2_numberOfRows" label="Text Copy: Number of Rows" type="number" min="1" max="100" default="2" />
+        <meta property="obj2_numberOfColumns" label="Text Copy: Number of Columns" type="number" min="1" max="100" default="1" />
+        <meta property="obj2_phaseOffset" label="Text Copy: Phase Offset" type="number" min="0" max="100" default="100" />
+        <meta property="obj2_text" label="Text Copy: Text" type="textfield" default="Jose Miranda" />
+        <meta property="obj2_fontSize" label="Text Copy: Font Size" type="number" min="10" max="400" default="182" />
+        <meta property="obj2_textAlign" label="Text Copy: Justification" type="combobox" values="left,center,right" default="left" />
+        <meta property="obj2_pixelFont" label="Text Copy: Pixel Font Style" type="combobox" values="small,large" default="large" />
+        <meta property="obj2_textAnimation" label="Text Copy: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
+        <meta property="obj2_textAnimationSpeed" label="Text Copy: Animation Speed" type="number" min="1" max="100" default="10" />
+        <meta property="obj2_showTime" label="Text Copy: Show Current Time" type="boolean" default="true" />
+        <meta property="obj2_autoWidth" label="Text Copy: Auto-Width" type="boolean" default="true" />
         <!--
         <meta property="obj2_shape" label="Matrix: Shape" type="combobox" values="rectangle,circle,ring,text" default="rectangle" />
         <meta property="obj2_x" label="Matrix: X Position" type="number" min="0" max="1280" default="0" />
@@ -349,7 +348,8 @@
                     <div class="p-0">
                         <div id="toolbar" class="bg-body-tertiary p-2 rounded d-flex flex-wrap">
                             <div class="btn-group btn-group-sm me-2 mb-1" role="group">
-                                <button type="button" class="btn btn-secondary" id="constrain-btn" data-bs-toggle="tooltip" title="Toggle Constrain to Canvas"><i class="bi bi-magnet-fill"></i></button>
+                                <button type="button" class="btn btn-outline-secondary" id="undo-btn" data-bs-toggle="tooltip" title="Undo (Ctrl+Z)" disabled><i class="bi bi-arrow-90deg-left"></i></button>
+                                <button type="button" class="btn btn-outline-secondary" id="redo-btn" data-bs-toggle="tooltip" title="Redo (Ctrl+Y)" disabled><i class="bi bi-arrow-90deg-right"></i></button>
                             </div>
                             <div class="btn-group btn-group-sm me-2 mb-1" role="group">
                                 <button type="button" class="btn btn-secondary" data-action="align-screen-left" data-bs-toggle="tooltip" title="Align Left to Screen"><i class="bi bi-align-start"></i></button>
@@ -366,6 +366,9 @@
                                 <button type="button" class="btn btn-secondary" data-action="match-height" data-bs-toggle="tooltip" title="Match Height of First Selected"><i class="bi bi-arrows-expand"></i> H</button>
                                 <button type="button" class="btn btn-secondary" data-action="match-both" data-bs-toggle="tooltip" title="Match Size of First Selected"><i class="bi bi-fullscreen"></i></button>
                                 <button type="button" class="btn btn-secondary" data-action="fit-canvas" data-bs-toggle="tooltip" title="Fit to Canvas"><i class="bi bi-arrows-fullscreen"></i></button>
+                            </div>
+                            <div class="btn-group btn-group-sm me-2 mb-1" role="group">
+                                <button type="button" class="btn btn-secondary" id="constrain-btn" data-bs-toggle="tooltip" title="Toggle Constrain to Canvas"><i class="bi bi-magnet-fill"></i></button>
                             </div>
                         </div>
                     </div>
