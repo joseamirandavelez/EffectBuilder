@@ -1,9 +1,168 @@
+const FONT_DATA_4PX = {
+    name: 'small', charWidth: 3, charHeight: 4, charSpacing: 1, lineSpacing: 2,
+    map: {
+        'A': ['010', '101', '111', '101'], 'B': ['110', '101', '111', '110'], 'C': ['011', '100', '100', '011'],
+        'D': ['110', '101', '101', '110'], 'E': ['111', '100', '110', '111'], 'F': ['111', '100', '110', '100'],
+        'G': ['011', '100', '101', '011'], 'H': ['101', '101', '111', '101'], 'I': ['111', '010', '010', '111'],
+        'J': ['011', '001', '101', '010'], 'K': ['101', '110', '110', '101'], 'L': ['100', '100', '100', '111'],
+        'M': ['101', '111', '101', '101'], 'N': ['110', '101', '101', '101'], 'O': ['010', '101', '101', '010'],
+        'P': ['111', '101', '110', '100'], 'Q': ['010', '101', '111', '011'], 'R': ['110', '101', '110', '101'],
+        'S': ['011', '100', '010', '110'], 'T': ['111', '010', '010', '010'], 'U': ['101', '101', '101', '011'],
+        'V': ['101', '101', '010', '010'], 'W': ['101', '101', '111', '101'], 'X': ['101', '010', '010', '101'],
+        'Y': ['101', '010', '010', '010'], 'Z': ['111', '001', '010', '111'],
+        'a': ['000', '010', '111', '101'], 'b': ['100', '110', '101', '110'], 'c': ['000', '011', '100', '011'],
+        'd': ['001', '011', '101', '011'], 'e': ['000', '010', '111', '111'], 'f': ['010', '100', '110', '100'],
+        'g': ['011', '101', '011', '001'], 'h': ['100', '110', '101', '101'], 'i': ['010', '000', '010', '010'],
+        'j': ['001', '000', '001', '010'], 'k': ['100', '110', '110', '101'], 'l': ['010', '010', '010', '010'],
+        'm': ['000', '111', '111', '101'], 'n': ['000', '110', '101', '101'], 'o': ['000', '010', '101', '010'],
+        'p': ['110', '101', '110', '100'], 'q': ['011', '101', '011', '001'], 'r': ['000', '110', '100', '100'],
+        's': ['000', '111', '100', '011'], 't': ['100', '111', '100', '010'], 'u': ['000', '101', '101', '011'],
+        'v': ['000', '101', '101', '010'], 'w': ['000', '101', '111', '111'], 'x': ['000', '101', '010', '101'],
+        'y': ['101', '101', '011', '001'], 'z': ['000', '111', '010', '111'],
+        '0': ['010', '101', '101', '010'], '1': ['010', '110', '010', '010'], '2': ['110', '001', '010', '111'],
+        '3': ['111', '010', '101', '010'], '4': ['100', '101', '111', '001'], '5': ['111', '100', '011', '110'],
+        '6': ['011', '100', '111', '010'], '7': ['111', '001', '010', '010'], '8': ['010', '101', '010', '101'],
+        '9': ['010', '111', '001', '110'], '.': ['000', '000', '000', '010'], ',': ['000', '000', '010', '010'],
+        '!': ['010', '010', '000', '010'], '?': ['010', '101', '000', '010'], "'": ['010', '010', '000', '000'],
+        '"': ['101', '101', '000', '000'], ':': ['000', '010', '000', '010'], ';': ['000', '010', '010', '010'],
+        '(': ['010', '100', '100', '010'], ')': ['100', '010', '010', '100'], '-': ['000', '000', '111', '000'],
+        '+': ['000', '010', '111', '010'], '=': ['000', '111', '000', '111'], '*': ['101', '010', '101', '000'],
+        '/': ['001', '010', '100', '000'], '\\': ['100', '010', '001', '000'], '#': ['010', '111', '010', '111'],
+        '$': ['010', '111', '101', '111'], '%': ['101', '001', '010', '101'], '&': ['010', '101', '010', '101'],
+        ' ': ['000', '000', '000', '000']
+    }
+};
+
+// Large Font (5x5 pixels for better readability)
+const FONT_DATA_5PX = {
+    name: 'large', charWidth: 5, charHeight: 5, charSpacing: 1, lineSpacing: 1,
+    map: {
+        'A': ['01110', '10001', '11111', '10001', '10001'], 'B': ['11110', '10001', '11110', '10001', '11110'],
+        'C': ['01110', '10000', '10000', '10000', '01110'], 'D': ['11110', '10001', '10001', '10001', '11110'],
+        'E': ['11111', '10000', '11110', '10000', '11111'], 'F': ['11111', '10000', '11110', '10000', '10000'],
+        'G': ['01110', '10000', '10111', '10001', '01110'], 'H': ['10001', '10001', '11111', '10001', '10001'],
+        'I': ['11111', '00100', '00100', '00100', '11111'], 'J': ['00111', '00001', '00001', '10001', '01110'],
+        'K': ['10001', '10010', '11100', '10010', '10001'], 'L': ['10000', '10000', '10000', '10000', '11111'],
+        'M': ['10001', '11011', '10101', '10001', '10001'], 'N': ['10001', '11001', '10101', '10011', '10001'],
+        'O': ['01110', '10001', '10001', '10001', '01110'], 'P': ['11110', '10001', '11110', '10000', '10000'],
+        'Q': ['01110', '10001', '10101', '10010', '01101'], 'R': ['11110', '10001', '11110', '10010', '10001'],
+        'S': ['01110', '10000', '01110', '00001', '11110'], 'T': ['11111', '00100', '00100', '00100', '00100'],
+        'U': ['10001', '10001', '10001', '10001', '01110'], 'V': ['10001', '10001', '10001', '01010', '00100'],
+        'W': ['10001', '10001', '10101', '11011', '10001'], 'X': ['10001', '01010', '00100', '01010', '10001'],
+        'Y': ['10001', '01010', '00100', '00100', '00100'], 'Z': ['11111', '00010', '00100', '01000', '11111'],
+        'a': ['00000', '01110', '10001', '01111', '00000'], 'b': ['10000', '10000', '11110', '10001', '11110'],
+        'c': ['00000', '01110', '10000', '10000', '01110'], 'd': ['00001', '00001', '01111', '10001', '01111'],
+        'e': ['00000', '01110', '11111', '10000', '01110'], 'f': ['00110', '01001', '01000', '01000', '01000'],
+        'g': ['00000', '01111', '10001', '01111', '00001'], 'h': ['10000', '10000', '11110', '10001', '10001'],
+        'i': ['01110', '00000', '01100', '01000', '01110'], 'j': ['00110', '00000', '00110', '00100', '11000'],
+        'k': ['10000', '10010', '11100', '11100', '10010'], 'l': ['01000', '01000', '01000', '01000', '01110'],
+        'm': ['00000', '11010', '10101', '10101', '10001'], 'n': ['00000', '11110', '10001', '10001', '10001'],
+        'o': ['00000', '01110', '10001', '10001', '01110'], 'p': ['00000', '11110', '10001', '11110', '10000'],
+        'q': ['00000', '01111', '10001', '01111', '00001'], 'r': ['00000', '10110', '11000', '10000', '10000'],
+        's': ['00000', '01111', '01000', '10010', '11100'], 't': ['01000', '11110', '01000', '01000', '00110'],
+        'u': ['00000', '10001', '10001', '10001', '01111'], 'v': ['00000', '10001', '10001', '01010', '00100'],
+        'w': ['00000', '10101', '10101', '11111', '10101'], 'x': ['00000', '10001', '01110', '01110', '10001'],
+        'y': ['00000', '10001', '10001', '01111', '00001'], 'z': ['00000', '11111', '00110', '01100', '11111'],
+        '0': ['01110', '10011', '10101', '11001', '01110'], '1': ['00100', '01100', '00100', '00100', '01110'],
+        '2': ['01110', '10001', '00110', '01000', '11111'], '3': ['11111', '00010', '01100', '00001', '11110'],
+        '4': ['00110', '01010', '10010', '11111', '00010'], '5': ['11111', '10000', '11110', '00001', '11110'],
+        '6': ['01110', '10000', '11110', '10001', '01110'], '7': ['11111', '00001', '00010', '00100', '00100'],
+        '8': ['01110', '10001', '01110', '10001', '01110'], '9': ['01110', '10001', '01111', '00001', '01110'],
+        ' ': ['00000', '00000', '00000', '00000', '00000'], '.': ['00000', '00000', '00000', '01100', '01100'],
+        ',': ['00000', '00000', '00000', '01100', '01000'], '!': ['01100', '01100', '01100', '00000', '01100'],
+        '?': ['01110', '10001', '00110', '00000', '00100'], "'": ['00110', '00110', '00100', '00000', '00000'],
+        '"': ['11011', '11011', '00000', '00000', '00000'], ':': ['00000', '01100', '00000', '01100', '00000'],
+        ';': ['00000', '00000', '01100', '00000', '01000'], '(': ['00100', '01000', '01000', '01000', '00100'],
+        ')': ['10000', '01000', '01000', '01000', '10000'], '-': ['00000', '00000', '11111', '00000', '00000'],
+        '+': ['00000', '00100', '01110', '00100', '00000'], '=': ['00000', '11111', '00000', '11111', '00000'],
+        '*': ['01010', '01010', '11111', '01010', '01010'], '/': ['00001', '00010', '00100', '01000', '10000'],
+        '\\': ['10000', '01000', '00100', '00010', '00001'], '#': ['01010', '11111', '01010', '11111', '01010'],
+        '$': ['00100', '01110', '10101', '01110', '00100'], '%': ['11001', '01010', '00100', '01010', '10011'],
+        '&': ['01110', '10001', '01110', '10101', '01011']
+    }
+};
+
 /**
-         * Sets a browser cookie with a given name, value, and expiration in days.
-         * @param {string} name - The name of the cookie.
-         * @param {string} value - The value to store in the cookie.
-         * @param {number} days - The number of days until the cookie expires.
-         */
+ * Creates a debounced function that delays invoking func until after wait milliseconds have elapsed
+ * since the last time the debounced function was invoked.
+ * @param {function} func The function to debounce.
+ * @param {number} [wait=500] The number of milliseconds to delay.
+ * @returns {function} Returns the new debounced function.
+ */
+function debounce(func, wait = 500) {
+    let timeout;
+    return function (...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
+
+function drawPixelText(ctx, shape) {
+    const { x, y, width, height, pixelFont, fontSize, textAlign,
+        textAnimation, scrollOffsetX, waveAngle, visibleCharCount } = shape;
+
+    const textToRender = shape.getDisplayText(); // Get the latest text or time
+    if (typeof textToRender !== 'string') return;
+
+    const fontData = pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
+    const { charWidth, charHeight, charSpacing, lineSpacing, map } = fontData;
+    const pixelSize = fontSize / 10;
+
+    const animatedText = textToRender.toUpperCase().substring(0, Math.floor(visibleCharCount));
+    const lines = animatedText.split('\n');
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, width, height);
+    ctx.clip();
+
+    lines.forEach((line, lineIndex) => {
+        const lineWidth = line.length * (charWidth + charSpacing) * pixelSize - (charSpacing * pixelSize);
+        let lineStartX = x;
+        if (textAlign === 'center') {
+            lineStartX = x + (width - lineWidth) / 2;
+        } else if (textAlign === 'right') {
+            lineStartX = x + width - lineWidth;
+        }
+
+        for (let i = 0; i < line.length; i++) {
+            const charData = map[line[i]] || map['?'];
+            if (!charData) continue;
+
+            const charMatrix = charData.map(row => row.split(''));
+
+            let dx = lineStartX + i * (charWidth + charSpacing) * pixelSize + scrollOffsetX;
+            let dy = y + lineIndex * (charHeight + lineSpacing) * pixelSize;
+
+            if (textAnimation === 'wave') {
+                dy += Math.sin(waveAngle + i * 0.5) * (pixelSize * 2);
+            }
+
+            if (dx > x + width || dx < x - (charWidth * pixelSize)) {
+                continue;
+            }
+
+            for (let r = 0; r < charHeight; r++) {
+                for (let c = 0; c < charWidth; c++) {
+                    if (charMatrix[r] && charMatrix[r][c] === '1') {
+                        ctx.fillRect(dx + c * pixelSize, dy + r * pixelSize, pixelSize, pixelSize);
+                    }
+                }
+            }
+        }
+    });
+
+    ctx.restore();
+}
+
+
+/**
+ * Sets a browser cookie with a given name, value, and expiration in days.
+ * @param {string} name - The name of the cookie.
+ * @param {string} value - The value to store in the cookie.
+ * @param {number} days - The number of days until the cookie expires.
+ */
 function setCookie(name, value, days) {
     let expires = "";
     if (days) {
@@ -92,7 +251,8 @@ class Shape {
         id, name, shape, x, y, width, height, gradient, gradType,
         gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx,
         innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked,
-        numberOfRows, numberOfColumns, phaseOffset, animationMode
+        numberOfRows, numberOfColumns, phaseOffset, animationMode,
+        text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, autoWidth, showTime
     }) {
         this.id = id;
         this.name = name || `Object ${id}`;
@@ -138,6 +298,52 @@ class Shape {
         ];
         this.randomColorTimer = 0;
         this.cellColors = [];
+        this.text = text || 'Hello';
+        this.fontFamily = fontFamily || 'Arial';
+        this.fontSize = fontSize || 60;
+        this.fontWeight = fontWeight || 'bold';
+        this.textAlign = textAlign || 'center';
+        this.pixelFont = pixelFont || 'small';
+        this.textAnimation = textAnimation || 'none';
+        this.textAnimationSpeed = textAnimationSpeed || 10;
+        this.scrollOffsetX = 0;
+        this.visibleCharCount = 0;
+        this.waveAngle = 0;
+        this.autoWidth = autoWidth !== undefined ? autoWidth : true;
+        this.showTime = showTime || false; // And assign it here
+    }
+
+    getDisplayText() {
+        if (this.showTime) {
+            return new Date().toLocaleTimeString('en-US', { timeZone: 'America/Puerto_Rico' });
+        }
+        return this.text || '';
+    }
+
+    getWrappedText() {
+        const text = this.getDisplayText(); // Uses the new helper
+        // Note: The wrapping feature from a previous request is not in your current file.
+        // If you want it back, the logic would go here. For now, it just returns the text.
+        return text;
+    }
+
+    _updateTextMetrics() {
+        if (this.shape !== 'text' || !this.ctx) return;
+
+        const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
+        const { charWidth, charHeight, charSpacing, lineSpacing } = fontData;
+
+        // It now gets the correct text (or time) to measure
+        const textToMeasure = this.getWrappedText() || ' ';
+        const lines = textToMeasure.split('\n');
+        const pixelSize = this.fontSize / 10;
+
+        if (this.autoWidth) {
+            const widths = lines.map(line => line.length * (charWidth + charSpacing) * pixelSize - (charSpacing * pixelSize));
+            this.width = Math.max(0, ...widths);
+        }
+
+        this.height = lines.length * (charHeight + lineSpacing) * pixelSize - (lineSpacing * pixelSize);
     }
 
     /**
@@ -245,15 +451,46 @@ class Shape {
         return { x: rotatedX + center.x, y: rotatedY + center.y };
     }
 
-    /**
-                 * Updates the animation state for the current frame (e.g., scroll offset, rotation).
-                 */
     updateAnimationState() {
+        // --- Color Cycling ---
         if (this.cycleColors) {
             this.hue1 += this.cycleSpeed;
             this.hue2 += this.cycleSpeed;
         }
 
+        // --- Text Animation State ---
+        const currentText = this.getDisplayText(); // Get the current text (or time)
+        const textSpeed = this.textAnimationSpeed / 100;
+
+        switch (this.textAnimation) {
+            case 'marquee':
+            case 'wave':
+                const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
+                const pixelSize = this.fontSize / 10;
+                const textWidth = currentText.length * (fontData.charWidth + fontData.charSpacing) * pixelSize;
+                this.scrollOffsetX -= textSpeed * 20;
+                if (this.scrollOffsetX < -textWidth) {
+                    this.scrollOffsetX = this.width;
+                }
+                if (this.textAnimation === 'wave') {
+                    this.waveAngle += textSpeed;
+                }
+                this.visibleCharCount = currentText.length;
+                break;
+            case 'typewriter':
+                this.visibleCharCount += textSpeed;
+                if (this.visibleCharCount > currentText.length) {
+                    this.visibleCharCount = currentText.length;
+                }
+                this.scrollOffsetX = 0;
+                break;
+            default: // 'none'
+                this.scrollOffsetX = 0;
+                this.visibleCharCount = currentText.length;
+                break;
+        }
+
+        // --- Gradient Animation State ---
         if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
             const increment = this.animationSpeed * 0.01;
             const isBounceMode = this.animationMode.includes('bounce');
@@ -264,26 +501,23 @@ class Shape {
                     if (this.waitTimer <= 0) {
                         this.isReversing = !this.isReversing;
                         this.animationState = 'scrolling';
-
                         if (this.animationMode === 'bounce-random') {
                             this._shuffleCellOrder();
                         }
                     }
                 } else if (this.animationState === 'scrolling') {
                     const bandWidth = this.gradientStop / 100.0;
-
                     if (this.isReversing) {
                         this.scrollOffset -= increment;
                         const lastCellIndex = Math.max(0, (this.numberOfRows * this.numberOfColumns) - 1);
                         const phaseIncrement = this.phaseOffset / 100.0;
                         const slowestCellTailPosition = this.scrollOffset + (lastCellIndex * phaseIncrement) + bandWidth;
-
                         if (slowestCellTailPosition <= 0.0) {
                             this.scrollOffset = 0.0 - bandWidth - (lastCellIndex * phaseIncrement);
                             this.animationState = 'waiting';
                             this.waitTimer = 30;
                         }
-                    } else { // Moving forward
+                    } else {
                         this.scrollOffset += increment;
                         const forwardBoundary = 1.0;
                         if (this.scrollOffset >= forwardBoundary) {
@@ -293,15 +527,17 @@ class Shape {
                         }
                     }
                 }
-            } else { // Default 'loop' mode
+            } else { // Loop mode
                 const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
                 this.scrollOffset += increment * directionMultiplier;
                 this.scrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
             }
         }
 
-        // Update the visual animation angle, not the object's actual rotationAngle
-        this.animationAngle += (this.rotationSpeed / 1000);
+        // --- Object Rotation ---
+        const rotationIncrement = (this.rotationSpeed || 0) / 1000;
+        this.rotationAngle += rotationIncrement;
+        this.animationAngle += rotationIncrement;
     }
 
     /**
@@ -421,16 +657,21 @@ class Shape {
      */
     draw(enableAnimation, isSelected) {
         this.ctx.save();
+
+        // Get the text for THIS FRAME first.
+        const textForThisFrame = this.getWrappedText();
+
         if (enableAnimation) {
-            this.updateAnimationState();
+            // Pass the frozen text to the animation logic.
+            this.updateAnimationState(textForThisFrame);
         }
+
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
 
-        // --- Draw the actual rotated shape ---
         this.ctx.save();
         this.ctx.translate(centerX, centerY);
-        this.ctx.rotate(this.rotationAngle); // Use the geometric rotation for the object itself
+        this.ctx.rotate(this.rotationAngle);
         this.ctx.translate(-centerX, -centerY);
 
         if (this.shape === 'ring') {
@@ -445,7 +686,6 @@ class Shape {
                 const genericFill = isAlternating ? null : this.createFillStyle();
                 for (let i = 0; i < this.numberOfSegments; i++) {
                     this.ctx.beginPath();
-                    // Use the animationAngle for visual rotation of segments
                     const startAngle = i * angleStep + this.animationAngle;
                     const endAngle = startAngle + segmentAngleRad;
                     this.ctx.moveTo(centerX + Math.cos(startAngle) * outerRadius, centerY + Math.sin(startAngle) * outerRadius);
@@ -497,6 +737,12 @@ class Shape {
                     }
                 }
             }
+        } else if (this.shape === 'text') {
+            this.ctx.fillStyle = this.createFillStyle();
+
+            // Call the text renderer, passing the entire shape object ('this')
+            drawPixelText(this.ctx, this);
+
         } else {
             this.ctx.beginPath();
             switch (this.shape) {
@@ -511,7 +757,7 @@ class Shape {
             this.ctx.fill();
         }
 
-        this.ctx.restore(); // Restore from shape rotation
+        this.ctx.restore();
 
         if (isSelected && !this.locked) {
             const corners = [
@@ -536,16 +782,7 @@ class Shape {
             this.ctx.setLineDash([]);
             this.ctx.fillStyle = '#00f6ff';
             const h2 = this.handleSize / 2;
-            const handlePositions = [
-                { x: bbX - h2, y: bbY - h2 },
-                { x: bbX + bbWidth / 2 - h2, y: bbY - h2 },
-                { x: bbX + bbWidth - h2, y: bbY - h2 },
-                { x: bbX - h2, y: bbY + bbHeight / 2 - h2 },
-                { x: bbX + bbWidth - h2, y: bbY + bbHeight / 2 - h2 },
-                { x: bbX - h2, y: bbY + bbHeight - h2 },
-                { x: bbX + bbWidth / 2 - h2, y: bbY + bbHeight - h2 },
-                { x: bbX + bbWidth - h2, y: bbY + bbHeight - h2 }
-            ];
+            const handlePositions = [{ x: bbX - h2, y: bbY - h2 }, { x: bbX + bbWidth / 2 - h2, y: bbY - h2 }, { x: bbX + bbWidth - h2, y: bbY - h2 }, { x: bbX - h2, y: bbY + bbHeight / 2 - h2 }, { x: bbX + bbWidth - h2, y: bbY + bbHeight / 2 - h2 }, { x: bbX - h2, y: bbY + bbHeight - h2 }, { x: bbX + bbWidth / 2 - h2, y: bbY + bbHeight - h2 }, { x: bbX + bbWidth - h2, y: bbY + bbHeight - h2 }];
             handlePositions.forEach(pos => {
                 this.ctx.fillRect(pos.x, pos.y, this.handleSize, this.handleSize);
             });
@@ -634,6 +871,22 @@ class Shape {
      * @param {object} props - An object containing properties to update.
      */
     update(props) {
+        // --- Add this block to reset animations when properties change ---
+        const textChanged = props.text !== undefined && props.text !== this.text;
+        const animationChanged = props.textAnimation !== undefined && props.textAnimation !== this.textAnimation;
+
+        if ((textChanged && this.textAnimation === 'typewriter') || (animationChanged && props.textAnimation === 'typewriter')) {
+            this.visibleCharCount = 0;
+        }
+        if ((textChanged && this.textAnimation === 'marquee') || (animationChanged && props.textAnimation === 'marquee')) {
+            this.scrollOffsetX = 0;
+        }
+        if ((textChanged && this.textAnimation === 'wave') || (animationChanged && props.textAnimation === 'wave')) {
+            this.scrollOffsetX = 0;
+            this.waveAngle = 0;
+        }
+        // --- End of new block ---
+
         const oldRows = this.numberOfRows;
         const oldCols = this.numberOfColumns;
 
@@ -651,11 +904,18 @@ class Shape {
         if (this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols) {
             this._shuffleCellOrder();
         }
+
+        // Recalculate dimensions for text objects automatically
+        if (this.shape === 'text') {
+            this._updateTextMetrics();
+        }
     }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
     // --- DOM Element References ---
+    const undoBtn = document.getElementById('undo-btn');
+    const redoBtn = document.getElementById('redo-btn');
     const canvas = document.getElementById('signalCanvas');
     canvas.width = 1280;
     canvas.height = 800;
@@ -690,6 +950,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirmModalEl = document.getElementById('confirm-overwrite-modal');
 
     // --- State Management ---
+    let isRestoring = false; // Prevents history recording during an undo/redo action
     let configStore = [];
     let objects = [];
     let selectedObjectIds = [];
@@ -715,6 +976,116 @@ document.addEventListener('DOMContentLoaded', function () {
     const galleryOffcanvasEl = document.getElementById('gallery-offcanvas');
     const galleryList = document.getElementById('gallery-project-list');
     const galleryBody = galleryOffcanvasEl.querySelector('.offcanvas-body');
+
+
+    const history = {
+        stack: [],
+        index: -1,
+        maxSize: 50, // Limit the number of undo steps
+
+        /**
+         * Pushes a new state to the history stack.
+         * @param {object} state - A snapshot of the current application state.
+         */
+        push(state) {
+            if (isRestoring) return; // Don't record history when restoring a state
+
+            // If we've undone actions, new actions should clear the "redo" stack
+            if (this.index < this.stack.length - 1) {
+                this.stack = this.stack.slice(0, this.index + 1);
+            }
+
+            this.stack.push(state);
+
+            // Trim the stack if it exceeds the maximum size
+            if (this.stack.length > this.maxSize) {
+                this.stack.shift();
+            }
+
+            this.index = this.stack.length - 1;
+            updateUndoRedoButtons();
+        },
+
+        /**
+         * Moves to the previous state in the history.
+         */
+        undo() {
+            if (this.index > 0) {
+                this.index--;
+                restoreState(this.stack[this.index]);
+            }
+        },
+
+        /**
+         * Moves to the next state in the history (redoes an undo).
+         */
+        redo() {
+            if (this.index < this.stack.length - 1) {
+                this.index++;
+                restoreState(this.stack[this.index]);
+            }
+        },
+    };
+
+    const debouncedRecordHistory = debounce(recordHistory);
+
+    /**
+     * Updates the enabled/disabled state of the undo/redo buttons.
+     */
+    function updateUndoRedoButtons() {
+        if (undoBtn) undoBtn.disabled = history.index <= 0;
+        if (redoBtn) redoBtn.disabled = history.index >= history.stack.length - 1;
+    }
+
+    /**
+     * Captures a serializable snapshot of the application's current state.
+     * @returns {object} The current state snapshot.
+     */
+    function getCurrentState() {
+        // Create a deep, plain-object copy of the objects array
+        const plainObjects = JSON.parse(JSON.stringify(objects, (key, value) => {
+            if (key === 'ctx') return undefined; // Exclude non-serializable canvas context
+            return value;
+        }));
+        // We only need to save the objects and selection for a complete undo state.
+        return {
+            objects: plainObjects,
+            selectedObjectIds: JSON.parse(JSON.stringify(selectedObjectIds))
+        };
+    }
+
+    /**
+     * A wrapper function to simplify recording the current state to history.
+     */
+    function recordHistory() {
+        history.push(getCurrentState());
+    }
+
+    /**
+     * Restores the application to a given state snapshot.
+     * @param {object} state - The state object to restore.
+     */
+    function restoreState(state) {
+        isRestoring = true;
+
+        // Restore objects and selection directly from the history state
+        objects = state.objects.map(data => new Shape({ ...data, ctx }));
+        selectedObjectIds = state.selectedObjectIds;
+
+        // Re-render the entire UI based on the newly restored objects
+        renderForm();
+        updateFormValuesFromObjects(); // This is the new key function to sync the form
+        drawFrame();
+        updateToolbarState();
+        updateUndoRedoButtons();
+
+        isRestoring = false;
+    }
+
+
+
+
+
 
     /**
      * Updates the enabled/disabled state of the share button.
@@ -1046,7 +1417,16 @@ document.addEventListener('DOMContentLoaded', function () {
      * @returns {HTMLDivElement} The generated form group element.
      */
     function createFormControl(config) {
-        const { property, name, label, type, default: defaultValue, values, min, max } = config;
+        const {
+            property,
+            name,
+            label,
+            type,
+            default: defaultValue,
+            values,
+            min,
+            max
+        } = config;
         const controlId = property || name;
         const formGroup = document.createElement('div');
         formGroup.className = 'mb-3';
@@ -1125,6 +1505,14 @@ document.addEventListener('DOMContentLoaded', function () {
             checkGroup.appendChild(check);
             checkGroup.appendChild(checkLabel);
             formGroup.appendChild(checkGroup);
+        } else if (type === 'textarea' || type === 'textfield') { // This condition is now updated
+            const textarea = document.createElement('textarea');
+            textarea.id = controlId;
+            textarea.className = 'form-control';
+            textarea.name = controlId;
+            textarea.rows = 3;
+            textarea.textContent = defaultValue;
+            formGroup.appendChild(textarea);
         } else if (type === 'color') {
             const colorGroup = document.createElement('div');
             colorGroup.className = 'd-flex align-items-center';
@@ -1152,6 +1540,8 @@ document.addEventListener('DOMContentLoaded', function () {
      * Renders the entire controls form based on the current `configStore` and `objects` state.
      * Preserves the collapsed state of panels during re-rendering.
      */
+    // In main.js, replace the entire renderForm function.
+
     function renderForm() {
         const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         existingTooltips.forEach(el => {
@@ -1161,7 +1551,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const collapseStates = {};
         const generalCollapseEl = form.querySelector('#collapse-general');
-        // On first render, generalCollapseEl is null, so this defaults to true (expanded).
         collapseStates.general = generalCollapseEl ? generalCollapseEl.classList.contains('show') : true;
 
         const allObjectCollapses = form.querySelectorAll('.collapse[id^="collapse-obj-"]');
@@ -1177,7 +1566,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const grouped = groupConfigs(configStore);
 
-        // --- General Settings Panel ---
         const generalFieldset = document.createElement('fieldset');
         generalFieldset.className = 'border p-2 mb-3 rounded bg-body-secondary';
         const generalHeaderBar = document.createElement('div');
@@ -1209,7 +1597,6 @@ document.addEventListener('DOMContentLoaded', function () {
         form.appendChild(generalFieldset);
 
 
-        // --- Object Panels ---
         objects.forEach(obj => {
             const id = obj.id;
             const objectConfigs = grouped.objects[id];
@@ -1269,8 +1656,6 @@ document.addEventListener('DOMContentLoaded', function () {
             controlsGroup.appendChild(dropdown);
             const collapseId = `collapse-obj-${id}`;
             const collapseButton = document.createElement('button');
-            // On first render, collapseStates[id] is undefined, so this defaults to false (collapsed).
-            // On subsequent renders, it preserves the saved state.
             const showObject = collapseStates[id] === true;
             collapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showObject ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
             collapseButton.style.width = '28px';
@@ -1310,6 +1695,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     .filter(conf => {
                         if (!conf.property) return false;
                         const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+                        // This logic now hides the Height control for text objects
+                        if (currentShape === 'text' && propName === 'height') {
+                            return false;
+                        }
                         return propsInGroup.includes(propName);
                     })
                     .forEach(conf => groupContainer.appendChild(createFormControl(conf)));
@@ -1320,6 +1709,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
             const gridSettings = ['numberOfRows', 'numberOfColumns', 'phaseOffset'];
+            const textSettings = ['text', 'pixelFont', 'fontSize', 'textAlign', 'textAnimation', 'textAnimationSpeed', 'enablePixelWrap', 'wrapAtPixels', 'autoWidth', 'showTime'];
 
             const ringGroup = document.createElement('div');
             ringGroup.className = 'control-group mb-4 ring-settings-group';
@@ -1330,6 +1720,16 @@ document.addEventListener('DOMContentLoaded', function () {
             ringGroup.appendChild(ringHeader);
             objectConfigs.filter(c => ringSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => ringGroup.appendChild(createFormControl(c)));
             collapseWrapper.appendChild(ringGroup);
+
+            const textGroup = document.createElement('div');
+            textGroup.className = 'control-group mb-4 text-settings-group';
+            textGroup.style.display = currentShape === 'text' ? 'block' : 'none';
+            const textHeader = document.createElement('h6');
+            textHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
+            textHeader.textContent = 'Text Settings';
+            textGroup.appendChild(textHeader);
+            objectConfigs.filter(c => textSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => textGroup.appendChild(createFormControl(c)));
+            collapseWrapper.appendChild(textGroup);
 
             const gridGroup = document.createElement('div');
             gridGroup.className = 'control-group mb-4 grid-settings-group';
@@ -1347,8 +1747,11 @@ document.addEventListener('DOMContentLoaded', function () {
             form.appendChild(fieldset);
         });
 
-        setFormValues(getControlValues());
-        new bootstrap.Tooltip(document.body, { selector: "[data-bs-toggle='tooltip']", trigger: 'hover' });
+        updateFormValuesFromObjects();
+        new bootstrap.Tooltip(document.body, {
+            selector: "[data-bs-toggle='tooltip']",
+            trigger: 'hover'
+        });
 
         const sortable = Sortable.get(form);
         if (sortable) {
@@ -1486,7 +1889,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }
-        updateAll();
     }
 
     /**
@@ -1549,19 +1951,33 @@ document.addEventListener('DOMContentLoaded', function () {
             const propOrName = config.property || config.name;
             if (!propOrName) return;
 
-            const value = values[propOrName];
+            let value = values[propOrName];
+
+            if (value === undefined) {
+                value = config.default || '';
+            }
+
+            // For text areas, convert newlines into a literal '\n' string for display.
+            if (config.type === 'textarea' && typeof value === 'string') {
+                value = value.replace(/\n/g, '\\n');
+            }
+
             let line = '';
 
-            // Check if it's a general setting like 'title', 'description', or 'publisher'
             if (config.name && !config.property) {
-                // Use the new format: <meta name="value"/>
                 line = `<meta ${config.name}="${value}" />\n`;
             } else {
-                // It's an object property, use the old format with all attributes
                 const attrs = Object.keys(config)
                     .filter(attr => attr !== 'default')
-                    .map(attrName => `${attrName}="${config[attrName]}"`)
+                    .map(attrName => {
+                        let attrValue = config[attrName];
+                        if (attrName === 'type' && attrValue === 'textarea') {
+                            attrValue = 'textfield';
+                        }
+                        return `${attrName}="${attrValue}"`;
+                    })
                     .join(' ');
+
                 line = `<meta ${attrs} default="${value}" />\n`;
             }
             scriptHTML += line;
@@ -1617,21 +2033,53 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function updateFormFromShapes() {
         objects.forEach(obj => {
-            const prefix = `obj${obj.id}_`;
-            // Add 'innerDiameter' to the list of fields to sync with the form.
-            const fields = ['x', 'y', 'width', 'height', 'innerDiameter'];
-            fields.forEach(field => {
-                const input = form.elements[`${prefix}${field}`];
+            const fieldset = form.querySelector(`fieldset[data-object-id="${obj.id}"]`);
+            if (!fieldset) return;
+
+            const updateField = (prop, value) => {
+                const input = fieldset.querySelector(`[name="obj${obj.id}_${prop}"]`);
                 if (input) {
-                    // Update the number input with the rounded value.
-                    input.value = Math.round(obj[field]);
-                    // Also update the corresponding range slider if it exists.
-                    const slider = form.elements[`${prefix}${field}_slider`];
-                    if (slider) { slider.value = Math.round(obj[field]); }
+                    if (input.type === 'checkbox') {
+                        input.checked = value;
+                    } else {
+                        input.value = value;
+                    }
+                    const slider = fieldset.querySelector(`[name="obj${obj.id}_${prop}_slider"]`);
+                    if (slider) slider.value = value;
+                    const hexInput = fieldset.querySelector(`[name="obj${obj.id}_${prop}_hex"]`);
+                    if (hexInput) hexInput.value = value;
                 }
-            });
+            };
+
+            updateField('x', Math.round(obj.x));
+            updateField('y', Math.round(obj.y));
+            updateField('width', Math.round(obj.width));
+            updateField('height', Math.round(obj.height));
+            updateField('fontSize', Math.round(obj.fontSize));
+            updateField('shape', obj.shape);
+            updateField('gradType', obj.gradType);
+
+            // Correct the scaling for animation and cycle speeds
+            updateField('animationSpeed', obj.animationSpeed * 10);
+            updateField('cycleSpeed', obj.cycleSpeed * 50);
+
+            updateField('animationMode', obj.animationMode);
+            updateField('scrollDirection', obj.scrollDirection);
+            updateField('innerDiameter', Math.round(obj.innerDiameter));
+            updateField('angularWidth', obj.angularWidth);
+            updateField('numberOfSegments', obj.numberOfSegments);
+            updateField('rotationSpeed', obj.rotationSpeed);
+            updateField('useSharpGradient', obj.useSharpGradient);
+            updateField('gradientStop', obj.gradientStop);
+            updateField('numberOfRows', obj.numberOfRows);
+            updateField('numberOfColumns', obj.numberOfColumns);
+            updateField('phaseOffset', obj.phaseOffset);
+            updateField('text', obj.text);
+            updateField('fontFamily', obj.fontFamily);
+            updateField('fontWeight', obj.fontWeight);
+            updateField('gradColor1', obj.gradient.color1);
+            updateField('gradColor2', obj.gradient.color2);
         });
-        // Regenerate the output script to reflect the changes.
         generateOutputScript();
     }
 
@@ -1676,29 +2124,114 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Updates shape objects based on the current form values.
+     * Gathers all form values for a specific object ID.
+     * @param {number} id - The ID of the object to get values for.
+     * @returns {object} An object containing all properties for the shape.
      */
-    function updateShapesFromForm() {
-        const newStates = buildStatesFromConfig();
-        const newObjects = [];
-        newStates.forEach(state => {
-            const existingObj = objects.find(o => o.id === state.id);
-            if (existingObj) {
-                existingObj.update(state);
-                newObjects.push(existingObj);
-            } else {
-                newObjects.push(new Shape({ ...state, ctx }));
+    function getFormValuesForObject(id) {
+        const values = {};
+        const prefix = `obj${id}_`;
+
+        const configs = configStore.filter(c => c.property && c.property.startsWith(prefix));
+
+        configs.forEach(conf => {
+            const key = conf.property.replace(prefix, '');
+            const el = form.elements[conf.property];
+            if (el) {
+                let value;
+                if (el.type === 'checkbox') {
+                    value = el.checked;
+                } else if (el.type === 'number') {
+                    value = el.value === '' ? 0 : parseFloat(el.value);
+                    // RE-ADD ROUNDING for pixel-based values
+                    if (['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'].includes(key)) {
+                        value = Math.round(value);
+                    }
+                } else {
+                    value = el.value;
+                }
+
+                if (key.startsWith('gradColor')) {
+                    if (!values.gradient) values.gradient = {};
+                    values.gradient[key.replace('grad', '').toLowerCase()] = value;
+                } else if (key === 'scrollDir') {
+                    values.scrollDirection = value;
+                } else {
+                    values[key] = value;
+                }
             }
         });
-        objects = newObjects;
+
+        values.gradientDirection = (values.scrollDirection === 'up' || values.scrollDirection === 'down') ? 'vertical' : 'horizontal';
+        values.cycleSpeed = (values.cycleSpeed || 0) / 50.0;
+        values.animationSpeed = (values.animationSpeed || 0) / 10.0;
+        if (values.shape === 'ring') values.height = values.width;
+
+        return values;
+    }
+
+    /**
+     * Reads all values from the form and updates the live 'objects' array.
+     * This is now the primary way user input affects the application state.
+     */
+    function updateObjectsFromForm() {
+        if (isRestoring) return;
+        objects.forEach(obj => {
+            const newProps = getFormValuesForObject(obj.id);
+            obj.update(newProps);
+        });
+        generateOutputScript();
+    }
+
+    /**
+     * Reads all properties from the 'objects' array and updates the form inputs
+     * to match. This is used after an action on the canvas (drag/resize) or
+     * after undo/redo.
+     */
+    function updateFormValuesFromObjects() {
+        objects.forEach(obj => {
+            const fieldset = form.querySelector(`fieldset[data-object-id="${obj.id}"]`);
+            if (!fieldset) return;
+
+            const updateField = (prop, value) => {
+                const input = fieldset.querySelector(`[name="obj${obj.id}_${prop}"]`);
+                if (input) {
+                    if (input.type === 'checkbox') input.checked = value;
+                    else input.value = value;
+
+                    const slider = fieldset.querySelector(`[name="obj${obj.id}_${prop}_slider"]`);
+                    if (slider) slider.value = value;
+
+                    const hexInput = fieldset.querySelector(`[name="obj${obj.id}_${prop}_hex"]`);
+                    if (hexInput) hexInput.value = value;
+                }
+            };
+
+            // This loop now correctly updates all form fields from the object's properties
+            Object.keys(obj).forEach(key => {
+                if (key === 'gradient') {
+                    updateField('gradColor1', obj.gradient.color1);
+                    updateField('gradColor2', obj.gradient.color2);
+                } else if (key === 'animationSpeed') {
+                    updateField(key, obj[key] * 10);
+                } else if (key === 'cycleSpeed') {
+                    updateField(key, obj[key] * 50);
+                } else if (key === 'scrollDirection') {
+                    updateField('scrollDir', obj.scrollDirection);
+                } else if (typeof obj[key] !== 'object' && typeof obj[key] !== 'function') {
+                    updateField(key, obj[key]);
+                }
+            });
+        });
+        generateOutputScript();
     }
 
     /**
      * A master update function that syncs the shapes from the form and regenerates the output script.
      */
     function updateAll() {
-        updateShapesFromForm();
-        generateOutputScript();
+        updateObjectsFromForm();
+        drawFrame();
     }
 
     /**
@@ -1836,7 +2369,7 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function getDefaultObjectConfig(newId) {
         return [
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring' },
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,text' },
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '1280' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '800' },
             { property: `obj${newId}_width`, label: `Object ${newId}: Width/Outer Diameter`, type: 'number', default: '200', min: '10', max: '1280' },
@@ -1857,7 +2390,15 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_cycleSpeed`, label: `Object ${newId}: Color Cycle Speed`, type: 'number', default: '1', min: '1', max: '10' },
             { property: `obj${newId}_numberOfRows`, label: `Object ${newId}: Number of Rows`, type: 'number', default: '1', min: '1', max: '100' },
             { property: `obj${newId}_numberOfColumns`, label: `Object ${newId}: Number of Columns`, type: 'number', default: '1', min: '1', max: '100' },
-            { property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100' }
+            { property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100' },
+            { property: `obj${newId}_text`, label: `Object ${newId}: Text`, type: 'textarea', default: 'New Text' },
+            { property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '60', min: '10', max: '400' },
+            { property: `obj${newId}_textAlign`, label: `Object ${newId}: Justification`, type: 'combobox', values: 'left,center,right', default: 'center' },
+            { property: `obj${newId}_pixelFont`, label: `Object ${newId}: Pixel Font Style`, type: 'combobox', values: 'small,large', default: 'small' },
+            { property: `obj${newId}_textAnimation`, label: `Object ${newId}: Text Animation`, type: 'combobox', values: 'none,marquee,typewriter,wave', default: 'none' },
+            { property: `obj${newId}_textAnimationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', min: '1', max: '100', default: '10' },
+            { property: `obj${newId}_showTime`, label: `Object ${newId}: Show Current Time`, type: 'boolean', default: 'false' },
+            { property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'true' }
         ];
     }
 
@@ -1878,92 +2419,55 @@ document.addEventListener('DOMContentLoaded', function () {
         exportButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Exporting...';
 
         try {
-            // 1. Get the dynamic parts from the builder's current state.
             const effectTitle = getControlValues()['title'] || 'MyEffect';
-            const safeFilename = effectTitle.replace(/[\s\/\\?%*:|"<>]/g, '_'); // Sanitize filename
+            const safeFilename = effectTitle.replace(/[\s\/\\?%*:|"<>]/g, '_');
             const metaTags = document.getElementById('output-script').value;
             const imageUrl = 'https://joseamirandavelez.github.io/EffectBuilder/srgbieb_crop.png';
             const imageExtension = imageUrl.split('.').pop() || 'png';
+            const exportDate = getLocalDateFromUTC(new Date());
 
-            // Create a new Date object to use for the file timestamps inside the ZIP.
-            const utcNow = new Date(); // If this gives UTC (wrong), adjust it:
-            const exportDate = getLocalDateFromUTC(utcNow);
-
-
-            // 2. Fetch the image data as a blob
             const imageResponse = await fetch(imageUrl);
             if (!imageResponse.ok) {
                 throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
             }
             const imageBlob = await imageResponse.blob();
 
-            // 3. Define the static HTML and CSS parts.
-            const styleContent =
-                '        canvas {\n' +
-                '            width: 100%;\n' +
-                '            height: 100%;\n' +
-                '            position: absolute;\n' +
-                '            top: 50%;\n' +
-                '            left: 50%;\n' +
-                '            transform: translate(-50%, -50%);\n' +
-                '            background-color: #222222;\n' +
-                '        }\n' +
-                '        body {\n' +
-                '            background-color: #111111;\n' +
-                '            overflow: hidden;\n' +
-                '            margin: 0;\n' +
-                '        }\n';
-
-            const bodyContent =
-                '<body>\n' +
-                '    <canvas id="signalCanvas"></canvas>\n' +
-                '</body>';
-
-            // 4. Get the source code of the required functions and class using .toString().
+            const wrapTextByPixelsString = typeof wrapTextByPixels !== 'undefined' ? wrapTextByPixels.toString() : '';
             const lerpColorString = lerpColor.toString();
             const getPatternColorString = getPatternColor.toString();
+            const fontData4pxString = `const FONT_DATA_4PX = ${JSON.stringify(FONT_DATA_4PX)};`;
+            const fontData5pxString = `const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};`;
+            const drawPixelTextString = typeof drawPixelText !== 'undefined' ? drawPixelText.toString() : '';
             const shapeClassString = Shape.toString();
 
-            // 5. Construct the self-contained initialization script.
+            const styleContent =
+                '        canvas { width: 100%; height: 100%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #222222; }\n' +
+                '        body { background-color: #111111; overflow: hidden; margin: 0; }\n';
+
+            const bodyContent = '<body><canvas id="signalCanvas"></canvas></body>';
+
             const exportedScript =
                 'document.addEventListener(\'DOMContentLoaded\', function () {\n' +
                 '    const canvas = document.getElementById(\'signalCanvas\');\n' +
                 '    const ctx = canvas.getContext(\'2d\');\n' +
-                '    canvas.width = 1280;\n' +
-                '    canvas.height = 800;\n\n' +
-                '    let objects = [];\n\n' +
+                '    canvas.width = 1280; canvas.height = 800; let objects = [];\n\n' +
                 '    // --- Injected Functions & Class Definitions from Builder ---\n' +
+                '    ' + wrapTextByPixelsString + '\n\n' +
                 '    ' + lerpColorString + '\n\n' +
                 '    ' + getPatternColorString + '\n\n' +
+                '    ' + fontData4pxString + '\n\n' +
+                '    ' + fontData5pxString + '\n\n' +
+                '    ' + drawPixelTextString + '\n\n' +
                 '    ' + shapeClassString + '\n\n' +
-                '    // --- Standalone Initialization & Animation Loop ---\n' +
                 '    function createInitialObjects() {\n' +
-                '        const objectIds = [];\n' +
-                '        for (const key in window) {\n' +
-                '            if (Object.prototype.hasOwnProperty.call(window, key) && key.startsWith(\'obj\') && key.endsWith(\'_shape\')) {\n' +
-                '                const match = key.match(/^obj(\\\d+)_/);\n' +
-                '                if (match && match[1]) {\n' +
-                '                    const id = match[1];\n' +
-                '                    if (!objectIds.includes(id)) {\n' +
-                '                        objectIds.push(id);\n' +
-                '                    }\n' +
-                '                }\n' +
-                '            }\n' +
-                '        }\n' +
-                '        objectIds.sort((a, b) => a - b);\n' +
-                '        objects = objectIds.map(id => new Shape({ id: parseInt(id), ctx: ctx }));\n' +
-                '    }\n\n' +
-                '    function drawFrame() {\n' +
-                '        ctx.clearRect(0, 0, canvas.width, canvas.height);\n' +
-                '        const shouldAnimate = window.enableAnimation;\n\n' +
-                '        objects.forEach(obj => {\n' +
-                '            const id = obj.id;\n' +
-                '            obj.update({\n' +
+                '        const metaProps = Object.keys(window).filter(k => k.startsWith(\'obj\') && k.includes(\'_\'));\n' +
+                '        const uniqueIds = [...new Set(metaProps.map(p => p.match(/obj(\\d+)_/)[1]))];\n\n' +
+                '        objects = uniqueIds.map(id => {\n' +
+                '            return new Shape({\n' +
+                '                id: parseInt(id), ctx: ctx, ...window,\n' +
                 '                shape: window[\'obj\' + id + \'_shape\'],\n' +
-                '                x: window[\'obj\' + id + \'_x\'],\n' +
-                '                y: window[\'obj\' + id + \'_y\'],\n' +
-                '                width: window[\'obj\' + id + \'_width\'],\n' +
-                '                height: window[\'obj\' + id + \'_height\'],\n' +
+                '                x: window[\'obj\' + id + \'_x\'], y: window[\'obj\' + id + \'_y\'],\n' +
+                '                width: window[\'obj\' + id + \'_width\'], height: window[\'obj\' + id + \'_height\'],\n' +
                 '                innerDiameter: window[\'obj\' + id + \'_innerDiameter\'],\n' +
                 '                numberOfSegments: window[\'obj\' + id + \'_numberOfSegments\'],\n' +
                 '                angularWidth: window[\'obj\' + id + \'_angularWidth\'],\n' +
@@ -1974,15 +2478,60 @@ document.addEventListener('DOMContentLoaded', function () {
                 '                gradType: window[\'obj\' + id + \'_gradType\'],\n' +
                 '                useSharpGradient: window[\'obj\' + id + \'_useSharpGradient\'],\n' +
                 '                gradientStop: parseFloat(window[\'obj\' + id + \'_gradientStop\']),\n' +
-                '                gradient: {\n' +
-                '                    color1: window[\'obj\' + id + \'_gradColor1\'],\n' +
-                '                    color2: window[\'obj\' + id + \'_gradColor2\']\n' +
-                '                },\n' +
+                '                gradient: { color1: window[\'obj\' + id + \'_gradColor1\'], color2: window[\'obj\' + id + \'_gradColor2\'] },\n' +
                 '                cycleColors: window[\'obj\' + id + \'_cycleColors\'],\n' +
                 '                cycleSpeed: (window[\'obj\' + id + \'_cycleSpeed\'] || 0) / 50.0,\n' +
                 '                numberOfRows: window[\'obj\' + id + \'_numberOfRows\'],\n' +
                 '                numberOfColumns: window[\'obj\' + id + \'_numberOfColumns\'],\n' +
                 '                phaseOffset: window[\'obj\' + id + \'_phaseOffset\'],\n' +
+                '                text: window[\'obj\' + id + \'_text\'],\n' +
+                '                fontSize: window[\'obj\' + id + \'_fontSize\'],\n' +
+                '                textAlign: window[\'obj\' + id + \'_textAlign\'],\n' +
+                '                pixelFont: window[\'obj\' + id + \'_pixelFont\'],\n' +
+                '                textAnimation: window[\'obj\' + id + \'_textAnimation\'],\n' +
+                '                textAnimationSpeed: window[\'obj\' + id + \'_textAnimationSpeed\'],\n' +
+                '                enablePixelWrap: window[\'obj\' + id + \'_enablePixelWrap\'],\n' +
+                '                wrapAtPixels: window[\'obj\' + id + \'_wrapAtPixels\'],\n' +
+                '                autoWidth: window[\'obj\' + id + \'_autoWidth\'],\n' +
+                '                showTime: window[\'obj\' + id + \'_showTime\']\n' + // ADD THIS LINE
+                '            };\n' +
+                '        });\n' +
+                '    }\n\n' +
+                '    function drawFrame() {\n' +
+                '        ctx.clearRect(0, 0, canvas.width, canvas.height);\n' +
+                '        const shouldAnimate = window.enableAnimation;\n' +
+                '        objects.forEach(obj => {\n' +
+                '            const id = obj.id;\n' +
+                '            obj.update({\n' +
+                '                shape: window[\'obj\' + id + \'_shape\'],\n' +
+                '                x: window[\'obj\' + id + \'_x\'], y: window[\'obj\' + id + \'_y\'],\n' +
+                '                width: window[\'obj\' + id + \'_width\'], height: window[\'obj\' + id + \'_height\'],\n' +
+                '                innerDiameter: window[\'obj\' + id + \'_innerDiameter\'],\n' +
+                '                numberOfSegments: window[\'obj\' + id + \'_numberOfSegments\'],\n' +
+                '                angularWidth: window[\'obj\' + id + \'_angularWidth\'],\n' +
+                '                rotationSpeed: window[\'obj\' + id + \'_rotationSpeed\'],\n' +
+                '                animationSpeed: (window[\'obj\' + id + \'_animationSpeed\'] || 0) / 10.0,\n' +
+                '                animationMode: window[\'obj\' + id + \'_animationMode\'],\n' +
+                '                scrollDirection: window[\'obj\' + id + \'_scrollDir\'],\n' +
+                '                gradType: window[\'obj\' + id + \'_gradType\'],\n' +
+                '                useSharpGradient: window[\'obj\' + id + \'_useSharpGradient\'],\n' +
+                '                gradientStop: parseFloat(window[\'obj\' + id + \'_gradientStop\']),\n' +
+                '                gradient: { color1: window[\'obj\' + id + \'_gradColor1\'], color2: window[\'obj\' + id + \'_gradColor2\'] },\n' +
+                '                cycleColors: window[\'obj\' + id + \'_cycleColors\'],\n' +
+                '                cycleSpeed: (window[\'obj\' + id + \'_cycleSpeed\'] || 0) / 50.0,\n' +
+                '                numberOfRows: window[\'obj\' + id + \'_numberOfRows\'],\n' +
+                '                numberOfColumns: window[\'obj\' + id + \'_numberOfColumns\'],\n' +
+                '                phaseOffset: window[\'obj\' + id + \'_phaseOffset\'],\n' +
+                '                text: window[\'obj\' + id + \'_text\'],\n' +
+                '                fontSize: window[\'obj\' + id + \'_fontSize\'],\n' +
+                '                textAlign: window[\'obj\' + id + \'_textAlign\'],\n' +
+                '                pixelFont: window[\'obj\' + id + \'_pixelFont\'],\n' +
+                '                textAnimation: window[\'obj\' + id + \'_textAnimation\'],\n' +
+                '                textAnimationSpeed: window[\'obj\' + id + \'_textAnimationSpeed\'],\n' +
+                '                enablePixelWrap: window[\'obj\' + id + \'_enablePixelWrap\'],\n' +
+                '                wrapAtPixels: window[\'obj\' + id + \'_wrapAtPixels\'],\n' +
+                '                autoWidth: window[\'obj\' + id + \'_autoWidth\'],\n' +
+                '                showTime: window[\'obj\' + id + \'_showTime\']\n' + // AND ADD THIS LINE
                 '            });\n\n' +
                 '            obj.draw(shouldAnimate);\n' +
                 '        });\n' +
@@ -1995,10 +2544,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 '        if (typeof window.areGlobalsSetup === \'undefined\') {\n' +
                 '            const metaElements = Array.from(document.querySelectorAll(\'head > meta\'));\n' +
                 '            metaElements.forEach(meta => {\n' +
-                '                const key = meta.getAttribute(\'property\') || meta.getAttribute(\'name\') || Object.keys(meta.attributes).find(attr => ![\'label\', \'type\', \'default\', \'values\', \'min\', \'max\'].includes(attr.name));\n' +
+                '                const key = meta.getAttribute(\'property\') || meta.getAttribute(\'name\');\n' +
                 '                if (key) {\n' +
                 '                    let value = meta.getAttribute(\'default\') || meta.getAttribute(key);\n' +
                 '                    const type = meta.getAttribute(\'type\');\n' +
+                '                    if (type === \'textfield\' && typeof value === \'string\') {\n' +
+                '                        value = value.replace(/\\\\n/g, \'\\n\');\n' +
+                '                    }\n' +
                 '                    if (type === \'number\') { window[key] = parseFloat(value); }\n' +
                 '                    else if (type === \'boolean\') { window[key] = (value === \'true\'); }\n' +
                 '                    else { window[key] = value; }\n' +
@@ -2012,29 +2564,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 '    init();\n' +
                 '});';
 
-            // 6. Assemble the final HTML file content.
             const finalHtml = '<!DOCTYPE html>\n' +
                 '<html lang="en">\n' +
                 '<head>\n' +
                 '    <meta charset="UTF-8">\n' +
                 '    <title>' + effectTitle + '</title>\n' +
                 metaTags + '\n' +
-                '    <style>\n' +
-                '    ' + styleContent.trim() + '\n' +
-                '    </style>\n' +
+                '    <style>' + styleContent.trim() + '</style>\n' +
                 '</head>\n' +
                 bodyContent.trim() + '\n' +
-                '<script>\n' +
-                '    ' + exportedScript.trim() + '\n' +
-                '<' + '/script>\n' + // Break up closing tag to prevent parsing error
+                '<script>' + exportedScript.trim() + '</' + 'script>\n' +
                 '</html>';
 
-            // 7. Create a ZIP file with JSZip
             const zip = new JSZip();
             zip.file(`${safeFilename}.html`, finalHtml, { date: exportDate });
+            // This line adds the image back to the zip file.
             zip.file(`${safeFilename}.${imageExtension}`, imageBlob, { date: exportDate });
 
-            // 8. Generate and download the ZIP file.
             const zipBlob = await zip.generateAsync({ type: "blob" });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(zipBlob);
@@ -2046,21 +2592,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('Export failed:', error);
-            if (typeof showNotification === 'function') {
-                showNotification('Export failed: ' + error.message);
-            } else {
-                alert('Export failed: ' + error.message);
-            }
+            showToast('Export failed: ' + error.message, 'danger');
         } finally {
             exportButton.disabled = false;
             exportButton.innerHTML = '<i class="bi bi-download"></i> Export';
         }
     }
 
-
-
     form.addEventListener('input', (e) => {
         const target = e.target;
+        // Sync number inputs with their corresponding range sliders
         if (target.type === 'number' && document.getElementById(`${target.id}_slider`)) {
             document.getElementById(`${target.id}_slider`).value = target.value;
         } else if (target.type === 'range' && target.id.endsWith('_slider')) {
@@ -2068,6 +2609,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById(numberInputId).value = target.value;
         }
 
+        // Sync color pickers with their corresponding hex input fields
         if (target.type === 'color' && document.getElementById(`${target.id}_hex`)) {
             document.getElementById(`${target.id}_hex`).value = target.value;
         }
@@ -2079,41 +2621,60 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
+        // This block handles dynamically showing/hiding controls when the shape is changed.
         if (target.name && target.name.includes('_shape')) {
             const objectId = target.name.match(/obj(\d+)_/)[1];
             const shapeValue = target.value;
             const fieldset = form.querySelector(`fieldset[data-object-id="${objectId}"]`);
             if (fieldset) {
+                // Show/hide entire groups of settings based on shape
                 const ringControls = fieldset.querySelector('.ring-settings-group');
                 const gridControls = fieldset.querySelector('.grid-settings-group');
-                const heightControl = fieldset.querySelector(`[id*="obj${objectId}_height"]`).closest('.mb-3');
+                const textControls = fieldset.querySelector('.text-settings-group');
 
                 if (ringControls) ringControls.style.display = shapeValue === 'ring' ? 'block' : 'none';
                 if (gridControls) gridControls.style.display = shapeValue === 'rectangle' ? 'block' : 'none';
-                if (heightControl) heightControl.style.display = shapeValue === 'rectangle' ? 'block' : 'none';
+                if (textControls) textControls.style.display = shapeValue === 'text' ? 'block' : 'none';
+
+                // Show/hide the 'Height' control, which is not needed for rings or text
+                const heightControl = fieldset.querySelector(`[name="obj${objectId}_height"]`);
+                if (heightControl) {
+                    const heightFormGroup = heightControl.closest('.mb-3');
+                    if (heightFormGroup) {
+                        heightFormGroup.style.display = (shapeValue === 'ring' || shapeValue === 'text') ? 'none' : 'block';
+                    }
+                }
+
+                // Update the 'Width' control's label to be more descriptive
+                const widthControl = fieldset.querySelector(`[name="obj${objectId}_width"]`);
+                if (widthControl) {
+                    const widthLabel = widthControl.closest('.mb-3').querySelector('label');
+                    if (widthLabel) {
+                        if (shapeValue === 'ring' || shapeValue === 'circle') {
+                            widthLabel.textContent = 'Width/Outer Diameter';
+                        } else {
+                            widthLabel.textContent = 'Width';
+                        }
+                    }
+                }
+            }
+        }
+        if (target.name && target.name.includes('_showTime')) {
+            const objectId = target.name.match(/obj(\d+)_/)[1];
+            const isEnabled = target.checked;
+            const fieldset = form.querySelector(`fieldset[data-object-id="${objectId}"]`);
+            if (fieldset) {
+                const textControl = fieldset.querySelector(`[name="obj${objectId}_text"]`);
+                if (textControl) {
+                    textControl.disabled = isEnabled;
+                }
             }
         }
 
         updateAll();
+        updateObjectsFromForm(); // Update the live objects from the form
+        drawFrame();             // Redraw the canvas for a live preview
     });
-
-    /**
-     * Synchronizes the central configStore with the current values from the form controls.
-     * This ensures that the 'default' attribute of each config object is always up-to-date
-     * before performing operations that rebuild the state, like duplicating or deleting.
-     */
-    function syncConfigStoreWithForm() {
-        const currentValues = getControlValues();
-        configStore = configStore.map(conf => {
-            const key = conf.property || conf.name;
-            if (currentValues.hasOwnProperty(key)) {
-                const newValue = currentValues[key];
-                // Ensure boolean values are stored as strings, matching how they are read from attributes.
-                conf.default = typeof newValue === 'boolean' ? String(newValue) : newValue;
-            }
-            return conf;
-        });
-    }
 
     form.addEventListener('click', (e) => {
         const fieldset = e.target.closest('fieldset[data-object-id]');
@@ -2167,11 +2728,11 @@ document.addEventListener('DOMContentLoaded', function () {
             objects = objects.filter(o => o.id !== idToDelete);
 
             syncAndRenumberState();
+            recordHistory(); // Record state after deleting
         }
 
         if (duplicateBtn) {
             e.preventDefault();
-            // Sync config with form before duplicating to ensure the copy is from the current state.
             syncConfigStoreWithForm();
 
             const idToCopy = parseInt(duplicateBtn.dataset.id, 10);
@@ -2181,35 +2742,76 @@ document.addEventListener('DOMContentLoaded', function () {
             const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
             const newName = `${objectToCopy.name} Copy`;
 
-            const newConfigs = getDefaultObjectConfig(newId);
-
-            newConfigs.forEach(newConf => {
-                const propName = newConf.property.substring(`obj${newId}_`.length);
-                const oldPropKey = `obj${idToCopy}_${propName}`;
-
-                const oldConf = configStore.find(c => c.property === oldPropKey);
-                if (oldConf) {
-                    newConf.default = oldConf.default;
-                }
-
-                if (propName === 'x') {
+            const configsToCopy = configStore.filter(c => c.property && c.property.startsWith(`obj${idToCopy}_`));
+            const newConfigs = configsToCopy.map(oldConf => {
+                const newConf = { ...oldConf };
+                const propName = oldConf.property.substring(oldConf.property.indexOf('_') + 1);
+                newConf.property = `obj${newId}_${propName}`;
+                newConf.label = `${newName}:${oldConf.label.split(':')[1]}`;
+                if (propName === 'x' || propName === 'y') {
                     newConf.default = parseFloat(newConf.default) + 20;
                 }
-                if (propName === 'y') {
-                    newConf.default = parseFloat(newConf.default) + 20;
-                }
-
-                const labelParts = newConf.label.split(':');
-                newConf.label = `${newName}: ${labelParts.slice(1).join(':').trim()}`;
+                return newConf;
             });
 
             configStore.push(...newConfigs);
-            createInitialObjects();
+
+            // Create the new object instance and add it to the array
+            const state = { id: newId, name: newName };
+            newConfigs.forEach(conf => {
+                const key = conf.property.replace(`obj${newId}_`, '');
+                let value = conf.default;
+                if (conf.type === 'number') value = parseFloat(value);
+                else if (conf.type === 'boolean') value = (value === 'true');
+                if (key.startsWith('gradColor')) {
+                    if (!state.gradient) state.gradient = {};
+                    state.gradient[key.replace('grad', '').toLowerCase()] = value;
+                } else {
+                    state[key] = value;
+                }
+            });
+            const newShape = new Shape({ ...state, ctx });
+            objects.push(newShape);
+
             selectedObjectIds = [newId];
             renderForm();
-            updateAll();
             syncPanelsWithSelection();
             drawFrame();
+            recordHistory();
+        }
+    });
+
+    if (undoBtn) {
+        undoBtn.addEventListener('click', () => history.undo());
+    }
+    if (redoBtn) {
+        redoBtn.addEventListener('click', () => history.redo());
+    }
+
+    document.addEventListener('keydown', (e) => {
+        const target = e.target;
+        // This check is now more specific. It only blocks the shortcut
+        // for text fields, textareas, or content-editable elements
+        // where the user would expect to undo typing.
+        const isTextInput = (target.tagName === 'INPUT' && target.type === 'text') ||
+            target.tagName === 'TEXTAREA' ||
+            target.isContentEditable;
+
+        if (isTextInput) {
+            // Let the browser handle its native undo for typing.
+            return;
+        }
+
+        // For all other cases (sliders, color pickers, number inputs, etc.),
+        // the global undo/redo will now work.
+        if (e.ctrlKey || e.metaKey) { // metaKey for macOS
+            if (e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                history.undo();
+            } else if (e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                history.redo();
+            }
         }
     });
 
@@ -2276,7 +2878,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        document.getElementById('galleryOffcanvasLabel').textContent = 'My Saved Projects';
+        document.getElementById('galleryOffcanvasLabel').textContent = 'My Effects';
         const galleryList = document.getElementById('gallery-project-list');
         galleryList.innerHTML = '<li class="list-group-item text-center"><div class="spinner-border spinner-border-sm"></div></li>';
 
@@ -2326,17 +2928,39 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
         }
         updateFormFromShapes();
+        recordHistory(); // Record state after a toolbar action
     });
 
     addObjectBtn.addEventListener('click', () => {
         currentProjectDocId = null;
         updateShareButtonState();
+
+        // 1. Create the config for the new object and add it to the configStore
         const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
         const newConfigs = getDefaultObjectConfig(newId);
         configStore.push(...newConfigs);
-        createInitialObjects();
+
+        // 2. Create the new Shape object from its config and add it to the main 'objects' array
+        const state = { id: newId, name: `Object ${newId}` };
+        newConfigs.forEach(conf => {
+            const key = conf.property.replace(`obj${newId}_`, '');
+            let value = conf.default;
+            if (conf.type === 'number') value = parseFloat(value);
+            else if (conf.type === 'boolean') value = (value === 'true');
+            if (key.startsWith('gradColor')) {
+                if (!state.gradient) state.gradient = {};
+                state.gradient[key.replace('grad', '').toLowerCase()] = value;
+            } else {
+                state[key] = value;
+            }
+        });
+        const newShape = new Shape({ ...state, ctx });
+        objects.push(newShape);
+
+        // 3. Now that the data is correct, re-render the UI and record history
         renderForm();
-        updateAll();
+        drawFrame();
+        recordHistory();
     });
 
     /**
@@ -2382,16 +3006,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         width: selectedObject.width,
                         height: selectedObject.height,
                         rotationAngle: selectedObject.rotationAngle,
+                        fontSize: selectedObject.fontSize, // <-- ADD THIS LINE
                         anchorPoint: selectedObject.getWorldCoordsOfCorner(oppositeHandleName),
                         oppositeHandleName: oppositeHandleName,
                         diameterRatio: selectedObject.shape === 'ring' ? selectedObject.innerDiameter / selectedObject.width : 1
                     }];
 
-                    selectedObject.rotationAngle = 0;
-
                     dragStartX = x;
                     dragStartY = y;
-                    return; // Exit early to prevent re-selection
+                    return;
                 }
             }
         }
@@ -2482,83 +3105,135 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (isResizing) {
             const obj = objects.find(o => o.id === selectedObjectIds[0]);
+            if (!obj) return;
+
             const initial = initialDragState[0];
             const dx = x - dragStartX;
             const dy = y - dragStartY;
 
-            // Since rotation is 0, calculations are simple and axis-aligned.
-            let newX = initial.x;
-            let newY = initial.y;
-            let newWidth = initial.width;
-            let newHeight = initial.height;
+            if (obj.shape === 'text') {
+                const handle = activeResizeHandle;
+                if (handle.includes('left') || handle.includes('right')) {
+                    if (handle.includes('right')) {
+                        obj.width = Math.max(20, initial.width + dx);
+                    }
+                    if (handle.includes('left')) {
+                        obj.width = Math.max(20, initial.width - dx);
+                        obj.x = initial.x + dx;
+                    }
+                    obj.autoWidth = false;
 
-            if (activeResizeHandle.includes('right')) {
-                newWidth = Math.max(10, initial.width + dx);
-            }
-            if (activeResizeHandle.includes('left')) {
-                newWidth = Math.max(10, initial.width - dx);
-                newX = initial.x + dx;
-            }
-            if (activeResizeHandle.includes('bottom')) {
-                newHeight = Math.max(10, initial.height + dy);
-            }
-            if (activeResizeHandle.includes('top')) {
-                newHeight = Math.max(10, initial.height - dy);
-                newY = initial.y + dy;
-            }
+                } else {
+                    const scaleFactor = (initial.height + dy) / initial.height;
+                    if (isFinite(scaleFactor) && scaleFactor > 0) {
+                        obj.fontSize = Math.max(10, initial.fontSize * scaleFactor);
+                        obj._updateTextMetrics();
+                    }
+                }
+            } else {
+                let newX = initial.x;
+                let newY = initial.y;
+                let newWidth = initial.width;
+                let newHeight = initial.height;
 
-            obj.x = newX;
-            obj.y = newY;
-            obj.width = newWidth;
-            obj.height = newHeight;
+                if (activeResizeHandle.includes('right')) { newWidth = Math.max(10, initial.width + dx); }
+                if (activeResizeHandle.includes('left')) { newWidth = Math.max(10, initial.width - dx); newX = initial.x + dx; }
+                if (activeResizeHandle.includes('bottom')) { newHeight = Math.max(10, initial.height + dy); }
+                if (activeResizeHandle.includes('top')) { newHeight = Math.max(10, initial.height - dy); newY = initial.y + dy; }
 
-            if (obj.shape === 'circle' || obj.shape === 'ring') {
-                obj.height = obj.width;
-                if (obj.shape === 'ring') {
-                    obj.innerDiameter = obj.width * initial.diameterRatio;
+                obj.x = newX;
+                obj.y = newY;
+                obj.width = newWidth;
+                obj.height = newHeight;
+
+                if (obj.shape === 'circle' || obj.shape === 'ring') {
+                    obj.height = obj.width;
+                    if (obj.shape === 'ring') {
+                        obj.innerDiameter = obj.width * initial.diameterRatio;
+                    }
                 }
             }
 
-            updateFormFromShapes();
+            drawFrame();
 
         } else if (isDragging) {
+            // --- Snapping Logic Starts Here ---
+            const SNAP_THRESHOLD = 10;
             let dx = x - dragStartX;
             let dy = y - dragStartY;
 
-            if (constrainToCanvas && initialDragState.length > 0) {
-                let groupMinX = Infinity, groupMinY = Infinity, groupMaxX = -Infinity, groupMaxY = -Infinity;
+            // For single object dragging, apply snapping
+            if (selectedObjectIds.length === 1) {
+                const draggedObj = objects.find(o => o.id === selectedObjectIds[0]);
+                const initial = initialDragState[0];
+                if (draggedObj) {
+                    let newX = initial.x + dx;
+                    let newY = initial.y + dy;
+                    let snapDx = 0;
+                    let snapDy = 0;
 
-                initialDragState.forEach(initial => {
-                    const tempObj = {
-                        x: initial.x + dx, y: initial.y + dy, width: initial.width, height: initial.height, rotationAngle: initial.rotationAngle, shape: initial.shape,
-                        getCenter: Shape.prototype.getCenter, getHandlePositions: Shape.prototype.getHandlePositions, getWorldCoordsOfCorner: Shape.prototype.getWorldCoordsOfCorner, handleSize: 8
+                    // Define edges of the dragged object
+                    const draggedEdges = {
+                        left: newX, right: newX + draggedObj.width,
+                        top: newY, bottom: newY + draggedObj.height,
+                        hCenter: newX + draggedObj.width / 2,
+                        vCenter: newY + draggedObj.height / 2
                     };
-                    const corners = [
-                        tempObj.getWorldCoordsOfCorner('top-left'), tempObj.getWorldCoordsOfCorner('top-right'),
-                        tempObj.getWorldCoordsOfCorner('bottom-right'), tempObj.getWorldCoordsOfCorner('bottom-left')
-                    ];
-                    corners.forEach(corner => {
-                        groupMinX = Math.min(groupMinX, corner.x);
-                        groupMinY = Math.min(groupMinY, corner.y);
-                        groupMaxX = Math.max(groupMaxX, corner.x);
-                        groupMaxY = Math.max(groupMaxY, corner.y);
+
+                    // Create a list of potential snap targets (other objects and canvas)
+                    const otherObjects = objects.filter(o => o.id !== draggedObj.id);
+                    const snapTargets = otherObjects.map(o => ({
+                        left: o.x, right: o.x + o.width,
+                        top: o.y, bottom: o.y + o.height,
+                        hCenter: o.x + o.width / 2,
+                        vCenter: o.y + o.height / 2
+                    }));
+
+                    // Add canvas edges and center lines as snap targets
+                    snapTargets.push({
+                        left: 0, right: canvas.width, top: 0, bottom: canvas.height,
+                        hCenter: canvas.width / 2, vCenter: canvas.height / 2
                     });
-                });
 
-                if (groupMinX < 0) dx -= groupMinX;
-                if (groupMaxX > canvas.width) dx -= (groupMaxX - canvas.width);
-                if (groupMinY < 0) dy -= groupMinY;
-                if (groupMaxY > canvas.height) dy -= (groupMaxY - canvas.height);
-            }
+                    // Check for snapping
+                    for (const target of snapTargets) {
+                        // Snap left edge
+                        if (Math.abs(draggedEdges.left - target.left) < SNAP_THRESHOLD) snapDx = target.left - draggedEdges.left;
+                        if (Math.abs(draggedEdges.left - target.right) < SNAP_THRESHOLD) snapDx = target.right - draggedEdges.left;
+                        // Snap right edge
+                        if (Math.abs(draggedEdges.right - target.right) < SNAP_THRESHOLD) snapDx = target.right - draggedEdges.right;
+                        if (Math.abs(draggedEdges.right - target.left) < SNAP_THRESHOLD) snapDx = target.left - draggedEdges.right;
+                        // Snap horizontal center
+                        if (Math.abs(draggedEdges.hCenter - target.hCenter) < SNAP_THRESHOLD) snapDx = target.hCenter - draggedEdges.hCenter;
 
-            initialDragState.forEach(initial => {
-                const obj = objects.find(o => o.id === initial.id);
-                if (obj) {
-                    obj.x = initial.x + dx;
-                    obj.y = initial.y + dy;
+                        // Snap top edge
+                        if (Math.abs(draggedEdges.top - target.top) < SNAP_THRESHOLD) snapDy = target.top - draggedEdges.top;
+                        if (Math.abs(draggedEdges.top - target.bottom) < SNAP_THRESHOLD) snapDy = target.bottom - draggedEdges.top;
+                        // Snap bottom edge
+                        if (Math.abs(draggedEdges.bottom - target.bottom) < SNAP_THRESHOLD) snapDy = target.bottom - draggedEdges.bottom;
+                        if (Math.abs(draggedEdges.bottom - target.top) < SNAP_THRESHOLD) snapDy = target.top - draggedEdges.bottom;
+                        // Snap vertical center
+                        if (Math.abs(draggedEdges.vCenter - target.vCenter) < SNAP_THRESHOLD) snapDy = target.vCenter - draggedEdges.vCenter;
+                    }
+
+                    // Apply the snap adjustment
+                    dx += snapDx;
+                    dy += snapDy;
+                    draggedObj.x = initial.x + dx;
+                    draggedObj.y = initial.y + dy;
                 }
-            });
-            updateFormFromShapes();
+            } else { // For multi-object dragging, do not snap
+                initialDragState.forEach(initial => {
+                    const obj = objects.find(o => o.id === initial.id);
+                    if (obj) {
+                        obj.x = initial.x + dx;
+                        obj.y = initial.y + dy;
+                    }
+                });
+            }
+            // --- Snapping Logic Ends Here ---
+
+            drawFrame();
         } else {
             canvasContainer.style.cursor = 'default';
             if (selectedObjectIds.length === 1) {
@@ -2580,34 +3255,29 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {MouseEvent} e - The mouseup event object.
      */
     canvasContainer.addEventListener('mouseup', () => {
-        if (isResizing) {
-            const obj = objects.find(o => o.id === selectedObjectIds[0]);
-            const initial = initialDragState[0];
-            if (obj) {
-                // Restore the original rotation angle
-                obj.rotationAngle = initial.rotationAngle;
+        const wasManipulating = isDragging || isResizing;
 
-                // Calculate where the anchor point IS NOW, after the resize and rotation restoration.
-                const currentAnchorPos = obj.getWorldCoordsOfCorner(initial.oppositeHandleName);
-
-                // The anchor point SHOULD BE where it was when we started the drag.
-                const targetAnchorPos = initial.anchorPoint;
-
-                // Calculate the drift vector
-                const driftX = currentAnchorPos.x - targetAnchorPos.x;
-                const driftY = currentAnchorPos.y - targetAnchorPos.y;
-
-                // Correct the object's final position by the inverse of the drift.
-                obj.x -= driftX;
-                obj.y -= driftY;
-
-                obj.isPausedForResize = false;
-            }
-            updateAll();
-        }
         isDragging = false;
         isResizing = false;
         activeResizeHandle = null;
+
+        if (wasManipulating) {
+            // RE-ADD THE LOOP to round object properties after manipulation
+            initialDragState.forEach(initial => {
+                const obj = objects.find(o => o.id === initial.id);
+                if (obj) {
+                    obj.x = Math.round(obj.x);
+                    obj.y = Math.round(obj.y);
+                    obj.width = Math.round(obj.width);
+                    obj.height = Math.round(obj.height);
+                    if (obj.innerDiameter) obj.innerDiameter = Math.round(obj.innerDiameter);
+                    if (obj.fontSize) obj.fontSize = Math.round(obj.fontSize);
+                }
+            });
+
+            updateFormValuesFromObjects(); // Sync form with the new, rounded values
+            recordHistory();               // Save the clean state
+        }
     });
 
 
@@ -2631,40 +3301,22 @@ document.addEventListener('DOMContentLoaded', function () {
         const metaElements = Array.from(template.content.querySelectorAll('meta'));
         configStore = metaElements.map(parseMetaToConfig);
 
-        // Set initial state of the constrain button
-        constrainBtn.classList.remove('btn-secondary'); // Remove the default class from the HTML
+        constrainBtn.classList.remove('btn-secondary');
         if (constrainToCanvas) {
             constrainBtn.classList.add('btn-primary');
         } else {
             constrainBtn.classList.add('btn-outline-secondary');
         }
 
-        const objectIds = [...new Set(
-            configStore
-                .filter(c => c.property && c.property.startsWith('obj'))
-                .map(c => c.property.match(/obj(\d+)_/)[1])
-        )];
-
-        objectIds.forEach(id => {
-            const animModeConf = configStore.find(c => c.property === `obj${id}_animationMode`);
-            const newValues = 'loop,bounce,bounce-reversed,bounce-random';
-            if (animModeConf) {
-                animModeConf.values = newValues;
-            } else {
-                const getLabelPrefix = () => {
-                    const shapeConf = configStore.find(c => c.property === `obj${id}_shape`);
-                    return shapeConf ? shapeConf.label.split(':')[0] : `Object ${id}`;
-                };
-                configStore.push({ property: `obj${id}_animationMode`, label: `${getLabelPrefix()}: Animation Mode`, type: 'combobox', values: newValues, default: 'loop' });
-            }
-        });
-
         createInitialObjects();
         renderForm();
         updateAll();
-        new bootstrap.Tooltip(document.body, { selector: "[data-bs-toggle='tooltip']", trigger: 'hover' });
+        new bootstrap.Tooltip(document.body, {
+            selector: "[data-bs-toggle='tooltip']",
+            trigger: 'hover'
+        });
         updateToolbarState();
-        // Initialize FPS throttling and start the animation loop
+
         fpsInterval = 1000 / fps;
         then = window.performance.now();
         requestAnimationFrame(animate);
@@ -2715,7 +3367,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         initializeSortable();
-        loadSharedEffect(); // Check for shared effect link on page load
+        loadSharedEffect();
+        recordHistory(); // Record the initial state of the application
+        updateUndoRedoButtons(); // Set initial button states
     }
 
     // --- SHARE BUTTON LOGIC ---
@@ -2760,7 +3414,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // BROWSE GALLERY BUTTON
     document.getElementById('browse-btn').addEventListener('click', async () => {
-        document.getElementById('galleryOffcanvasLabel').textContent = 'Public Effects Gallery';
+        document.getElementById('galleryOffcanvasLabel').textContent = 'Community Gallery';
         const galleryList = document.getElementById('gallery-project-list');
         galleryList.innerHTML = '<li class="list-group-item text-center"><div class="spinner-border spinner-border-sm"></div></li>';
 
@@ -2824,7 +3478,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        document.getElementById('galleryOffcanvasLabel').textContent = 'My Saved Projects';
+        document.getElementById('galleryOffcanvasLabel').textContent = 'My Effects';
         const galleryList = document.getElementById('gallery-project-list');
         galleryList.innerHTML = '<li class="list-group-item text-center"><div class="spinner-border spinner-border-sm"></div></li>';
 
@@ -3100,6 +3754,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typeof confirmActionCallback === 'function') {
             confirmActionCallback();
         }
+    });
+
+    // This handles committed changes from text boxes, dropdowns, color pickers, and checkboxes.
+    form.addEventListener('change', (e) => {
+        recordHistory();
     });
 
     // Start the application.
