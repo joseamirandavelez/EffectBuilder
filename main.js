@@ -156,7 +156,7 @@ function drawPixelText(ctx, shape) {
     ctx.restore();
 }
 
-
+/**
  * Sets a browser cookie with a given name, value, and expiration in days.
  * @param {string} name - The name of the cookie.
  * @param {string} value - The value to store in the cookie.
