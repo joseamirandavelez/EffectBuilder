@@ -2020,13 +2020,10 @@ document.addEventListener('DOMContentLoaded', function () {
         // Generate a complete set of meta tags for each object
         objects.forEach(obj => {
             const name = obj.name || `Object ${obj.id}`;
-            // Get the full template of all possible properties for an object
             const allPossibleConfigs = getDefaultObjectConfig(obj.id);
 
             allPossibleConfigs.forEach(conf => {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-
-                // Get the current value from the live object
                 let value = obj[propName];
 
                 // Handle special cases where property names differ from the internal model
@@ -2037,18 +2034,31 @@ document.addEventListener('DOMContentLoaded', function () {
                     value = obj.scrollDirection;
                 }
 
-                // Handle properties that are scaled for the UI
-                if (propName === 'animationSpeed') value = Math.round(obj.animationSpeed * 10);
-                if (propName === 'cycleSpeed') value = Math.round(obj.cycleSpeed * 50);
-
-                // If the property doesn't exist on the live object, fall back to the default value from the template.
+                // Fallback to default if the live object doesn't have the property
                 if (value === undefined || value === null) {
                     value = conf.default;
                 }
 
-                // Ensure booleans are strings and handle text area newlines
-                if (typeof value === 'boolean') value = String(value);
-                if (conf.type === 'textarea' && typeof value === 'string') {
+                // Convert boolean to string for the meta tag
+                if (typeof value === 'boolean') {
+                    value = String(value);
+                }
+
+                // NEW: If the property is a number, round it to the nearest integer.
+                if (conf.type === 'number') {
+                    // Handle properties that are scaled for the UI first
+                    if (propName === 'animationSpeed') {
+                        value = Math.round(obj.animationSpeed * 10);
+                    } else if (propName === 'cycleSpeed') {
+                        value = Math.round(obj.cycleSpeed * 50);
+                    } else {
+                        // Round any other number
+                        value = Math.round(parseFloat(value));
+                    }
+                }
+
+                // Handle textarea newlines
+                if ((conf.type === 'textarea' || conf.type === 'textfield') && typeof value === 'string') {
                     value = value.replace(/\n/g, '\\n');
                 }
 
@@ -2547,24 +2557,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const effectTitle = getControlValues()['title'] || 'MyEffect';
+            const effectDescription = getControlValues()['description'] || `An effect created with the Interactive Effect Builder.`;
             const safeFilename = effectTitle.replace(/[\s\/\\?%*:|"<>]/g, '_');
             const metaTags = document.getElementById('output-script').value;
-            const imageUrl = 'https://joseamirandavelez.github.io/EffectBuilder/srgbieb_crop.png';
-            const imageExtension = imageUrl.split('.').pop() || 'png';
-            const exportDate = getLocalDateFromUTC(new Date());
+            const thumbnailDataUrl = generateThumbnail(document.getElementById('signalCanvas'));
+            const imageExtension = 'png';
+            const exportDate = new Date();
 
-            const imageResponse = await fetch(imageUrl);
-            if (!imageResponse.ok) {
-                throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
-            }
-            const imageBlob = await imageResponse.blob();
+            // Generate Social Media Meta Tags
+            const socialMetaTags = `
+    <meta property="og:title" content="${effectTitle}">
+    <meta property="og:description" content="${effectDescription}">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="${safeFilename}.${imageExtension}">
+    <meta name="twitter:card" content="summary_large_image">
+        `.trim();
 
-            const wrapTextByPixelsString = typeof wrapTextByPixels !== 'undefined' ? wrapTextByPixels.toString() : '';
-            const lerpColorString = lerpColor.toString();
-            const getPatternColorString = getPatternColor.toString();
-            const fontData4pxString = `const FONT_DATA_4PX = ${JSON.stringify(FONT_DATA_4PX)};`;
-            const fontData5pxString = `const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};`;
-            const drawPixelTextString = typeof drawPixelText !== 'undefined' ? drawPixelText.toString() : '';
             const shapeClassString = Shape.toString();
 
             const styleContent =
@@ -2697,7 +2705,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<html lang="en">\n' +
                 '<head>\n' +
                 '    <meta charset="UTF-8">\n' +
-                '    <title>' + effectTitle + '</title>\n' +
+                `    <title>${effectTitle}</title>\n` +
+                `    ${socialMetaTags}\n` + // <-- Social tags are now included
                 metaTags + '\n' +
                 '    <style>' + styleContent.trim() + '</style>\n' +
                 '</head>\n' +
@@ -2707,7 +2716,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const zip = new JSZip();
             zip.file(`${safeFilename}.html`, finalHtml, { date: exportDate });
-            // This line adds the image back to the zip file.
+
+            // Generate a blob from the thumbnail data URL to include in the zip
+            const imageResponse = await fetch(thumbnailDataUrl);
+            const imageBlob = await imageResponse.blob();
             zip.file(`${safeFilename}.${imageExtension}`, imageBlob, { date: exportDate });
 
             const zipBlob = await zip.generateAsync({ type: "blob" });
@@ -3512,6 +3524,23 @@ document.addEventListener('DOMContentLoaded', function () {
         loadSharedEffect();
         recordHistory(); // Record the initial state of the application
         updateUndoRedoButtons(); // Set initial button states
+
+        const lastUpdatedSpan = document.getElementById('last-updated-span');
+        if (lastUpdatedSpan) {
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            const formattedTime = now.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                timeZoneName: 'short'
+            });
+            lastUpdatedSpan.textContent = `Current as of: ${formattedDate}, ${formattedTime}`;
+        }
     }
 
     // --- SHARE BUTTON LOGIC ---
