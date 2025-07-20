@@ -15,6 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script type="module" src="firebase.js"></script>
+    <link rel="stylesheet" href="styles.css">
 
     <template id="initial-config">
         <meta title="Text Test" />
@@ -23,12 +24,12 @@
         <meta property="enableAnimation" label="Enable Animation" type="boolean" default="true" />
 
         <meta property="obj1_shape" label="Small Clock: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
-        <meta property="obj1_x" label="Small Clock: X Position" type="number" min="0" max="1280" default="0" />
-        <meta property="obj1_y" label="Small Clock: Y Position" type="number" min="0" max="800" default="139" />
-        <meta property="obj1_width" label="Small Clock: Width/Outer Diameter" type="number" min="10" max="1280" default="722" />
-        <meta property="obj1_height" label="Small Clock: Height" type="number" min="10" max="800" default="596" />
+        <meta property="obj1_x" label="Small Clock: X Position" type="number" min="0" max="320" default="0" />
+        <meta property="obj1_y" label="Small Clock: Y Position" type="number" min="0" max="200" default="35" />
+        <meta property="obj1_width" label="Small Clock: Width/Outer Diameter" type="number" min="2" max="320" default="130" />
+        <meta property="obj1_height" label="Small Clock: Height" type="number" min="2" max="200" default="17" />
         <meta property="obj1_rotation" label="Small Clock: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj1_innerDiameter" label="Small Clock: Inner Diameter" type="number" min="5" max="1270" default="200" />
+        <meta property="obj1_innerDiameter" label="Small Clock: Inner Diameter" type="number" min="1" max="318" default="50" />
         <meta property="obj1_numberOfSegments" label="Small Clock: Segments" type="number" min="1" max="50" default="8" />
         <meta property="obj1_angularWidth" label="Small Clock: Segment Angle" type="number" min="1" max="360" default="20" />
         <meta property="obj1_rotationSpeed" label="Small Clock: Rotation Speed" type="number" min="-100" max="100" default="0" />
@@ -46,7 +47,7 @@
         <meta property="obj1_numberOfColumns" label="Small Clock: Number of Columns" type="number" min="1" max="100" default="1" />
         <meta property="obj1_phaseOffset" label="Small Clock: Phase Offset" type="number" min="0" max="100" default="100" />
         <meta property="obj1_text" label="Small Clock: Text" type="textfield" default="Jose Miranda" />
-        <meta property="obj1_fontSize" label="Small Clock: Font Size" type="number" min="10" max="400" default="168" />
+        <meta property="obj1_fontSize" label="Small Clock: Font Size" type="number" min="2" max="100" default="42" />
         <meta property="obj1_textAlign" label="Small Clock: Justification" type="combobox" values="left,center,right" default="center" />
         <meta property="obj1_pixelFont" label="Small Clock: Pixel Font Style" type="combobox" values="small,large" default="small" />
         <meta property="obj1_textAnimation" label="Small Clock: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
@@ -56,12 +57,12 @@
         <meta property="obj1_autoWidth" label="Small Clock: Auto-Width" type="boolean" default="true" />
 
         <meta property="obj2_shape" label="Large Text: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
-        <meta property="obj2_x" label="Large Text: X Position" type="number" min="0" max="1280" default="-13" />
-        <meta property="obj2_y" label="Large Text: Y Position" type="number" min="0" max="800" default="0" />
-        <meta property="obj2_width" label="Large Text: Width/Outer Diameter" type="number" min="10" max="1280" default="949" />
-        <meta property="obj2_height" label="Large Text: Height" type="number" min="10" max="800" default="596" />
+        <meta property="obj2_x" label="Large Text: X Position" type="number" min="0" max="320" default="-3" />
+        <meta property="obj2_y" label="Large Text: Y Position" type="number" min="0" max="200" default="0" />
+        <meta property="obj2_width" label="Large Text: Width/Outer Diameter" type="number" min="2" max="320" default="237" />
+        <meta property="obj2_height" label="Large Text: Height" type="number" min="2" max="200" default="30" />
         <meta property="obj2_rotation" label="Large Text: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj2_innerDiameter" label="Large Text: Inner Diameter" type="number" min="5" max="1270" default="200" />
+        <meta property="obj2_innerDiameter" label="Large Text: Inner Diameter" type="number" min="1" max="318" default="50" />
         <meta property="obj2_numberOfSegments" label="Large Text: Segments" type="number" min="1" max="50" default="8" />
         <meta property="obj2_angularWidth" label="Large Text: Segment Angle" type="number" min="1" max="360" default="20" />
         <meta property="obj2_rotationSpeed" label="Large Text: Rotation Speed" type="number" min="-100" max="100" default="0" />
@@ -79,7 +80,7 @@
         <meta property="obj2_numberOfColumns" label="Large Text: Number of Columns" type="number" min="1" max="100" default="1" />
         <meta property="obj2_phaseOffset" label="Large Text: Phase Offset" type="number" min="0" max="100" default="100" />
         <meta property="obj2_text" label="Large Text: Text" type="textfield" default="Interactive Effect Builder" />
-        <meta property="obj2_fontSize" label="Large Text: Font Size" type="number" min="10" max="400" default="239" />
+        <meta property="obj2_fontSize" label="Large Text: Font Size" type="number" min="2" max="100" default="60" />
         <meta property="obj2_textAlign" label="Large Text: Justification" type="combobox" values="left,center,right" default="left" />
         <meta property="obj2_pixelFont" label="Large Text: Pixel Font Style" type="combobox" values="small,large" default="large" />
         <meta property="obj2_textAnimation" label="Large Text: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="marquee" />
@@ -89,12 +90,12 @@
         <meta property="obj2_autoWidth" label="Large Text: Auto-Width" type="boolean" default="false" />
 
         <meta property="obj3_shape" label="Matrix: Shape" type="combobox" values="rectangle,circle,ring,text" default="rectangle" />
-        <meta property="obj3_x" label="Matrix: X Position" type="number" min="0" max="1280" default="0" />
-        <meta property="obj3_y" label="Matrix: Y Position" type="number" min="0" max="800" default="227" />
-        <meta property="obj3_width" label="Matrix: Width/Outer Diameter" type="number" min="10" max="1280" default="724" />
-        <meta property="obj3_height" label="Matrix: Height" type="number" min="10" max="800" default="573" />
+        <meta property="obj3_x" label="Matrix: X Position" type="number" min="0" max="320" default="0" />
+        <meta property="obj3_y" label="Matrix: Y Position" type="number" min="0" max="200" default="57" />
+        <meta property="obj3_width" label="Matrix: Width/Outer Diameter" type="number" min="2" max="320" default="181" />
+        <meta property="obj3_height" label="Matrix: Height" type="number" min="2" max="200" default="143" />
         <meta property="obj3_rotation" label="Matrix: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj3_innerDiameter" label="Matrix: Inner Diameter" type="number" min="5" max="1270" default="200" />
+        <meta property="obj3_innerDiameter" label="Matrix: Inner Diameter" type="number" min="1" max="318" default="50" />
         <meta property="obj3_numberOfSegments" label="Matrix: Segments" type="number" min="1" max="50" default="12" />
         <meta property="obj3_angularWidth" label="Matrix: Segment Angle" type="number" min="1" max="360" default="20" />
         <meta property="obj3_rotationSpeed" label="Matrix: Rotation Speed" type="number" min="-100" max="100" default="0" />
@@ -109,10 +110,10 @@
         <meta property="obj3_cycleColors" label="Matrix: Cycle Colors" type="boolean" default="false" />
         <meta property="obj3_cycleSpeed" label="Matrix: Color Cycle Speed" type="number" min="1" max="10" default="10" />
         <meta property="obj3_numberOfRows" label="Matrix: Number of Rows" type="number" min="1" max="100" default="16" />
-        <meta property="obj3_numberOfColumns" label="Matrix: Number of Columns" , type="number" min="1" max="100" default="16" />
+        <meta property="obj3_numberOfColumns" label="Matrix: Number of Columns" type="number" min="1" max="100" default="16" />
         <meta property="obj3_phaseOffset" label="Matrix: Phase Offset" type="number" min="0" max="100" default="10" />
         <meta property="obj3_text" label="Matrix: Text" type="textfield" default="" />
-        <meta property="obj3_fontSize" label="Matrix: Font Size" type="number" min="10" max="400" default="60" />
+        <meta property="obj3_fontSize" label="Matrix: Font Size" type="number" min="2" max="100" default="15" />
         <meta property="obj3_textAlign" label="Matrix: Justification" type="combobox" values="left,center,right" default="center" />
         <meta property="obj3_pixelFont" label="Matrix: Pixel Font Style" type="combobox" values="small,large" default="small" />
         <meta property="obj3_textAnimation" label="Matrix: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
@@ -120,209 +121,9 @@
         <meta property="obj3_showTime" label="Matrix: Show Current Time" type="boolean" default="false" />
         <meta property="obj3_showDate" label="Matrix: Show Current Date" type="boolean" default="false" />
         <meta property="obj3_autoWidth" label="Matrix: Auto-Width" type="boolean" default="true" />
-
-        <meta property="obj4_shape" label="Top Fan Center: Shape" type="combobox" values="rectangle,circle,ring,text" default="circle" />
-        <meta property="obj4_x" label="Top Fan Center: X Position" type="number" min="0" max="1280" default="1074" />
-        <meta property="obj4_y" label="Top Fan Center: Y Position" type="number" min="0" max="800" default="94" />
-        <meta property="obj4_width" label="Top Fan Center: Width/Outer Diameter" type="number" min="10" max="1280" default="112" />
-        <meta property="obj4_height" label="Top Fan Center: Height" type="number" min="10" max="800" default="112" />
-        <meta property="obj4_rotation" label="Top Fan Center: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj4_innerDiameter" label="Top Fan Center: Inner Diameter" type="number" min="5" max="1270" default="100" />
-        <meta property="obj4_numberOfSegments" label="Top Fan Center: Segments" type="number" min="1" max="50" default="12" />
-        <meta property="obj4_angularWidth" label="Top Fan Center: Segment Angle" type="number" min="1" max="360" default="15" />
-        <meta property="obj4_rotationSpeed" label="Top Fan Center: Rotation Speed" type="number" min="-100" max="100" default="0" />
-        <meta property="obj4_animationSpeed" label="Top Fan Center: Animation Speed" type="number" min="1" max="50" default="20" />
-        <meta property="obj4_animationMode" label="Top Fan Center: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop" />
-        <meta property="obj4_scrollDir" label="Top Fan Center: Scroll Direction" type="combobox" values="right,left,up,down" default="left" />
-        <meta property="obj4_gradType" label="Top Fan Center: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="radial" />
-        <meta property="obj4_useSharpGradient" label="Top Fan Center: Use Sharp Gradient" type="boolean" default="true" />
-        <meta property="obj4_gradientStop" label="Top Fan Center: Gradient Stop %" type="number" min="0" max="100" default="100" />
-        <meta property="obj4_gradColor1" label="Top Fan Center: Color 1" type="color" default="#00ff00" />
-        <meta property="obj4_gradColor2" label="Top Fan Center: Color 2" type="color" default="#d400ff" />
-        <meta property="obj4_cycleColors" label="Top Fan Center: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj4_cycleSpeed" label="Top Fan Center: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj4_numberOfRows" label="Top Fan Center: Number of Rows" type="number" min="1" max="100" default="1" />
-        <meta property="obj4_numberOfColumns" label="Top Fan Center: Number of Columns" type="number" min="1" max="100" default="1" />
-        <meta property="obj4_phaseOffset" label="Top Fan Center: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj4_text" label="Top Fan Center: Text" type="textfield" default="" />
-        <meta property="obj4_fontSize" label="Top Fan Center: Font Size" type="number" min="10" max="400" default="60" />
-        <meta property="obj4_textAlign" label="Top Fan Center: Justification" type="combobox" values="left,center,right" default="center" />
-        <meta property="obj4_pixelFont" label="Top Fan Center: Pixel Font Style" type="combobox" values="small,large" default="small" />
-        <meta property="obj4_textAnimation" label="Top Fan Center: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-        <meta property="obj4_textAnimationSpeed" label="Top Fan Center: Animation Speed" type="number" min="1" max="100" default="10" />
-        <meta property="obj4_showTime" label="Top Fan Center: Show Current Time" type="boolean" default="false" />
-        <meta property="obj4_showDate" label="Top Fan Center: Show Current Date" type="boolean" default="false" />
-        <meta property="obj4_autoWidth" label="Top Fan Center: Auto-Width" type="boolean" default="true" />
-
-        <meta property="obj5_shape" label="Top Fan Ring: Shape" type="combobox" values="rectangle,circle,ring,text" default="ring" />
-        <meta property="obj5_x" label="Top Fan Ring: X Position" type="number" min="0" max="1280" default="980" />
-        <meta property="obj5_y" label="Top Fan Ring: Y Position" type="number" min="0" max="800" default="0" />
-        <meta property="obj5_width" label="Top Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300" />
-        <meta property="obj5_height" label="Top Fan Ring: Height" type="number" min="10" max="800" default="300" />
-        <meta property="obj5_rotation" label="Top Fan Ring: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj5_innerDiameter" label="Top Fan Ring: Inner Diameter" type="number" min="5" max="1270" default="200" />
-        <meta property="obj5_numberOfSegments" label="Top Fan Ring: Segments" type="number" min="1" max="50" default="6" />
-        <meta property="obj5_angularWidth" label="Top Fan Ring: Segment Angle" type="number" min="1" max="360" default="40" />
-        <meta property="obj5_rotationSpeed" label="Top Fan Ring: Rotation Speed" type="number" min="-100" max="100" default="40" />
-        <meta property="obj5_animationSpeed" label="Top Fan Ring: Animation Speed" type="number" min="1" max="50" default="7" />
-        <meta property="obj5_animationMode" label="Top Fan Ring: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop" />
-        <meta property="obj5_scrollDir" label="Top Fan Ring: Scroll Direction" type="combobox" values="right,left,up,down" default="down" />
-        <meta property="obj5_gradType" label="Top Fan Ring: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="alternating" />
-        <meta property="obj5_useSharpGradient" label="Top Fan Ring: Use Sharp Gradient" type="boolean" default="false" />
-        <meta property="obj5_gradientStop" label="Top Fan Ring: Gradient Stop %" type="number" min="0" max="100" default="51" />
-        <meta property="obj5_gradColor1" label="Top Fan Ring: Color 1" type="color" default="#00ff00" />
-        <meta property="obj5_gradColor2" label="Top Fan Ring: Color 2" type="color" default="#d400ff" />
-        <meta property="obj5_cycleColors" label="Top Fan Ring: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj5_cycleSpeed" label="Top Fan Ring: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj5_numberOfRows" label="Top Fan Ring: Number of Rows" type="number" min="1" max="100" default="1" />
-        <meta property="obj5_numberOfColumns" label="Top Fan Ring: Number of Columns" type="number" min="1" max="100" default="1" />
-        <meta property="obj5_phaseOffset" label="Top Fan Ring: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj5_text" label="Top Fan Ring: Text" type="textfield" default="" />
-        <meta property="obj5_fontSize" label="Top Fan Ring: Font Size" type="number" min="10" max="400" default="60" />
-        <meta property="obj5_textAlign" label="Top Fan Ring: Justification" type="combobox" values="left,center,right" default="center" />
-        <meta property="obj5_pixelFont" label="Top Fan Ring: Pixel Font Style" type="combobox" values="small,large" default="small" />
-        <meta property="obj5_textAnimation" label="Top Fan Ring: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-        <meta property="obj5_textAnimationSpeed" label="Top Fan Ring: Animation Speed" type="number" min="1" max="100" default="10" />
-        <meta property="obj5_showTime" label="Top Fan Ring: Show Current Time" type="boolean" default="false" />
-        <meta property="obj5_showDate" label="Top Fan Ring: Show Current Date" type="boolean" default="false" />
-        <meta property="obj5_autoWidth" label="Top Fan Ring: Auto-Width" type="boolean" default="true" />
-
-        <meta property="obj6_shape" label="Bottom Fan Center: Shape" type="combobox" values="rectangle,circle,ring,text" default="circle" />
-        <meta property="obj6_x" label="Bottom Fan Center: X Position" type="number" min="0" max="1280" default="1074" />
-        <meta property="obj6_y" label="Bottom Fan Center: Y Position" type="number" min="0" max="800" default="594" />
-        <meta property="obj6_width" label="Bottom Fan Center: Width/Outer Diameter" type="number" min="10" max="1280" default="112" />
-        <meta property="obj6_height" label="Bottom Fan Center: Height" type="number" min="10" max="800" default="112" />
-        <meta property="obj6_rotation" label="Bottom Fan Center: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj6_innerDiameter" label="Bottom Fan Center: Inner Diameter" type="number" min="5" max="1270" default="100" />
-        <meta property="obj6_numberOfSegments" label="Bottom Fan Center: Segments" type="number" min="1" max="50" default="12" />
-        <meta property="obj6_angularWidth" label="Bottom Fan Center: Segment Angle" type="number" min="1" max="360" default="15" />
-        <meta property="obj6_rotationSpeed" label="Bottom Fan Center: Rotation Speed" type="number" min="-100" max="100" default="0" />
-        <meta property="obj6_animationSpeed" label="Bottom Fan Center: Animation Speed" type="number" min="1" max="50" default="20" />
-        <meta property="obj6_animationMode" label="Bottom Fan Center: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop" />
-        <meta property="obj6_scrollDir" label="Bottom Fan Center: Scroll Direction" type="combobox" values="right,left,up,down" default="left" />
-        <meta property="obj6_gradType" label="Bottom Fan Center: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="radial" />
-        <meta property="obj6_useSharpGradient" label="Bottom Fan Center: Use Sharp Gradient" type="boolean" default="true" />
-        <meta property="obj6_gradientStop" label="Bottom Fan Center: Gradient Stop %" type="number" min="0" max="100" default="100" />
-        <meta property="obj6_gradColor1" label="Bottom Fan Center: Color 1" type="color" default="#00ff00" />
-        <meta property="obj6_gradColor2" label="Bottom Fan Center: Color 2" type="color" default="#d400ff" />
-        <meta property="obj6_cycleColors" label="Bottom Fan Center: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj6_cycleSpeed" label="Bottom Fan Center: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj6_numberOfRows" label="Bottom Fan Center: Number of Rows" type="number" min="1" max="100" default="1" />
-        <meta property="obj6_numberOfColumns" label="Bottom Fan Center: Number of Columns" type="number" min="1" max="100" default="1" />
-        <meta property="obj6_phaseOffset" label="Bottom Fan Center: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj6_text" label="Bottom Fan Center: Text" type="textfield" default="" />
-        <meta property="obj6_fontSize" label="Bottom Fan Center: Font Size" type="number" min="10" max="400" default="60" />
-        <meta property="obj6_textAlign" label="Bottom Fan Center: Justification" type="combobox" values="left,center,right" default="center" />
-        <meta property="obj6_pixelFont" label="Bottom Fan Center: Pixel Font Style" type="combobox" values="small,large" default="small" />
-        <meta property="obj6_textAnimation" label="Bottom Fan Center: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-        <meta property="obj6_textAnimationSpeed" label="Bottom Fan Center: Animation Speed" type="number" min="1" max="100" default="10" />
-        <meta property="obj6_showTime" label="Bottom Fan Center: Show Current Time" type="boolean" default="false" />
-        <meta property="obj6_showDate" label="Bottom Fan Center: Show Current Date" type="boolean" default="false" />
-        <meta property="obj6_autoWidth" label="Bottom Fan Center: Auto-Width" type="boolean" default="true" />
-
-        <meta property="obj7_shape" label="Bottom Fan Ring: Shape" type="combobox" values="rectangle,circle,ring,text" default="ring" />
-        <meta property="obj7_x" label="Bottom Fan Ring: X Position" type="number" min="0" max="1280" default="980" />
-        <meta property="obj7_y" label="Bottom Fan Ring: Y Position" type="number" min="0" max="800" default="500" />
-        <meta property="obj7_width" label="Bottom Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300" />
-        <meta property="obj7_height" label="Bottom Fan Ring: Height" type="number" min="10" max="800" default="300" />
-        <meta property="obj7_rotation" label="Bottom Fan Ring: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj7_innerDiameter" label="Bottom Fan Ring: Inner Diameter" type="number" min="5" max="1270" default="200" />
-        <meta property="obj7_numberOfSegments" label="Bottom Fan Ring: Segments" type="number" min="1" max="50" default="6" />
-        <meta property="obj7_angularWidth" label="Bottom Fan Ring: Segment Angle" type="number" min="1" max="360" default="40" />
-        <meta property="obj7_rotationSpeed" label="Bottom Fan Ring: Rotation Speed" type="number" min="-100" max="100" default="-40" />
-        <meta property="obj7_animationSpeed" label="Bottom Fan Ring: Animation Speed" type="number" min="1" max="50" default="2" />
-        <meta property="obj7_animationMode" label="Bottom Fan Ring: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop" />
-        <meta property="obj7_scrollDir" label="Bottom Fan Ring: Scroll Direction" type="combobox" values="right,left,up,down" default="down" />
-        <meta property="obj7_gradType" label="Bottom Fan Ring: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="alternating" />
-        <meta property="obj7_useSharpGradient" label="Bottom Fan Ring: Use Sharp Gradient" type="boolean" default="false" />
-        <meta property="obj7_gradientStop" label="Bottom Fan Ring: Gradient Stop %" type="number" min="0" max="100" default="51" />
-        <meta property="obj7_gradColor1" label="Bottom Fan Ring: Color 1" type="color" default="#00ff00" />
-        <meta property="obj7_gradColor2" label="Bottom Fan Ring: Color 2" type="color" default="#d400ff" />
-        <meta property="obj7_cycleColors" label="Bottom Fan Ring: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj7_cycleSpeed" label="Bottom Fan Ring: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj7_numberOfRows" label="Bottom Fan Ring: Number of Rows" type="number" min="1" max="100" default="1" />
-        <meta property="obj7_numberOfColumns" label="Bottom Fan Ring: Number of Columns" type="number" min="1" max="100" default="1" />
-        <meta property="obj7_phaseOffset" label="Bottom Fan Ring: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj7_text" label="Bottom Fan Ring: Text" type="textfield" default="" />
-        <meta property="obj7_fontSize" label="Bottom Fan Ring: Font Size" type="number" min="10" max="400" default="60" />
-        <meta property="obj7_textAlign" label="Bottom Fan Ring: Justification" type="combobox" values="left,center,right" default="center" />
-        <meta property="obj7_pixelFont" label="Bottom Fan Ring: Pixel Font Style" type="combobox" values="small,large" default="small" />
-        <meta property="obj7_textAnimation" label="Bottom Fan Ring: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-        <meta property="obj7_textAnimationSpeed" label="Bottom Fan Ring: Animation Speed" type="number" min="1" max="100" default="10" />
-        <meta property="obj7_showTime" label="Bottom Fan Ring: Show Current Time" type="boolean" default="false" />
-        <meta property="obj7_showDate" label="Bottom Fan Ring: Show Current Date" type="boolean" default="false" />
-        <meta property="obj7_autoWidth" label="Bottom Fan Ring: Auto-Width" type="boolean" default="true" />
-
-        <meta property="obj8_shape" label="Middle Fan Center: Shape" type="combobox" values="rectangle,circle,ring,text" default="circle" />
-        <meta property="obj8_x" label="Middle Fan Center: X Position" type="number" min="0" max="1280" default="837" />
-        <meta property="obj8_y" label="Middle Fan Center: Y Position" type="number" min="0" max="800" default="340" />
-        <meta property="obj8_width" label="Middle Fan Center: Width/Outer Diameter" type="number" min="10" max="1280" default="112" />
-        <meta property="obj8_height" label="Middle Fan Center: Height" type="number" min="10" max="800" default="112" />
-        <meta property="obj8_rotation" label="Middle Fan Center: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj8_innerDiameter" label="Middle Fan Center: Inner Diameter" type="number" min="5" max="1270" default="100" />
-        <meta property="obj8_numberOfSegments" label="Middle Fan Center: Segments" type="number" min="1" max="50" default="12" />
-        <meta property="obj8_angularWidth" label="Middle Fan Center: Segment Angle" type="number" min="1" max="360" default="15" />
-        <meta property="obj8_rotationSpeed" label="Middle Fan Center: Rotation Speed" type="number" min="-100" max="100" default="0" />
-        <meta property="obj8_animationSpeed" label="Middle Fan Center: Animation Speed" type="number" min="1" max="50" default="20" />
-        <meta property="obj8_animationMode" label="Middle Fan Center: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop" />
-        <meta property="obj8_scrollDir" label="Middle Fan Center: Scroll Direction" type="combobox" values="right,left,up,down" default="left" />
-        <meta property="obj8_gradType" label="Middle Fan Center: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="radial" />
-        <meta property="obj8_useSharpGradient" label="Middle Fan Center: Use Sharp Gradient" type="boolean" default="true" />
-        <meta property="obj8_gradientStop" label="Middle Fan Center: Gradient Stop %" type="number" min="0" max="100" default="100" />
-        <meta property="obj8_gradColor1" label="Middle Fan Center: Color 1" type="color" default="#00ff00" />
-        <meta property="obj8_gradColor2" label="Middle Fan Center: Color 2" type="color" default="#d400ff" />
-        <meta property="obj8_cycleColors" label="Middle Fan Center: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj8_cycleSpeed" label="Middle Fan Center: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj8_numberOfRows" label="Middle Fan Center: Number of Rows" type="number" min="1" max="100" default="1" />
-        <meta property="obj8_numberOfColumns" label="Middle Fan Center: Number of Columns" type="number" min="1" max="100" default="1" />
-        <meta property="obj8_phaseOffset" label="Middle Fan Center: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj8_text" label="Middle Fan Center: Text" type="textfield" default="" />
-        <meta property="obj8_fontSize" label="Middle Fan Center: Font Size" type="number" min="10" max="400" default="60" />
-        <meta property="obj8_textAlign" label="Middle Fan Center: Justification" type="combobox" values="left,center,right" default="center" />
-        <meta property="obj8_pixelFont" label="Middle Fan Center: Pixel Font Style" type="combobox" values="small,large" default="small" />
-        <meta property="obj8_textAnimation" label="Middle Fan Center: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-        <meta property="obj8_textAnimationSpeed" label="Middle Fan Center: Animation Speed" type="number" min="1" max="100" default="10" />
-        <meta property="obj8_showTime" label="Middle Fan Center: Show Current Time" type="boolean" default="false" />
-        <meta property="obj8_showDate" label="Middle Fan Center: Show Current Date" type="boolean" default="false" />
-        <meta property="obj8_autoWidth" label="Middle Fan Center: Auto-Width" type="boolean" default="true" />
-
-        <meta property="obj9_shape" label="Middle Fan Ring: Shape" type="combobox" values="rectangle,circle,ring,text" default="ring" />
-        <meta property="obj9_x" label="Middle Fan Ring: X Position" type="number" min="0" max="1280" default="743" />
-        <meta property="obj9_y" label="Middle Fan Ring: Y Position" type="number" min="0" max="800" default="246" />
-        <meta property="obj9_width" label="Middle Fan Ring: Width/Outer Diameter" type="number" min="10" max="1280" default="300" />
-        <meta property="obj9_height" label="Middle Fan Ring: Height" type="number" min="10" max="800" default="300" />
-        <meta property="obj9_rotation" label="Middle Fan Ring: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj9_innerDiameter" label="Middle Fan Ring: Inner Diameter" type="number" min="5" max="1270" default="200" />
-        <meta property="obj9_numberOfSegments" label="Middle Fan Ring: Segments" type="number" min="1" max="50" default="1" />
-        <meta property="obj9_angularWidth" label="Middle Fan Ring: Segment Angle" type="number" min="1" max="360" default="180" />
-        <meta property="obj9_rotationSpeed" label="Middle Fan Ring: Rotation Speed" type="number" min="-100" max="100" default="40" />
-        <meta property="obj9_animationSpeed" label="Middle Fan Ring: Animation Speed" type="number" min="1" max="50" default="2" />
-        <meta property="obj9_animationMode" label="Middle Fan Ring: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop" />
-        <meta property="obj9_scrollDir" label="Middle Fan Ring: Scroll Direction" type="combobox" values="right,left,up,down" default="down" />
-        <meta property="obj9_gradType" label="Middle Fan Ring: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="alternating" />
-        <meta property="obj9_useSharpGradient" label="Middle Fan Ring: Use Sharp Gradient" type="boolean" default="false" />
-        <meta property="obj9_gradientStop" label="Middle Fan Ring: Gradient Stop %" type="number" min="0" max="100" default="51" />
-        <meta property="obj9_gradColor1" label="Middle Fan Ring: Color 1" type="color" default="#00ff00" />
-        <meta property="obj9_gradColor2" label="Middle Fan Ring: Color 2" type="color" default="#d400ff" />
-        <meta property="obj9_cycleColors" label="Middle Fan Ring: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj9_cycleSpeed" label="Middle Fan Ring: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj9_numberOfRows" label="Middle Fan Ring: Number of Rows" type="number" min="1" max="100" default="1" />
-        <meta property="obj9_numberOfColumns" label="Middle Fan Ring: Number of Columns" type="number" min="1" max="100" default="1" />
-        <meta property="obj9_phaseOffset" label="Middle Fan Ring: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj9_text" label="Middle Fan Ring: Text" type="textfield" default="" />
-        <meta property="obj9_fontSize" label="Middle Fan Ring: Font Size" type="number" min="10" max="400" default="60" />
-        <meta property="obj9_textAlign" label="Middle Fan Ring: Justification" type="combobox" values="left,center,right" default="center" />
-        <meta property="obj9_pixelFont" label="Middle Fan Ring: Pixel Font Style" type="combobox" values="small,large" default="small" />
-        <meta property="obj9_textAnimation" label="Middle Fan Ring: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-        <meta property="obj9_textAnimationSpeed" label="Middle Fan Ring: Animation Speed" type="number" min="1" max="100" default="10" />
-        <meta property="obj9_showTime" label="Middle Fan Ring: Show Current Time" type="boolean" default="false" />
-        <meta property="obj9_showDate" label="Middle Fan Ring: Show Current Date" type="boolean" default="false" />
-        <meta property="obj9_autoWidth" label="Middle Fan Ring: Auto-Width" type="boolean" default="true" />
     </template>
-    <link rel="stylesheet" href="styles.css">
 </head>
 
-<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-WS7MGSDJSB"></script>
 <script>
     window.dataLayer = window.dataLayer || [];
@@ -338,7 +139,6 @@
 
             <div class="ms-auto d-flex align-items-center">
 
-                <!-- Group for Project Management -->
                 <div class="btn-group me-3" role="group" aria-label="Project management actions">
                     <button class="btn btn-outline-secondary" id="new-ws-btn" data-bs-toggle="tooltip" title="New Workspace"><i class="bi bi-file-earmark-plus me-1"></i> New</button>
                     <button class="btn btn-outline-primary" id="save-ws-btn" data-bs-toggle="tooltip" title="Save current workspace to the cloud" disabled><i class="bi bi-cloud-arrow-up me-1"></i> Save</button>
@@ -347,13 +147,11 @@
                     <button class="btn btn-outline-info" id="import-btn" data-bs-toggle="modal" data-bs-target="#import-meta-modal"><i class="bi bi-box-arrow-in-down me-1"></i> Import</button>
                 </div>
 
-                <!-- Group for Output/Sharing -->
                 <div class="btn-group me-3" role="group" aria-label="Sharing and exporting actions">
                     <button class="btn btn-outline-info" id="share-btn" title="Get a shareable link to this effect" disabled><i class="bi bi-share me-1"></i> Share</button>
                     <button class="btn btn-outline-success" id="export-btn" data-bs-toggle="tooltip" title="Download complete HTML file"><i class="bi bi-download me-1"></i> Export</button>
                 </div>
 
-                <!-- Group for Help and Settings -->
                 <div class="btn-group" role="group" aria-label="Help and settings">
                     <button class="btn btn-outline-secondary" id="help-btn" data-bs-toggle="modal" data-bs-target="#help-modal" title="Help"><i class="bi bi-question-circle"></i></button>
                     <button class="btn btn-outline-secondary" id="about-btn" data-bs-toggle="modal" data-bs-target="#about-modal" title="About"><i class="bi bi-info-circle"></i></button>
@@ -367,12 +165,9 @@
                     </ul>
                 </div>
 
-                <!-- User Session -->
                 <div class="ms-3">
-                    <!-- Logged Out State -->
                     <button class="btn btn-outline-success" id="login-btn"><i class="bi bi-google me-2"></i>Sign In</button>
 
-                    <!-- Logged In State (hidden by default) -->
                     <div class="btn-group d-none" id="user-session-group" role="group">
                         <span class="btn btn-outline-secondary d-flex align-items-center disabled" style="pointer-events: none;">
                             <img id="user-photo" class="rounded-circle me-2" style="width: 24px; height: 24px;" alt="User profile photo">
@@ -451,7 +246,6 @@
     </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 99999">
-        <!-- Toast for general notifications -->
         <div id="app-toast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5000" style="width: 350px; font-size: 1.1rem;">
             <div id="app-toast-header" class="toast-header text-white d-flex align-items-center">
                 <i id="app-toast-icon" class="bi me-2"></i>
@@ -459,8 +253,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
             <div class="toast-body bg-dark" id="app-toast-body">
-                <!-- Message will be inserted here -->
-            </div>
+                </div>
         </div>
     </div>
 
@@ -693,8 +486,7 @@
         <div class="offcanvas-body">
             <p>Select an effect to load into your workspace. <a href="gallery.html">View full gallery page <i class="bi bi-box-arrow-up-right"></i></a></p>
             <ul class="list-group" id="gallery-project-list">
-                <!-- Projects will be loaded here by JavaScript -->
-            </ul>
+                </ul>
         </div>
     </div>
 

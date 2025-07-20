@@ -109,7 +109,7 @@ function drawPixelText(ctx, shape) {
 
     const fontData = pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
     const { charWidth, charHeight, charSpacing, lineSpacing, map } = fontData;
-    const pixelSize = fontSize / 10;
+    const pixelSize = fontSize / 10; // This is our margin size
 
     const animatedText = textToRender.toUpperCase().substring(0, Math.floor(visibleCharCount));
     const lines = animatedText.split('\n');
@@ -117,16 +117,12 @@ function drawPixelText(ctx, shape) {
     ctx.save();
     ctx.beginPath();
 
-    // This new logic makes the clipping area taller for the wave animation,
-    // allowing the text to be seen outside its normal top and bottom bounds.
     if (textAnimation === 'wave') {
-        const verticalPadding = 100; // A safe amount of extra space
+        const verticalPadding = 100; // Extra clipping space for wave animation
         ctx.rect(x, y - verticalPadding, width, height + verticalPadding * 2);
     } else {
-        // Original clipping for all other animations
         ctx.rect(x, y, width, height);
     }
-
     ctx.clip();
 
     lines.forEach((line, lineIndex) => {
@@ -143,7 +139,8 @@ function drawPixelText(ctx, shape) {
             if (!charData) continue;
 
             let dx = lineStartX + i * (charWidth + charSpacing) * pixelSize + scrollOffsetX;
-            let dy = y + lineIndex * (charHeight + lineSpacing) * pixelSize;
+            // Apply the top margin to the drawing's Y position
+            let dy = y + pixelSize + lineIndex * (charHeight + lineSpacing) * pixelSize;
 
             if (textAnimation === 'wave') {
                 dy += Math.sin(waveAngle + i * 0.5) * (pixelSize * 2);
@@ -359,8 +356,6 @@ class Shape {
 
         const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
         const { charWidth, charHeight, charSpacing, lineSpacing } = fontData;
-
-        // It now gets the correct text (or time) to measure
         const textToMeasure = this.getWrappedText() || ' ';
         const lines = textToMeasure.split('\n');
         const pixelSize = this.fontSize / 10;
@@ -370,7 +365,9 @@ class Shape {
             this.width = Math.max(0, ...widths);
         }
 
-        this.height = lines.length * (charHeight + lineSpacing) * pixelSize - (lineSpacing * pixelSize);
+        const textBlockHeight = lines.length * (charHeight + lineSpacing) * pixelSize - (lineSpacing * pixelSize);
+        // Add top and bottom margins, each equal to one pixel cell's size
+        this.height = textBlockHeight + (2 * pixelSize);
     }
 
     /**
@@ -1689,28 +1686,25 @@ document.addEventListener('DOMContentLoaded', function () {
         let scriptHTML = '';
         const generalValues = getControlValues();
 
-        // Correctly process and write general settings like 'title' and 'enableAnimation'
         configStore.filter(c => {
             const key = c.property || c.name;
             return key && !key.startsWith('obj');
         }).forEach(conf => {
             const key = conf.property || conf.name;
             if (generalValues[key] !== undefined) {
-                // This handles special meta tags like <meta title="...">
                 if (conf.name && !conf.property) {
                     scriptHTML += `<meta ${key}="${generalValues[key]}" />\n`;
                 } else {
-                    // This handles standard property tags like <meta property="enableAnimation" ...>
                     const attrs = Object.keys(conf).filter(attr => attr !== 'default').map(attrName => `${attrName}="${conf[attrName]}"`).join(' ');
                     scriptHTML += `<meta ${attrs} default="${generalValues[key]}" />\n`;
                 }
             }
         });
 
-        // Process and write settings for each object
         objects.forEach(obj => {
             const name = obj.name || `Object ${obj.id}`;
             const allPossibleConfigs = getDefaultObjectConfig(obj.id);
+            const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
 
             allPossibleConfigs.forEach(conf => {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
@@ -1736,12 +1730,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         value = Math.round(obj.animationSpeed * 10);
                     } else if (propName === 'cycleSpeed') {
                         value = Math.round(obj.cycleSpeed * 50);
+                    } else if (propsToScale.includes(propName)) {
+                        // Scale down pixel values by 4 for export
+                        value = Math.round(parseFloat(value) / 4);
                     } else {
                         value = Math.round(parseFloat(value));
                     }
                 }
 
-                if ((conf.type === 'textfield' || conf.type === 'textarea') && typeof value === 'string') {
+                if (conf.type === 'textfield' && typeof value === 'string') {
                     value = value.replace(/\n/g, '\\n');
                 }
 
@@ -1750,13 +1747,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     conf.label = `${name}: Width/Outer Diameter`;
                 }
 
-                let finalType = conf.type;
-                if (finalType === 'textarea' || finalType === 'text') {
-                    finalType = 'textfield';
-                }
-
                 const attrs = Object.keys(conf).filter(attr => attr !== 'default' && attr !== 'type').map(attrName => `${attrName}="${conf[attrName]}"`).join(' ');
-                scriptHTML += `<meta ${attrs} type="${finalType}" default="${value}" />\n`;
+                scriptHTML += `<meta ${attrs} type="textfield" default="${value}" />\n`;
             });
         });
 
@@ -1949,7 +1941,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const subGroupContainer = document.createElement('div');
                 subGroupContainer.className = 'card card-body bg-body mb-2';
                 const subGroupHeader = document.createElement('h6');
-                subGroupHeader.className = 'text-body-secondary mb-2';
+                subGroupHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
                 subGroupHeader.textContent = subGroupName;
                 subGroupContainer.appendChild(subGroupHeader);
                 const propsInSubGroup = textSubGroups[subGroupName];
@@ -2022,6 +2014,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const key = conf.property || conf.name;
             const el = form.elements[key];
             if (el) {
+                // FIXED: This now correctly reads the 'checked' property for all booleans,
+                // including the 'enableAnimation' checkbox.
                 if (el.type === 'checkbox') {
                     data[key] = el.checked;
                 } else if (el.type === 'number') {
@@ -2145,16 +2139,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const matchTextSizeBtn = document.getElementById('match-text-size-btn');
 
         singleSelectButtons.forEach(btn => btn.disabled = selectedObjectIds.length === 0);
-        multiSelectButtons.forEach(btn => btn.disabled = selectedObjectIds.length < 2);
+        // Disable all generic "match" buttons if less than 2 objects are selected
+        multiSelectButtons.forEach(btn => {
+            if (btn.id !== 'match-text-size-btn') {
+                btn.disabled = selectedObjectIds.length < 2;
+            }
+        });
 
-        // Logic for enabling/disabling the "Match Text Size" button
         if (matchTextSizeBtn) {
             const selected = selectedObjectIds.map(id => objects.find(o => o.id === id)).filter(o => o);
             const textObjects = selected.filter(obj => obj.shape === 'text');
             const gridObjects = selected.filter(obj => obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1));
 
-            // Enable if exactly one text object and one grid object are selected
-            matchTextSizeBtn.disabled = !(textObjects.length === 1 && gridObjects.length === 1);
+            // Enable if we have at least one of each, OR if we have two or more text objects.
+            const canMatchTextToGrid = textObjects.length >= 1 && gridObjects.length >= 1;
+            const canMatchTextToText = textObjects.length >= 2 && gridObjects.length === 0;
+
+            matchTextSizeBtn.disabled = !(canMatchTextToGrid || canMatchTextToText);
         }
     }
 
@@ -2248,19 +2249,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function drawFrame() {
-        // console.log('Entering drawFrame, snapLines:', snapLines);
-        // console.log('Objects:', objects.map(o => ({
-        //     id: o.id,
-        //     shape: o.shape,
-        //     x: o.x,
-        //     y: o.y,
-        //     width: o.width,
-        //     height: o.height,
-        //     rotation: o.rotation,
-        //     fontSize: o.fontSize,
-        //     pixelFont: o.pixelFont,
-        //     text: o.text
-        // })));
         // Set black background
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -2297,14 +2285,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const now = timestamp;
         const elapsed = now - then;
 
-        // if enough time has elapsed, draw the next frame
         if (elapsed > fpsInterval) {
-            // Get ready for next frame by setting then=now, but also adjust for your
-            // specified fpsInterval not being a multiple of RAF's interval (16.7ms)
             then = now - (elapsed % fpsInterval);
 
-            const values = getControlValues();
-            if (values.enableAnimation || isDragging || isResizing) {
+            // Directly find the checkbox and read its 'checked' status.
+            // This is a more reliable check.
+            const enableAnimationCheckbox = document.getElementById('enableAnimation');
+            const isAnimationEnabled = enableAnimationCheckbox ? enableAnimationCheckbox.checked : false;
+
+            // Run the draw loop if animation is enabled, or if the user is interacting.
+            if (isAnimationEnabled || isDragging || isResizing) {
                 drawFrame();
             }
         }
@@ -2353,8 +2343,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function getFormValuesForObject(id) {
         const values = {};
         const prefix = `obj${id}_`;
-
         const configs = configStore.filter(c => c.property && c.property.startsWith(prefix));
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
 
         configs.forEach(conf => {
             const key = conf.property.replace(prefix, '');
@@ -2365,12 +2355,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     value = el.checked;
                 } else if (el.type === 'number') {
                     value = el.value === '' ? 0 : parseFloat(el.value);
-                    // RE-ADD ROUNDING for pixel-based values
-                    if (['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'].includes(key)) {
-                        value = Math.round(value);
-                    }
                 } else {
                     value = el.value;
+                }
+
+                // Scale up pixel values from the form for the internal model
+                if (propsToScale.includes(key)) {
+                    value *= 4;
                 }
 
                 if (key.startsWith('gradColor')) {
@@ -2387,7 +2378,7 @@ document.addEventListener('DOMContentLoaded', function () {
         values.gradientDirection = (values.scrollDirection === 'up' || values.scrollDirection === 'down') ? 'vertical' : 'horizontal';
         values.cycleSpeed = (values.cycleSpeed || 0) / 50.0;
         values.animationSpeed = (values.animationSpeed || 0) / 10.0;
-        if (values.shape === 'ring') values.height = values.width;
+        if (values.shape === 'ring' || values.shape === 'circle') values.height = values.width;
 
         return values;
     }
@@ -2411,6 +2402,8 @@ document.addEventListener('DOMContentLoaded', function () {
      * after undo/redo.
      */
     function updateFormValuesFromObjects() {
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+
         objects.forEach(obj => {
             const fieldset = form.querySelector(`fieldset[data-object-id="${obj.id}"]`);
             if (!fieldset) return;
@@ -2431,7 +2424,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // This loop now correctly updates all form fields from the object's properties
             Object.keys(obj).forEach(key => {
-                if (key === 'gradient') {
+                if (propsToScale.includes(key)) {
+                    // Scale down the high-res internal value for display in the form.
+                    updateField(key, obj[key] / 4);
+                } else if (key === 'gradient') {
                     updateField('gradColor1', obj.gradient.color1);
                     updateField('gradColor2', obj.gradient.color2);
                 } else if (key === 'animationSpeed') {
@@ -2447,6 +2443,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         generateOutputScript();
     }
+
+    
 
     /**
      * A master update function that syncs the shapes from the form and regenerates the output script.
@@ -2478,8 +2476,11 @@ document.addEventListener('DOMContentLoaded', function () {
      * Creates the initial set of Shape objects based on the `configStore`.
      */
     function createInitialObjects() {
+        // This function reads the initial setup from the <template> in index.html
         const grouped = groupConfigs(configStore);
         const initialStates = [];
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+
         Object.keys(grouped.objects).forEach(id => {
             const config = { id: parseInt(id), gradient: {} };
             const representativeConfig = grouped.objects[id][0];
@@ -2490,9 +2491,9 @@ document.addEventListener('DOMContentLoaded', function () {
             grouped.objects[id].forEach(conf => {
                 const key = conf.property.replace(`obj${id}_`, '');
                 let value = conf.default;
-                const type = conf.type;
-                if (type === 'number') value = parseFloat(value);
-                else if (type === 'boolean') value = (value === 'true');
+                if (conf.type === 'number') value = parseFloat(value);
+                else if (conf.type === 'boolean') value = (value === 'true');
+
                 if (key.startsWith('gradColor')) {
                     config.gradient[key.replace('grad', '').toLowerCase()] = value;
                 } else if (key === 'scrollDir') {
@@ -2501,19 +2502,24 @@ document.addEventListener('DOMContentLoaded', function () {
                     config[key] = value;
                 }
             });
-            config.gradType = config.gradType || 'solid';
-            config.gradient = config.gradient.color1 ? config.gradient : { color1: '#000000', color2: '#000000' };
-            config.useSharpGradient = config.useSharpGradient !== undefined ? config.useSharpGradient : false;
-            config.gradientStop = config.gradientStop !== undefined ? parseFloat(config.gradientStop) : 50;
-            config.gradientDirection = (config.scrollDirection === 'up' || config.scrollDirection === 'down') ? 'vertical' : 'horizontal';
+
+            // Scales up the pixel values from the 320x200 system to the 1280x800 builder canvas
+            propsToScale.forEach(prop => {
+                if (config[prop] !== undefined) {
+                    config[prop] *= 4;
+                }
+            });
+
+            // Applies non-scaled transformations
             config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
-            const speed = config.animationSpeed || 0;
-            config.animationSpeed = speed / 10.0;
+            config.animationSpeed = (config.animationSpeed || 0) / 10.0;
             if (config.shape === 'ring' || config.shape === 'circle') {
                 config.height = config.width;
             }
             initialStates.push(config);
         });
+
+        // Creates the final Shape objects from the processed states
         objects = initialStates.map(state => new Shape({ ...state, ctx }));
     }
 
@@ -2591,15 +2597,21 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function getDefaultObjectConfig(newId) {
         return [
+            // Shape and non-pixel properties remain the same
             { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,text' },
-            { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '1280' },
-            { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '800' },
-            { property: `obj${newId}_width`, label: `Object ${newId}: Width/Outer Diameter`, type: 'number', default: '200', min: '10', max: '1280' },
-            { property: `obj${newId}_height`, label: `Object ${newId}: Height`, type: 'number', default: '150', min: '10', max: '800' },
+
+            // --- SCALED PROPERTIES ---
+            { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320' },
+            { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200' },
+            { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320' },
+            { property: `obj${newId}_height`, label: `Object ${newId}: Height`, type: 'number', default: '38', min: '2', max: '200' },
+            { property: `obj${newId}_innerDiameter`, label: `Object ${newId}: Inner Diameter`, type: 'number', default: '25', min: '1', max: '318' },
+            { property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '15', min: '2', max: '100' },
+
+            // --- NON-SCALED PROPERTIES ---
             { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360' },
-            { property: `obj${newId}_innerDiameter`, label: `Object ${newId}: Inner Diameter`, type: 'number', default: '100', min: '5', max: '1270' },
             { property: `obj${newId}_numberOfSegments`, label: `Object ${newId}: Segments`, type: 'number', default: '12', min: '1', max: '50' },
-            { property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', default: '20', min: '1', max: '360' },
+            { property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', min: '1', max: '360', default: '20' },
             { property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100' },
             { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '1', max: '50' },
             { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop' },
@@ -2615,7 +2627,6 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_numberOfColumns`, label: `Object ${newId}: Number of Columns`, type: 'number', default: '1', min: '1', max: '100' },
             { property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100' },
             { property: `obj${newId}_text`, label: `Object ${newId}: Text`, type: 'textfield', default: 'New Text' },
-            { property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '60', min: '10', max: '400' },
             { property: `obj${newId}_textAlign`, label: `Object ${newId}: Justification`, type: 'combobox', values: 'left,center,right', default: 'center' },
             { property: `obj${newId}_pixelFont`, label: `Object ${newId}: Pixel Font Style`, type: 'combobox', values: 'small,large', default: 'small' },
             { property: `obj${newId}_textAnimation`, label: `Object ${newId}: Text Animation`, type: 'combobox', values: 'none,marquee,typewriter,wave', default: 'none' },
@@ -3257,19 +3268,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 break;
             case 'match-text-size':
-                const textObject = selected.find(obj => obj.shape === 'text');
-                const gridObject = selected.find(obj => obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1));
+                const selected = selectedObjectIds.map(id => objects.find(o => o.id === id)).filter(o => o);
+                const textObjects = selected.filter(obj => obj.shape === 'text');
+                const gridObjects = selected.filter(obj => obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1));
 
-                if (textObject && gridObject) {
-                    // Calculate the height of a single cell in the grid object
-                    const cellHeight = gridObject.height / gridObject.numberOfRows;
+                if (textObjects.length >= 1 && gridObjects.length >= 1) {
+                    // --- Scenario 1: Match Text to Grid ---
+                    const sourceGrid = gridObjects[0]; // Use the first selected grid as the source
+                    const cellHeight = sourceGrid.height / sourceGrid.numberOfRows;
 
-                    // Update the font size of the text object to match the cell height
-                    // Multiply by 10 because fontSize is internally divided by 10 for pixelSize calculation
-                    textObject.fontSize = cellHeight * 10;
+                    // Apply the new font size to all selected text objects
+                    textObjects.forEach(textObject => {
+                        textObject.fontSize = cellHeight * 10; // Scale up for internal value
+                        textObject._updateTextMetrics();
+                    });
 
-                    // Ensure text object's height updates based on new font size
-                    textObject._updateTextMetrics();
+                } else if (textObjects.length >= 2 && gridObjects.length === 0) {
+                    // --- Scenario 2: Match Text to other Text ---
+                    const sourceText = textObjects[0]; // Use the first selected text as the source
+                    const sourceFontSize = sourceText.fontSize;
+
+                    // Apply the font size to all other selected text objects
+                    textObjects.slice(1).forEach(targetText => {
+                        targetText.fontSize = sourceFontSize;
+                        targetText._updateTextMetrics();
+                    });
                 }
                 break;
         }
@@ -4273,15 +4296,10 @@ document.addEventListener('DOMContentLoaded', function () {
     addObjectBtn.addEventListener('click', () => {
         currentProjectDocId = null;
         updateShareButtonState();
-
-        // Determine the next available object ID
         const newId = objects.length > 0 ? (Math.max(...objects.map(o => o.id))) + 1 : 1;
-
-        // Get the default set of properties for a new object
         const newConfigs = getDefaultObjectConfig(newId);
         configStore.push(...newConfigs);
 
-        // Create a state object from those default properties
         const state = { id: newId, name: `Object ${newId}` };
         newConfigs.forEach(conf => {
             const key = conf.property.replace(`obj${newId}_`, '');
@@ -4294,14 +4312,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 state.gradient[key.replace('grad', '').toLowerCase()] = value;
             } else {
                 state[key] = value;
+                if (key === 'rotation') { // Add this line
+                    state.rotation = value;   // Add this line
+                }                         // Add this line
             }
         });
 
-        // Create the new Shape instance and add it to our live objects array
+        // Scale up the pixel values for the new object
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+        propsToScale.forEach(prop => {
+            if (state[prop] !== undefined) {
+                state[prop] *= 4;
+            }
+        });
+
         const newShape = new Shape({ ...state, ctx });
         objects.push(newShape);
-
-        // Update the UI and save this action
         renderForm();
         updateFormValuesFromObjects();
         drawFrame();
