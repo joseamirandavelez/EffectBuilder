@@ -14,8 +14,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script defer data-domain="joseamirandavelez.github.io/effectbuilder" src="https://plausible.io/js/script.js"></script>
-
     <script type="module" src="firebase.js"></script>
 
     <template id="initial-config">
@@ -111,7 +109,7 @@
         <meta property="obj3_cycleColors" label="Matrix: Cycle Colors" type="boolean" default="false" />
         <meta property="obj3_cycleSpeed" label="Matrix: Color Cycle Speed" type="number" min="1" max="10" default="10" />
         <meta property="obj3_numberOfRows" label="Matrix: Number of Rows" type="number" min="1" max="100" default="16" />
-        <meta property="obj3_numberOfColumns" label="Matrix: Number of Columns" type="number" min="1" max="100" default="16" />
+        <meta property="obj3_numberOfColumns" label="Matrix: Number of Columns" , type="number" min="1" max="100" default="16" />
         <meta property="obj3_phaseOffset" label="Matrix: Phase Offset" type="number" min="0" max="100" default="10" />
         <meta property="obj3_text" label="Matrix: Text" type="textfield" default="" />
         <meta property="obj3_fontSize" label="Matrix: Font Size" type="number" min="10" max="400" default="60" />
@@ -428,6 +426,7 @@
                             </div>
                             <div class="btn-group btn-group-sm me-2 mb-1" role="group">
                                 <button type="button" class="btn btn-secondary" id="constrain-btn" data-bs-toggle="tooltip" title="Snap to Canvas"><i class="bi bi-magnet-fill"></i></button>
+                                <button type="button" class="btn btn-secondary" id="match-text-size-btn" data-action="match-text-size" data-bs-toggle="tooltip" title="Match Text Size to Cell Height" disabled><i class="bi bi-fonts"></i> <i class="bi bi-grid-3x3"></i></button>
                             </div>
                         </div>
                     </div>
@@ -714,6 +713,24 @@
                             <i class="bi bi-clipboard"></i> Copy
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="export-options-modal" tabindex="-1" aria-labelledby="exportOptionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportOptionsModalLabel"><i class="bi bi-box-arrow-down me-2"></i>Export Options</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Your effect is ready. How would you like to export it?</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-success" id="export-download-btn"><i class="bi bi-file-earmark-zip-fill me-2"></i>Download .zip File</button>
+                    <button type="button" class="btn btn-primary" id="export-copy-btn"><i class="bi bi-clipboard-check-fill me-2"></i>Copy HTML Code</button>
                 </div>
             </div>
         </div>

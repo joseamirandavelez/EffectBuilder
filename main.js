@@ -1,3 +1,5 @@
+let snapLines = [];
+
 const FONT_DATA_4PX = {
     name: 'small', charWidth: 3, charHeight: 4, charSpacing: 1, lineSpacing: 2,
     map: {
@@ -951,22 +953,17 @@ class Shape {
      * @param {object} props - An object containing properties to update.
      */
     update(props) {
-        // --- Add this block to reset animations when properties change ---
         const textChanged = props.text !== undefined && props.text !== this.text;
         const animationChanged = props.textAnimation !== undefined && props.textAnimation !== this.textAnimation;
 
         if ((textChanged && this.textAnimation === 'typewriter') || (animationChanged && props.textAnimation === 'typewriter')) {
             this.visibleCharCount = 0;
-            this.typewriterWaitTimer = 0; // Add this line
+            this.typewriterWaitTimer = 0;
         }
-        if ((textChanged && this.textAnimation === 'marquee') || (animationChanged && props.textAnimation === 'marquee')) {
-            this.scrollOffsetX = 0;
-        }
-        if ((textChanged && this.textAnimation === 'wave') || (animationChanged && props.textAnimation === 'wave')) {
+        if ((textChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave')) || (animationChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave'))) {
             this.scrollOffsetX = 0;
             this.waveAngle = 0;
         }
-        // --- End of new block ---
 
         const oldRows = this.numberOfRows;
         const oldCols = this.numberOfColumns;
@@ -986,7 +983,7 @@ class Shape {
             this._shuffleCellOrder();
         }
 
-        // Recalculate dimensions for text objects automatically
+        // This check is now outside the loop and correctly triggers a resize
         if (this.shape === 'text') {
             this._updateTextMetrics();
         }
@@ -998,10 +995,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const undoBtn = document.getElementById('undo-btn');
     const redoBtn = document.getElementById('redo-btn');
     const canvas = document.getElementById('signalCanvas');
+    if (!canvas) {
+        console.error('Canvas element not found');
+        return;
+    }
     canvas.width = 1280;
     canvas.height = 800;
     const canvasContainer = document.getElementById('canvas-container');
     const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        console.error('Failed to get 2D context');
+        return;
+    }
     const form = document.getElementById('controls-form');
     const outputScriptArea = document.getElementById('output-script');
     const copyBtn = document.getElementById('copy-btn');
@@ -1054,6 +1059,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentGalleryQuery = null; // To store the query for lazy loading
     let currentProjectDocId = null; // Tracks the current saved project ID
     let confirmActionCallback = null; // For the confirmation modal
+    let exportPayload = {};
 
     const galleryOffcanvasEl = document.getElementById('gallery-offcanvas');
     const galleryList = document.getElementById('gallery-project-list');
@@ -1110,6 +1116,34 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const debouncedRecordHistory = debounce(recordHistory);
+
+    function drawSnapLines(snapLines) {
+        // console.log('Entering drawSnapLines with snapLines:', snapLines);
+        ctx.save();
+        ctx.resetTransform();
+        ctx.strokeStyle = 'blue'; // Solid blue, full opacity
+        ctx.lineWidth = 2; // Slightly thicker for visibility
+        ctx.setLineDash([]); // Solid line (no dashing)
+        snapLines.forEach(line => {
+            // console.log('Drawing line:', line);
+            ctx.beginPath();
+            if (line.type === 'horizontal') {
+                ctx.moveTo(0, line.y);
+                ctx.lineTo(canvas.width, line.y);
+            } else if (line.type === 'vertical') {
+                ctx.moveTo(line.x, 0);
+                ctx.lineTo(line.x, canvas.height);
+            }
+            ctx.stroke();
+        });
+        // console.log('Canvas context after drawing:', {
+        //     strokeStyle: ctx.strokeStyle,
+        //     lineWidth: ctx.lineWidth,
+        //     globalAlpha: ctx.globalAlpha,
+        //     lineDash: ctx.getLineDash()
+        // });
+        ctx.restore();
+    }
 
     /**
      * Updates the enabled/disabled state of the undo/redo buttons.
@@ -1651,6 +1685,84 @@ document.addEventListener('DOMContentLoaded', function () {
         return formGroup;
     }
 
+    function generateOutputScript() {
+        let scriptHTML = '';
+        const generalValues = getControlValues();
+
+        // Correctly process and write general settings like 'title' and 'enableAnimation'
+        configStore.filter(c => {
+            const key = c.property || c.name;
+            return key && !key.startsWith('obj');
+        }).forEach(conf => {
+            const key = conf.property || conf.name;
+            if (generalValues[key] !== undefined) {
+                // This handles special meta tags like <meta title="...">
+                if (conf.name && !conf.property) {
+                    scriptHTML += `<meta ${key}="${generalValues[key]}" />\n`;
+                } else {
+                    // This handles standard property tags like <meta property="enableAnimation" ...>
+                    const attrs = Object.keys(conf).filter(attr => attr !== 'default').map(attrName => `${attrName}="${conf[attrName]}"`).join(' ');
+                    scriptHTML += `<meta ${attrs} default="${generalValues[key]}" />\n`;
+                }
+            }
+        });
+
+        // Process and write settings for each object
+        objects.forEach(obj => {
+            const name = obj.name || `Object ${obj.id}`;
+            const allPossibleConfigs = getDefaultObjectConfig(obj.id);
+
+            allPossibleConfigs.forEach(conf => {
+                const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+                let value = obj[propName];
+
+                if (propName.startsWith('gradColor')) {
+                    const colorKey = propName.replace('gradColor', 'color');
+                    if (obj.gradient) value = obj.gradient[colorKey];
+                } else if (propName === 'scrollDir') {
+                    value = obj.scrollDirection;
+                }
+
+                if (value === undefined || value === null) {
+                    value = conf.default;
+                }
+
+                if (typeof value === 'boolean') {
+                    value = String(value);
+                }
+
+                if (conf.type === 'number') {
+                    if (propName === 'animationSpeed') {
+                        value = Math.round(obj.animationSpeed * 10);
+                    } else if (propName === 'cycleSpeed') {
+                        value = Math.round(obj.cycleSpeed * 50);
+                    } else {
+                        value = Math.round(parseFloat(value));
+                    }
+                }
+
+                if ((conf.type === 'textfield' || conf.type === 'textarea') && typeof value === 'string') {
+                    value = value.replace(/\n/g, '\\n');
+                }
+
+                conf.label = `${name}:${conf.label.split(':').slice(1).join(':').trim()}`;
+                if (propName === 'width' && (obj.shape === 'circle' || obj.shape === 'ring')) {
+                    conf.label = `${name}: Width/Outer Diameter`;
+                }
+
+                let finalType = conf.type;
+                if (finalType === 'textarea' || finalType === 'text') {
+                    finalType = 'textfield';
+                }
+
+                const attrs = Object.keys(conf).filter(attr => attr !== 'default' && attr !== 'type').map(attrName => `${attrName}="${conf[attrName]}"`).join(' ');
+                scriptHTML += `<meta ${attrs} type="${finalType}" default="${value}" />\n`;
+            });
+        });
+
+        outputScriptArea.value = scriptHTML.trim();
+    }
+
     /**
      * Renders the entire controls form based on the current `configStore` and `objects` state.
      * Preserves the collapsed state of panels during re-rendering.
@@ -1678,7 +1790,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         form.innerHTML = '';
-
         const grouped = groupConfigs(configStore);
 
         const generalFieldset = document.createElement('fieldset');
@@ -1710,7 +1821,6 @@ document.addEventListener('DOMContentLoaded', function () {
         generalFieldset.appendChild(generalHeaderBar);
         generalFieldset.appendChild(generalCollapseWrapper);
         form.appendChild(generalFieldset);
-
 
         objects.forEach(obj => {
             const id = obj.id;
@@ -1771,7 +1881,7 @@ document.addEventListener('DOMContentLoaded', function () {
             controlsGroup.appendChild(dropdown);
             const collapseId = `collapse-obj-${id}`;
             const collapseButton = document.createElement('button');
-            const showObject = collapseStates[id] === true;
+            const showObject = collapseStates[id] === true || selectedObjectIds.includes(id);
             collapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showObject ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
             collapseButton.style.width = '28px';
             collapseButton.style.height = '28px';
@@ -1785,37 +1895,28 @@ document.addEventListener('DOMContentLoaded', function () {
             const collapseWrapper = document.createElement('div');
             collapseWrapper.id = collapseId;
             collapseWrapper.className = `collapse p-3 ${showObject ? 'show' : ''}`;
-            const separator = document.createElement('hr');
-            separator.className = 'mt-2 mb-3';
-            collapseWrapper.appendChild(separator);
+            collapseWrapper.appendChild(document.createElement('hr'));
 
             const groups = {
-                'Transform & Shape': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed'], // Add 'rotation' here
+                'Transform & Shape': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed'],
                 'Fill Style': ['gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2'],
-                'Animation': ['animationMode', 'animationSpeed', 'scrollDir', 'cycleColors', 'cycleSpeed']
+                'Animation': ['animationMode', 'animationSpeed', 'scrollDir'],
+                'Color Animation': ['cycleColors', 'cycleSpeed']
             };
 
             const shapeConf = objectConfigs.find(c => c.property.endsWith('_shape'));
-            const currentShape = shapeConf ? shapeConf.default : 'rectangle';
+            const currentShape = form.elements[`obj${id}_shape`]?.value || (shapeConf ? shapeConf.default : 'rectangle');
 
             for (const groupName in groups) {
                 const groupContainer = document.createElement('div');
-                groupContainer.className = 'control-group mb-4';
+                groupContainer.className = 'control-group card card-body bg-body mb-3';
                 const groupHeader = document.createElement('h6');
-                groupHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
+                groupHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
                 groupHeader.textContent = groupName;
                 groupContainer.appendChild(groupHeader);
                 const propsInGroup = groups[groupName];
                 objectConfigs
-                    .filter(conf => {
-                        if (!conf.property) return false;
-                        const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                        // This logic now hides the Height control for text objects
-                        if (currentShape === 'text' && propName === 'height') {
-                            return false;
-                        }
-                        return propsInGroup.includes(propName);
-                    })
+                    .filter(conf => propsInGroup.includes(conf.property.substring(conf.property.indexOf('_') + 1)))
                     .forEach(conf => groupContainer.appendChild(createFormControl(conf)));
                 if (groupContainer.children.length > 1) {
                     collapseWrapper.appendChild(groupContainer);
@@ -1824,7 +1925,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
             const gridSettings = ['numberOfRows', 'numberOfColumns', 'phaseOffset'];
-            const textSettings = ['text', 'pixelFont', 'fontSize', 'textAlign', 'textAnimation', 'textAnimationSpeed', 'enablePixelWrap', 'wrapAtPixels', 'autoWidth', 'showTime', 'showDate'];
+            const textSubGroups = {
+                'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign', 'autoWidth'],
+                'Time & Date Display': ['showTime', 'showDate'],
+                'Text Animation': ['textAnimation', 'textAnimationSpeed']
+            };
 
             const ringGroup = document.createElement('div');
             ringGroup.className = 'control-group mb-4 ring-settings-group';
@@ -1837,13 +1942,24 @@ document.addEventListener('DOMContentLoaded', function () {
             collapseWrapper.appendChild(ringGroup);
 
             const textGroup = document.createElement('div');
-            textGroup.className = 'control-group mb-4 text-settings-group';
+            textGroup.className = 'text-settings-group';
             textGroup.style.display = currentShape === 'text' ? 'block' : 'none';
-            const textHeader = document.createElement('h6');
-            textHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
-            textHeader.textContent = 'Text Settings';
-            textGroup.appendChild(textHeader);
-            objectConfigs.filter(c => textSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => textGroup.appendChild(createFormControl(c)));
+
+            for (const subGroupName in textSubGroups) {
+                const subGroupContainer = document.createElement('div');
+                subGroupContainer.className = 'card card-body bg-body mb-2';
+                const subGroupHeader = document.createElement('h6');
+                subGroupHeader.className = 'text-body-secondary mb-2';
+                subGroupHeader.textContent = subGroupName;
+                subGroupContainer.appendChild(subGroupHeader);
+                const propsInSubGroup = textSubGroups[subGroupName];
+                objectConfigs
+                    .filter(c => propsInSubGroup.includes(c.property.substring(c.property.indexOf('_') + 1)))
+                    .forEach(c => subGroupContainer.appendChild(createFormControl(c)));
+                if (subGroupContainer.children.length > 1) {
+                    textGroup.appendChild(subGroupContainer);
+                }
+            }
             collapseWrapper.appendChild(textGroup);
 
             const gridGroup = document.createElement('div');
@@ -1856,7 +1972,6 @@ document.addEventListener('DOMContentLoaded', function () {
             objectConfigs.filter(c => gridSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => gridGroup.appendChild(createFormControl(c)));
             collapseWrapper.appendChild(gridGroup);
 
-
             fieldset.appendChild(headerBar);
             fieldset.appendChild(collapseWrapper);
             form.appendChild(fieldset);
@@ -1867,16 +1982,6 @@ document.addEventListener('DOMContentLoaded', function () {
             selector: "[data-bs-toggle='tooltip']",
             trigger: 'hover'
         });
-
-        const sortable = Sortable.get(form);
-        if (sortable) {
-            sortable.option('store', {
-                get: function () {
-                    return objects.map(obj => obj.id.toString());
-                },
-                set: function (sortable) { }
-            });
-        }
     }
 
     /**
@@ -1998,85 +2103,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return finalStates;
     }
 
-    /**
-     * Generates the HTML <meta> tag block based on current form values and updates the output textarea.
-     */
-    function generateOutputScript() {
-        let scriptHTML = '';
-        const generalValues = {};
-        configStore.filter(c => !(c.property || c.name).startsWith('obj')).forEach(conf => {
-            const el = form.elements[conf.name];
-            if (el) generalValues[conf.name] = el.value;
-        });
-
-        // Generate general meta tags (title, description, etc.)
-        Object.keys(generalValues).forEach(key => {
-            const originalConfig = configStore.find(c => c.name === key);
-            if (originalConfig) {
-                scriptHTML += `<meta ${originalConfig.name}="${generalValues[key]}" />\n`;
-            }
-        });
-
-        // Generate a complete set of meta tags for each object
-        objects.forEach(obj => {
-            const name = obj.name || `Object ${obj.id}`;
-            const allPossibleConfigs = getDefaultObjectConfig(obj.id);
-
-            allPossibleConfigs.forEach(conf => {
-                const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                let value = obj[propName];
-
-                // Handle special cases where property names differ from the internal model
-                if (propName.startsWith('gradColor')) {
-                    const colorKey = propName.replace('gradColor', 'color');
-                    if (obj.gradient) value = obj.gradient[colorKey];
-                } else if (propName === 'scrollDir') {
-                    value = obj.scrollDirection;
-                }
-
-                // Fallback to default if the live object doesn't have the property
-                if (value === undefined || value === null) {
-                    value = conf.default;
-                }
-
-                // Convert boolean to string for the meta tag
-                if (typeof value === 'boolean') {
-                    value = String(value);
-                }
-
-                // NEW: If the property is a number, round it to the nearest integer.
-                if (conf.type === 'number') {
-                    // Handle properties that are scaled for the UI first
-                    if (propName === 'animationSpeed') {
-                        value = Math.round(obj.animationSpeed * 10);
-                    } else if (propName === 'cycleSpeed') {
-                        value = Math.round(obj.cycleSpeed * 50);
-                    } else {
-                        // Round any other number
-                        value = Math.round(parseFloat(value));
-                    }
-                }
-
-                // Handle textarea newlines
-                if ((conf.type === 'textarea' || conf.type === 'textfield') && typeof value === 'string') {
-                    value = value.replace(/\n/g, '\\n');
-                }
-
-                // Correct the label to match the object's current name
-                conf.label = `${name}: ${conf.label.split(':').slice(1).join(':').trim()}`;
-                if (propName === 'width' && (obj.shape === 'circle' || obj.shape === 'ring')) {
-                    conf.label = `${name}: Width/Outer Diameter`;
-                }
-
-                // Build and append the final meta tag
-                const attrs = Object.keys(conf).filter(attr => attr !== 'default').map(attrName => `${attrName}="${conf[attrName]}"`).join(' ');
-                scriptHTML += `<meta ${attrs} default="${value}" />\n`;
-            });
-        });
-
-        outputScriptArea.value = scriptHTML.trim();
-    }
-
     form.addEventListener('blur', (e) => {
         if (e.target.classList.contains('object-name')) {
             const id = parseInt(e.target.dataset.id, 10);
@@ -2100,13 +2126,14 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {MouseEvent} event - The mouse event.
      * @returns {{x: number, y: number}} The coordinates relative to the canvas.
      */
-    function getCanvasCoordinates(event) {
+    function getCanvasCoordinates(e) {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
-        const x = (event.clientX - rect.left) * scaleX;
-        const y = (event.clientY - rect.top) * scaleY;
-        return { x, y };
+        return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
+        };
     }
 
     /**
@@ -2115,8 +2142,20 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateToolbarState() {
         const multiSelectButtons = toolbar.querySelectorAll('[data-action^="match-"]');
         const singleSelectButtons = toolbar.querySelectorAll('[data-action^="align-screen-"], [data-action="fit-canvas"]');
+        const matchTextSizeBtn = document.getElementById('match-text-size-btn');
+
         singleSelectButtons.forEach(btn => btn.disabled = selectedObjectIds.length === 0);
         multiSelectButtons.forEach(btn => btn.disabled = selectedObjectIds.length < 2);
+
+        // Logic for enabling/disabling the "Match Text Size" button
+        if (matchTextSizeBtn) {
+            const selected = selectedObjectIds.map(id => objects.find(o => o.id === id)).filter(o => o);
+            const textObjects = selected.filter(obj => obj.shape === 'text');
+            const gridObjects = selected.filter(obj => obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1));
+
+            // Enable if exactly one text object and one grid object are selected
+            matchTextSizeBtn.disabled = !(textObjects.length === 1 && gridObjects.length === 1);
+        }
     }
 
     /**
@@ -2175,30 +2214,78 @@ document.addEventListener('DOMContentLoaded', function () {
         generateOutputScript();
     }
 
-    /**
-     * Clears the canvas and redraws all shapes.
-     */
-    function drawFrame() {
-        const values = getControlValues();
-        // This now checks if you are dragging, resizing, or rotating, and pauses animations if you are.
-        const enableAnimation = (values['enableAnimation'] === true) && !isDragging && !isResizing && !isRotating;
+    function drawObject(obj) {
+        ctx.save();
+        ctx.translate(obj.x + obj.width / 2, obj.y + obj.height / 2);
+        if (obj.rotation) {
+            ctx.rotate(obj.rotation * Math.PI / 180);
+        }
+        ctx.translate(-(obj.x + obj.width / 2), -(obj.y + obj.height / 2));
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // PASS 1: Draw all object shapes, from bottom to top.
-        for (let i = objects.length - 1; i >= 0; i--) {
-            const obj = objects[i];
-            const isSelected = selectedObjectIds.includes(obj.id);
-            obj.draw(enableAnimation, isSelected);
+        if (obj.shape === 'rectangle') {
+            ctx.fillStyle = obj.fillColor || 'rgba(0, 0, 255, 0.5)';
+            ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+        } else if (obj.shape === 'circle') {
+            ctx.fillStyle = obj.fillColor || 'rgba(0, 0, 255, 0.5)';
+            ctx.beginPath();
+            ctx.arc(obj.x + obj.width / 2, obj.y + obj.height / 2, obj.width / 2, 0, 2 * Math.PI);
+            ctx.fill();
+        } else if (obj.shape === 'ring') {
+            ctx.fillStyle = obj.fillColor || 'rgba(0, 0, 255, 0.5)';
+            ctx.beginPath();
+            ctx.arc(obj.x + obj.width / 2, obj.y + obj.height / 2, obj.width / 2, 0, 2 * Math.PI);
+            ctx.arc(obj.x + obj.width / 2, obj.y + obj.height / 2, obj.innerDiameter / 2, 0, 2 * Math.PI, true);
+            ctx.fill();
+        } else if (obj.shape === 'text') {
+            ctx.font = `${obj.fontSize}px ${obj.fontFamily || 'Arial'}`;
+            ctx.fillStyle = obj.fillColor || 'black';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(obj.text || '', obj.x, obj.y);
         }
 
-        // PASS 2: Draw the selection UI only for selected objects on top of everything.
-        const selected = objects.filter(obj => selectedObjectIds.includes(obj.id));
-        selected.forEach(obj => {
-            obj.drawSelectionUI();
+        ctx.restore();
+    }
+
+    function drawFrame() {
+        // console.log('Entering drawFrame, snapLines:', snapLines);
+        // console.log('Objects:', objects.map(o => ({
+        //     id: o.id,
+        //     shape: o.shape,
+        //     x: o.x,
+        //     y: o.y,
+        //     width: o.width,
+        //     height: o.height,
+        //     rotation: o.rotation,
+        //     fontSize: o.fontSize,
+        //     pixelFont: o.pixelFont,
+        //     text: o.text
+        // })));
+        // Set black background
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw all objects
+        objects.forEach(obj => {
+            if (obj instanceof Shape) {
+                obj.draw(true, selectedObjectIds.includes(obj.id));
+            } else {
+                console.error('Invalid object in objects array:', obj);
+            }
         });
+
+        // Draw selection UI for selected objects
+        if (selectedObjectIds.length > 0) {
+            selectedObjectIds.forEach(id => {
+                const obj = objects.find(o => o.id === id);
+                if (obj && obj instanceof Shape) {
+                    obj.drawSelectionUI();
+                }
+            });
+        }
+
+        // console.log('Calling drawSnapLines from drawFrame with snapLines:', snapLines);
+        drawSnapLines(snapLines);
     }
 
     /**
@@ -2422,7 +2509,7 @@ document.addEventListener('DOMContentLoaded', function () {
             config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
             const speed = config.animationSpeed || 0;
             config.animationSpeed = speed / 10.0;
-            if (config.shape === 'ring') {
+            if (config.shape === 'ring' || config.shape === 'circle') {
                 config.height = config.width;
             }
             initialStates.push(config);
@@ -2527,7 +2614,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_numberOfRows`, label: `Object ${newId}: Number of Rows`, type: 'number', default: '1', min: '1', max: '100' },
             { property: `obj${newId}_numberOfColumns`, label: `Object ${newId}: Number of Columns`, type: 'number', default: '1', min: '1', max: '100' },
             { property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100' },
-            { property: `obj${newId}_text`, label: `Object ${newId}: Text`, type: 'textarea', default: 'New Text' },
+            { property: `obj${newId}_text`, label: `Object ${newId}: Text`, type: 'textfield', default: 'New Text' },
             { property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '60', min: '10', max: '400' },
             { property: `obj${newId}_textAlign`, label: `Object ${newId}: Justification`, type: 'combobox', values: 'left,center,right', default: 'center' },
             { property: `obj${newId}_pixelFont`, label: `Object ${newId}: Pixel Font Style`, type: 'combobox', values: 'small,large', default: 'small' },
@@ -2544,6 +2631,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return new Date(dateUTC.getTime() - offsetInMs);
     }
 
+    function serializeFontData(fontData, varName) {
+        return 'const ' + varName + ' = ' + JSON.stringify(fontData) + ';';
+    }
+
     /**
      * Asynchronously generates the effect files, fetches a preview image,
      * bundles them into a .zip archive using JSZip, and triggers a download.
@@ -2553,27 +2644,14 @@ document.addEventListener('DOMContentLoaded', function () {
     async function exportFile() {
         const exportButton = document.getElementById('export-btn');
         exportButton.disabled = true;
-        exportButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Exporting...';
+        exportButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Preparing...';
 
         try {
+            generateOutputScript(); // Ensure meta tags are up-to-date
             const effectTitle = getControlValues()['title'] || 'MyEffect';
-            const effectDescription = getControlValues()['description'] || `An effect created with the Interactive Effect Builder.`;
-            const safeFilename = effectTitle.replace(/[\s\/\\?%*:|"<>]/g, '_');
             const metaTags = document.getElementById('output-script').value;
             const thumbnailDataUrl = generateThumbnail(document.getElementById('signalCanvas'));
-            const imageExtension = 'png';
-            const exportDate = new Date();
-
-            // Generate Social Media Meta Tags
-            const socialMetaTags = `
-    <meta property="og:title" content="${effectTitle}">
-    <meta property="og:description" content="${effectDescription}">
-    <meta property="og:type" content="website">
-    <meta property="og:image" content="${safeFilename}.${imageExtension}">
-    <meta name="twitter:card" content="summary_large_image">
-        `.trim();
-
-            const shapeClassString = Shape.toString();
+            const safeFilename = effectTitle.replace(/[\s\/\\?%*:|"<>]/g, '_');
 
             const styleContent =
                 '        canvas { width: 100%; height: 100%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #000000; }\n' +
@@ -2581,159 +2659,155 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const bodyContent = '<body><canvas id="signalCanvas"></canvas></body>';
 
-            const exportedScript =
-                'document.addEventListener(\'DOMContentLoaded\', function () {\n' +
-                '    const canvas = document.getElementById(\'signalCanvas\');\n' +
-                '    const ctx = canvas.getContext(\'2d\');\n' +
-                '    canvas.width = 1280; canvas.height = 800; let objects = [];\n\n' +
-                '    // --- Injected Functions & Class Definitions from Builder ---\n' +
-                '    ' + wrapTextByPixelsString + '\n\n' +
-                '    ' + lerpColorString + '\n\n' +
-                '    ' + getPatternColorString + '\n\n' +
-                '    ' + fontData4pxString + '\n\n' +
-                '    ' + fontData5pxString + '\n\n' +
-                '    ' + drawPixelTextString + '\n\n' +
-                '    ' + shapeClassString + '\n\n' +
-                '    function createInitialObjects() {\n' +
-                '        const metaProps = Object.keys(window).filter(k => k.startsWith(\'obj\') && k.includes(\'_\'));\n' +
-                '        const uniqueIds = [...new Set(metaProps.map(p => p.match(/obj(\\d+)_/)[1]))];\n\n' +
-                '        objects = uniqueIds.map(id => {\n' +
-                '            return new Shape({\n' +
-                '                id: parseInt(id), ctx: ctx, ...window,\n' +
-                '                shape: window[\'obj\' + id + \'_shape\'],\n' +
-                '                x: window[\'obj\' + id + \'_x\'], y: window[\'obj\' + id + \'_y\'],\n' +
-                '                width: window[\'obj\' + id + \'_width\'], height: window[\'obj\' + id + \'_height\'],\n' +
-                '                innerDiameter: window[\'obj\' + id + \'_innerDiameter\'],\n' +
-                '                numberOfSegments: window[\'obj\' + id + \'_numberOfSegments\'],\n' +
-                '                angularWidth: window[\'obj\' + id + \'_angularWidth\'],\n' +
-                '                rotationSpeed: window[\'obj\' + id + \'_rotationSpeed\'],\n' +
-                '                animationSpeed: (window[\'obj\' + id + \'_animationSpeed\'] || 0) / 10.0,\n' +
-                '                animationMode: window[\'obj\' + id + \'_animationMode\'],\n' +
-                '                scrollDirection: window[\'obj\' + id + \'_scrollDir\'],\n' +
-                '                gradType: window[\'obj\' + id + \'_gradType\'],\n' +
-                '                useSharpGradient: window[\'obj\' + id + \'_useSharpGradient\'],\n' +
-                '                gradientStop: parseFloat(window[\'obj\' + id + \'_gradientStop\']),\n' +
-                '                gradient: { color1: window[\'obj\' + id + \'_gradColor1\'], color2: window[\'obj\' + id + \'_gradColor2\'] },\n' +
-                '                cycleColors: window[\'obj\' + id + \'_cycleColors\'],\n' +
-                '                cycleSpeed: (window[\'obj\' + id + \'_cycleSpeed\'] || 0) / 50.0,\n' +
-                '                numberOfRows: window[\'obj\' + id + \'_numberOfRows\'],\n' +
-                '                numberOfColumns: window[\'obj\' + id + \'_numberOfColumns\'],\n' +
-                '                phaseOffset: window[\'obj\' + id + \'_phaseOffset\'],\n' +
-                '                text: window[\'obj\' + id + \'_text\'],\n' +
-                '                fontSize: window[\'obj\' + id + \'_fontSize\'],\n' +
-                '                textAlign: window[\'obj\' + id + \'_textAlign\'],\n' +
-                '                pixelFont: window[\'obj\' + id + \'_pixelFont\'],\n' +
-                '                textAnimation: window[\'obj\' + id + \'_textAnimation\'],\n' +
-                '                textAnimationSpeed: window[\'obj\' + id + \'_textAnimationSpeed\'],\n' +
-                '                enablePixelWrap: window[\'obj\' + id + \'_enablePixelWrap\'],\n' +
-                '                wrapAtPixels: window[\'obj\' + id + \'_wrapAtPixels\'],\n' +
-                '                autoWidth: window[\'obj\' + id + \'_autoWidth\'],\n' +
-                '                showTime: window[\'obj\' + id + \'_showTime\']\n' +
-                '                showDate: window[\'obj\' + id + \'_showDate\']\n' +
-                '            };\n' +
-                '        });\n' +
-                '    }\n\n' +
-                '    function drawFrame() {\n' +
-                '        ctx.clearRect(0, 0, canvas.width, canvas.height);\n' +
-                '        const shouldAnimate = window.enableAnimation;\n' +
-                '        objects.forEach(obj => {\n' +
-                '            const id = obj.id;\n' +
-                '            obj.update({\n' +
-                '                shape: window[\'obj\' + id + \'_shape\'],\n' +
-                '                x: window[\'obj\' + id + \'_x\'], y: window[\'obj\' + id + \'_y\'],\n' +
-                '                width: window[\'obj\' + id + \'_width\'], height: window[\'obj\' + id + \'_height\'],\n' +
-                '                innerDiameter: window[\'obj\' + id + \'_innerDiameter\'],\n' +
-                '                numberOfSegments: window[\'obj\' + id + \'_numberOfSegments\'],\n' +
-                '                angularWidth: window[\'obj\' + id + \'_angularWidth\'],\n' +
-                '                rotationSpeed: window[\'obj\' + id + \'_rotationSpeed\'],\n' +
-                '                animationSpeed: (window[\'obj\' + id + \'_animationSpeed\'] || 0) / 10.0,\n' +
-                '                animationMode: window[\'obj\' + id + \'_animationMode\'],\n' +
-                '                scrollDirection: window[\'obj\' + id + \'_scrollDir\'],\n' +
-                '                gradType: window[\'obj\' + id + \'_gradType\'],\n' +
-                '                useSharpGradient: window[\'obj\' + id + \'_useSharpGradient\'],\n' +
-                '                gradientStop: parseFloat(window[\'obj\' + id + \'_gradientStop\']),\n' +
-                '                gradient: { color1: window[\'obj\' + id + \'_gradColor1\'], color2: window[\'obj\' + id + \'_gradColor2\'] },\n' +
-                '                cycleColors: window[\'obj\' + id + \'_cycleColors\'],\n' +
-                '                cycleSpeed: (window[\'obj\' + id + \'_cycleSpeed\'] || 0) / 50.0,\n' +
-                '                numberOfRows: window[\'obj\' + id + \'_numberOfRows\'],\n' +
-                '                numberOfColumns: window[\'obj\' + id + \'_numberOfColumns\'],\n' +
-                '                phaseOffset: window[\'obj\' + id + \'_phaseOffset\'],\n' +
-                '                text: window[\'obj\' + id + \'_text\'],\n' +
-                '                fontSize: window[\'obj\' + id + \'_fontSize\'],\n' +
-                '                textAlign: window[\'obj\' + id + \'_textAlign\'],\n' +
-                '                pixelFont: window[\'obj\' + id + \'_pixelFont\'],\n' +
-                '                textAnimation: window[\'obj\' + id + \'_textAnimation\'],\n' +
-                '                textAnimationSpeed: window[\'obj\' + id + \'_textAnimationSpeed\'],\n' +
-                '                enablePixelWrap: window[\'obj\' + id + \'_enablePixelWrap\'],\n' +
-                '                wrapAtPixels: window[\'obj\' + id + \'_wrapAtPixels\'],\n' +
-                '                autoWidth: window[\'obj\' + id + \'_autoWidth\'],\n' +
-                '                showTime: window[\'obj\' + id + \'_showTime\']\n' +
-                '                showDate: window[\'obj\' + id + \'_showDate\']\n' +
-                '            });\n\n' +
-                '            obj.draw(shouldAnimate);\n' +
-                '        });\n' +
-                '    }\n\n' +
-                '    function animate() {\n' +
-                '        drawFrame();\n' +
-                '        requestAnimationFrame(animate);\n' +
-                '    }\n\n' +
-                '    function init() {\n' +
-                '        if (typeof window.areGlobalsSetup === \'undefined\') {\n' +
-                '            const metaElements = Array.from(document.querySelectorAll(\'head > meta\'));\n' +
-                '            metaElements.forEach(meta => {\n' +
-                '                const key = meta.getAttribute(\'property\') || meta.getAttribute(\'name\');\n' +
-                '                if (key) {\n' +
-                '                    let value = meta.getAttribute(\'default\') || meta.getAttribute(key);\n' +
-                '                    const type = meta.getAttribute(\'type\');\n' +
-                '                    if (type === \'textfield\' && typeof value === \'string\') {\n' +
-                '                        value = value.replace(/\\\\n/g, \'\\n\');\n' +
-                '                    }\n' +
-                '                    if (type === \'number\') { window[key] = parseFloat(value); }\n' +
-                '                    else if (type === \'boolean\') { window[key] = (value === \'true\'); }\n' +
-                '                    else { window[key] = value; }\n' +
-                '                }\n' +
-                '            });\n' +
-                '            window.areGlobalsSetup = true;\n' +
-                '        }\n' +
-                '        createInitialObjects();\n' +
-                '        animate();\n' +
-                '    }\n\n' +
-                '    init();\n' +
-                '});';
+            const fontData4pxString = 'const FONT_DATA_4PX = ' + JSON.stringify(FONT_DATA_4PX) + ';';
+            const fontData5pxString = 'const FONT_DATA_5PX = ' + JSON.stringify(FONT_DATA_5PX) + ';';
+            const shapeClassString = Shape.toString();
+            const drawPixelTextString = drawPixelText.toString();
+            const lerpColorString = lerpColor.toString();
+            const getPatternColorString = getPatternColor.toString();
 
-            const finalHtml = '<!DOCTYPE html>\n' +
-                '<html lang="en">\n' +
-                '<head>\n' +
-                '    <meta charset="UTF-8">\n' +
-                `    <title>${effectTitle}</title>\n` +
-                `    ${socialMetaTags}\n` + // <-- Social tags are now included
-                metaTags + '\n' +
-                '    <style>' + styleContent.trim() + '</style>\n' +
-                '</head>\n' +
-                bodyContent.trim() + '\n' +
-                '<script>' + exportedScript.trim() + '</' + 'script>\n' +
-                '</html>';
+            const exportedScript = `
+document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('signalCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = 1280;
+    canvas.height = 800;
+    let objects = [];
+    let propertyKeys = [];
 
-            const zip = new JSZip();
-            zip.file(`${safeFilename}.html`, finalHtml, { date: exportDate });
+    // --- Injected Functions, Classes, and Data ---
+    ${fontData4pxString}
+    ${fontData5pxString}
+    ${drawPixelTextString}
+    ${lerpColorString}
+    ${getPatternColorString}
+    ${shapeClassString}
 
-            // Generate a blob from the thumbnail data URL to include in the zip
-            const imageResponse = await fetch(thumbnailDataUrl);
-            const imageBlob = await imageResponse.blob();
-            zip.file(`${safeFilename}.${imageExtension}`, imageBlob, { date: exportDate });
+    // --- Standalone Initialization & Animation Loop for the Exported File ---
 
-            const zipBlob = await zip.generateAsync({ type: "blob" });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(zipBlob);
-            link.download = `${safeFilename}.zip`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
+    function discoverProperties() {
+        const metaElements = Array.from(document.querySelectorAll('head > meta[property^="obj"]'));
+        propertyKeys = metaElements.map(meta => meta.getAttribute('property'));
+    }
+
+    function createInitialObjects() {
+        if (propertyKeys.length === 0) return;
+        const uniqueIds = [...new Set(propertyKeys.map(p => {
+            const match = p.match(/obj(\\\d+)_/);
+            return match ? match[1] : null;
+        }).filter(id => id !== null))];
+        
+        objects = uniqueIds.map(id => {
+            const config = { id: parseInt(id), ctx: ctx, gradient: {} };
+            const prefix = 'obj' + id + '_';
+            
+            propertyKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+                const propName = key.substring(prefix.length);
+                try {
+                    const value = eval(key);
+                    if (propName.startsWith('gradColor')) {
+                        config.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                    } else if (propName === 'scrollDir') {
+                        config.scrollDirection = value;
+                    } else {
+                        config[propName] = value;
+                    }
+                } catch (e) {}
+            });
+            
+            config.animationSpeed = (config.animationSpeed || 0) / 10.0;
+            config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
+            return new Shape(config);
+        });
+    }
+
+    function drawFrame() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        let shouldAnimate = false;
+        // ANIMATION FIX: Use non-strict '==' to correctly handle both string "true" and boolean true.
+        try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
+
+        objects.forEach(obj => {
+            const prefix = 'obj' + obj.id + '_';
+            propertyKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+                const propName = key.substring(prefix.length);
+                try {
+                    const value = eval(key);
+                    switch(propName) {
+                        case 'gradColor1': obj.gradient.color1 = value; break;
+                        case 'gradColor2': obj.gradient.color2 = value; break;
+                        case 'scrollDir': obj.scrollDirection = value; break;
+                        case 'animationSpeed': obj.animationSpeed = (value || 0) / 10.0; break;
+                        case 'cycleSpeed': obj.cycleSpeed = (value || 0) / 50.0; break;
+                        default:
+                            if(obj.hasOwnProperty(propName)) {
+                                obj[propName] = value;
+                            }
+                            break;
+                    }
+                } catch (e) {}
+            });
+             if (obj.shape === 'text' && obj._updateTextMetrics) {
+                obj._updateTextMetrics();
+            }
+        });
+
+        for (let i = objects.length - 1; i >= 0; i--) {
+            objects[i].draw(shouldAnimate, false);
+        }
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        drawFrame();
+    }
+
+    function init() {
+        discoverProperties();
+        createInitialObjects();
+        animate();
+    }
+
+    init();
+});`;
+
+            const finalHtml = [
+                '<!DOCTYPE html>',
+                '<html lang="en">',
+                '<head>',
+                '    <meta charset="UTF-8">',
+                '    <title>' + effectTitle + '</title>',
+                metaTags,
+                '    <style>',
+                styleContent,
+                '    </style>',
+                '</head>',
+                bodyContent,
+                '<script>',
+                exportedScript,
+                '</script>',
+                '</html>'
+            ].join('\n');
+
+            exportPayload = {
+                safeFilename,
+                finalHtml,
+                thumbnailDataUrl,
+                imageExtension: 'png',
+                exportDate: new Date()
+            };
+
+            const exportModal = new bootstrap.Modal(document.getElementById('export-options-modal'));
+            exportModal.show();
 
         } catch (error) {
-            console.error('Export failed:', error);
-            showToast('Export failed: ' + error.message, 'danger');
+            console.error('Export preparation failed:', error);
+            showToast('Failed to prepare export: ' + error.message, 'danger');
         } finally {
             exportButton.disabled = false;
             exportButton.innerHTML = '<i class="bi bi-download"></i> Export';
@@ -2932,7 +3006,60 @@ document.addEventListener('DOMContentLoaded', function () {
             return; // Let the browser handle its native events for text fields
         }
 
-        // NEW: Handle Delete and Backspace keys for selected objects
+        // NEW: Handle keyboard movement for selected objects
+        if (selectedObjectIds.length > 0) {
+            let moveAmount = 1; // Default move by 1 pixel
+            if (e.shiftKey) {
+                moveAmount = 10; // Move by 10 pixels if Shift is held
+            }
+
+            let moved = false;
+            selectedObjectIds.forEach(id => {
+                const obj = objects.find(o => o.id === id);
+                if (obj && !obj.locked) {
+                    let newX = obj.x;
+                    let newY = obj.y;
+
+                    switch (e.key) {
+                        case 'ArrowUp':
+                            newY -= moveAmount;
+                            moved = true;
+                            break;
+                        case 'ArrowDown':
+                            newY += moveAmount;
+                            moved = true;
+                            break;
+                        case 'ArrowLeft':
+                            newX -= moveAmount;
+                            moved = true;
+                            break;
+                        case 'ArrowRight':
+                            newX += moveAmount;
+                            moved = true;
+                            break;
+                    }
+
+                    if (moved) {
+                        // Apply canvas constraints if enabled
+                        if (constrainToCanvas) {
+                            newX = Math.max(0, Math.min(newX, canvas.width - obj.width));
+                            newY = Math.max(0, Math.min(newY, canvas.height - obj.height));
+                        }
+                        obj.x = newX;
+                        obj.y = newY;
+                    }
+                }
+            });
+
+            if (moved) {
+                e.preventDefault(); // Prevent default browser scroll behavior
+                updateFormValuesFromObjects(); // Update form fields
+                drawFrame(); // Redraw canvas
+                debouncedRecordHistory(); // Record history after movement
+            }
+        }
+
+        // Handle Delete and Backspace keys for selected objects
         if ((e.key === 'Delete' || e.key === 'Backspace') && selectedObjectIds.length > 0) {
             e.preventDefault(); // Prevents browser back navigation on Backspace
             deleteObjects([...selectedObjectIds]); // Pass a copy of the array
@@ -2950,6 +3077,53 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+
+    document.getElementById('export-copy-btn').addEventListener('click', () => {
+        if (exportPayload.finalHtml) {
+            navigator.clipboard.writeText(exportPayload.finalHtml).then(() => {
+                showToast("HTML code copied to clipboard!", 'success');
+                const exportModal = bootstrap.Modal.getInstance(document.getElementById('export-options-modal'));
+                exportModal.hide();
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                showToast("Could not copy code. See console for details.", 'danger');
+            });
+        }
+    });
+
+    document.getElementById('export-download-btn').addEventListener('click', async () => {
+        const { safeFilename, finalHtml, thumbnailDataUrl, imageExtension, exportDate } = exportPayload;
+        if (!finalHtml) return;
+
+        try {
+            const zip = new JSZip();
+            // FIXED: Removed the invalid backslash `\` before the backtick
+            zip.file(`${safeFilename}.html`, finalHtml, { date: exportDate });
+
+            const imageResponse = await fetch(thumbnailDataUrl);
+            const imageBlob = await imageResponse.blob();
+            // FIXED: Removed the invalid backslash `\` before the backtick
+            zip.file(`${safeFilename}.${imageExtension}`, imageBlob, { date: exportDate });
+
+            const zipBlob = await zip.generateAsync({ type: "blob" });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(zipBlob);
+            // FIXED: Removed the invalid backslash `\` before the backtick
+            link.download = `${safeFilename}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+
+            const exportModal = bootstrap.Modal.getInstance(document.getElementById('export-options-modal'));
+            exportModal.hide();
+            showToast("Zip file download started.", 'info');
+
+        } catch (error) {
+            console.error('Zip creation failed:', error);
+            showToast('Failed to create .zip file.', 'danger');
+        }
+    });
 
     copyBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(outputScriptArea.value).then(() => {
@@ -2988,7 +3162,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const existingDocId = querySnapshot.docs[0].id;
             showConfirmModal(
                 'Confirm Overwrite',
-                `A project named "${trimmedName}" already exists. Do you want to overwrite it?`,
+                `A project named "${trimmedName}" already exists.Do you want to overwrite it ? `,
                 'Overwrite',
                 async () => {
                     try {
@@ -3062,7 +3236,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!action || selectedObjectIds.length === 0) return;
         const selected = selectedObjectIds.map(id => objects.find(o => o.id === id)).filter(o => o);
         if (selected.length === 0) return;
-        const anchor = selected[0];
+        const anchor = selected[0]; // The first selected object is typically the anchor
+
         switch (action) {
             case 'align-screen-left': selected.forEach(o => o.x = 0); break;
             case 'align-screen-right': selected.forEach(o => o.x = canvas.width - o.width); break;
@@ -3081,6 +3256,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     o.height = canvas.height;
                 });
                 break;
+            case 'match-text-size':
+                const textObject = selected.find(obj => obj.shape === 'text');
+                const gridObject = selected.find(obj => obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1));
+
+                if (textObject && gridObject) {
+                    // Calculate the height of a single cell in the grid object
+                    const cellHeight = gridObject.height / gridObject.numberOfRows;
+
+                    // Update the font size of the text object to match the cell height
+                    // Multiply by 10 because fontSize is internally divided by 10 for pixelSize calculation
+                    textObject.fontSize = cellHeight * 10;
+
+                    // Ensure text object's height updates based on new font size
+                    textObject._updateTextMetrics();
+                }
+                break;
         }
         updateFormFromShapes();
         recordHistory(); // Record state after a toolbar action
@@ -3098,7 +3289,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Add the correct class based on the new state
         if (constrainToCanvas) {
-            constrainBtn.classList.add('btn-primary');
+            constrainBtn.classList.add('btn-secondary');
         } else {
             constrainBtn.classList.add('btn-outline-secondary');
         }
@@ -3182,19 +3373,28 @@ document.addEventListener('DOMContentLoaded', function () {
             const wasAlreadySelected = selectedObjectIds.includes(hitObjectId);
 
             if (e.shiftKey || e.ctrlKey || e.metaKey) {
-                // ... (multi-select logic)
+                // Multi-select logic: Add or remove from selection
+                if (wasAlreadySelected) {
+                    selectedObjectIds = selectedObjectIds.filter(id => id !== hitObjectId);
+                } else {
+                    selectedObjectIds.push(hitObjectId);
+                }
             } else {
+                // Single-select logic: Clear all and select only this one
                 if (!wasAlreadySelected) {
                     selectedObjectIds = [hitObjectId];
-                    // --- ADD THESE 4 LINES ---
-                    // If the newly selected object is spinning, reset its rotation.
-                    if (targetObject.rotationSpeed !== 0) {
-                        targetObject.rotation = 0;
-                        targetObject.rotationAngle = 0;
-                    }
                 }
+                // If already selected and not multi-selecting, keep it selected for dragging
             }
+
+            // If the newly selected object (or the one clicked in multi-select) is spinning, reset its rotation.
+            if (targetObject.rotationSpeed !== 0) {
+                targetObject.rotation = 0;
+                targetObject.rotationAngle = 0;
+            }
+
         } else {
+            // Clicked on empty space, clear selection
             selectedObjectIds = [];
         }
 
@@ -3237,59 +3437,210 @@ document.addEventListener('DOMContentLoaded', function () {
             obj.rotation = newAngleRad * 180 / Math.PI;
             obj.rotationAngle = newAngleRad;
 
+            updateFormValuesFromObjects();
+            drawFrame();
         } else if (isResizing) {
             const obj = objects.find(o => o.id === selectedObjectIds[0]);
             if (!obj) return;
 
-            // This is the correct logic for resizing a rotated object
+            snapLines = [];
             const initial = initialDragState[0];
-            const angle = -obj.getRenderAngle();
-            const s = Math.sin(angle);
-            const c = Math.cos(angle);
-            let dx = x - dragStartX;
-            let dy = y - dragStartY;
-            let rotatedDx = dx * c - dy * s;
-            let rotatedDy = dx * s + dy * c;
+            const dx = x - dragStartX;
+            const dy = y - dragStartY;
 
-            let newX = initial.x;
-            let newY = initial.y;
-            let newWidth = initial.width;
-            let newHeight = initial.height;
+            let potentialX = initial.x;
+            let potentialY = initial.y;
+            let potentialWidth = initial.width;
+            let potentialHeight = initial.height;
+            let potentialFontSize = initial.fontSize;
+            let isTextResize = obj.shape === 'text';
 
-            if (activeResizeHandle.includes('right')) { newWidth = Math.max(10, initial.width + rotatedDx); }
-            if (activeResizeHandle.includes('left')) { newWidth = Math.max(10, initial.width - rotatedDx); }
-            if (activeResizeHandle.includes('bottom')) { newHeight = Math.max(10, initial.height + rotatedDy); }
-            if (activeResizeHandle.includes('top')) { newHeight = Math.max(10, initial.height - rotatedDy); }
-
-            const dw = newWidth - initial.width;
-            const dh = newHeight - initial.height;
-            const angleUnrotated = obj.getRenderAngle();
-            const s_un = Math.sin(angleUnrotated);
-            const c_un = Math.cos(angleUnrotated);
-
-            if (activeResizeHandle.includes('left')) {
-                newX -= dw * c_un;
-                newY -= dw * s_un;
+            if (isTextResize) {
+                if (activeResizeHandle.includes('left') || activeResizeHandle.includes('right')) {
+                    if (activeResizeHandle.includes('right')) {
+                        potentialWidth = initial.width + dx;
+                    }
+                    if (activeResizeHandle.includes('left')) {
+                        potentialWidth = initial.width - dx;
+                        potentialX = initial.x + dx;
+                    }
+                    obj.autoWidth = false;
+                } else {
+                    const scaleFactor = (initial.height + dy) / initial.height;
+                    if (isFinite(scaleFactor) && scaleFactor > 0) {
+                        potentialFontSize = Math.max(10, initial.fontSize * scaleFactor);
+                    }
+                }
+            } else {
+                if (activeResizeHandle.includes('right')) {
+                    potentialWidth = initial.width + dx;
+                }
+                if (activeResizeHandle.includes('left')) {
+                    potentialWidth = initial.width - dx;
+                    potentialX = initial.x + dx;
+                }
+                if (activeResizeHandle.includes('bottom')) {
+                    potentialHeight = initial.height + dy;
+                }
+                if (activeResizeHandle.includes('top')) {
+                    potentialHeight = initial.height - dy;
+                    potentialY = initial.y + dy;
+                }
             }
-            if (activeResizeHandle.includes('top')) {
-                newX += dh * s_un;
-                newY -= dh * c_un;
-            }
-            if (activeResizeHandle === 'top-left') {
-                newX = initial.x - (dw * c_un) + (dh * s_un);
-                newY = initial.y - (dw * s_un) - (dh * c_un);
-            } else if (activeResizeHandle === 'top-right') {
-                newY -= dh * c_un;
-                newX += dh * s_un;
-            } else if (activeResizeHandle === 'bottom-left') {
-                newX -= dw * c_un;
-                newY -= dw * s_un;
+
+            potentialWidth = Math.max(10, potentialWidth);
+            potentialHeight = Math.max(10, potentialHeight);
+
+            const movingEdges = {
+                left: potentialX,
+                right: potentialX + potentialWidth,
+                top: potentialY,
+                bottom: potentialY + potentialHeight,
+                hCenter: potentialX + potentialWidth / 2,
+                vCenter: potentialY + potentialHeight / 2
+            };
+
+            const SNAP_THRESHOLD = 20;
+            const otherObjects = objects.filter(o => o.id !== obj.id);
+            const snapTargets = otherObjects.map(o => ({
+                left: o.x,
+                right: o.x + o.width,
+                top: o.y,
+                bottom: o.y + o.height,
+                hCenter: o.x + o.width / 2,
+                vCenter: o.y + o.height / 2,
+                width: o.width,
+                height: o.height
+            }));
+            snapTargets.push({
+                left: 0,
+                right: canvas.width,
+                top: 0,
+                bottom: canvas.height,
+                hCenter: canvas.width / 2,
+                vCenter: canvas.height / 2
+            });
+
+            let snapDx = 0;
+            let snapDy = 0;
+            let minSnapDistX = SNAP_THRESHOLD;
+            let minSnapDistY = SNAP_THRESHOLD;
+
+            for (const target of snapTargets) {
+                // Horizontal snapping
+                if (activeResizeHandle.includes('right') || isTextResize) {
+                    const snaps = [
+                        { dist: Math.abs(movingEdges.right - target.left), adj: target.left - movingEdges.right, type: 'vertical', line: target.left },
+                        { dist: Math.abs(movingEdges.right - target.right), adj: target.right - movingEdges.right, type: 'vertical', line: target.right },
+                        { dist: Math.abs(movingEdges.right - target.hCenter), adj: target.hCenter - movingEdges.right, type: 'vertical', line: target.hCenter }
+                    ];
+                    for (const s of snaps) {
+                        if (s.dist < minSnapDistX) {
+                            minSnapDistX = s.dist;
+                            snapDx = s.adj;
+                            snapLines.push({ type: s.type, x: s.line });
+                        }
+                    }
+                    if (target.width && Math.abs(potentialWidth - target.width) < minSnapDistX) {
+                        minSnapDistX = Math.abs(potentialWidth - target.width);
+                        snapDx = (potentialWidth - target.width) * -1;
+                        snapLines.push({ type: 'vertical', x: potentialX + target.width });
+                    }
+                }
+                if (activeResizeHandle.includes('left')) {
+                    const snaps = [
+                        { dist: Math.abs(movingEdges.left - target.left), adj: target.left - movingEdges.left, type: 'vertical', line: target.left },
+                        { dist: Math.abs(movingEdges.left - target.right), adj: target.right - movingEdges.left, type: 'vertical', line: target.right },
+                        { dist: Math.abs(movingEdges.left - target.hCenter), adj: target.hCenter - movingEdges.left, type: 'vertical', line: target.hCenter }
+                    ];
+                    for (const s of snaps) {
+                        if (s.dist < minSnapDistX) {
+                            minSnapDistX = s.dist;
+                            snapDx = s.adj;
+                            snapLines.push({ type: s.type, x: s.line });
+                        }
+                    }
+                }
+                if (activeResizeHandle.includes('h-center')) {
+                    const snaps = [
+                        { dist: Math.abs(movingEdges.hCenter - target.hCenter), adj: target.hCenter - movingEdges.hCenter, type: 'vertical', line: target.hCenter }
+                    ];
+                    for (const s of snaps) {
+                        if (s.dist < minSnapDistX) {
+                            minSnapDistX = s.dist;
+                            snapDx = s.adj;
+                            snapLines.push({ type: s.type, x: s.line });
+                        }
+                    }
+                }
+
+                // Vertical snapping
+                if (activeResizeHandle.includes('bottom') || (isTextResize && !activeResizeHandle.includes('left') && !activeResizeHandle.includes('right'))) {
+                    const snaps = [
+                        { dist: Math.abs(movingEdges.bottom - target.top), adj: target.top - movingEdges.bottom, type: 'horizontal', line: target.top },
+                        { dist: Math.abs(movingEdges.bottom - target.bottom), adj: target.bottom - movingEdges.bottom, type: 'horizontal', line: target.bottom },
+                        { dist: Math.abs(movingEdges.bottom - target.vCenter), adj: target.vCenter - movingEdges.bottom, type: 'horizontal', line: target.vCenter }
+                    ];
+                    for (const s of snaps) {
+                        if (s.dist < minSnapDistY) {
+                            minSnapDistY = s.dist;
+                            snapDy = s.adj;
+                            snapLines.push({ type: s.type, y: s.line });
+                        }
+                    }
+                    if (target.height && Math.abs(potentialHeight - target.height) < minSnapDistY) {
+                        minSnapDistY = Math.abs(potentialHeight - target.height);
+                        snapDy = (potentialHeight - target.height) * -1;
+                        snapLines.push({ type: 'horizontal', y: potentialY + target.height });
+                    }
+                }
+                if (activeResizeHandle.includes('top')) {
+                    const snaps = [
+                        { dist: Math.abs(movingEdges.top - target.top), adj: target.top - movingEdges.top, type: 'horizontal', line: target.top },
+                        { dist: Math.abs(movingEdges.top - target.bottom), adj: target.bottom - movingEdges.top, type: 'horizontal', line: target.bottom },
+                        { dist: Math.abs(movingEdges.top - target.vCenter), adj: target.vCenter - movingEdges.top, type: 'horizontal', line: target.vCenter }
+                    ];
+                    for (const s of snaps) {
+                        if (s.dist < minSnapDistY) {
+                            minSnapDistY = s.dist;
+                            snapDy = s.adj;
+                            snapLines.push({ type: s.type, y: s.line });
+                        }
+                    }
+                }
+                if (activeResizeHandle.includes('v-center')) {
+                    const snaps = [
+                        { dist: Math.abs(movingEdges.vCenter - target.vCenter), adj: target.vCenter - movingEdges.vCenter, type: 'horizontal', line: target.vCenter }
+                    ];
+                    for (const s of snaps) {
+                        if (s.dist < minSnapDistY) {
+                            minSnapDistY = s.dist;
+                            snapDy = s.adj;
+                            snapLines.push({ type: s.type, y: s.line });
+                        }
+                    }
+                }
             }
 
-            obj.x = newX;
-            obj.y = newY;
-            obj.width = newWidth;
-            obj.height = newHeight;
+            if (isTextResize) {
+                if (activeResizeHandle.includes('left')) {
+                    obj.x = potentialX + snapDx;
+                    obj.width = Math.max(20, initial.width - dx - snapDx);
+                }
+                if (activeResizeHandle.includes('right')) {
+                    obj.width = Math.max(20, initial.width + dx + snapDx);
+                }
+                if (activeResizeHandle.includes('top') || activeResizeHandle.includes('bottom')) {
+                    obj.fontSize = Math.max(10, initial.fontSize * ((initial.height + dy + snapDy) / initial.height));
+                }
+                obj._updateTextMetrics();
+
+            } else {
+                obj.x = activeResizeHandle.includes('left') ? potentialX + snapDx : initial.x;
+                obj.y = activeResizeHandle.includes('top') ? potentialY + snapDy : initial.y;
+                obj.width = Math.max(10, activeResizeHandle.includes('left') ? potentialWidth - snapDx : potentialWidth + snapDx);
+                obj.height = Math.max(10, activeResizeHandle.includes('top') ? potentialHeight - snapDy : potentialHeight + snapDy);
+            }
 
             if (obj.shape === 'circle' || obj.shape === 'ring') {
                 obj.height = obj.width;
@@ -3297,93 +3648,141 @@ document.addEventListener('DOMContentLoaded', function () {
                     obj.innerDiameter = obj.width * initial.diameterRatio;
                 }
             }
+
+            updateFormValuesFromObjects();
+            drawFrame();
         } else if (isDragging) {
-            const SNAP_THRESHOLD = 10;
+            const SNAP_THRESHOLD = 30;
             let dx = x - dragStartX;
             let dy = y - dragStartY;
+
+            // Clear snap lines at the start of each mousemove
+            snapLines = [];
 
             if (selectedObjectIds.length === 1) {
                 const draggedObj = objects.find(o => o.id === selectedObjectIds[0]);
                 const initial = initialDragState[0];
                 if (draggedObj) {
-                    const potentialX = initial.x + dx;
-                    const potentialY = initial.y + dy;
+                    let newX = initial.x + dx;
+                    let newY = initial.y + dy;
+                    let finalX = newX;
+                    let finalY = newY;
 
-                    let finalX = potentialX;
-                    let finalY = potentialY;
+                    // Define moving edges
+                    const draggedEdges = {
+                        left: newX,
+                        right: newX + draggedObj.width,
+                        top: newY,
+                        bottom: newY + draggedObj.height,
+                        hCenter: newX + draggedObj.width / 2,
+                        vCenter: newY + draggedObj.height / 2
+                    };
 
-                    // --- NEW: Smoother Snapping Algorithm ---
+                    // Collect snap targets (other objects and canvas)
+                    const otherObjects = objects.filter(o => o.id !== draggedObj.id);
+                    const snapTargets = otherObjects.map(o => ({
+                        left: o.x,
+                        right: o.x + o.width,
+                        top: o.y,
+                        bottom: o.y + o.height,
+                        hCenter: o.x + o.width / 2,
+                        vCenter: o.y + o.height / 2
+                    }));
+                    snapTargets.push({
+                        left: 0,
+                        right: canvas.width,
+                        top: 0,
+                        bottom: canvas.height,
+                        hCenter: canvas.width / 2,
+                        vCenter: canvas.height / 2
+                    });
+
+                    // Calculate snapping adjustments
                     let minSnapDistX = SNAP_THRESHOLD;
-                    let bestSnapX = null;
                     let minSnapDistY = SNAP_THRESHOLD;
+                    let bestSnapX = null;
                     let bestSnapY = null;
 
-                    const draggedEdges = { left: potentialX, right: potentialX + draggedObj.width, top: potentialY, bottom: potentialY + draggedObj.height, hCenter: potentialX + draggedObj.width / 2, vCenter: potentialY + draggedObj.height / 2 };
-                    const otherObjects = objects.filter(o => o.id !== draggedObj.id);
-                    const snapTargets = otherObjects.map(o => ({ left: o.x, right: o.x + o.width, top: o.y, bottom: o.y + o.height, hCenter: o.x + o.width / 2, vCenter: o.y + o.height / 2 }));
-                    snapTargets.push({ left: 0, right: canvas.width, top: 0, bottom: canvas.height, hCenter: canvas.width / 2, vCenter: canvas.height / 2 });
-
-                    // Find the single best horizontal snap point
                     for (const target of snapTargets) {
+                        // Horizontal snapping
                         const hSnaps = [
-                            { dist: Math.abs(draggedEdges.left - target.left), newX: target.left },
-                            { dist: Math.abs(draggedEdges.left - target.right), newX: target.right },
-                            { dist: Math.abs(draggedEdges.right - target.left), newX: target.left - draggedObj.width },
-                            { dist: Math.abs(draggedEdges.right - target.right), newX: target.right - draggedObj.width },
-                            { dist: Math.abs(draggedEdges.hCenter - target.hCenter), newX: target.hCenter - draggedObj.width / 2 }
+                            { dist: Math.abs(draggedEdges.left - target.left), newX: target.left, lineX: target.left },
+                            { dist: Math.abs(draggedEdges.left - target.right), newX: target.right, lineX: target.right },
+                            { dist: Math.abs(draggedEdges.right - target.left), newX: target.left - draggedObj.width, lineX: target.left },
+                            { dist: Math.abs(draggedEdges.right - target.right), newX: target.right - draggedObj.width, lineX: target.right },
+                            { dist: Math.abs(draggedEdges.hCenter - target.hCenter), newX: target.hCenter - draggedObj.width / 2, lineX: target.hCenter }
                         ];
                         for (const snap of hSnaps) {
                             if (snap.dist < minSnapDistX) {
                                 minSnapDistX = snap.dist;
                                 bestSnapX = snap.newX;
+                                snapLines.push({ type: 'vertical', x: snap.lineX });
                             }
                         }
-                    }
 
-                    // Find the single best vertical snap point
-                    for (const target of snapTargets) {
+                        // Vertical snapping
                         const vSnaps = [
-                            { dist: Math.abs(draggedEdges.top - target.top), newY: target.top },
-                            { dist: Math.abs(draggedEdges.top - target.bottom), newY: target.bottom },
-                            { dist: Math.abs(draggedEdges.bottom - target.top), newY: target.top - draggedObj.height },
-                            { dist: Math.abs(draggedEdges.bottom - target.bottom), newY: target.bottom - draggedObj.height },
-                            { dist: Math.abs(draggedEdges.vCenter - target.vCenter), newY: target.vCenter - draggedObj.height / 2 }
+                            { dist: Math.abs(draggedEdges.top - target.top), newY: target.top, lineY: target.top },
+                            { dist: Math.abs(draggedEdges.top - target.bottom), newY: target.bottom, lineY: target.bottom },
+                            { dist: Math.abs(draggedEdges.bottom - target.top), newY: target.top - draggedObj.height, lineY: target.top },
+                            { dist: Math.abs(draggedEdges.bottom - target.bottom), newY: target.bottom - draggedObj.height, lineY: target.bottom },
+                            { dist: Math.abs(draggedEdges.vCenter - target.vCenter), newY: target.vCenter - draggedObj.height / 2, lineY: target.vCenter }
                         ];
                         for (const snap of vSnaps) {
                             if (snap.dist < minSnapDistY) {
                                 minSnapDistY = snap.dist;
                                 bestSnapY = snap.newY;
+                                snapLines.push({ type: 'horizontal', y: snap.lineY });
                             }
                         }
                     }
 
-                    // If a snap was found, use it. Otherwise, use the mouse position.
-                    if (bestSnapX !== null) { finalX = bestSnapX; }
-                    if (bestSnapY !== null) { finalY = bestSnapY; }
+                    // Apply snapping
+                    if (bestSnapX !== null) {
+                        finalX = bestSnapX;
+                    }
+                    if (bestSnapY !== null) {
+                        finalY = bestSnapY;
+                    }
+
+                    // Constrain to canvas if enabled
+                    if (constrainToCanvas) {
+                        finalX = Math.max(0, Math.min(finalX, canvas.width - draggedObj.width));
+                        finalY = Math.max(0, Math.min(finalY, canvas.height - draggedObj.height));
+                    }
 
                     draggedObj.x = finalX;
                     draggedObj.y = finalY;
+
+                    // console.log('snapLines:', snapLines); // Debug: Verify snap lines are populated
                 }
             } else {
-                // For multi-object dragging, do not snap
                 initialDragState.forEach(initial => {
                     const obj = objects.find(o => o.id === initial.id);
                     if (obj) {
-                        obj.x = initial.x + dx;
-                        obj.y = initial.y + dy;
+                        let newX = initial.x + dx;
+                        let newY = initial.y + dy;
+                        if (constrainToCanvas) {
+                            newX = Math.max(0, Math.min(newX, canvas.width - obj.width));
+                            newY = Math.max(0, Math.min(newY, canvas.height - obj.height));
+                        }
+                        obj.x = newX;
+                        obj.y = newY;
                     }
                 });
             }
 
+            updateFormValuesFromObjects();
+            // console.log('Calling drawFrame from isDragging, snapLines:', snapLines);
+            drawFrame();
         } else {
-            // --- Update Cursor ---
+            // Update Cursor
             canvasContainer.style.cursor = 'default';
             if (selectedObjectIds.length === 1) {
                 const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
                 if (selectedObject && !selectedObject.locked) {
                     const rotationHandle = selectedObject.getRotationHandleAtPoint(x, y);
                     const resizeHandle = selectedObject.getHandleAtPoint(x, y);
-
                     if (rotationHandle) {
                         canvasContainer.style.cursor = 'crosshair';
                     } else if (resizeHandle) {
@@ -3415,6 +3814,7 @@ document.addEventListener('DOMContentLoaded', function () {
         isResizing = false;
         isRotating = false;
         activeResizeHandle = null;
+        snapLines = []; // Clear snap lines
 
         if (wasManipulating) {
             initialDragState.forEach(initial => {
@@ -3432,6 +3832,8 @@ document.addEventListener('DOMContentLoaded', function () {
             updateFormValuesFromObjects();
             recordHistory();
         }
+
+        drawFrame();
     });
 
 
@@ -3457,7 +3859,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         constrainBtn.classList.remove('btn-secondary');
         if (constrainToCanvas) {
-            constrainBtn.classList.add('btn-primary');
+            constrainBtn.classList.add('btn-secondary');
         } else {
             constrainBtn.classList.add('btn-outline-secondary');
         }
@@ -3489,7 +3891,7 @@ document.addEventListener('DOMContentLoaded', function () {
             gutterSize: 12,
             gutter: (index, direction) => {
                 const gutter = document.createElement('div');
-                gutter.className = `gutter gutter-${direction}`;
+                gutter.className = `gutter gutter - ${direction}`;
                 const icon = document.createElement('i');
                 icon.className = 'bi bi-three-dots-vertical';
                 gutter.appendChild(icon);
@@ -3508,7 +3910,7 @@ document.addEventListener('DOMContentLoaded', function () {
             gutterSize: 12,
             gutter: (index, direction) => {
                 const gutter = document.createElement('div');
-                gutter.className = `gutter gutter-${direction}`;
+                gutter.className = `gutter gutter - ${direction}`;
                 const icon = document.createElement('i');
                 icon.className = 'bi bi-three-dots';
                 gutter.appendChild(icon);
@@ -3563,7 +3965,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const docRef = await window.addDoc(window.collection(window.db, "projects"), shareableData);
-            const shareUrl = `${window.location.origin}${window.location.pathname}?effectId=${docRef.id}`;
+            const shareUrl = `${window.location.origin}${window.location.pathname} ? effectId = ${docRef.id}`;
             navigator.clipboard.writeText(shareUrl)
                 .then(() => showToast("Share link copied to clipboard!", 'success'))
                 .catch(() => prompt("Copy this link:", shareUrl));
@@ -3576,7 +3978,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (galleryOffcanvasEl) {
         galleryOffcanvasEl.addEventListener('hidden.bs.offcanvas', () => {
             if (galleryListener) {
-                console.log("Detaching gallery listener.");
+                // console.log("Detaching gallery listener.");
                 galleryListener(); // This is the unsubscribe function
                 galleryListener = null;
             }
@@ -3839,7 +4241,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // If saved, populate the input and show the modal
-        const shareUrl = `${window.location.origin}${window.location.pathname}?effectId=${currentProjectDocId}`;
+        const shareUrl = `${window.location.origin}${window.location.pathname} ? effectId = ${currentProjectDocId}`;
         const shareLinkInput = document.getElementById('share-link-input');
         shareLinkInput.value = shareUrl;
 
