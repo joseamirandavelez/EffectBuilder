@@ -1,22 +1,3 @@
-// Import necessary Firebase functions
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyBIzgQqxHMTdCsW0UG4MOEuFWwjEYAFYbk",
-    authDomain: "effect-builder.firebaseapp.com",
-    projectId: "effect-builder",
-    storageBucket: "effect-builder.appspot.com",
-    messagingSenderId: "638106955712",
-    appId: "1:638106955712:web:e98ee4cd023fd84d466225",
-    measurementId: "G-4TBX7711GH"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
 /**
  * Populates the gallery list with project data.
  * @param {Array} projects - An array of project objects from Firebase.
@@ -61,11 +42,10 @@ function populateGallery(projects) {
         li.appendChild(contentDiv);
 
         const controlsDiv = document.createElement('div');
-        const loadBtn = document.createElement('a'); // Changed to an anchor tag for easy linking
+        const loadBtn = document.createElement('a');
         loadBtn.className = 'btn btn-sm btn-outline-primary';
         loadBtn.innerHTML = '<i class="bi bi-box-arrow-down me-1"></i> Load';
         loadBtn.title = "Load Effect in Editor";
-        // Create a link that opens the editor with the effectId in the URL
         loadBtn.href = `index.html?effectId=${project.docId}`;
 
         controlsDiv.appendChild(loadBtn);
@@ -80,19 +60,23 @@ function populateGallery(projects) {
 async function loadPublicGallery() {
     const galleryList = document.getElementById('gallery-project-list');
     try {
-        const q = query(collection(db, "projects"), where("isPublic", "==", true), orderBy("createdAt", "desc"));
-        const querySnapshot = await getDocs(q);
-        
+        // Use the globally available Firebase functions from firebase.js
+        const q = window.query(
+            window.collection(window.db, "projects"), 
+            window.where("isPublic", "==", true), 
+            window.orderBy("createdAt", "desc")
+        );
+        const querySnapshot = await window.getDocs(q);
+
         const projects = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            // Convert Firestore Timestamp to JavaScript Date object
             if (data.createdAt && data.createdAt.toDate) {
                 data.createdAt = data.createdAt.toDate();
             }
             projects.push({ docId: doc.id, ...data });
         });
-        
+
         populateGallery(projects);
 
     } catch (error) {
@@ -103,5 +87,16 @@ async function loadPublicGallery() {
 
 // Load the gallery when the page is ready
 document.addEventListener('DOMContentLoaded', () => {
-    loadPublicGallery();
+    // A short delay ensures firebase.js has had time to initialize and set up window.db
+    setTimeout(() => {
+        if (window.db) {
+            loadPublicGallery();
+        } else {
+            console.error("Firebase is not initialized. Make sure firebase.js is loaded.");
+            const galleryList = document.getElementById('gallery-project-list');
+            if (galleryList) {
+                galleryList.innerHTML = '<li class="list-group-item text-danger">Could not connect to the database.</li>';
+            }
+        }
+    }, 200);
 });

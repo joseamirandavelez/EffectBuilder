@@ -4,22 +4,47 @@ body {
     overflow: hidden;
 }
 
+/* Ensure the right-panel-top fills its space and uses flex column */
+#right-panel-top {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Ensure it grows vertically within #right-panel */
+    min-height: 0; /* Allow it to shrink */
+}
+
+/* This is the div that contains #canvas-container */
+/* It needs to grow and center its content */
+#right-panel-top > .flex-grow-1 {
+    display: flex;
+    justify-content: center; /* Center #canvas-container horizontally */
+    align-items: center;   /* Center #canvas-container vertically */
+    flex-grow: 1; /* Ensure it takes available space */
+    min-height: 0; /* Important for flex items to shrink */
+    /* Removed explicit height: 100%; to allow aspect-ratio to work without conflict */
+}
+
+
 #canvas-container {
     position: relative;
-    aspect-ratio: 1280 / 800;
     cursor: default;
-    width: auto;
-    height: auto;
+    border: 1px solid var(--bs-secondary); /* Keep border for visibility */
+
+    /* Key changes: Use max-width and max-height to constrain within parent */
     max-width: 100%;
     max-height: 100%;
+    width: auto; /* Allow width to be determined by content or max-width */
+    height: auto; /* Allow height to be determined by content or max-height */
+    aspect-ratio: 1280 / 800; /* This maintains the aspect ratio */
+
+    /* Removed display: flex; justify-content; align-items; from here, as its parent now centers it. */
 }
 
 #signalCanvas {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
+    display: block; /* Prevent margin issues */
+    /* Removed fixed width and height from here as well */
+    width: 100%; /* Make canvas fill its container */
+    height: 100%; /* Make canvas fill its container */
+    /* Removed max-width and max-height as it's already 100% of its container */
 }
 
 .legend-button {
@@ -111,4 +136,3 @@ body {
 .form-range::-moz-range-track {
     background-color: var(--bs-border-color);
 }
-
