@@ -258,7 +258,7 @@ class Shape {
         gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx,
         innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked,
         numberOfRows, numberOfColumns, phaseOffset, animationMode,
-        text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, autoWidth, showTime, showDate
+        text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate //,autoWidth
     }) {
         this.id = id;
         this.name = name || `Object ${id}`;
@@ -319,7 +319,7 @@ class Shape {
         this.visibleCharCount = 0;
         this.waveAngle = 0;
         this.typewriterWaitTimer = 0; // Add this line
-        this.autoWidth = autoWidth !== undefined ? autoWidth : true;
+        //this.autoWidth = autoWidth !== undefined ? autoWidth : true;
         this.showTime = showTime || false;
         this.showDate = showDate || false;
     }
@@ -360,10 +360,10 @@ class Shape {
         const lines = textToMeasure.split('\n');
         const pixelSize = this.fontSize / 10;
 
-        if (this.autoWidth) {
-            const widths = lines.map(line => line.length * (charWidth + charSpacing) * pixelSize - (charSpacing * pixelSize));
-            this.width = Math.max(0, ...widths);
-        }
+        // if (this.autoWidth) {
+        //     const widths = lines.map(line => line.length * (charWidth + charSpacing) * pixelSize - (charSpacing * pixelSize));
+        //     this.width = Math.max(0, ...widths);
+        // }
 
         const textBlockHeight = lines.length * (charHeight + lineSpacing) * pixelSize - (lineSpacing * pixelSize);
         // Add top and bottom margins, each equal to one pixel cell's size
@@ -1007,30 +1007,30 @@ document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('controls-form');
     const outputScriptArea = document.getElementById('output-script');
     const copyBtn = document.getElementById('copy-btn');
-    const copyToastEl = document.getElementById('copy-toast');
-    const copyToast = new bootstrap.Toast(copyToastEl);
+    // const copyToastEl = document.getElementById('copy-toast');
+    // const copyToast = new bootstrap.Toast(copyToastEl);
     const toolbar = document.getElementById('toolbar');
     const constrainBtn = document.getElementById('constrain-btn');
-    const loadProjectModalEl = document.getElementById('load-project-modal');
-    const loadProjectModal = new bootstrap.Modal(loadProjectModalEl);
-    const loadProjectList = document.getElementById('load-project-list');
+    // const loadProjectModalEl = document.getElementById('load-project-modal');
+    // const loadProjectModal = new bootstrap.Modal(loadProjectModalEl);
+    // const loadProjectList = document.getElementById('load-project-list');
     const exportBtn = document.getElementById('export-btn');
-    const saveProjectModalEl = document.getElementById('save-project-modal');
-    const saveProjectModal = new bootstrap.Modal(saveProjectModalEl);
-    const saveProjectNameInput = document.getElementById('save-project-name-input');
-    const confirmSaveBtn = document.getElementById('confirm-save-btn');
-    const existingProjectList = document.getElementById('save-project-existing-list');
-    const notificationModalEl = document.getElementById('notification-modal');
-    const notificationModal = new bootstrap.Modal(notificationModalEl);
-    const notificationModalBody = document.getElementById('notification-modal-body');
-    const confirmOverwriteModalEl = document.getElementById('confirm-overwrite-modal');
-    const confirmOverwriteModal = new bootstrap.Modal(confirmOverwriteModalEl);
-    const confirmOverwriteBtn = document.getElementById('confirm-overwrite-btn');
+    // const saveProjectModalEl = document.getElementById('save-project-modal');
+    // const saveProjectModal = new bootstrap.Modal(saveProjectModalEl);
+    // const saveProjectNameInput = document.getElementById('save-project-name-input');
+    // const confirmSaveBtn = document.getElementById('confirm-save-btn');
+    // const existingProjectList = document.getElementById('save-project-existing-list');
+    // const notificationModalEl = document.getElementById('notification-modal');
+    // const notificationModal = new bootstrap.Modal(notificationModalEl);
+    // const notificationModalBody = document.getElementById('notification-modal-body');
+    // const confirmOverwriteModalEl = document.getElementById('confirm-overwrite-modal');
+    // const confirmOverwriteModal = new bootstrap.Modal(confirmOverwriteModalEl);
+    // const confirmOverwriteBtn = document.getElementById('confirm-overwrite-btn');
     const shareBtn = document.getElementById('share-btn');
     const addObjectBtn = document.getElementById('add-object-btn');
     const confirmImportBtn = document.getElementById('confirm-import-btn');
     const confirmBtn = document.getElementById('confirm-overwrite-btn');
-    const confirmModalEl = document.getElementById('confirm-overwrite-modal');
+    // const confirmModalEl = document.getElementById('confirm-overwrite-modal');
 
     // --- State Management ---
     let isRestoring = false; // Prevents history recording during an undo/redo action
@@ -1274,6 +1274,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const infoDiv = document.createElement('div');
             infoDiv.className = project.thumbnail ? 'ms-3' : '';
+            infoDiv.style.minWidth = '0'; // Add this line to allow truncation
 
             const nameEl = document.createElement('strong');
             nameEl.textContent = project.name;
@@ -1283,13 +1284,24 @@ document.addEventListener('DOMContentLoaded', function () {
             metaEl.textContent = `By ${project.creatorName || 'Anonymous'} on ${formattedDate}`;
 
             infoDiv.appendChild(nameEl);
-            infoDiv.appendChild(metaEl);
+            // Find and display the project description
+            if (project.configs) {
+                const descriptionConf = project.configs.find(c => c.name === 'description');
+                if (descriptionConf && descriptionConf.default) {
+                    const descEl = document.createElement('p');
+                    descEl.className = 'mb-0 mt-1 small text-body-secondary';
+                    descEl.textContent = descriptionConf.default;
+                    descEl.title = descriptionConf.default; // Show full description on hover
+                    infoDiv.appendChild(descEl);
+                }
+            }
             contentDiv.appendChild(infoDiv);
             li.appendChild(contentDiv);
 
             const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'd-flex flex-column gap-1';
             const loadBtn = document.createElement('button');
-            loadBtn.className = 'btn btn-sm btn-outline-primary me-2';
+            loadBtn.className = 'btn btn-sm btn-outline-primary';
             loadBtn.innerHTML = '<i class="bi bi-box-arrow-down"></i>';
             loadBtn.title = "Load Effect";
             loadBtn.onclick = () => {
@@ -1742,13 +1754,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     value = value.replace(/\n/g, '\\n');
                 }
 
-                conf.label = `${name}:${conf.label.split(':').slice(1).join(':').trim()}`;
+                conf.label = `${name}: ${conf.label.split(':').slice(1).join(':').trim()}`;
                 if (propName === 'width' && (obj.shape === 'circle' || obj.shape === 'ring')) {
                     conf.label = `${name}: Width/Outer Diameter`;
                 }
 
                 const attrs = Object.keys(conf).filter(attr => attr !== 'default' && attr !== 'type').map(attrName => `${attrName}="${conf[attrName]}"`).join(' ');
-                scriptHTML += `<meta ${attrs} type="textfield" default="${value}" />\n`;
+                scriptHTML += `<meta ${attrs} type="${conf.type}" default="${value}" />\n`;
             });
         });
 
@@ -1917,8 +1929,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
             const gridSettings = ['numberOfRows', 'numberOfColumns', 'phaseOffset'];
+            // const textSubGroups = {
+            //     'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign', 'autoWidth'],
+            //     'Time & Date Display': ['showTime', 'showDate'],
+            //     'Text Animation': ['textAnimation', 'textAnimationSpeed']
+            // };
             const textSubGroups = {
-                'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign', 'autoWidth'],
+                'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
                 'Time & Date Display': ['showTime', 'showDate'],
                 'Text Animation': ['textAnimation', 'textAnimationSpeed']
             };
@@ -1997,6 +2014,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 objects.sort((a, b) => newOrderedIds.indexOf(a.id) - newOrderedIds.indexOf(b.id));
 
                 // The rendering loop respects the objects array order, so just redraw and save.
+                updateObjectsFromForm();
                 drawFrame();
                 recordHistory();
             }
@@ -2249,14 +2267,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function drawFrame() {
-        // Set black background
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw all objects
+        // Get the current animation setting from the form once per frame.
+        const animationEnabled = getControlValues().enableAnimation;
+
+        // Draw all objects, passing the live animation setting.
         objects.forEach(obj => {
             if (obj instanceof Shape) {
-                obj.draw(true, selectedObjectIds.includes(obj.id));
+                obj.draw(animationEnabled, selectedObjectIds.includes(obj.id));
             } else {
                 console.error('Invalid object in objects array:', obj);
             }
@@ -2272,7 +2292,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // console.log('Calling drawSnapLines from drawFrame with snapLines:', snapLines);
         drawSnapLines(snapLines);
     }
 
@@ -2288,8 +2307,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (elapsed > fpsInterval) {
             then = now - (elapsed % fpsInterval);
 
-            // Directly find the checkbox and read its 'checked' status.
-            // This is a more reliable check.
+            // Directly find the checkbox and check its status.
             const enableAnimationCheckbox = document.getElementById('enableAnimation');
             const isAnimationEnabled = enableAnimationCheckbox ? enableAnimationCheckbox.checked : false;
 
@@ -2444,7 +2462,7 @@ document.addEventListener('DOMContentLoaded', function () {
         generateOutputScript();
     }
 
-    
+
 
     /**
      * A master update function that syncs the shapes from the form and regenerates the output script.
@@ -2476,7 +2494,6 @@ document.addEventListener('DOMContentLoaded', function () {
      * Creates the initial set of Shape objects based on the `configStore`.
      */
     function createInitialObjects() {
-        // This function reads the initial setup from the <template> in index.html
         const grouped = groupConfigs(configStore);
         const initialStates = [];
         const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
@@ -2633,7 +2650,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_textAnimationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', min: '1', max: '100', default: '10' },
             { property: `obj${newId}_showTime`, label: `Object ${newId}: Show Current Time`, type: 'boolean', default: 'false' },
             { property: `obj${newId}_showDate`, label: `Object ${newId}: Show Current Date`, type: 'boolean', default: 'false' },
-            { property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'true' }
+            //{ property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'true' }
         ];
     }
 
@@ -2682,8 +2699,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const canvas = document.getElementById('signalCanvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    canvas.width = 1280;
-    canvas.height = 800;
+    canvas.width = 320;
+    canvas.height = 200;
     let objects = [];
     let propertyKeys = [];
 
@@ -2695,7 +2712,9 @@ document.addEventListener('DOMContentLoaded', function () {
     ${getPatternColorString}
     ${shapeClassString}
 
-    // --- Standalone Initialization & Animation Loop for the Exported File ---
+    let fps = 50;
+    let fpsInterval;
+    let then;
 
     function discoverProperties() {
         const metaElements = Array.from(document.querySelectorAll('head > meta[property^="obj"]'));
@@ -2727,8 +2746,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 } catch (e) {}
             });
             
+            // --- SPEED FIX: Divide all speeds by 4 ---
+            const scaleFactor = 4.0;
+            if (config.animationSpeed) config.animationSpeed /= scaleFactor;
+            if (config.cycleSpeed) config.cycleSpeed /= scaleFactor;
+            if (config.rotationSpeed) config.rotationSpeed /= scaleFactor;
+            if (config.textAnimationSpeed) config.textAnimationSpeed /= scaleFactor;
+            
             config.animationSpeed = (config.animationSpeed || 0) / 10.0;
             config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
+            
+            if (config.shape === 'ring' || config.shape === 'circle') {
+                config.height = config.width;
+            }
             return new Shape(config);
         });
     }
@@ -2740,7 +2770,6 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         let shouldAnimate = false;
-        // ANIMATION FIX: Use non-strict '==' to correctly handle both string "true" and boolean true.
         try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
 
         objects.forEach(obj => {
@@ -2749,12 +2778,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 const propName = key.substring(prefix.length);
                 try {
                     const value = eval(key);
+                    const scaleFactor = 4.0;
                     switch(propName) {
                         case 'gradColor1': obj.gradient.color1 = value; break;
                         case 'gradColor2': obj.gradient.color2 = value; break;
                         case 'scrollDir': obj.scrollDirection = value; break;
-                        case 'animationSpeed': obj.animationSpeed = (value || 0) / 10.0; break;
-                        case 'cycleSpeed': obj.cycleSpeed = (value || 0) / 50.0; break;
+                        // --- SPEED FIX: Also divide speeds by 4 during live updates ---
+                        case 'animationSpeed': obj.animationSpeed = ((value || 0) / scaleFactor) / 10.0; break;
+                        case 'cycleSpeed': obj.cycleSpeed = ((value || 0) / scaleFactor) / 50.0; break;
+                        case 'rotationSpeed': obj.rotationSpeed = (value || 0) / scaleFactor; break;
+                        case 'textAnimationSpeed': obj.textAnimationSpeed = (value || 0) / scaleFactor; break;
                         default:
                             if(obj.hasOwnProperty(propName)) {
                                 obj[propName] = value;
@@ -2773,15 +2806,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function animate() {
+    function animate(timestamp) {
         requestAnimationFrame(animate);
-        drawFrame();
+        const now = timestamp;
+        const elapsed = now - then;
+
+        if (elapsed > fpsInterval) {
+            then = now - (elapsed % fpsInterval);
+            drawFrame();
+        }
     }
 
     function init() {
         discoverProperties();
         createInitialObjects();
-        animate();
+        
+        fpsInterval = 1000 / fps;
+        then = window.performance.now();
+        animate(then);
     }
 
     init();
@@ -2958,40 +3000,56 @@ document.addEventListener('DOMContentLoaded', function () {
             const objectToCopy = objects.find(o => o.id === idToCopy);
             if (!objectToCopy) return;
 
-            const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
-            const newName = `${objectToCopy.name} Copy`;
+            // 1. Create a true copy of the source object's live properties
+            const newState = JSON.parse(JSON.stringify(objectToCopy, (key, value) => {
+                if (key === 'ctx') return undefined; // Exclude non-serializable canvas context
+                return value;
+            }));
 
-            const configsToCopy = configStore.filter(c => c.property && c.property.startsWith(`obj${idToCopy}_`));
-            const newConfigs = configsToCopy.map(oldConf => {
+            // 2. Assign a new ID and Name, and offset it slightly
+            const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
+            newState.id = newId;
+            newState.name = `${objectToCopy.name} Copy`;
+            newState.x += 20;
+            newState.y += 20;
+
+            // 3. Create the new Shape instance from the copied state
+            const newShape = new Shape({ ...newState, ctx });
+            objects.push(newShape);
+
+            // 4. Generate a new set of form configurations based on the new object's state
+            const oldConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${idToCopy}_`));
+            const newConfigs = oldConfigs.map(oldConf => {
                 const newConf = { ...oldConf };
                 const propName = oldConf.property.substring(oldConf.property.indexOf('_') + 1);
                 newConf.property = `obj${newId}_${propName}`;
-                newConf.label = `${newName}:${oldConf.label.split(':')[1]}`;
-                if (propName === 'x' || propName === 'y') {
-                    newConf.default = parseFloat(newConf.default) + 20;
+                newConf.label = `${newState.name}:${oldConf.label.split(':')[1]}`;
+
+                // Get the live value from the newly created shape
+                let liveValue = newShape[propName];
+                if (propName.startsWith('gradColor')) {
+                    liveValue = newShape.gradient[propName.replace('gradColor', 'color')];
+                } else if (propName === 'scrollDir') {
+                    liveValue = newShape.scrollDirection;
                 }
+
+                // Apply inverse scaling to get the correct UI/form value
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+                if (propsToScale.includes(propName)) {
+                    liveValue /= 4;
+                } else if (propName === 'animationSpeed') {
+                    liveValue *= 10;
+                } else if (propName === 'cycleSpeed') {
+                    liveValue *= 50;
+                }
+
+                newConf.default = liveValue;
                 return newConf;
             });
 
             configStore.push(...newConfigs);
 
-            // Create the new object instance and add it to the array
-            const state = { id: newId, name: newName };
-            newConfigs.forEach(conf => {
-                const key = conf.property.replace(`obj${newId}_`, '');
-                let value = conf.default;
-                if (conf.type === 'number') value = parseFloat(value);
-                else if (conf.type === 'boolean') value = (value === 'true');
-                if (key.startsWith('gradColor')) {
-                    if (!state.gradient) state.gradient = {};
-                    state.gradient[key.replace('grad', '').toLowerCase()] = value;
-                } else {
-                    state[key] = value;
-                }
-            });
-            const newShape = new Shape({ ...state, ctx });
-            objects.push(newShape);
-
+            // 5. Update the UI
             selectedObjectIds = [newId];
             renderForm();
             syncPanelsWithSelection();
@@ -3155,25 +3213,35 @@ document.addEventListener('DOMContentLoaded', function () {
         const name = getControlValues()['title'] || 'Untitled Effect';
         const trimmedName = name.trim();
 
-        // Check if a project with this name already exists for the current user
-        const q = window.query(window.collection(window.db, "projects"), window.where("userId", "==", user.uid), window.where("name", "==", trimmedName));
-        const querySnapshot = await window.getDocs(q);
+        // Sanitize the configStore to remove any keys with undefined values
+        const sanitizedConfigs = configStore.map(conf => {
+            const sanitized = {};
+            for (const key in conf) {
+                if (conf[key] !== undefined) {
+                    sanitized[key] = conf[key];
+                }
+            }
+            return sanitized;
+        });
 
         const thumbnail = generateThumbnail(document.getElementById('signalCanvas'));
         const projectData = {
             name: trimmedName,
             thumbnail: thumbnail,
-            configs: configStore,
+            configs: sanitizedConfigs, // Use the sanitized version
             objects: objects.map(o => ({ id: o.id, name: o.name, locked: o.locked })),
-            updatedAt: new Date() // Add an updated timestamp
+            updatedAt: new Date()
         };
 
+        const q = window.query(window.collection(window.db, "projects"), window.where("userId", "==", user.uid), window.where("name", "==", trimmedName));
+        const querySnapshot = await window.getDocs(q);
+
         if (!querySnapshot.empty) {
-            // If the project exists, ask the user to confirm overwriting
+            // Project exists, confirm overwrite
             const existingDocId = querySnapshot.docs[0].id;
             showConfirmModal(
                 'Confirm Overwrite',
-                `A project named "${trimmedName}" already exists.Do you want to overwrite it ? `,
+                `A project named "${trimmedName}" already exists. Do you want to overwrite it?`,
                 'Overwrite',
                 async () => {
                     try {
@@ -3189,9 +3257,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             );
         } else {
-            // If the project does not exist, create a new one
+            // Project is new, create it
             try {
-                // Add properties that are only set when a project is first created
                 projectData.userId = user.uid;
                 projectData.creatorName = user.displayName || 'Anonymous';
                 projectData.isPublic = true;
@@ -3206,7 +3273,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showToast("Error saving project: " + error.message, 'danger');
             }
         }
-    });
+    });;
 
     // MY PROJECTS BUTTON
     document.getElementById('load-ws-btn').addEventListener('click', () => {
@@ -3383,11 +3450,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let targetObject = null;
         if (hitObjects.length > 0) {
-            const currentlySelectedHitObjects = hitObjects.filter(obj => selectedObjectIds.includes(obj.id));
-            if (currentlySelectedHitObjects.length === hitObjects.length) {
-                targetObject = hitObjects[0];
+            // Prioritize dragging an already-selected object if it's under the cursor.
+            const alreadySelectedHit = hitObjects.find(obj => selectedObjectIds.includes(obj.id));
+            if (alreadySelectedHit) {
+                targetObject = alreadySelectedHit;
             } else {
-                targetObject = hitObjects.find(obj => !selectedObjectIds.includes(obj.id)) || hitObjects[0];
+                // Otherwise, select the topmost new object.
+                targetObject = hitObjects[0];
             }
         }
 
@@ -3487,7 +3556,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         potentialWidth = initial.width - dx;
                         potentialX = initial.x + dx;
                     }
-                    obj.autoWidth = false;
+                    //obj.autoWidth = false;
                 } else {
                     const scaleFactor = (initial.height + dy) / initial.height;
                     if (isFinite(scaleFactor) && scaleFactor > 0) {
@@ -3779,18 +3848,52 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     // console.log('snapLines:', snapLines); // Debug: Verify snap lines are populated
                 }
-            } else {
+            } else { // This is the block for multi-object dragging
+                let dx = x - dragStartX;
+                let dy = y - dragStartY;
+
+                if (constrainToCanvas) {
+                    // First, find the boundaries of the entire selection at its proposed new position
+                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                    initialDragState.forEach(initial => {
+                        const obj = objects.find(o => o.id === initial.id);
+                        if (obj) {
+                            const newObjX = initial.x + dx;
+                            const newObjY = initial.y + dy;
+                            minX = Math.min(minX, newObjX);
+                            maxX = Math.max(maxX, newObjX + obj.width);
+                            minY = Math.min(minY, newObjY);
+                            maxY = Math.max(maxY, newObjY + obj.height);
+                        }
+                    });
+
+                    // Next, calculate how much the entire group has overshot the canvas boundaries
+                    let correctionDx = 0;
+                    let correctionDy = 0;
+
+                    if (minX < 0) {
+                        correctionDx = -minX; // Nudge the group to the right
+                    } else if (maxX > canvas.width) {
+                        correctionDx = canvas.width - maxX; // Nudge the group to the left
+                    }
+
+                    if (minY < 0) {
+                        correctionDy = -minY; // Nudge the group down
+                    } else if (maxY > canvas.height) {
+                        correctionDy = canvas.height - maxY; // Nudge the group up
+                    }
+
+                    // Apply the single correction to the overall mouse delta
+                    dx += correctionDx;
+                    dy += correctionDy;
+                }
+
+                // Finally, apply the same corrected delta to all objects in the selection
                 initialDragState.forEach(initial => {
                     const obj = objects.find(o => o.id === initial.id);
                     if (obj) {
-                        let newX = initial.x + dx;
-                        let newY = initial.y + dy;
-                        if (constrainToCanvas) {
-                            newX = Math.max(0, Math.min(newX, canvas.width - obj.width));
-                            newY = Math.max(0, Math.min(newY, canvas.height - obj.height));
-                        }
-                        obj.x = newX;
-                        obj.y = newY;
+                        obj.x = initial.x + dx;
+                        obj.y = initial.y + dy;
                     }
                 });
             }
@@ -4159,9 +4262,9 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {HTMLCanvasElement} sourceCanvas - The main canvas to capture.
      * @returns {string} A dataURL string of the thumbnail.
      */
-    function generateThumbnail(sourceCanvas) {
+    function generateThumbnail(sourceCanvas, width = 200) {
         const thumbnailCanvas = document.createElement('canvas');
-        const thumbWidth = 200; // Define a fixed width for thumbnails
+        const thumbWidth = width;
         const thumbHeight = (sourceCanvas.height / sourceCanvas.width) * thumbWidth;
         thumbnailCanvas.width = thumbWidth;
         thumbnailCanvas.height = thumbHeight;
@@ -4212,7 +4315,7 @@ document.addEventListener('DOMContentLoaded', function () {
         confirmModalInstance.show();
     }
 
-    document.getElementById('confirm-import-btn').addEventListener('click', () => {
+    confirmImportBtn.addEventListener('click', () => {
         const importText = document.getElementById('import-textarea').value;
         if (!importText.trim()) {
             showToast("Text area is empty.", 'danger');
@@ -4300,25 +4403,31 @@ document.addEventListener('DOMContentLoaded', function () {
         const newConfigs = getDefaultObjectConfig(newId);
         configStore.push(...newConfigs);
 
-        const state = { id: newId, name: `Object ${newId}` };
+        const state = {
+            id: newId,
+            name: `Object ${newId}`, // Explicitly sets the default name
+            gradient: {}
+        };
+
         newConfigs.forEach(conf => {
             const key = conf.property.replace(`obj${newId}_`, '');
             let value = conf.default;
-            if (conf.type === 'number') value = parseFloat(value);
-            else if (conf.type === 'boolean') value = (value === 'true');
+
+            if (conf.type === 'number') {
+                value = parseFloat(value);
+            } else if (conf.type === 'boolean') {
+                value = (value === 'true');
+            }
 
             if (key.startsWith('gradColor')) {
-                if (!state.gradient) state.gradient = {};
                 state.gradient[key.replace('grad', '').toLowerCase()] = value;
+            } else if (key === 'scrollDir') {
+                state.scrollDirection = value;
             } else {
                 state[key] = value;
-                if (key === 'rotation') { // Add this line
-                    state.rotation = value;   // Add this line
-                }                         // Add this line
             }
         });
 
-        // Scale up the pixel values for the new object
         const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
         propsToScale.forEach(prop => {
             if (state[prop] !== undefined) {
@@ -4328,49 +4437,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const newShape = new Shape({ ...state, ctx });
         objects.push(newShape);
+
         renderForm();
         updateFormValuesFromObjects();
         drawFrame();
         recordHistory();
-    });
-
-    /**
-     * IMPORT: Resets the saved state.
-     */
-    confirmImportBtn.addEventListener('click', () => {
-        const importText = document.getElementById('import-textarea').value;
-        if (!importText.trim()) {
-            showToast("Text area is empty.", 'danger');
-            return;
-        }
-        try {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = importText;
-            const metaElements = Array.from(tempDiv.querySelectorAll('meta'));
-            if (metaElements.length === 0) {
-                showToast("No valid <meta> tags were found.", 'danger');
-                return;
-            }
-            const importedConfigs = metaElements.map(parseMetaToConfig);
-            const workspace = { configs: importedConfigs, objects: [] };
-
-            loadWorkspace(workspace); // This will call the state reset internally now
-
-            const importModal = bootstrap.Modal.getInstance(document.getElementById('import-meta-modal'));
-            importModal.hide();
-            showToast("Effect imported successfully!", 'success');
-            document.getElementById('import-textarea').value = '';
-
-            // Explicitly reset state after a successful import
-            currentProjectDocId = null;
-            updateShareButtonState();
-            currentProjectDocId = null;
-            updateShareButtonState();
-        } catch (error) {
-            console.error("Error importing meta tags:", error);
-            showToast("Could not parse the provided HTML. Please check the format.", 'danger');
-        }
-    });
+    });;
 
     /**
      * CONFIRMATION MODAL: General listener for confirm button.
