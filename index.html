@@ -135,7 +135,7 @@
 <body class="d-flex flex-column vh-100">
     <nav class="navbar navbar-expand-lg bg-body-tertiary">
         <div class="container-fluid">
-            <a class="navbar-brand" href="./">SRGB Interactive Effect Builder v1.0</a>
+            <a class="navbar-brand" href="./">SRGB Interactive Effect Builder</a>
 
             <div class="ms-auto d-flex align-items-center">
 
@@ -342,7 +342,7 @@
                         <li><strong>Add New Object:</strong> Use the green button at the bottom to add a new shape to the canvas.</li>
                         <li><strong>Object Panels:</strong> Each object gets its own collapsible panel. Click the object's name to expand or collapse its properties.</li>
                         <li><strong>Rename:</strong> Click directly on an object's name (e.g., "Object 1") to edit it.</li>
-                        <li><strong>Reorder:</strong> Click and drag the <i class="bi bi-grip-vertical"></i> icon to change the rendering order of the objects.</li>
+                        <li><strong>Reorder:</strong> Click and drag the <i class="bi bi-grip-vertical"></i> icon to change the rendering order of the objects (what's drawn on top).</li>
                         <li><strong>Lock/Unlock:</strong> Use the <i class="bi bi-unlock-fill"></i> / <i class="bi bi-lock-fill"></i> button to prevent an object from being moved or resized on the canvas.</li>
                         <li><strong>Duplicate/Delete:</strong> Use the menu button (<i class="bi bi-list"></i>) to access options for duplicating or deleting an object.</li>
                     </ul>
@@ -350,29 +350,27 @@
                     <h6 class="text-info mt-4">The Canvas (Center)</h6>
                     <p>This is the visual editor where you can directly manipulate objects.</p>
                     <ul class="list-unstyled">
-                        <li><strong>Select:</strong> Click on an object to select it.</li>
-                        <li><strong>Multi-Select:</strong> Hold <kbd>Shift</kbd> or <kbd>Ctrl</kbd> while clicking to select multiple objects.</li>
-                        <li><strong>Drag:</strong> Click and drag a selected object to move it.</li>
-                        <li><strong>Resize:</strong> Click and drag the handles on the corners and sides of a selected object to resize it.</li>
+                        <li><strong>Select:</strong> Click an object to select it. Hold <kbd>Shift</kbd> or <kbd>Ctrl</kbd> to select multiple objects.</li>
+                        <li><strong>Drag & Resize:</strong> Drag a selected object to move it. Drag the handles on the selection box to resize it. Objects will snap to each other and the canvas edges.</li>
+                        <li><strong>Rotate:</strong> Drag the circular handle attached to the selection box to rotate an object.</li>
+                        <li><strong>Keyboard Shortcuts:</strong> Use <kbd>Arrow Keys</kbd> to move selected objects, and hold <kbd>Shift</kbd> for larger steps. Use <kbd>Delete</kbd> or <kbd>Backspace</kbd> to remove selected objects. <kbd>Ctrl+Z</kbd> and <kbd>Ctrl+Y</kbd> work for undo/redo.</li>
                     </ul>
 
                     <h6 class="text-info mt-4">Main Toolbar (Top)</h6>
-                    <p>The main toolbar provides actions for managing, sharing, and exporting your effects. Most cloud actions require you to be signed in.</p>
+                    <p>The main toolbar provides actions for managing your workspace. Most cloud actions require you to be signed in.</p>
                     <ul class="list-unstyled">
-                        <li><strong class="text-primary-emphasis"><i class="bi bi-cloud-arrow-up me-1"></i> Save:</strong> Saves your current workspace to the cloud. It uses the name from the "Effect Title" field and will prevent you from saving duplicate names.</li>
-                        <li><strong class="text-secondary-emphasis"><i class="bi bi-folder2-open me-1"></i> My Projects:</strong> Opens a side panel showing all effects you have personally saved, sorted by most recent.</li>
-                        <li><strong class="text-warning-emphasis"><i class="bi bi-view-list me-1"></i> Browse Gallery:</strong> Opens a side panel showing all public effects created by all users.</li>
-                        <li><strong class="text-info-emphasis"><i class="bi bi-box-arrow-in-down me-1"></i> Import:</strong> Opens a dialog where you can paste `
-                            <meta>` tags from an old effect file to load it into the builder.
-                        </li>
-                        <li><strong class="text-info-emphasis"><i class="bi bi-share me-1"></i> Get Link:</strong> This button is enabled only after you save an effect. It opens a modal with a unique, shareable URL for your saved project.</li>
-                        <li><strong class="text-success-emphasis"><i class="bi bi-download me-1"></i> Export:</strong> Generates and downloads a complete, standalone HTML file of your effect for use in SignalRGB.</li>
+                        <li><strong class="text-primary-emphasis"><i class="bi bi-cloud-arrow-up me-1"></i> Save:</strong> Saves your current workspace to the cloud. It uses the "Effect Title" as the project name.</li>
+                        <li><strong class="text-secondary-emphasis"><i class="bi bi-folder2-open me-1"></i> My Projects:</strong> Opens a side panel showing all effects you have saved.</li>
+                        <li><strong class="text-warning-emphasis"><i class="bi bi-view-list me-1"></i> Community Gallery:</strong> Opens a side panel showing public effects from all users.</li>
+                        <li><strong class="text-info-emphasis"><i class="bi bi-share me-1"></i> Share:</strong> After saving, this button provides a unique, shareable URL for your effect.</li>
+                        <li><strong class="text-success-emphasis"><i class="bi bi-download me-1"></i> Export:</strong> Opens a modal to either download a `.zip` file or copy the raw HTML code for your effect.</li>
                     </ul>
 
                     <h6 class="text-info mt-4">How to install the effect in SignalRGB</h6>
                     <ul class="list-unstyled">
-                        <li>Extract the zip file contents to your 'Documents\WhirlwindFX\Effects' folder. Preferably within a folder with the same name as the file for organization.</li>
-                        <li>Restart SignalRGB.</li>
+                        <li>Click the <strong>Export</strong> button and choose <strong>Download .zip File</strong>.</li>
+                        <li>Extract the contents of the `.zip` file into your `Documents\WhirlwindFX\Effects` folder. For better organization, it's best to place them inside a new subfolder (e.g., `My Matrix Effect`).</li>
+                        <li>Restart SignalRGB, and your new effect should appear in the effects list.</li>
                     </ul>
                 </div>
                 <div class="modal-footer">
@@ -392,7 +390,7 @@
                 <div class="modal-body">
                     <h6>SRGB Interactive Effect Builder</h6>
                     <img src="srgbieb_crop.png" class="img-fluid rounded mb-3" alt="A screenshot of the Interactive Effect Builder UI, showing a complex lighting effect being designed on a canvas with control panels on the side.">
-                    <p>This tool is designed to help developers create and customize complex visual effects for SignalRGB. It provides a simple graphical interface for building effects and can save them to the cloud, share them with others, and export them as standalone files for use with the <a href="https://github.com/joseamirandavelez/EffectClass">EffectClass</a> template.</p>
+                    <p>This tool is designed to help developers create, share, and customize complex visual effects for SignalRGB. It provides a simple graphical interface for building effects and can save them to the cloud, share them with others via a link, and export them as standalone files for use with the <a href="https://github.com/joseamirandavelez/EffectClass" target="_blank" rel="noopener">EffectClass</a> template.</p>
 
                     <p class="small text-body-secondary mt-4">
                         <strong>Disclaimer:</strong> This tool is an independent project and is not affiliated with, endorsed by, or in any way officially connected with the SignalRGB software or its respective owners.
@@ -400,11 +398,11 @@
                     <div class="small text-body-secondary mt-4">
                         <strong>Acknowledgements:</strong> This website uses the following open-source libraries:
                         <ul>
-                            <li><a href="https://getbootstrap.com/" target="_blank">Bootstrap</a></li>
-                            <li><a href="https://icons.getbootstrap.com/" target="_blank">Bootstrap Icons</a></li>
-                            <li><a href="https://github.com/SortableJS/Sortable" target="_blank">SortableJS</a></li>
-                            <li><a href="https://stuk.github.io/jszip/" target="_blank">JSZip</a></li>
-                            <li><a href="https://split.js.org/" target="_blank">Split.js</a></li>
+                            <li><a href="https://getbootstrap.com/" target="_blank" rel="noopener">Bootstrap</a></li>
+                            <li><a href="https://icons.getbootstrap.com/" target="_blank" rel="noopener">Bootstrap Icons</a></li>
+                            <li><a href="https://github.com/SortableJS/Sortable" target="_blank" rel="noopener">SortableJS</a></li>
+                            <li><a href="https://stuk.github.io/jszip/" target="_blank" rel="noopener">JSZip</a></li>
+                            <li><a href="https://split.js.org/" target="_blank" rel="noopener">Split.js</a></li>
                         </ul>
                     </div>
                     <hr>
