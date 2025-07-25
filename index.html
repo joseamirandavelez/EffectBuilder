@@ -222,6 +222,7 @@
                             <div class="btn-group btn-group-sm me-2 mb-1" role="group">
                                 <button type="button" class="btn btn-secondary" id="constrain-btn" data-bs-toggle="tooltip" title="Snap to Canvas"><i class="bi bi-magnet-fill"></i></button>
                                 <button type="button" class="btn btn-secondary" id="match-text-size-btn" data-action="match-text-size" data-bs-toggle="tooltip" title="Match Text Size to Cell Height" disabled><i class="bi bi-fonts"></i> <i class="bi bi-grid-3x3"></i></button>
+                                <button type="button" class="btn btn-sm btn-success" id="start-audio-btn"><i class="bi bi-volume-up-fill me-2"></i><span class="button-text">Capture Computer Audio</span></button>
                             </div>
                         </div>
                     </div>
@@ -253,7 +254,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
             <div class="toast-body bg-dark" id="app-toast-body">
-                </div>
+            </div>
         </div>
     </div>
 
@@ -484,7 +485,7 @@
         <div class="offcanvas-body">
             <p>Select an effect to load into your workspace. <a href="gallery.html">View full gallery page <i class="bi bi-box-arrow-up-right"></i></a></p>
             <ul class="list-group" id="gallery-project-list">
-                </ul>
+            </ul>
         </div>
     </div>
 
@@ -521,6 +522,66 @@
                 <div class="modal-footer justify-content-center">
                     <button type="button" class="btn btn-success" id="export-download-btn"><i class="bi bi-file-earmark-zip-fill me-2"></i>Download .zip File</button>
                     <button type="button" class="btn btn-primary" id="export-copy-btn"><i class="bi bi-clipboard-check-fill me-2"></i>Copy HTML Code</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="copy-properties-modal" tabindex="-1" aria-labelledby="copyPropertiesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="copyPropertiesModalLabel">Select Properties to Copy</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Choose which property groups you want to include in the copy.</p>
+                    <form id="copy-properties-form" class="row">
+                        <div class="col-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="position" id="copy-position" checked>
+                                <label class="form-check-label" for="copy-position"><strong>Position & Rotation</strong></label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="size" id="copy-size" checked>
+                                <label class="form-check-label" for="copy-size"><strong>Size</strong></label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="fillStyle" id="copy-fillStyle" checked>
+                                <label class="form-check-label" for="copy-fillStyle"><strong>Fill Style</strong></label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="animation" id="copy-animation" checked>
+                                <label class="form-check-label" for="copy-animation"><strong>Animation</strong></label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="colorAnimation" id="copy-colorAnimation" checked>
+                                <label class="form-check-label" for="copy-colorAnimation"><strong>Color Animation</strong></label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="grid" id="copy-grid" checked>
+                                <label class="form-check-label" for="copy-grid"><strong>Grid Settings</strong></label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="text" id="copy-text" checked>
+                                <label class="form-check-label" for="copy-text"><strong>Text Settings</strong></label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="visualizer" id="copy-visualizer" checked>
+                                <label class="form-check-label" for="copy-visualizer"><strong>Visualizer Settings</strong></label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="oscilloscope" id="copy-oscilloscope" checked>
+                                <label class="form-check-label" for="copy-oscilloscope"><strong>Oscilloscope Settings</strong></label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-copy-btn">Copy Selected</button>
                 </div>
             </div>
         </div>

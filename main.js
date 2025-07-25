@@ -84,6 +84,104 @@ const FONT_DATA_5PX = {
     }
 };
 
+class RealAudioEngine {
+    constructor() {
+        this.audioContext = null;
+        this.analyser = null;
+        this.audio = {
+            level: -100, // Start at silent
+            density: 0,
+            freq: null
+        };
+        this.isInitialized = false;
+    }
+
+    async start() {
+        if (this.isInitialized) return true;
+        try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+
+            if (stream.getAudioTracks().length === 0) {
+                alert("Audio permission was not granted. Please try again and be sure to check the 'Share audio' box.");
+                stream.getTracks().forEach(track => track.stop());
+                return false;
+            }
+
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+
+            const source = this.audioContext.createMediaStreamSource(stream);
+            this.analyser = this.audioContext.createAnalyser();
+            this.analyser.fftSize = 512;
+
+            const gainNode = this.audioContext.createGain();
+            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+
+            source.connect(this.analyser);
+            this.analyser.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+
+            this.audio.freq = new Uint8Array(this.analyser.frequencyBinCount);
+            this.isInitialized = true;
+            console.log("Audio capture started successfully!");
+            return true;
+        } catch (err) {
+            console.error("Error capturing audio:", err);
+            alert("Could not start audio capture. This feature may not be supported by your browser or you may have cancelled the request.");
+            return false;
+        }
+    }
+
+    update() {
+        if (!this.isInitialized || !this.audio.freq) return;
+
+        // Get frequency data for the visualizer
+        this.analyser.getByteFrequencyData(this.audio.freq);
+
+        // --- START: New logic to calculate overall audio level ---
+        // Calculate the average volume from all frequency bins
+        let sum = 0;
+        for (let i = 0; i < this.audio.freq.length; i++) {
+            sum += this.audio.freq[i];
+        }
+        const average = sum / this.audio.freq.length;
+
+        // Normalize the average (0-255) to a 0-1 range
+        const normalizedLevel = average / 255;
+        // Convert the 0-1 range to the decibel-like -100 to 0 range the oscilloscope expects
+        this.audio.level = (normalizedLevel * 100) - 100;
+        // --- END: New logic ---
+    }
+}
+
+const engine = new RealAudioEngine();
+
+// // This class simulates the SignalRGB engine.audio object for the web preview
+// class MockAudioEngine {
+//     constructor() {
+//         this.audio = {
+//             level: -50,
+//             density: 0,
+//             freq: new Int8Array(200).fill(0)
+//         };
+//     }
+//     update(timestamp) {
+//         const time = timestamp / 1000;
+//         const pulse = (Math.sin(time * 3) + 1) / 2;
+//         this.audio.level = -60 + (pulse * 60);
+//         this.audio.density = (Math.cos(time * 2) + 1) / 2;
+//         for (let i = 0; i < 200; i++) {
+//             const spectrumPulse = (Math.sin(time * 3 + i * 0.2) + 1) / 2;
+//             this.audio.freq[i] = Math.floor(spectrumPulse * pulse * 127);
+//         }
+//     }
+// }
+//const engine = new MockAudioEngine();
+
+
 /**
  * Creates a debounced function that delays invoking func until after wait milliseconds have elapsed
  * since the last time the debounced function was invoked.
@@ -250,15 +348,16 @@ function getPatternColor(t, c1, c2) {
  * Manages its own state, including position, size, appearance, and animation properties.
  */
 class Shape {
-    /**
-     * @param {object} config - The configuration object for the shape.
-     */
     constructor({
         id, name, shape, x, y, width, height, rotation, gradient, gradType,
         gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx,
         innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked,
         numberOfRows, numberOfColumns, phaseOffset, animationMode,
-        text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate //,autoWidth
+        text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, bouncePauseTime, fps,
+        oscAmplitude, oscFrequency, oscRadial, oscWaveType, oscDrawAsLine, oscLineThickness,
+        oscAnimationType, oscAmplitude2, oscFrequency2,
+        animationDriver, oscAmplitudeDriver,
+        visStyle, visColorMode, visSmoothing, visGain, visBarCount, visNormalize
     }) {
         this.id = id;
         this.name = name || `Object ${id}`;
@@ -267,7 +366,7 @@ class Shape {
         this.y = y;
         this.width = width;
         this.height = height;
-        this.rotation = rotation || 0; // Add this line
+        this.rotation = rotation || 0;
         this.gradient = gradient || { color1: '#000000', color2: '#000000' };
         this.gradType = gradType || 'solid';
         this.gradientDirection = gradientDirection || 'horizontal';
@@ -279,6 +378,8 @@ class Shape {
         this.isReversing = false;
         this.animationState = 'scrolling';
         this.waitTimer = 0;
+        this.fps = fps || 50;
+        this.bouncePauseTime = bouncePauseTime !== undefined ? bouncePauseTime : 0.6;
         this.ctx = ctx;
         this.hue1 = 0;
         this.hue2 = 90;
@@ -287,8 +388,8 @@ class Shape {
         this.angularWidth = angularWidth;
         this.numberOfSegments = numberOfSegments;
         this.rotationSpeed = rotationSpeed || 0;
-        this.rotationAngle = 0; // The object's actual geometric rotation
-        this.animationAngle = 0; // The visual-only animation angle for rings
+        this.rotationAngle = 0;
+        this.animationAngle = 0;
         this.useSharpGradient = useSharpGradient !== undefined ? useSharpGradient : false;
         this.gradientStop = gradientStop !== undefined ? parseFloat(gradientStop) : 50;
         this.locked = locked || false;
@@ -298,8 +399,8 @@ class Shape {
         this.cellOrder = [];
         this._shuffleCellOrder();
         this.handleSize = 8;
-        this.rotationHandleOffset = -30; // Vertical distance from the box top
-        this.rotationHandleRadius = 6;   // The size of the handle circle
+        this.rotationHandleOffset = -30;
+        this.rotationHandleRadius = 6;
         this.handles = [
             { name: 'top-left', cursor: 'nwse-resize' }, { name: 'top', cursor: 'ns-resize' }, { name: 'top-right', cursor: 'nesw-resize' },
             { name: 'left', cursor: 'ew-resize' }, { name: 'right', cursor: 'ew-resize' },
@@ -308,9 +409,7 @@ class Shape {
         this.randomColorTimer = 0;
         this.cellColors = [];
         this.text = text || 'Hello';
-        this.fontFamily = fontFamily || 'Arial';
         this.fontSize = fontSize || 60;
-        this.fontWeight = fontWeight || 'bold';
         this.textAlign = textAlign || 'center';
         this.pixelFont = pixelFont || 'small';
         this.textAnimation = textAnimation || 'none';
@@ -318,16 +417,39 @@ class Shape {
         this.scrollOffsetX = 0;
         this.visibleCharCount = 0;
         this.waveAngle = 0;
-        this.typewriterWaitTimer = 0; // Add this line
-        //this.autoWidth = autoWidth !== undefined ? autoWidth : true;
+        this.typewriterWaitTimer = 0;
         this.showTime = showTime || false;
         this.showDate = showDate || false;
+        this.oscAmplitude = oscAmplitude !== undefined ? oscAmplitude : 20;
+        this.oscFrequency = oscFrequency !== undefined ? oscFrequency : 10;
+        this.oscRadial = oscRadial || false;
+        this.oscPhase = 0;
+        this.oscWaveType = oscWaveType || 'sine';
+        this.oscDrawAsLine = oscDrawAsLine || false;
+        this.oscLineThickness = oscLineThickness !== undefined ? oscLineThickness : 4;
+        this.oscAnimationType = oscAnimationType || 'scroll';
+        this.oscAmplitude2 = oscAmplitude2 !== undefined ? oscAmplitude2 : 10;
+        this.oscFrequency2 = oscFrequency2 !== undefined ? oscFrequency2 : 25;
+        this.oscPhase2 = 0;
+        // Audio Properties
+        this.animationDriver = animationDriver || 'time';
+        this.oscAmplitudeDriver = oscAmplitudeDriver || 'manual';
+        this.visStyle = visStyle || 'bars';
+        this.visColorMode = visColorMode || 'gradient';
+        this.visSmoothing = visSmoothing !== undefined ? visSmoothing : 5;
+        this.visGain = visGain !== undefined ? visGain : 1;
+        this.visBarCount = visBarCount !== undefined ? visBarCount : 50;
+        this.visNormalize = visNormalize !== undefined ? visNormalize : true;
+        this.smoothedFreq = new Array(this.visBarCount).fill(0);
+        this.runningMax = 255;
+        this.freqHistory = [];
+        this.smoothedLevel = 0; // For oscilloscope
+        this.levelHistory = []; // For oscilloscope
     }
 
     getDisplayText() {
         const now = new Date();
         const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
         const year = now.getFullYear();
@@ -345,35 +467,61 @@ class Shape {
     }
 
     getWrappedText() {
-        const text = this.getDisplayText(); // Uses the new helper
-        // Note: The wrapping feature from a previous request is not in your current file.
-        // If you want it back, the logic would go here. For now, it just returns the text.
-        return text;
+        const text = this.getDisplayText();
+        if (!text || this.width <= 0) {
+            return text;
+        }
+        const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
+        const pixelSize = this.fontSize / 10;
+        const charPixelWidth = (fontData.charWidth + fontData.charSpacing) * pixelSize;
+        if (charPixelWidth <= 0) {
+            return text;
+        }
+        const maxCharsPerLine = Math.floor(this.width / charPixelWidth);
+        if (maxCharsPerLine <= 0) {
+            return text;
+        }
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = '';
+        words.forEach(word => {
+            while (word.length > maxCharsPerLine) {
+                if (currentLine.length > 0) {
+                    lines.push(currentLine);
+                    currentLine = '';
+                }
+                lines.push(word.substring(0, maxCharsPerLine));
+                word = word.substring(maxCharsPerLine);
+            }
+            if (currentLine.length + word.length + (currentLine.length > 0 ? 1 : 0) > maxCharsPerLine) {
+                lines.push(currentLine);
+                currentLine = word;
+            } else {
+                if (currentLine.length > 0) {
+                    currentLine += ' ';
+                }
+                currentLine += word;
+            }
+        });
+        if (currentLine.length > 0) {
+            lines.push(currentLine);
+        }
+        return lines.join('\n');
     }
 
     _updateTextMetrics() {
-        if (this.shape !== 'text' || !this.ctx) return;
-
+        if (this.shape !== 'text' || !this.ctx) {
+            return;
+        }
         const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
         const { charWidth, charHeight, charSpacing, lineSpacing } = fontData;
         const textToMeasure = this.getWrappedText() || ' ';
         const lines = textToMeasure.split('\n');
         const pixelSize = this.fontSize / 10;
-
-        // if (this.autoWidth) {
-        //     const widths = lines.map(line => line.length * (charWidth + charSpacing) * pixelSize - (charSpacing * pixelSize));
-        //     this.width = Math.max(0, ...widths);
-        // }
-
         const textBlockHeight = lines.length * (charHeight + lineSpacing) * pixelSize - (lineSpacing * pixelSize);
-        // Add top and bottom margins, each equal to one pixel cell's size
         this.height = textBlockHeight + (2 * pixelSize);
     }
 
-    /**
-     * Shuffles the order of cells for 'bounce-random' animation mode.
-     * @private
-     */
     _shuffleCellOrder() {
         const totalCells = this.numberOfRows * this.numberOfColumns;
         this.cellOrder = Array.from({ length: totalCells }, (_, i) => i);
@@ -383,26 +531,14 @@ class Shape {
         }
     }
 
-    /**
-     * Calculates the center point of the shape.
-     * @returns {{x: number, y: number}} The center coordinates.
-     */
-    getCenter() { return { x: this.x + this.width / 2, y: this.y + this.height / 2 }; }
-
-    /**
-     * Determines the correct angle to use for rendering and hit detection.
-     * @returns {number} The angle in radians.
-     */
-    getRenderAngle() {
-        return (this.rotationSpeed !== 0)
-            ? this.rotationAngle
-            : (this.rotation * Math.PI / 180);
+    getCenter() {
+        return { x: this.x + this.width / 2, y: this.y + this.height / 2 };
     }
 
-    /**
-     * Calculates the local positions of all resize handles.
-     * @returns {Object.<string, {x: number, y: number}>} An object mapping handle names to their local positions.
-     */
+    getRenderAngle() {
+        return (this.rotationSpeed !== 0) ? this.rotationAngle : (this.rotation * Math.PI / 180);
+    }
+
     getHandlePositions() {
         const h2 = this.handleSize / 2;
         return {
@@ -417,39 +553,9 @@ class Shape {
         };
     }
 
-    /**
-     * Determines which resize handle, if any, is at a given point on the canvas, accounting for rotation.
-     * @param {number} px - The x-coordinate to check.
-     * @param {number} py - The y-coordinate to check.
-     * @returns {{name: string, cursor: string}|null} The handle object or null if no handle is found.
-     */
-    getHandleAtPoint(px, py) {
-        if (this.locked) return null;
-
-        // Convert the mouse click coordinate into the object's local (rotated) space
-        const localPoint = this.getLocalPoint(px, py);
-        const handlePositions = this.getHandlePositions();
-
-        // Check if the local point hits any of the local handle positions
-        for (const handle of this.handles) {
-            const pos = handlePositions[handle.name];
-            if (localPoint.x >= pos.x && localPoint.x <= pos.x + this.handleSize &&
-                localPoint.y >= pos.y && localPoint.y <= pos.y + this.handleSize) {
-                return handle;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Converts world coordinates to the shape's local (rotated) coordinate system.
-     * @param {number} px - The world x-coordinate.
-     * @param {number} py - The world y-coordinate.
-     * @returns {{x: number, y: number}} The coordinates in the shape's local space.
-     */
     getLocalPoint(px, py) {
         const center = this.getCenter();
-        const angle = -this.getRenderAngle(); // Use the new helper function
+        const angle = -this.getRenderAngle();
         const s = Math.sin(angle);
         const c = Math.cos(angle);
         let tempX = px - center.x;
@@ -459,18 +565,12 @@ class Shape {
         return { x: rotatedX + center.x, y: rotatedY + center.y };
     }
 
-    /**
-     * Converts a local corner handle position to world coordinates, accounting for rotation.
-     * @param {string} handleName - The name of the handle (e.g., 'top-left').
-     * @returns {{x: number, y: number}} The world coordinates of the handle's center.
-     */
     getWorldCoordsOfCorner(handleName) {
         const handlePositions = this.getHandlePositions();
         const h2 = this.handleSize / 2;
         const localCorner = { x: handlePositions[handleName].x + h2, y: handlePositions[handleName].y + h2 };
-
         const center = this.getCenter();
-        const angle = this.getRenderAngle(); // Use the new helper function
+        const angle = this.getRenderAngle();
         const s = Math.sin(angle);
         const c = Math.cos(angle);
         let tempX = localCorner.x - center.x;
@@ -480,17 +580,69 @@ class Shape {
         return { x: rotatedX + center.x, y: rotatedY + center.y };
     }
 
-    updateAnimationState() {
-        // --- Color Cycling ---
+    // In main.js, REPLACE this entire method in the Shape class
+
+    updateAnimationState(isSelected) {
+        if (this.shape === 'oscilloscope') {
+            this.oscPhase += this.animationSpeed * 0.1;
+            if (this.oscAnimationType === 'interference') {
+                this.oscPhase2 += this.animationSpeed * 0.07;
+            }
+
+            // Add smoothing logic for the oscilloscope's audio level
+            if (typeof engine !== 'undefined' && engine.audio.level) {
+                const targetLevel = (engine.audio.level + 100) / 100.0; // Normalize level to 0-1
+                this.levelHistory.unshift(targetLevel);
+                const trailLength = Math.max(10, Math.round(this.visSmoothing));
+                while (this.levelHistory.length > trailLength) {
+                    this.levelHistory.pop();
+                }
+                const sum = this.levelHistory.reduce((a, b) => a + b, 0);
+                this.smoothedLevel = sum / this.levelHistory.length;
+            }
+        }
+
+        if (this.shape === 'visualizer' && engine.audio.freq) {
+            let currentFrameMax = 0;
+            for (let i = 0; i < engine.audio.freq.length; i++) {
+                if (engine.audio.freq[i] > currentFrameMax) {
+                    currentFrameMax = engine.audio.freq[i];
+                }
+            }
+            this.runningMax = Math.max(this.runningMax, currentFrameMax);
+            const normalizationFactor = this.visNormalize ? (255 / Math.max(80, this.runningMax)) : 1;
+
+            const barCount = this.visBarCount;
+            const sampleStep = Math.floor(engine.audio.freq.length / barCount);
+
+            for (let i = 0; i < barCount; i++) {
+                const rawValue = engine.audio.freq[i * sampleStep] || 0;
+                const targetValue = (rawValue > 0 ? rawValue : 0) * normalizationFactor;
+
+                if (!this.freqHistory[i]) {
+                    this.freqHistory[i] = [];
+                }
+                this.freqHistory[i].unshift(targetValue);
+
+                const trailLength = Math.max(10, Math.round(this.visSmoothing));
+                while (this.freqHistory[i].length > trailLength) {
+                    this.freqHistory[i].pop();
+                }
+
+                const sum = this.freqHistory[i].reduce((a, b) => a + b, 0);
+                this.smoothedFreq[i] = sum / this.freqHistory[i].length;
+            }
+
+            this.runningMax *= 0.995;
+        }
+
         if (this.cycleColors) {
             this.hue1 += this.cycleSpeed;
             this.hue2 += this.cycleSpeed;
         }
 
-        // --- Text Animation State ---
-        const currentText = this.getDisplayText(); // Get the current text (or time)
+        const currentText = this.getDisplayText();
         const textSpeed = this.textAnimationSpeed / 100;
-
         switch (this.textAnimation) {
             case 'marquee':
             case 'wave':
@@ -498,42 +650,44 @@ class Shape {
                 const pixelSize = this.fontSize / 10;
                 const textWidth = currentText.length * (fontData.charWidth + fontData.charSpacing) * pixelSize;
                 this.scrollOffsetX -= textSpeed * 20;
-                if (this.scrollOffsetX < -textWidth) {
-                    this.scrollOffsetX = this.width;
-                }
-                if (this.textAnimation === 'wave') {
-                    this.waveAngle += textSpeed;
-                }
+                if (this.scrollOffsetX < -textWidth) { this.scrollOffsetX = this.width; }
+                if (this.textAnimation === 'wave') { this.waveAngle += textSpeed; }
                 this.visibleCharCount = currentText.length;
                 break;
             case 'typewriter':
                 if (this.typewriterWaitTimer > 0) {
-                    // We are in the pause phase
                     this.typewriterWaitTimer--;
-                    if (this.typewriterWaitTimer <= 0) {
-                        // Pause is over, reset the animation
-                        this.visibleCharCount = 0;
-                    }
+                    if (this.typewriterWaitTimer <= 0) { this.visibleCharCount = 0; }
                 } else {
-                    // We are in the typing phase
                     this.visibleCharCount += textSpeed;
                     if (this.visibleCharCount >= currentText.length) {
-                        // Typing is finished, start the pause
                         this.visibleCharCount = currentText.length;
-                        this.typewriterWaitTimer = 50; // Pause for 50 frames (approx. 1 second)
+                        this.typewriterWaitTimer = 50;
                     }
                 }
                 this.scrollOffsetX = 0;
                 break;
-            default: // 'none'
+            default:
                 this.scrollOffsetX = 0;
                 this.visibleCharCount = currentText.length;
                 break;
         }
 
-        // --- Gradient Animation State ---
         if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
-            const increment = this.animationSpeed * 0.01;
+            let increment = 0;
+            let audioValue = 0;
+            if (typeof engine !== 'undefined') {
+                audioValue = (engine.audio.level + 100) / 100;
+            }
+            switch (this.animationDriver) {
+                case 'level':
+                    increment = audioValue;
+                    break;
+                case 'time':
+                default:
+                    increment = this.animationSpeed * 0.01;
+                    break;
+            }
             const isBounceMode = this.animationMode.includes('bounce');
 
             if (isBounceMode) {
@@ -542,9 +696,7 @@ class Shape {
                     if (this.waitTimer <= 0) {
                         this.isReversing = !this.isReversing;
                         this.animationState = 'scrolling';
-                        if (this.animationMode === 'bounce-random') {
-                            this._shuffleCellOrder();
-                        }
+                        if (this.animationMode === 'bounce-random') { this._shuffleCellOrder(); }
                     }
                 } else if (this.animationState === 'scrolling') {
                     const bandWidth = this.gradientStop / 100.0;
@@ -556,7 +708,7 @@ class Shape {
                         if (slowestCellTailPosition <= 0.0) {
                             this.scrollOffset = 0.0 - bandWidth - (lastCellIndex * phaseIncrement);
                             this.animationState = 'waiting';
-                            this.waitTimer = 30;
+                            this.waitTimer = this.bouncePauseTime * this.fps;
                         }
                     } else {
                         this.scrollOffset += increment;
@@ -564,28 +716,27 @@ class Shape {
                         if (this.scrollOffset >= forwardBoundary) {
                             this.scrollOffset = forwardBoundary;
                             this.animationState = 'waiting';
-                            this.waitTimer = 30;
+                            this.waitTimer = this.bouncePauseTime * this.fps;
                         }
                     }
                 }
-            } else { // Loop mode
-                const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
-                this.scrollOffset += increment * directionMultiplier;
-                this.scrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
+            } else {
+                if (this.animationDriver === 'time') {
+                    const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
+                    this.scrollOffset += increment * directionMultiplier;
+                    this.scrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
+                } else {
+                    this.scrollOffset = increment * (this.animationSpeed * 10);
+                }
             }
         }
-
-        // --- Object Rotation ---
-        const rotationIncrement = (this.rotationSpeed || 0) / 1000;
-        this.rotationAngle += rotationIncrement;
-        this.animationAngle += rotationIncrement;
+        if (!isSelected) {
+            const rotationIncrement = (this.rotationSpeed || 0) / 1000;
+            this.rotationAngle += rotationIncrement;
+            this.animationAngle += rotationIncrement;
+        }
     }
 
-    /**
-     * Creates a CanvasGradient or color string based on the current shape properties.
-     * @param {number} [phase=0] - The animation phase, used for grid-based effects.
-     * @returns {CanvasGradient|string} The fill style for the canvas context.
-     */
     createFillStyle(phase = 0) {
         let phaseIndex = phase;
         if (this.animationMode === 'bounce-random') {
@@ -596,13 +747,9 @@ class Shape {
             const lastCellIndex = Math.max(0, (this.numberOfRows * this.numberOfColumns) - 1);
             phaseIndex = lastCellIndex - phase;
         }
-
         const phaseIncrement = this.phaseOffset / 100.0;
         const effectiveScrollOffset = this.scrollOffset + phaseIndex * phaseIncrement;
-
-        const p = this.animationMode === 'loop' ?
-            (effectiveScrollOffset % 1.0 + 1.0) % 1.0 :
-            effectiveScrollOffset;
+        const p = this.animationMode === 'loop' ? (effectiveScrollOffset % 1.0 + 1.0) % 1.0 : effectiveScrollOffset;
         const c1 = this.cycleColors ? `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color1;
         const c2 = this.cycleColors ? `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color2;
         const isLinear = this.gradType && this.gradType.includes('linear');
@@ -691,24 +838,52 @@ class Shape {
         return c1 || 'black';
     }
 
-    /**
-     * Draws the shape on the canvas, applying animations, selections, and locked states.
-     * @param {boolean} enableAnimation - Whether the global animation is enabled.
-     * @param {boolean} isSelected - Whether the shape is currently selected.
-     */
     draw(enableAnimation, isSelected) {
-        if (enableAnimation && !isSelected) {
-            this.updateAnimationState();
+        if (enableAnimation) {
+            this.updateAnimationState(isSelected);
         }
-
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
         const angleToUse = this.getRenderAngle();
-
         this.ctx.save();
         this.ctx.translate(centerX, centerY);
         this.ctx.rotate(angleToUse);
         this.ctx.translate(-centerX, -centerY);
+
+        if (this.shape === 'visualizer') {
+            const minGain = 1.0;
+            const maxGain = 50.0;
+            const normalizedSlider = (this.visGain - 1) / 9.0;
+            const exponentialGain = minGain * Math.pow(maxGain / minGain, normalizedSlider);
+
+            const barCount = this.visBarCount;
+            const barWidth = this.width / barCount;
+            for (let i = 0; i < barCount; i++) {
+                const amplifiedValue = (this.smoothedFreq[i] || 0) * exponentialGain;
+                const clampedValue = Math.min(amplifiedValue, 255);
+                const barHeight = (clampedValue / 255) * this.height;
+                const x = this.x + i * barWidth;
+                let y, height;
+                if (this.visStyle === 'centeredBars') {
+                    y = this.y + (this.height - barHeight) / 2;
+                    height = barHeight;
+                } else {
+                    y = this.y + this.height - barHeight;
+                    height = barHeight;
+                }
+                if (this.visColorMode === 'gradient') {
+                    this.ctx.fillStyle = this.createFillStyle();
+                } else if (this.visColorMode === 'perBarGradient') {
+                    const t = i / (barCount - 1);
+                    this.ctx.fillStyle = getPatternColor(t, this.gradient.color1, this.gradient.color2);
+                } else {
+                    this.ctx.fillStyle = this.gradient.color1;
+                }
+                this.ctx.fillRect(x, y, barWidth, height);
+            }
+            this.ctx.restore();
+            return;
+        }
 
         if (this.shape === 'ring') {
             const outerRadius = this.width / 2;
@@ -785,21 +960,149 @@ class Shape {
                 case 'circle':
                     this.ctx.arc(centerX, centerY, this.width / 2, 0, 2 * Math.PI);
                     break;
+                case 'oscilloscope':
+                    this.ctx.beginPath();
+                    let animAmplitude = this.oscAmplitude;
+                    let animFrequency = this.oscFrequency;
+                    let animPhase = this.oscPhase;
+
+                    if (this.oscAmplitudeDriver === 'level') {
+                        const audioValue = this.smoothedLevel;
+                        const minGain = 1.0;
+                        const maxGain = 50.0;
+                        const normalizedSlider = (this.visGain - 1) / 9.0;
+                        const exponentialGain = minGain * Math.pow(maxGain / minGain, normalizedSlider);
+                        const finalAudioMultiplier = Math.min(audioValue * exponentialGain, 1.5);
+                        animAmplitude *= finalAudioMultiplier;
+                    }
+
+                    switch (this.oscAnimationType) {
+                        case 'pulseAmplitude':
+                            animAmplitude *= (Math.sin(this.oscPhase) + 1) / 2;
+                            break;
+                        case 'pulseFrequency':
+                            animFrequency *= ((Math.sin(this.oscPhase) + 1) / 2) + 0.5;
+                            break;
+                    }
+
+                    const calculateSingleWave = (type, input) => {
+                        switch (type) {
+                            case 'square': return Math.sin(input) >= 0 ? 1 : -1;
+                            case 'triangle': return Math.asin(Math.sin(input)) * (2 / Math.PI);
+                            case 'sawtooth': return (input / Math.PI) % 2 - 1;
+                            case 'sine': default: return Math.sin(input);
+                        }
+                    };
+
+                    const calculateWaveValue = (input, freq, phase, amp) => {
+                        if (this.oscAnimationType === 'interference') {
+                            const wave1 = calculateSingleWave(this.oscWaveType, input * this.oscFrequency + this.oscPhase) * this.oscAmplitude;
+                            const wave2 = calculateSingleWave(this.oscWaveType, input * this.oscFrequency2 + this.oscPhase2) * this.oscAmplitude2;
+                            return (wave1 + wave2) / 2;
+                        }
+                        const waveInput = input * freq + phase;
+                        return calculateSingleWave(this.oscWaveType, waveInput) * amp;
+                    };
+
+                    if (this.oscRadial) {
+                        const baseRadius = Math.min(this.width, this.height) / 2;
+                        const points = 360;
+                        for (let i = 0; i <= points; i++) {
+                            const angle = (i / points) * Math.PI * 2;
+                            const radius = baseRadius + calculateWaveValue(angle, animFrequency, animPhase, animAmplitude);
+                            const px = centerX + Math.cos(angle) * radius;
+                            const py = centerY + Math.sin(angle) * radius;
+                            if (i === 0) {
+                                this.ctx.moveTo(px, py);
+                            } else {
+                                this.ctx.lineTo(px, py);
+                            }
+                        }
+                    } else {
+                        const wavePoints = Math.floor(this.width);
+                        const firstPy = centerY + calculateWaveValue(0, animFrequency, animPhase, animAmplitude);
+                        this.ctx.moveTo(this.x, firstPy);
+                        for (let i = 1; i <= wavePoints; i++) {
+                            const waveInput = (i / wavePoints);
+                            const py = centerY + calculateWaveValue(waveInput, animFrequency, animPhase, animAmplitude);
+                            const px = this.x + i;
+                            this.ctx.lineTo(px, py);
+                        }
+                        if (!this.oscDrawAsLine) {
+                            this.ctx.lineTo(this.x + this.width, this.y + this.height);
+                            this.ctx.lineTo(this.x, this.y + this.height);
+                        }
+                    }
+                    if (!this.oscDrawAsLine) {
+                        this.ctx.closePath();
+                    }
+                    break;
             }
-            this.ctx.fillStyle = this.createFillStyle();
-            this.ctx.fill();
+
+            if (this.shape === 'oscilloscope' && this.oscDrawAsLine) {
+                this.ctx.strokeStyle = this.createFillStyle();
+                this.ctx.lineWidth = this.oscLineThickness;
+                this.ctx.stroke();
+            } else {
+                this.ctx.fillStyle = this.createFillStyle();
+                this.ctx.fill();
+            }
         }
         this.ctx.restore();
     }
 
-    /**
-     * Draws the UI for a selected or locked object (selection box, handles, lock icon).
-     * This is drawn in a separate pass to ensure it's on top of all other objects.
-     */
+    isPointInside(px, py) {
+        const localPoint = this.getLocalPoint(px, py);
+        return (localPoint.x >= this.x && localPoint.x <= this.x + this.width && localPoint.y >= this.y && localPoint.y <= this.y + this.height);
+    }
+
+    getHandleAtPoint(px, py) {
+        if (this.locked) return null;
+        const corners = [this.getWorldCoordsOfCorner('top-left'), this.getWorldCoordsOfCorner('top-right'), this.getWorldCoordsOfCorner('bottom-right'), this.getWorldCoordsOfCorner('bottom-left')];
+        const minX = Math.min(...corners.map(c => c.x));
+        const minY = Math.min(...corners.map(c => c.y));
+        const maxX = Math.max(...corners.map(c => c.x));
+        const maxY = Math.max(...corners.map(c => c.y));
+        const h2 = this.handleSize / 2;
+        const handlePositions = [
+            { name: 'top-left', x: minX - h2, y: minY - h2, cursor: 'nwse-resize' }, { name: 'top', x: minX + (maxX - minX) / 2 - h2, y: minY - h2, cursor: 'ns-resize' },
+            { name: 'top-right', x: maxX - h2, y: minY - h2, cursor: 'nesw-resize' }, { name: 'left', x: minX - h2, y: minY + (maxY - minY) / 2 - h2, cursor: 'ew-resize' },
+            { name: 'right', x: maxX - h2, y: minY + (maxY - minY) / 2 - h2, cursor: 'ew-resize' }, { name: 'bottom-left', x: minX - h2, y: maxY - h2, cursor: 'nesw-resize' },
+            { name: 'bottom', x: minX + (maxX - minX) / 2 - h2, y: maxY - h2, cursor: 'ns-resize' }, { name: 'bottom-right', x: maxX - h2, y: maxY - h2, cursor: 'nwse-resize' }
+        ];
+        for (const handle of handlePositions) {
+            if (px >= handle.x && px <= handle.x + this.handleSize && py >= handle.y && py <= handle.y + this.handleSize) {
+                return handle;
+            }
+        }
+        return null;
+    }
+
+    getRotationHandleAtPoint(px, py) {
+        if (this.locked) return null;
+        const corners = [this.getWorldCoordsOfCorner('top-left'), this.getWorldCoordsOfCorner('top-right'), this.getWorldCoordsOfCorner('bottom-right'), this.getWorldCoordsOfCorner('bottom-left')];
+        const minX = Math.min(...corners.map(c => c.x));
+        const minY = Math.min(...corners.map(c => c.y));
+        const maxX = Math.max(...corners.map(c => c.x));
+        const maxY = Math.max(...corners.map(c => c.y));
+        const handleX = minX + (maxX - minX) / 2;
+        let handleY;
+        const topMargin = 40;
+        if (minY < topMargin) {
+            handleY = maxY - this.rotationHandleOffset;
+        } else {
+            handleY = minY + this.rotationHandleOffset;
+        }
+        const dist = Math.sqrt(Math.pow(px - handleX, 2) + Math.pow(py - handleY, 2));
+        if (dist <= this.rotationHandleRadius + this.handleSize / 2) {
+            return { type: 'rotation' };
+        }
+        return null;
+    }
+
     drawSelectionUI() {
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
-
         const corners = [this.getWorldCoordsOfCorner('top-left'), this.getWorldCoordsOfCorner('top-right'), this.getWorldCoordsOfCorner('bottom-right'), this.getWorldCoordsOfCorner('bottom-left')];
         const minX = Math.min(...corners.map(c => c.x));
         const minY = Math.min(...corners.map(c => c.y));
@@ -807,45 +1110,35 @@ class Shape {
         const maxY = Math.max(...corners.map(c => c.y));
         const bbWidth = maxX - minX;
         const bbHeight = maxY - minY;
-
         this.ctx.save();
         this.ctx.strokeStyle = this.locked ? 'orange' : '#00f6ff';
         this.ctx.lineWidth = 2;
         this.ctx.setLineDash([5, 5]);
         this.ctx.strokeRect(minX, minY, bbWidth, bbHeight);
         this.ctx.setLineDash([]);
-
         if (!this.locked) {
             this.ctx.fillStyle = '#00f6ff';
             const h2 = this.handleSize / 2;
-
+            const handlePositions = [
+                { x: minX - h2, y: minY - h2 }, { x: minX + bbWidth / 2 - h2, y: minY - h2 }, { x: maxX - h2, y: minY - h2 },
+                { x: minX - h2, y: minY + bbHeight / 2 - h2 }, { x: maxX - h2, y: minY + bbHeight / 2 - h2 },
+                { x: minX - h2, y: maxY - h2 }, { x: minX + bbWidth / 2 - h2, y: maxY - h2 }, { x: maxX - h2, y: maxY - h2 }
+            ];
             if (this.rotationSpeed === 0) {
-                const handlePositions = [
-                    { name: 'top-left', x: minX - h2, y: minY - h2 }, { name: 'top', x: minX + bbWidth / 2 - h2, y: minY - h2 }, { name: 'top-right', x: maxX - h2, y: minY - h2 },
-                    { name: 'left', x: minX - h2, y: minY + bbHeight / 2 - h2 }, { name: 'right', x: maxX - h2, y: minY + bbHeight / 2 - h2 },
-                    { name: 'bottom-left', x: minX - h2, y: maxY - h2 }, { name: 'bottom', x: minX + bbWidth / 2 - h2, y: maxY - h2 }, { name: 'bottom-right', x: maxX - h2, y: maxY - h2 }
-                ];
                 handlePositions.forEach(pos => this.ctx.fillRect(pos.x, pos.y, this.handleSize, this.handleSize));
             }
-
-            // --- NEW: Dynamic Rotation Handle Position ---
             const handleX = minX + bbWidth / 2;
-            let handleY;
-            let stemStartY;
-            const topMargin = 40; // How close to the top edge before flipping
-
+            let handleY, stemStartY;
+            const topMargin = 40;
             if (minY < topMargin) {
-                // Flip handle to the bottom of the selection box
-                handleY = maxY - this.rotationHandleOffset; // Use negative offset to go down
+                handleY = maxY - this.rotationHandleOffset;
                 stemStartY = maxY;
             } else {
-                // Default position is above the selection box
                 handleY = minY + this.rotationHandleOffset;
                 stemStartY = minY;
             }
-
             this.ctx.beginPath();
-            this.ctx.moveTo(minX + bbWidth / 2, stemStartY); // Start from top or bottom of box
+            this.ctx.moveTo(minX + bbWidth / 2, stemStartY);
             this.ctx.lineTo(handleX, handleY);
             this.ctx.strokeStyle = '#00f6ff';
             this.ctx.stroke();
@@ -854,7 +1147,6 @@ class Shape {
             this.ctx.fill();
         }
         this.ctx.restore();
-
         if (this.locked) {
             this.ctx.save();
             this.ctx.fillStyle = 'white';
@@ -866,93 +1158,15 @@ class Shape {
         }
     }
 
-    /**
-     * Calculates the position of the rotation handle in the object's local space.
-     * @returns {{x: number, y: number}} The local coordinates of the handle.
-     */
-    getRotationHandlePosition() {
-        return {
-            x: this.x + this.width / 2,
-            y: this.y + this.rotationHandleOffset
-        };
-    }
-
-    /**
-     * Determines if a point on the canvas is hitting the rotation handle.
-     * @param {number} px - The x-coordinate to check.
-     * @param {number} py - The y-coordinate to check.
-     * @returns {object|null} An object indicating a hit, or null.
-     */
-    getRotationHandleAtPoint(px, py) {
-        if (this.locked) return null;
-        const corners = [this.getWorldCoordsOfCorner('top-left'), this.getWorldCoordsOfCorner('top-right'), this.getWorldCoordsOfCorner('bottom-right'), this.getWorldCoordsOfCorner('bottom-left')];
-        const minX = Math.min(...corners.map(c => c.x));
-        const minY = Math.min(...corners.map(c => c.y));
-        const maxX = Math.max(...corners.map(c => c.x));
-        const maxY = Math.max(...corners.map(c => c.y));
-
-        // --- NEW: Dynamic Handle Position Calculation ---
-        const handleX = minX + (maxX - minX) / 2;
-        let handleY;
-        const topMargin = 40;
-
-        if (minY < topMargin) {
-            // Position is at the bottom
-            handleY = maxY - this.rotationHandleOffset;
-        } else {
-            // Position is at the top
-            handleY = minY + this.rotationHandleOffset;
-        }
-
-        const dist = Math.sqrt(Math.pow(px - handleX, 2) + Math.pow(py - handleY, 2));
-        if (dist <= this.rotationHandleRadius + this.handleSize / 2) {
-            return { type: 'rotation' };
-        }
-        return null;
-    }
-
-    /**
-     * Determines which resize handle, if any, is at a given point on the canvas.
-     * This now checks against the visual, axis-aligned handles.
-     * @param {number} px - The x-coordinate to check.
-     * @param {number} py - The y-coordinate to check.
-     * @returns {{name: string, cursor: string}|null} The handle object or null if no handle is found.
-     */
-    getHandleAtPoint(px, py) {
-        if (this.locked) return null;
-        const localPoint = this.getLocalPoint(px, py);
-        const handlePositions = this.getHandlePositions();
-
-        for (const handle of this.handles) {
-            const pos = handlePositions[handle.name];
-            if (localPoint.x >= pos.x && localPoint.x <= pos.x + this.handleSize &&
-                localPoint.y >= pos.y && localPoint.y <= pos.y + this.handleSize) {
-                return handle;
-            }
-        }
-        return null;
-    }
-
-
-    /**
-     * Checks if a given point is inside the shape's bounding box, considering rotation.
-     * @param {number} px - The x-coordinate to check.
-     * @param {number} py - The y-coordinate to check.
-     * @returns {boolean} True if the point is inside, false otherwise.
-     */
-    isPointInside(px, py) {
-        const localPoint = this.getLocalPoint(px, py);
-        return (localPoint.x >= this.x && localPoint.x <= this.x + this.width && localPoint.y >= this.y && localPoint.y <= this.y + this.height);
-    }
-
-    /**
-     * Updates the shape's properties from a given configuration object.
-     * @param {object} props - An object containing properties to update.
-     */
     update(props) {
+        if (props.visBarCount !== undefined && props.visBarCount !== this.visBarCount) {
+            this.visBarCount = props.visBarCount;
+            this.smoothedFreq = new Array(this.visBarCount).fill(0);
+            this.freqHistory = []; // Reset history when bar count changes
+        }
+
         const textChanged = props.text !== undefined && props.text !== this.text;
         const animationChanged = props.textAnimation !== undefined && props.textAnimation !== this.textAnimation;
-
         if ((textChanged && this.textAnimation === 'typewriter') || (animationChanged && props.textAnimation === 'typewriter')) {
             this.visibleCharCount = 0;
             this.typewriterWaitTimer = 0;
@@ -961,11 +1175,13 @@ class Shape {
             this.scrollOffsetX = 0;
             this.waveAngle = 0;
         }
-
         const oldRows = this.numberOfRows;
         const oldCols = this.numberOfColumns;
-
+        const isTextTarget = this.shape === 'text';
         for (const key in props) {
+            if (isTextTarget && key === 'height') {
+                continue;
+            }
             if (props[key] !== undefined) {
                 if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
                     if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
@@ -975,12 +1191,9 @@ class Shape {
                 }
             }
         }
-
         if (this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols) {
             this._shuffleCellOrder();
         }
-
-        // This check is now outside the loop and correctly triggers a resize
         if (this.shape === 'text') {
             this._updateTextMetrics();
         }
@@ -989,6 +1202,8 @@ class Shape {
 
 document.addEventListener('DOMContentLoaded', function () {
     // --- DOM Element References ---
+
+    const ADMIN_UIDS = ['zMj8mtfMjXeFMt072027JT7Jc7i1'];
     const undoBtn = document.getElementById('undo-btn');
     const redoBtn = document.getElementById('redo-btn');
     const canvas = document.getElementById('signalCanvas');
@@ -1007,30 +1222,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('controls-form');
     const outputScriptArea = document.getElementById('output-script');
     const copyBtn = document.getElementById('copy-btn');
-    // const copyToastEl = document.getElementById('copy-toast');
-    // const copyToast = new bootstrap.Toast(copyToastEl);
     const toolbar = document.getElementById('toolbar');
     const constrainBtn = document.getElementById('constrain-btn');
-    // const loadProjectModalEl = document.getElementById('load-project-modal');
-    // const loadProjectModal = new bootstrap.Modal(loadProjectModalEl);
-    // const loadProjectList = document.getElementById('load-project-list');
     const exportBtn = document.getElementById('export-btn');
-    // const saveProjectModalEl = document.getElementById('save-project-modal');
-    // const saveProjectModal = new bootstrap.Modal(saveProjectModalEl);
-    // const saveProjectNameInput = document.getElementById('save-project-name-input');
-    // const confirmSaveBtn = document.getElementById('confirm-save-btn');
-    // const existingProjectList = document.getElementById('save-project-existing-list');
-    // const notificationModalEl = document.getElementById('notification-modal');
-    // const notificationModal = new bootstrap.Modal(notificationModalEl);
-    // const notificationModalBody = document.getElementById('notification-modal-body');
-    // const confirmOverwriteModalEl = document.getElementById('confirm-overwrite-modal');
-    // const confirmOverwriteModal = new bootstrap.Modal(confirmOverwriteModalEl);
-    // const confirmOverwriteBtn = document.getElementById('confirm-overwrite-btn');
     const shareBtn = document.getElementById('share-btn');
     const addObjectBtn = document.getElementById('add-object-btn');
     const confirmImportBtn = document.getElementById('confirm-import-btn');
     const confirmBtn = document.getElementById('confirm-overwrite-btn');
-    // const confirmModalEl = document.getElementById('confirm-overwrite-modal');
+    const galleryOffcanvasEl = document.getElementById('gallery-offcanvas');
+    const galleryList = document.getElementById('gallery-project-list');
+    const galleryBody = galleryOffcanvasEl.querySelector('.offcanvas-body');
 
     // --- State Management ---
     let isRestoring = false; // Prevents history recording during an undo/redo action
@@ -1057,10 +1258,11 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentProjectDocId = null; // Tracks the current saved project ID
     let confirmActionCallback = null; // For the confirmation modal
     let exportPayload = {};
+    let propertyClipboard = null;
+    let sourceObjectIdForCopy = null;
+    let needsRedraw = false;
 
-    const galleryOffcanvasEl = document.getElementById('gallery-offcanvas');
-    const galleryList = document.getElementById('gallery-project-list');
-    const galleryBody = galleryOffcanvasEl.querySelector('.offcanvas-body');
+
 
 
     const history = {
@@ -1248,6 +1450,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function populateGallery(projects) {
         const galleryList = document.getElementById('gallery-project-list');
         const currentUser = window.auth.currentUser;
+        const isAdmin = currentUser && ADMIN_UIDS.includes(currentUser.uid);
         galleryList.innerHTML = '';
 
         if (projects.length === 0) {
@@ -1258,6 +1461,10 @@ document.addEventListener('DOMContentLoaded', function () {
         projects.forEach(project => {
             const li = document.createElement('li');
             li.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+            if (project.isFeatured) {
+                li.classList.add('bg-warning-subtle');
+            }
 
             const contentDiv = document.createElement('div');
             contentDiv.className = 'd-flex align-items-center flex-grow-1 me-2';
@@ -1274,24 +1481,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const infoDiv = document.createElement('div');
             infoDiv.className = project.thumbnail ? 'ms-3' : '';
-            infoDiv.style.minWidth = '0'; // Add this line to allow truncation
+            infoDiv.style.minWidth = '0';
 
             const nameEl = document.createElement('strong');
             nameEl.textContent = project.name;
+
+            if (project.isFeatured) {
+                const starIcon = document.createElement('span');
+                starIcon.className = 'ms-2 text-warning';
+                starIcon.innerHTML = '★';
+                starIcon.title = 'Featured Effect';
+                nameEl.appendChild(starIcon);
+            }
+
             const metaEl = document.createElement('small');
             metaEl.className = 'd-block text-body-secondary';
             const formattedDate = project.createdAt ? project.createdAt.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Unknown Date';
             metaEl.textContent = `By ${project.creatorName || 'Anonymous'} on ${formattedDate}`;
 
             infoDiv.appendChild(nameEl);
-            // Find and display the project description
             if (project.configs) {
                 const descriptionConf = project.configs.find(c => c.name === 'description');
                 if (descriptionConf && descriptionConf.default) {
                     const descEl = document.createElement('p');
                     descEl.className = 'mb-0 mt-1 small text-body-secondary';
                     descEl.textContent = descriptionConf.default;
-                    descEl.title = descriptionConf.default; // Show full description on hover
+                    descEl.title = descriptionConf.default;
                     infoDiv.appendChild(descEl);
                 }
             }
@@ -1312,39 +1527,59 @@ document.addEventListener('DOMContentLoaded', function () {
             };
             controlsDiv.appendChild(loadBtn);
 
-            if (currentUser && currentUser.uid === project.userId) {
+            if ((currentUser && currentUser.uid === project.userId) || isAdmin) {
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'btn btn-sm btn-outline-danger';
                 deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
                 deleteBtn.title = "Delete Effect";
                 deleteBtn.onclick = (e) => {
                     e.stopPropagation();
-                    showConfirmModal(
-                        'Delete Project',
-                        `Are you sure you want to delete your project "${project.name}"? This cannot be undone.`,
-                        'Delete',
-                        // FIX: Replace the entire async function below
-                        async () => {
-                            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('confirm-overwrite-modal'));
-                            try {
-                                await window.deleteDoc(window.doc(window.db, "projects", project.docId));
-                                showToast(`Project "${project.name}" deleted.`, 'info');
-                                li.remove();
-                                if (galleryList.children.length === 0) {
-                                    galleryList.innerHTML = '<li class="list-group-item disabled">No effects found.</li>';
-                                }
-                            } catch (error) {
-                                showToast("Error deleting project.", 'danger');
-                            } finally {
-                                // Ensure the modal is hidden
-                                if (modalInstance) {
-                                    modalInstance.hide();
-                                }
-                            }
-                        }
-                    );
+                    showConfirmModal('Delete Project', `Are you sure you want to delete "${project.name}"? This cannot be undone.`, 'Delete', async () => {
+                        await window.deleteDoc(window.doc(window.db, "projects", project.docId));
+                        showToast(`Project "${project.name}" deleted.`, 'info');
+                        document.getElementById('browse-btn').click(); // Refresh the gallery
+                    });
                 };
                 controlsDiv.appendChild(deleteBtn);
+            }
+
+            if (isAdmin && currentUser.uid !== project.userId) {
+                const banBtn = document.createElement('button');
+                banBtn.className = 'btn btn-sm btn-danger btn-ban-user';
+                banBtn.innerHTML = '<i class="bi bi-person-x-fill"></i>';
+                banBtn.title = `Ban User: ${project.creatorName}`;
+                banBtn.dataset.userId = project.userId;
+                banBtn.dataset.userName = project.creatorName || 'Anonymous';
+                controlsDiv.appendChild(banBtn);
+            }
+
+            if (isAdmin && !project.isFeatured) {
+                const featureBtn = document.createElement('button');
+                featureBtn.className = 'btn btn-sm btn-outline-warning';
+                featureBtn.innerHTML = '<i class="bi bi-star-fill"></i>';
+                featureBtn.title = "Set as Featured Effect";
+                featureBtn.onclick = () => {
+                    showConfirmModal('Feature Effect', `Set "${project.name}" as the new featured effect? This will replace any other featured effect.`, 'Set as Featured', async () => {
+                        // --- FIX START: Replaced batch write with separate update calls ---
+                        const q = window.query(window.collection(window.db, "projects"), window.where("isFeatured", "==", true));
+                        const querySnapshot = await window.getDocs(q);
+
+                        // First, un-feature any existing featured doc
+                        if (!querySnapshot.empty) {
+                            const oldFeaturedDocRef = querySnapshot.docs[0].ref;
+                            await window.updateDoc(oldFeaturedDocRef, { "isFeatured": false });
+                        }
+
+                        // Then, feature the new doc
+                        const newFeaturedRef = window.doc(window.db, "projects", project.docId);
+                        await window.updateDoc(newFeaturedRef, { "isFeatured": true });
+                        // --- FIX END ---
+
+                        showToast(`"${project.name}" is now the featured effect.`, 'success');
+                        document.getElementById('browse-btn').click(); // Refresh gallery to show changes
+                    });
+                };
+                controlsDiv.appendChild(featureBtn);
             }
 
             li.appendChild(controlsDiv);
@@ -1575,6 +1810,12 @@ document.addEventListener('DOMContentLoaded', function () {
      * @returns {HTMLDivElement} The generated form group element.
      */
     function createFormControl(config) {
+        // Manually override the max value for oscLineThickness to ensure it's always 100,
+        // even when loading old effects that have a lower max value saved in their config.
+        if (config.property && config.property.includes('_oscLineThickness')) {
+            config.max = '100';
+        }
+
         const {
             property,
             name,
@@ -1611,7 +1852,7 @@ document.addEventListener('DOMContentLoaded', function () {
             input.value = defaultValue;
             if (min) input.min = min;
             if (max) input.max = max;
-            input.step = '1';
+            input.step = config.step || '1';
             const slider = document.createElement('input');
             slider.type = 'range';
             slider.className = 'form-range flex-grow-1 ms-2';
@@ -1619,6 +1860,7 @@ document.addEventListener('DOMContentLoaded', function () {
             slider.name = `${controlId}_slider`;
             if (min) slider.min = min;
             if (max) slider.max = max;
+            slider.step = config.step || '1';
             slider.value = defaultValue;
             inputGroup.appendChild(input);
             inputGroup.appendChild(slider);
@@ -1663,7 +1905,7 @@ document.addEventListener('DOMContentLoaded', function () {
             checkGroup.appendChild(check);
             checkGroup.appendChild(checkLabel);
             formGroup.appendChild(checkGroup);
-        } else if (type === 'textarea' || type === 'textfield') { // This condition is now updated
+        } else if (type === 'textarea' || type === 'textfield') {
             const textarea = document.createElement('textarea');
             textarea.id = controlId;
             textarea.className = 'form-control';
@@ -1694,6 +1936,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return formGroup;
     }
 
+    // In main.js, REPLACE this entire function
     function generateOutputScript() {
         let scriptHTML = '';
         const generalValues = getControlValues();
@@ -1713,58 +1956,69 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        objects.forEach(obj => {
-            const name = obj.name || `Object ${obj.id}`;
-            const allPossibleConfigs = getDefaultObjectConfig(obj.id);
-            const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+        objects.forEach((liveObject, index) => {
+            const exportId = index + 1;
+            const originalId = liveObject.id;
+            const originalConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${originalId}_`));
 
-            allPossibleConfigs.forEach(conf => {
-                const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                let value = obj[propName];
+            originalConfigs.forEach(conf => {
+                const tempConf = { ...conf };
+                const propName = tempConf.property.substring(tempConf.property.indexOf('_') + 1);
+
+                tempConf.property = `obj${exportId}_${propName}`;
+                tempConf.label = `${liveObject.name}:${conf.label.split(':').slice(1).join(':')}`;
+
+                let value = liveObject[propName];
 
                 if (propName.startsWith('gradColor')) {
                     const colorKey = propName.replace('gradColor', 'color');
-                    if (obj.gradient) value = obj.gradient[colorKey];
+                    if (liveObject.gradient) value = liveObject.gradient[colorKey];
                 } else if (propName === 'scrollDir') {
-                    value = obj.scrollDirection;
+                    value = liveObject.scrollDirection;
                 }
+                if (value === undefined) { value = conf.default; }
+                if (typeof value === 'boolean') { value = String(value); }
 
-                if (value === undefined || value === null) {
-                    value = conf.default;
-                }
-
-                if (typeof value === 'boolean') {
-                    value = String(value);
-                }
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+                const floatProps = ['visSmoothing', 'bouncePauseTime']; // List of props to keep as decimals
 
                 if (conf.type === 'number') {
-                    if (propName === 'animationSpeed') {
-                        value = Math.round(obj.animationSpeed * 10);
-                    } else if (propName === 'cycleSpeed') {
-                        value = Math.round(obj.cycleSpeed * 50);
-                    } else if (propsToScale.includes(propName)) {
-                        // Scale down pixel values by 4 for export
-                        value = Math.round(parseFloat(value) / 4);
-                    } else {
-                        value = Math.round(parseFloat(value));
-                    }
+                    if (propName === 'animationSpeed') value = Math.round(liveObject.animationSpeed * 10);
+                    else if (propName === 'cycleSpeed') value = Math.round(liveObject.cycleSpeed * 50);
+                    else if (propsToScale.includes(propName)) value = Math.round(parseFloat(value) / 4);
+                    // This check prevents rounding for our specified float properties
+                    else if (!floatProps.includes(propName)) value = Math.round(parseFloat(value));
                 }
+                if (conf.type === 'textfield' && typeof value === 'string') { value = value.replace(/\n/g, '\\n'); }
 
-                if (conf.type === 'textfield' && typeof value === 'string') {
-                    value = value.replace(/\n/g, '\\n');
-                }
-
-                conf.label = `${name}: ${conf.label.split(':').slice(1).join(':').trim()}`;
-                if (propName === 'width' && (obj.shape === 'circle' || obj.shape === 'ring')) {
-                    conf.label = `${name}: Width/Outer Diameter`;
-                }
-
-                const attrs = Object.keys(conf).filter(attr => attr !== 'default' && attr !== 'type').map(attrName => `${attrName}="${conf[attrName]}"`).join(' ');
-                scriptHTML += `<meta ${attrs} type="${conf.type}" default="${value}" />\n`;
+                const attrs = Object.keys(tempConf).filter(attr => attr !== 'default').map(attrName => `${attrName}="${tempConf[attrName]}"`).join(' ');
+                scriptHTML += `<meta ${attrs} default="${value}" />\n`;
             });
         });
 
         outputScriptArea.value = scriptHTML.trim();
+    }
+
+
+    /**
+     * Shows or hides the 'Paste Properties' buttons based on the clipboard state.
+     */
+    function updateCopyPasteUI() {
+        const allPasteButtons = form.querySelectorAll('.btn-paste-props');
+        if (propertyClipboard) {
+            allPasteButtons.forEach(btn => {
+                const buttonId = parseInt(btn.dataset.id, 10);
+                // Show the paste button only if it's not the source object
+                if (buttonId !== propertyClipboard.sourceId) {
+                    btn.classList.remove('d-none');
+                } else {
+                    btn.classList.add('d-none');
+                }
+            });
+        } else {
+            // If clipboard is empty, hide all paste buttons
+            allPasteButtons.forEach(btn => btn.classList.add('d-none'));
+        }
     }
 
     /**
@@ -1773,6 +2027,8 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     // In main.js, replace the entire renderForm function.
 
+    // In main.js, REPLACE this entire function
+    // In main.js, REPLACE this entire function
     function renderForm() {
         const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         existingTooltips.forEach(el => {
@@ -1868,6 +2124,29 @@ document.addEventListener('DOMContentLoaded', function () {
             headerBar.appendChild(editableArea);
             const controlsGroup = document.createElement('div');
             controlsGroup.className = 'd-flex align-items-center flex-shrink-0 ms-auto';
+
+            const copyButton = document.createElement('button');
+            copyButton.className = 'btn btn-sm btn-outline-secondary btn-copy-props d-flex align-items-center justify-content-center p-0 ms-2';
+            copyButton.style.width = '28px';
+            copyButton.style.height = '28px';
+            copyButton.type = 'button';
+            copyButton.dataset.id = id;
+            copyButton.dataset.bsToggle = 'tooltip';
+            copyButton.title = 'Copy Properties';
+            copyButton.innerHTML = `<i class="bi bi-clipboard-plus"></i>`;
+            controlsGroup.appendChild(copyButton);
+
+            const pasteButton = document.createElement('button');
+            pasteButton.className = 'btn btn-sm btn-outline-success btn-paste-props d-none d-flex align-items-center justify-content-center p-0 ms-2';
+            pasteButton.style.width = '28px';
+            pasteButton.style.height = '28px';
+            pasteButton.type = 'button';
+            pasteButton.dataset.id = id;
+            pasteButton.dataset.bsToggle = 'tooltip';
+            pasteButton.title = 'Paste Properties';
+            pasteButton.innerHTML = `<i class="bi bi-clipboard-check-fill"></i>`;
+            controlsGroup.appendChild(pasteButton);
+
             const lockButton = document.createElement('button');
             const isLocked = obj.locked || false;
             lockButton.className = `btn btn-sm btn-lock ${isLocked ? 'btn-warning' : 'btn-outline-secondary'} d-flex align-items-center justify-content-center p-0 ms-2`;
@@ -1901,19 +2180,40 @@ document.addEventListener('DOMContentLoaded', function () {
             collapseWrapper.className = `collapse p-3 ${showObject ? 'show' : ''}`;
             collapseWrapper.appendChild(document.createElement('hr'));
 
-            const groups = {
-                'Transform & Shape': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed'],
-                'Fill Style': ['gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2'],
-                'Animation': ['animationMode', 'animationSpeed', 'scrollDir'],
-                'Color Animation': ['cycleColors', 'cycleSpeed']
+            let groups = {
+                'Shape Settings': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed'],
+                'Color Settings': ['gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'animationDriver', 'animationSpeed', 'animationMode', 'bouncePauseTime', 'scrollDir', 'cycleColors', 'cycleSpeed'],
+                'Audio Settings': ['visGain', 'visSmoothing', 'visSensitivity', 'visNormalize'],
             };
+            const groupOrder = [];
+
+            const shape = fieldset.querySelector(`[name="obj${id}_shape"]`);
 
             const shapeConf = objectConfigs.find(c => c.property.endsWith('_shape'));
-            const currentShape = form.elements[`obj${id}_shape`]?.value || (shapeConf ? shapeConf.default : 'rectangle');
+            const currentShape = obj.shape || (shapeConf ? shapeConf.default : 'rectangle');
+            const antype = obj.oscAnimationType;
+
+            if (currentShape == 'oscilloscope') {
+                groups['Oscilloscope Settings'] = ['oscAnimationType', 'oscWaveType', 'oscAmplitudeDriver', 'oscDrawAsLine', 'oscLineThickness', 'oscAnimationType', 'oscAmplitude', 'oscFrequency', 'oscAmplitude2', 'oscFrequency2'];
+                const drawAsLineCheckbox = fieldset.querySelector(`[name="obj${id}_oscDrawAsLine"]`);
+            }
+            if (currentShape == 'visualizer') {
+                groups['Visualizer Settings'] = ['visStyle', 'visColorMode', 'visBarCount'];
+            }
+            if (currentShape == 'ring') {
+                groups['Ring Settings'] = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
+            }
+            if (currentShape == 'text') {
+                groups['Text Settings'] = ['text', 'pixelFont', 'fontSize', 'textAlign', 'showTime', 'showDate', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate', 'textAnimation', 'textAnimationSpeed'];
+            }
+            if (currentShape == 'rectangle') {
+                groups['Grid Settings'] = ['numberOfRows', 'numberOfColumns', 'phaseOffset'];
+            }
 
             for (const groupName in groups) {
                 const groupContainer = document.createElement('div');
-                groupContainer.className = 'control-group card card-body bg-body mb-3';
+                const groupClass = groupName === 'Fill Style' ? 'fill-style-group' : '';
+                groupContainer.className = `control-group card card-body bg-body mb-3 ${groupClass}`;
                 const groupHeader = document.createElement('h6');
                 groupHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
                 groupHeader.textContent = groupName;
@@ -1927,63 +2227,41 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
-            const gridSettings = ['numberOfRows', 'numberOfColumns', 'phaseOffset'];
-            // const textSubGroups = {
-            //     'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign', 'autoWidth'],
-            //     'Time & Date Display': ['showTime', 'showDate'],
-            //     'Text Animation': ['textAnimation', 'textAnimationSpeed']
-            // };
-            const textSubGroups = {
-                'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
-                'Time & Date Display': ['showTime', 'showDate'],
-                'Text Animation': ['textAnimation', 'textAnimationSpeed']
-            };
-
-            const ringGroup = document.createElement('div');
-            ringGroup.className = 'control-group mb-4 ring-settings-group';
-            ringGroup.style.display = currentShape === 'ring' ? 'block' : 'none';
-            const ringHeader = document.createElement('h6');
-            ringHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
-            ringHeader.textContent = 'Ring Settings';
-            ringGroup.appendChild(ringHeader);
-            objectConfigs.filter(c => ringSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => ringGroup.appendChild(createFormControl(c)));
-            collapseWrapper.appendChild(ringGroup);
-
             const textGroup = document.createElement('div');
             textGroup.className = 'text-settings-group';
             textGroup.style.display = currentShape === 'text' ? 'block' : 'none';
-
-            for (const subGroupName in textSubGroups) {
-                const subGroupContainer = document.createElement('div');
-                subGroupContainer.className = 'card card-body bg-body mb-2';
-                const subGroupHeader = document.createElement('h6');
-                subGroupHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
-                subGroupHeader.textContent = subGroupName;
-                subGroupContainer.appendChild(subGroupHeader);
-                const propsInSubGroup = textSubGroups[subGroupName];
-                objectConfigs
-                    .filter(c => propsInSubGroup.includes(c.property.substring(c.property.indexOf('_') + 1)))
-                    .forEach(c => subGroupContainer.appendChild(createFormControl(c)));
-                if (subGroupContainer.children.length > 1) {
-                    textGroup.appendChild(subGroupContainer);
-                }
-            }
             collapseWrapper.appendChild(textGroup);
 
-            const gridGroup = document.createElement('div');
-            gridGroup.className = 'control-group mb-4 grid-settings-group';
-            gridGroup.style.display = currentShape === 'rectangle' ? 'block' : 'none';
-            const gridHeader = document.createElement('h6');
-            gridHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
-            gridHeader.textContent = 'Grid Settings';
-            gridGroup.appendChild(gridHeader);
-            objectConfigs.filter(c => gridSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => gridGroup.appendChild(createFormControl(c)));
-            collapseWrapper.appendChild(gridGroup);
+            const animationModeSelect = fieldset.querySelector(`[name="obj${id}_animationMode"]`);
+            const pauseTimeControl = fieldset.querySelector(`[name="obj${id}_bouncePauseTime"]`);
+            if (animationModeSelect && pauseTimeControl) {
+                const isBounce = animationModeSelect.value.includes('bounce');
+                pauseTimeControl.closest('.mb-3').style.display = isBounce ? 'block' : 'none';
+            }
 
             fieldset.appendChild(headerBar);
             fieldset.appendChild(collapseWrapper);
             form.appendChild(fieldset);
+
+            // Hide controls that are not needed at the moment
+            setTimeout(() => {
+                const ampTypeInput = fieldset.querySelector(`[name="obj${id}_oscAnimationType"]`);
+                const amp2Control = fieldset.querySelector(`[name="obj${id}_oscAmplitude2"]`);
+                const freq2Control = fieldset.querySelector(`[name="obj${id}_oscFrequency2"]`);
+
+                const antype = ampTypeInput?.value;
+
+                if (antype !== "interference") {
+                    if (amp2Control && amp2Control.closest('.mb-3')) {
+                        amp2Control.closest('.mb-3').style.display = 'none';
+                    }
+                    if (freq2Control && freq2Control.closest('.mb-3')) {
+                        freq2Control.closest('.mb-3').style.display = 'none';
+                    }
+                }
+            }, 0);
+
+
         });
 
         updateFormValuesFromObjects();
@@ -2010,12 +2288,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 const fieldsets = Array.from(form.querySelectorAll('fieldset[data-object-id]'));
                 const newOrderedIds = fieldsets.map(fieldset => parseInt(fieldset.dataset.objectId, 10));
 
-                // Reorder the main `objects` array to match the new visual order
+                // Reorder the main `objects` array to match the new visual order.
                 objects.sort((a, b) => newOrderedIds.indexOf(a.id) - newOrderedIds.indexOf(b.id));
 
-                // The rendering loop respects the objects array order, so just redraw and save.
-                updateObjectsFromForm();
+                // --- DEBUGGING LOG ---
+                // console.log("--- Reorder Action Complete ---");
+                // console.log("New visual order of object IDs:", newOrderedIds);
+                // console.log("Internal 'objects' array is now sorted:", objects.map(o => `{id: ${o.id}, name: '${o.name}'}`));
+                // --- END DEBUGGING LOG ---
+
+                // Now, simply redraw the canvas and regenerate the output script.
                 drawFrame();
+                generateOutputScript();
                 recordHistory();
             }
         });
@@ -2115,7 +2399,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return finalStates;
     }
 
-    form.addEventListener('blur', (e) => {
+    const handleNameBlur = (e) => {
         if (e.target.classList.contains('object-name')) {
             const id = parseInt(e.target.dataset.id, 10);
             const newName = e.target.textContent || 'Unnamed';
@@ -2125,13 +2409,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 configStore.forEach(conf => {
                     if (conf.property && conf.property.startsWith(`obj${id}_`)) {
                         const labelParts = conf.label.split(':');
-                        conf.label = `${newName}:${labelParts[1]}`;
+                        conf.label = `${newName}:${labelParts.slice(1).join(':').trim()}`;
                     }
                 });
                 generateOutputScript();
+                recordHistory(); // Add this to make renaming undoable
             }
         }
-    }, true);
+    };
+
+    form.addEventListener('blur', handleNameBlur, true);
 
     /**
      * Converts mouse event coordinates to canvas-local coordinates.
@@ -2307,13 +2594,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (elapsed > fpsInterval) {
             then = now - (elapsed % fpsInterval);
 
-            // Directly find the checkbox and check its status.
+            engine.update(timestamp);
+
             const enableAnimationCheckbox = document.getElementById('enableAnimation');
             const isAnimationEnabled = enableAnimationCheckbox ? enableAnimationCheckbox.checked : false;
 
-            // Run the draw loop if animation is enabled, or if the user is interacting.
-            if (isAnimationEnabled || isDragging || isResizing) {
+            if (isAnimationEnabled || isDragging || isResizing || isRotating || needsRedraw) {
                 drawFrame();
+                needsRedraw = false; // Reset the flag after drawing.
             }
         }
     }
@@ -2393,6 +2681,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        // If a scrolling animation is active, force the justification to 'left'
+        // to ensure the scroll calculation works correctly.
+        if (values.textAnimation === 'marquee' || values.textAnimation === 'wave') {
+            values.textAlign = 'left';
+        }
+
         values.gradientDirection = (values.scrollDirection === 'up' || values.scrollDirection === 'down') ? 'vertical' : 'horizontal';
         values.cycleSpeed = (values.cycleSpeed || 0) / 50.0;
         values.animationSpeed = (values.animationSpeed || 0) / 10.0;
@@ -2429,14 +2723,24 @@ document.addEventListener('DOMContentLoaded', function () {
             const updateField = (prop, value) => {
                 const input = fieldset.querySelector(`[name="obj${obj.id}_${prop}"]`);
                 if (input) {
-                    if (input.type === 'checkbox') input.checked = value;
-                    else input.value = value;
+                    let displayValue = value;
+
+                    // If the input is a number field, round the value to the nearest integer.
+                    if (input.type === 'number') {
+                        displayValue = Math.round(value);
+                    }
+
+                    if (input.type === 'checkbox') {
+                        input.checked = displayValue;
+                    } else {
+                        input.value = displayValue;
+                    }
 
                     const slider = fieldset.querySelector(`[name="obj${obj.id}_${prop}_slider"]`);
-                    if (slider) slider.value = value;
+                    if (slider) slider.value = displayValue;
 
                     const hexInput = fieldset.querySelector(`[name="obj${obj.id}_${prop}_hex"]`);
-                    if (hexInput) hexInput.value = value;
+                    if (hexInput) hexInput.value = displayValue;
                 }
             };
 
@@ -2537,7 +2841,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // Creates the final Shape objects from the processed states
-        objects = initialStates.map(state => new Shape({ ...state, ctx }));
+        objects = initialStates.map(state => new Shape({ ...state, ctx, fps }));
     }
 
     /**
@@ -2584,7 +2888,7 @@ document.addEventListener('DOMContentLoaded', function () {
         currentProjectDocId = workspace.docId || null;
         updateShareButtonState();
         updateAll();
-        drawFrame();
+        //drawFrame();
     }
 
     /**
@@ -2614,24 +2918,21 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function getDefaultObjectConfig(newId) {
         return [
-            // Shape and non-pixel properties remain the same
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,text' },
-
-            // --- SCALED PROPERTIES ---
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,text,oscilloscope,visualizer' },
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200' },
             { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320' },
             { property: `obj${newId}_height`, label: `Object ${newId}: Height`, type: 'number', default: '38', min: '2', max: '200' },
             { property: `obj${newId}_innerDiameter`, label: `Object ${newId}: Inner Diameter`, type: 'number', default: '25', min: '1', max: '318' },
             { property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '15', min: '2', max: '100' },
-
-            // --- NON-SCALED PROPERTIES ---
             { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360' },
             { property: `obj${newId}_numberOfSegments`, label: `Object ${newId}: Segments`, type: 'number', default: '12', min: '1', max: '50' },
             { property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', min: '1', max: '360', default: '20' },
             { property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100' },
-            { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '1', max: '50' },
+            { property: `obj${newId}_animationDriver`, label: `Object ${newId}: Animation Driver`, type: 'combobox', values: 'time,level', default: 'time' },
+            { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Speed/Sensitivity`, type: 'number', default: '2', min: '1', max: '50' },
             { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop' },
+            { property: `obj${newId}_bouncePauseTime`, label: `Object ${newId}: Bounce Pause (Seconds)`, type: 'number', default: '0.6', min: '0', max: '10', step: '0.1' },
             { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down' },
             { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,alternating,random' },
             { property: `obj${newId}_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false' },
@@ -2650,7 +2951,22 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_textAnimationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', min: '1', max: '100', default: '10' },
             { property: `obj${newId}_showTime`, label: `Object ${newId}: Show Current Time`, type: 'boolean', default: 'false' },
             { property: `obj${newId}_showDate`, label: `Object ${newId}: Show Current Date`, type: 'boolean', default: 'false' },
-            //{ property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'true' }
+            { property: `obj${newId}_oscAmplitude`, label: `Object ${newId}: Wave Amplitude`, type: 'number', default: '20', min: '0', max: '500' },
+            { property: `obj${newId}_oscFrequency`, label: `Object ${newId}: Wave Frequency`, type: 'number', default: '10', min: '1', max: '50' },
+            { property: `obj${newId}_oscRadial`, label: `Object ${newId}: Radial Wave`, type: 'boolean', default: 'false' },
+            { property: `obj${newId}_oscWaveType`, label: `Object ${newId}: Wave Type`, type: 'combobox', values: 'sine,square,triangle,sawtooth', default: 'sine' },
+            { property: `obj${newId}_oscDrawAsLine`, label: `Object ${newId}: Draw as Line`, type: 'boolean', default: 'false' },
+            { property: `obj${newId}_oscLineThickness`, label: `Object ${newId}: Line Thickness`, type: 'number', default: '4', min: '1', max: '100' },
+            { property: `obj${newId}_oscAnimationType`, label: `Object ${newId}: Wave Animation`, type: 'combobox', values: 'scroll,pulseAmplitude,pulseFrequency,interference', default: 'scroll' },
+            { property: `obj${newId}_oscAmplitude2`, label: `Object ${newId}: Wave 2 Amplitude`, type: 'number', default: '10', min: '0', max: '100' },
+            { property: `obj${newId}_oscFrequency2`, label: `Object ${newId}: Wave 2 Frequency`, type: 'number', default: '25', min: '1', max: '50' },
+            { property: `obj${newId}_oscAmplitudeDriver`, label: `Object ${newId}: Amplitude Driver`, type: 'combobox', values: 'manual,level', default: 'manual' },
+            { property: `obj${newId}_visStyle`, label: `Object ${newId}: Style`, type: 'combobox', values: 'bars,centeredBars', default: 'bars' },
+            { property: `obj${newId}_visColorMode`, label: `Object ${newId}: Color Mode`, type: 'combobox', values: 'solid,gradient,perBarGradient', default: 'gradient' },
+            { property: `obj${newId}_visSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '5', min: '1', max: '10', step: '1' },
+            { property: `obj${newId}_visGain`, label: `Object ${newId}: Sensitivity`, type: 'number', default: '1', min: '1', max: '10', step: '0.1' },
+            { property: `obj${newId}_visBarCount`, label: `Object ${newId}: Number of Bars`, type: 'number', default: '50', min: '1', max: '50' },
+            { property: `obj${newId}_visNormalize`, label: `Object ${newId}: Normalize Audio`, type: 'boolean', default: 'true' }
         ];
     }
 
@@ -2673,20 +2989,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const exportButton = document.getElementById('export-btn');
         exportButton.disabled = true;
         exportButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Preparing...';
-
         try {
-            generateOutputScript(); // Ensure meta tags are up-to-date
+            generateOutputScript();
             const effectTitle = getControlValues()['title'] || 'MyEffect';
             const metaTags = document.getElementById('output-script').value;
             const thumbnailDataUrl = generateThumbnail(document.getElementById('signalCanvas'));
             const safeFilename = effectTitle.replace(/[\s\/\\?%*:|"<>]/g, '_');
-
-            const styleContent =
-                '        canvas { width: 100%; height: 100%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #000000; }\n' +
-                '        body { background-color: #000000; overflow: hidden; margin: 0; }\n';
-
+            const styleContent = `canvas { width: 100%; height: 100%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #000000; } body { background-color: #000000; overflow: hidden; margin: 0; }`;
             const bodyContent = '<body><canvas id="signalCanvas"></canvas></body>';
-
             const fontData4pxString = 'const FONT_DATA_4PX = ' + JSON.stringify(FONT_DATA_4PX) + ';';
             const fontData5pxString = 'const FONT_DATA_5PX = ' + JSON.stringify(FONT_DATA_5PX) + ';';
             const shapeClassString = Shape.toString();
@@ -2697,14 +3007,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const exportedScript = `
 document.addEventListener('DOMContentLoaded', function () {
     const canvas = document.getElementById('signalCanvas');
-    if (!canvas) return;
+    if (!canvas) { return; }
     const ctx = canvas.getContext('2d');
     canvas.width = 320;
     canvas.height = 200;
     let objects = [];
     let propertyKeys = [];
+    
+    const engine = window.engine || { audio: { level: -100, freq: new Int8Array(200).fill(0) }};
 
-    // --- Injected Functions, Classes, and Data ---
     ${fontData4pxString}
     ${fontData5pxString}
     ${drawPixelTextString}
@@ -2717,21 +3028,20 @@ document.addEventListener('DOMContentLoaded', function () {
     let then;
 
     function discoverProperties() {
-        const metaElements = Array.from(document.querySelectorAll('head > meta[property^="obj"]'));
+        const metaElements = Array.from(document.querySelectorAll('head > meta[property]'));
         propertyKeys = metaElements.map(meta => meta.getAttribute('property'));
     }
 
     function createInitialObjects() {
-        if (propertyKeys.length === 0) return;
+        if (propertyKeys.length === 0) { return; }
         const uniqueIds = [...new Set(propertyKeys.map(p => {
             const match = p.match(/obj(\\\d+)_/);
             return match ? match[1] : null;
         }).filter(id => id !== null))];
-        
+
         objects = uniqueIds.map(id => {
-            const config = { id: parseInt(id), ctx: ctx, gradient: {} };
+            const config = { id: parseInt(id), ctx: ctx, fps: fps, gradient: {} };
             const prefix = 'obj' + id + '_';
-            
             propertyKeys.filter(p => p.startsWith(prefix)).forEach(key => {
                 const propName = key.substring(prefix.length);
                 try {
@@ -2746,63 +3056,64 @@ document.addEventListener('DOMContentLoaded', function () {
                 } catch (e) {}
             });
             
-            // --- SPEED FIX: Divide all speeds by 4 ---
-            const scaleFactor = 4.0;
-            if (config.animationSpeed) config.animationSpeed /= scaleFactor;
-            if (config.cycleSpeed) config.cycleSpeed /= scaleFactor;
-            if (config.rotationSpeed) config.rotationSpeed /= scaleFactor;
-            if (config.textAnimationSpeed) config.textAnimationSpeed /= scaleFactor;
-            
             config.animationSpeed = (config.animationSpeed || 0) / 10.0;
             config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
+            if (config.textAnimationSpeed) { config.textAnimationSpeed /= 4.0; }
             
-            if (config.shape === 'ring' || config.shape === 'circle') {
-                config.height = config.width;
-            }
+            config.gradientDirection = (config.scrollDirection === 'up' || config.scrollDirection === 'down') ? 'vertical' : 'horizontal';
+            if (config.shape === 'ring' || config.shape === 'circle') { config.height = config.width; }
+            
             return new Shape(config);
         });
     }
 
     function drawFrame() {
-        if (!ctx) return;
+        if (!ctx) { return; }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
         let shouldAnimate = false;
         try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
-
+        
         objects.forEach(obj => {
             const prefix = 'obj' + obj.id + '_';
             propertyKeys.filter(p => p.startsWith(prefix)).forEach(key => {
                 const propName = key.substring(prefix.length);
                 try {
-                    const value = eval(key);
-                    const scaleFactor = 4.0;
+                    const value = eval(key); 
                     switch(propName) {
                         case 'gradColor1': obj.gradient.color1 = value; break;
                         case 'gradColor2': obj.gradient.color2 = value; break;
-                        case 'scrollDir': obj.scrollDirection = value; break;
-                        // --- SPEED FIX: Also divide speeds by 4 during live updates ---
-                        case 'animationSpeed': obj.animationSpeed = ((value || 0) / scaleFactor) / 10.0; break;
-                        case 'cycleSpeed': obj.cycleSpeed = ((value || 0) / scaleFactor) / 50.0; break;
-                        case 'rotationSpeed': obj.rotationSpeed = (value || 0) / scaleFactor; break;
-                        case 'textAnimationSpeed': obj.textAnimationSpeed = (value || 0) / scaleFactor; break;
+                        case 'scrollDir': obj.scrollDirection = value; obj.gradientDirection = (value === 'up' || value === 'down') ? 'vertical' : 'horizontal'; break;
+                        case 'animationSpeed': obj.animationSpeed = (value || 0) / 10.0; break;
+                        case 'cycleSpeed': obj.cycleSpeed = (value || 0) / 50.0; break;
+                        case 'rotationSpeed': obj.rotationSpeed = (value || 0); break;
+                        case 'textAnimationSpeed': obj.textAnimationSpeed = (value || 0) / 4.0; break;
+                        case 'visBarCount':
+                            if (value !== obj.visBarCount) {
+                                obj.visBarCount = value;
+                                const newArray = new Array(obj.visBarCount).fill(0);
+                                for (let j = 0; j < Math.min(obj.smoothedFreq.length, obj.visBarCount); j++) {
+                                    newArray[j] = obj.smoothedFreq[j];
+                                }
+                                obj.smoothedFreq = newArray;
+                            }
+                            break;
                         default:
-                            if(obj.hasOwnProperty(propName)) {
+                            if (obj.hasOwnProperty(propName)) {
                                 obj[propName] = value;
                             }
                             break;
                     }
                 } catch (e) {}
             });
-             if (obj.shape === 'text' && obj._updateTextMetrics) {
-                obj._updateTextMetrics();
-            }
+             if (obj.shape === 'text' && obj._updateTextMetrics) { obj._updateTextMetrics(); }
         });
-
+        
+        // This is the corrected drawing loop
         for (let i = objects.length - 1; i >= 0; i--) {
-            objects[i].draw(shouldAnimate, false);
+            const obj = objects[i]; // FIX: Correctly declare 'obj' before using it
+            obj.draw(shouldAnimate, false);
         }
     }
 
@@ -2810,17 +3121,15 @@ document.addEventListener('DOMContentLoaded', function () {
         requestAnimationFrame(animate);
         const now = timestamp;
         const elapsed = now - then;
-
         if (elapsed > fpsInterval) {
             then = now - (elapsed % fpsInterval);
             drawFrame();
         }
     }
-
+    
     function init() {
         discoverProperties();
         createInitialObjects();
-        
         fpsInterval = 1000 / fps;
         then = window.performance.now();
         animate(then);
@@ -2830,34 +3139,17 @@ document.addEventListener('DOMContentLoaded', function () {
 });`;
 
             const finalHtml = [
-                '<!DOCTYPE html>',
-                '<html lang="en">',
-                '<head>',
-                '    <meta charset="UTF-8">',
-                '    <title>' + effectTitle + '</title>',
-                metaTags,
-                '    <style>',
-                styleContent,
-                '    </style>',
-                '</head>',
-                bodyContent,
-                '<script>',
-                exportedScript,
-                '</script>',
-                '</html>'
+                '<!DOCTYPE html>', '<html lang="en">', '<head>', '    <meta charset="UTF-8">',
+                '    <title>' + effectTitle + '</title>', metaTags, '    <style>', styleContent,
+                '    </style>', '</head>', bodyContent, '<script>', exportedScript, '</script>', '</html>'
             ].join('\n');
 
             exportPayload = {
-                safeFilename,
-                finalHtml,
-                thumbnailDataUrl,
-                imageExtension: 'png',
-                exportDate: new Date()
+                safeFilename, finalHtml, thumbnailDataUrl,
+                imageExtension: 'png', exportDate: new Date()
             };
-
             const exportModal = new bootstrap.Modal(document.getElementById('export-options-modal'));
             exportModal.show();
-
         } catch (error) {
             console.error('Export preparation failed:', error);
             showToast('Failed to prepare export: ' + error.message, 'danger');
@@ -2867,44 +3159,113 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // This handles all live user interactions with the form controls.
     form.addEventListener('input', (e) => {
         const target = e.target;
-        // Sync number inputs with their corresponding range sliders
+
+        // Enforce a minimum value of 1 for size-related properties
+        if (target.type === 'number') {
+            const sizeProperties = ['_width', '_height', '_fontSize', '_innerDiameter'];
+            if (sizeProperties.some(prop => target.name.includes(prop)) && parseFloat(target.value) < 1) {
+                target.value = 1;
+            }
+        }
+
+        // Show/hide oscilloscope line thickness and fill controls
+        if (target.name && target.name.includes('_oscDrawAsLine')) {
+            const objectId = target.name.match(/obj(\d+)_/)[1];
+            const fieldset = form.querySelector(`fieldset[data-object-id="${objectId}"]`);
+            if (fieldset) {
+                const isChecked = target.checked;
+                const thicknessControl = fieldset.querySelector(`[name="obj${objectId}_oscLineThickness"]`);
+                const fillStyleGroup = fieldset.querySelector('.fill-style-group');
+
+                if (thicknessControl) thicknessControl.closest('.mb-3').style.display = isChecked ? 'block' : 'none';
+                if (fillStyleGroup) fillStyleGroup.style.display = isChecked ? 'none' : 'block';
+            }
+        }
+
+        // Show/hide oscilloscope interference controls
+        if (target.name && target.name.includes('_oscAnimationType')) {
+            const objectId = target.name.match(/obj(\d+)_/)[1];
+            const fieldset = form.querySelector(`fieldset[data-object-id="${objectId}"]`);
+            if (fieldset) {
+                const isInterference = target.value === 'interference';
+                const amp2Control = fieldset.querySelector(`[name="obj${objectId}_oscAmplitude2"]`);
+                const freq2Control = fieldset.querySelector(`[name="obj${objectId}_oscFrequency2"]`);
+
+                if (amp2Control) amp2Control.closest('.mb-3').style.display = isInterference ? 'block' : 'none';
+                if (freq2Control) freq2Control.closest('.mb-3').style.display = isInterference ? 'block' : 'none';
+            }
+        }
+
+        // Show/hide the bounce pause time control
+        if (target.name && target.name.includes('_animationMode')) {
+            const objectId = target.name.match(/obj(\d+)_/)[1];
+            const fieldset = form.querySelector(`fieldset[data-object-id="${objectId}"]`);
+            if (fieldset) {
+                const pauseTimeControl = fieldset.querySelector(`[name="obj${objectId}_bouncePauseTime"]`);
+                if (pauseTimeControl) {
+                    const isBounce = target.value.includes('bounce');
+                    pauseTimeControl.closest('.mb-3').style.display = isBounce ? 'block' : 'none';
+                }
+            }
+        }
+
+        // Sync width/height for circles and rings
+        if (target.name && (target.name.includes('_width') || target.name.includes('_height'))) {
+            const match = target.name.match(/obj(\d+)_/);
+            if (match) {
+                const objectId = parseInt(match[1], 10);
+                const obj = objects.find(o => o.id === objectId);
+                if (obj && (obj.shape === 'circle' || obj.shape === 'ring')) {
+                    const isWidth = target.name.includes('_width');
+                    const otherProp = isWidth ? 'height' : 'width';
+                    const otherInput = form.elements[`obj${objectId}_${otherProp}`];
+                    if (otherInput) {
+                        otherInput.value = target.value;
+                        const otherSlider = form.elements[`obj${objectId}_${otherProp}_slider`];
+                        if (otherSlider) { otherSlider.value = target.value; }
+                    }
+                }
+            }
+        }
+
+        // Sync number inputs with sliders
         if (target.type === 'number' && document.getElementById(`${target.id}_slider`)) {
             document.getElementById(`${target.id}_slider`).value = target.value;
         } else if (target.type === 'range' && target.id.endsWith('_slider')) {
-            const numberInputId = target.id.replace('_slider', '');
-            document.getElementById(numberInputId).value = target.value;
+            document.getElementById(target.id.replace('_slider', '')).value = target.value;
         }
 
-        // Sync color pickers with their corresponding hex input fields
+        // Sync color pickers with hex inputs
         if (target.type === 'color' && document.getElementById(`${target.id}_hex`)) {
             document.getElementById(`${target.id}_hex`).value = target.value;
-        }
-        if (target.type === 'text' && target.id.endsWith('_hex')) {
-            const colorPickerId = target.id.replace('_hex', '');
-            const colorPicker = document.getElementById(colorPickerId);
+        } else if (target.type === 'text' && target.id.endsWith('_hex')) {
+            const colorPicker = document.getElementById(target.id.replace('_hex', ''));
             if (colorPicker && /^#[0-9A-F]{6}$/i.test(target.value)) {
                 colorPicker.value = target.value;
             }
         }
 
-        // This block handles dynamically showing/hiding controls when the shape is changed.
+        // Show/hide entire groups of settings based on the selected shape
         if (target.name && target.name.includes('_shape')) {
             const objectId = target.name.match(/obj(\d+)_/)[1];
             const shapeValue = target.value;
             const fieldset = form.querySelector(`fieldset[data-object-id="${objectId}"]`);
             if (fieldset) {
-                // Show/hide entire groups of settings based on shape
                 const ringControls = fieldset.querySelector('.ring-settings-group');
                 const gridControls = fieldset.querySelector('.grid-settings-group');
                 const textControls = fieldset.querySelector('.text-settings-group');
+                const oscilloscopeControls = fieldset.querySelector('.oscilloscope-settings-group');
+                const visualizerControls = fieldset.querySelector('.visualizer-settings-group');
 
                 if (ringControls) ringControls.style.display = shapeValue === 'ring' ? 'block' : 'none';
                 if (gridControls) gridControls.style.display = shapeValue === 'rectangle' ? 'block' : 'none';
                 if (textControls) textControls.style.display = shapeValue === 'text' ? 'block' : 'none';
+                if (oscilloscopeControls) oscilloscopeControls.style.display = shapeValue === 'oscilloscope' ? 'block' : 'none';
+                if (visualizerControls) visualizerControls.style.display = shapeValue === 'visualizer' ? 'block' : 'none';
 
-                // Show/hide the 'Height' control, which is not needed for rings or text
                 const heightControl = fieldset.querySelector(`[name="obj${objectId}_height"]`);
                 if (heightControl) {
                     const heightFormGroup = heightControl.closest('.mb-3');
@@ -2913,7 +3274,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
 
-                // Update the 'Width' control's label to be more descriptive
                 const widthControl = fieldset.querySelector(`[name="obj${objectId}_width"]`);
                 if (widthControl) {
                     const widthLabel = widthControl.closest('.mb-3').querySelector('label');
@@ -2927,6 +3287,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }
+
+        // Disable text input if time or date is checked
         if (target.name && (target.name.includes('_showTime') || target.name.includes('_showDate'))) {
             const objectId = target.name.match(/obj(\d+)_/)[1];
             const fieldset = form.querySelector(`fieldset[data-object-id="${objectId}"]`);
@@ -2935,20 +3297,49 @@ document.addEventListener('DOMContentLoaded', function () {
                 const dateToggle = fieldset.querySelector(`[name="obj${objectId}_showDate"]`);
                 const textControl = fieldset.querySelector(`[name="obj${objectId}_text"]`);
                 if (textControl) {
-                    // Disable text input if either time or date is checked
                     textControl.disabled = timeToggle.checked || dateToggle.checked;
                 }
             }
         }
 
+        // This was the source of flickering; it's now cleaned up.
         updateAll();
-        updateObjectsFromForm(); // Update the live objects from the form
-        drawFrame();             // Redraw the canvas for a live preview
     });
 
     form.addEventListener('click', (e) => {
         const fieldset = e.target.closest('fieldset[data-object-id]');
         const isInteractive = e.target.closest('button, a, input, [contenteditable="true"]');
+        const banBtn = e.target.closest('.btn-ban-user');
+
+        // --- START: Handle Ban User Click ---
+        if (banBtn) {
+            e.preventDefault();
+            const userIdToBan = banBtn.dataset.userId;
+            const userNameToBan = banBtn.dataset.userName;
+            const currentUser = window.auth.currentUser;
+
+            if (!userIdToBan || !currentUser) return;
+
+            showConfirmModal(
+                'Confirm Ban',
+                `Are you sure you want to ban "${userNameToBan}"? They will no longer be able to save new effects. This action is permanent.`,
+                'Ban User',
+                async () => {
+                    try {
+                        const banDocRef = window.doc(window.db, "bans", userIdToBan);
+                        await window.setDoc(banDocRef, {
+                            bannedBy: currentUser.uid,
+                            bannedAt: new Date(),
+                            creatorName: userNameToBan
+                        });
+                        showToast(`User "${userNameToBan}" has been banned.`, 'success');
+                    } catch (error) {
+                        showToast(`Failed to ban user: ${error.message}`, 'danger');
+                    }
+                }
+            );
+        }
+        // --- END: Handle Ban User Click ---
 
         if (fieldset && !isInteractive) {
             const idToSelect = parseInt(fieldset.dataset.objectId, 10);
@@ -2968,6 +3359,50 @@ document.addEventListener('DOMContentLoaded', function () {
         const deleteBtn = e.target.closest('.btn-delete');
         const duplicateBtn = e.target.closest('.btn-duplicate');
         const lockBtn = e.target.closest('.btn-lock');
+
+        const copyBtn = e.target.closest('.btn-copy-props');
+        const pasteBtn = e.target.closest('.btn-paste-props');
+
+        // --- START: Handle Copy Click ---
+        // --- START: Handle Copy Click ---
+        if (copyBtn) {
+            e.preventDefault();
+            sourceObjectIdForCopy = parseInt(copyBtn.dataset.id, 10);
+
+            //Ensure all checkboxes are unchecked by default when the modal opens
+            const copyForm = document.getElementById('copy-properties-form');
+            if (copyForm) {
+                copyForm.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            }
+
+            const copyModal = new bootstrap.Modal(document.getElementById('copy-properties-modal'));
+            copyModal.show();
+        }
+        // --- END: Handle Copy Click ---
+
+        // --- START: Handle Paste Click ---
+        if (pasteBtn) {
+            e.preventDefault();
+            if (!propertyClipboard) return;
+
+            const id = parseInt(pasteBtn.dataset.id, 10);
+            const targetObject = objects.find(o => o.id === id);
+            if (targetObject) {
+                // Use the object's update method to apply the copied properties
+                targetObject.update(propertyClipboard.properties);
+
+                // Clear the clipboard and update the UI
+                //propertyClipboard = null;
+                updateCopyPasteUI();
+
+                // Refresh the form and canvas to show the new properties
+                updateFormValuesFromObjects();
+                drawFrame();
+                recordHistory();
+                showToast(`Pasted properties to "${targetObject.name}"`, 'success');
+            }
+        }
+        // --- END: Handle Paste Click ---
 
         if (lockBtn) {
             e.preventDefault();
@@ -3012,6 +3447,7 @@ document.addEventListener('DOMContentLoaded', function () {
             newState.name = `${objectToCopy.name} Copy`;
             newState.x += 20;
             newState.y += 20;
+            newState.locked = false; // <-- This new line ensures the duplicate is always unlocked
 
             // 3. Create the new Shape instance from the copied state
             const newShape = new Shape({ ...newState, ctx });
@@ -3067,7 +3503,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('keydown', (e) => {
         const target = e.target;
-        const isTextInput = (target.tagName === 'INPUT' && target.type === 'text') ||
+
+        const isTextInput = (target.tagName === 'INPUT' && (target.type === 'text' || target.type === 'number')) ||
             target.tagName === 'TEXTAREA' ||
             target.isContentEditable;
 
@@ -3123,7 +3560,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (moved) {
                 e.preventDefault(); // Prevent default browser scroll behavior
                 updateFormValuesFromObjects(); // Update form fields
-                drawFrame(); // Redraw canvas
+                needsRedraw = true; // Request a redraw
                 debouncedRecordHistory(); // Record history after movement
             }
         }
@@ -3134,14 +3571,66 @@ document.addEventListener('DOMContentLoaded', function () {
             deleteObjects([...selectedObjectIds]); // Pass a copy of the array
         }
 
-        // Handle Undo and Redo
+        // Handle Undo, Redo, Copy, and Paste
         if (e.ctrlKey || e.metaKey) {
-            if (e.key.toLowerCase() === 'z') {
-                e.preventDefault();
-                history.undo();
-            } else if (e.key.toLowerCase() === 'y') {
-                e.preventDefault();
-                history.redo();
+            switch (e.key.toLowerCase()) {
+                case 'z':
+                    e.preventDefault();
+                    history.undo();
+                    break;
+                case 'y':
+                    e.preventDefault();
+                    history.redo();
+                    break;
+                case 'c': // --- Handle Copy ---
+                    if (selectedObjectIds.length > 0) {
+                        e.preventDefault();
+                        const sourceId = selectedObjectIds[0]; // Copy from the first selected object
+                        const sourceObject = objects.find(o => o.id === sourceId);
+
+                        if (sourceObject) {
+                            const propsToCopy = JSON.parse(JSON.stringify(sourceObject, (key, value) => {
+                                if (key === 'ctx') return undefined;
+                                return value;
+                            }));
+
+                            // Exclude properties that should never be copied
+                            delete propsToCopy.id;
+                            delete propsToCopy.name;
+                            delete propsToCopy.shape;
+                            delete propsToCopy.locked;
+                            delete propsToCopy.x;
+                            delete propsToCopy.y;
+                            delete propsToCopy.rotation;
+
+                            propertyClipboard = {
+                                sourceId: sourceId,
+                                properties: propsToCopy
+                            };
+                            showToast(`Copied all properties from "${sourceObject.name}"`, 'info');
+                            updateCopyPasteUI();
+                        }
+                    }
+                    break;
+                case 'v': // --- Handle Paste ---
+                    if (selectedObjectIds.length > 0 && propertyClipboard) {
+                        e.preventDefault();
+
+                        selectedObjectIds.forEach(id => {
+                            const targetObject = objects.find(o => o.id === id);
+                            if (targetObject) {
+                                targetObject.update(propertyClipboard.properties);
+                            }
+                        });
+
+                        showToast(`Pasted properties to ${selectedObjectIds.length} object(s).`, 'success');
+                        propertyClipboard = null; // Clear clipboard after paste
+                        updateCopyPasteUI();
+                        updateFormValuesFromObjects();
+                        drawFrame();
+                        recordHistory();
+                    }
+                    break;
             }
         }
     });
@@ -3201,7 +3690,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
-     * SAVE BUTTON: Checks for duplicates before saving.
+     * SAVE BUTTON: Handles permissions for overwriting and enforces bans.
      */
     document.getElementById('save-ws-btn').addEventListener('click', async () => {
         const user = window.auth.currentUser;
@@ -3210,55 +3699,118 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const name = getControlValues()['title'] || 'Untitled Effect';
+        const isAdmin = ADMIN_UIDS.includes(user.uid);
+        const formValues = getControlValues();
+        const name = formValues['title'] || 'Untitled Effect';
         const trimmedName = name.trim();
 
-        // Sanitize the configStore to remove any keys with undefined values
-        const sanitizedConfigs = configStore.map(conf => {
-            const sanitized = {};
-            for (const key in conf) {
-                if (conf[key] !== undefined) {
-                    sanitized[key] = conf[key];
-                }
-            }
-            return sanitized;
-        });
+        if (!trimmedName) {
+            showToast("Project name cannot be empty.", 'danger');
+            return;
+        }
 
-        const thumbnail = generateThumbnail(document.getElementById('signalCanvas'));
-        const projectData = {
-            name: trimmedName,
-            thumbnail: thumbnail,
-            configs: sanitizedConfigs, // Use the sanitized version
-            objects: objects.map(o => ({ id: o.id, name: o.name, locked: o.locked })),
-            updatedAt: new Date()
-        };
-
-        const q = window.query(window.collection(window.db, "projects"), window.where("userId", "==", user.uid), window.where("name", "==", trimmedName));
+        // Query for any project with the same name, regardless of creator
+        const q = window.query(window.collection(window.db, "projects"), window.where("name", "==", trimmedName));
         const querySnapshot = await window.getDocs(q);
 
+        const buildProjectData = () => {
+            const generalConfigs = configStore.filter(c => !(c.property || c.name).startsWith('obj'));
+            const objectConfigsInOrder = [];
+            objects.forEach((liveObject, index) => {
+                const newSequentialId = index + 1;
+                const originalId = liveObject.id;
+                const originalConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${originalId}_`));
+                originalConfigs.forEach(conf => {
+                    const newConf = { ...conf };
+                    const propName = newConf.property.substring(newConf.property.indexOf('_') + 1);
+                    newConf.property = `obj${newSequentialId}_${propName}`;
+                    newConf.label = `${liveObject.name}:${conf.label.split(':').slice(1).join(':')}`;
+                    let currentValue = liveObject[propName];
+                    if (propName.startsWith('gradColor')) {
+                        currentValue = liveObject.gradient[propName.replace('gradColor', 'color')];
+                    } else if (propName === 'scrollDir') {
+                        currentValue = liveObject.scrollDirection;
+                    }
+                    const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+                    const floatProps = ['visSmoothing', 'bouncePauseTime']; // Properties to keep as decimals
+
+                    if (newConf.type === 'number') {
+                        if (propName === 'animationSpeed') {
+                            currentValue = Math.round(liveObject.animationSpeed * 10);
+                        } else if (propName === 'cycleSpeed') {
+                            currentValue = Math.round(liveObject.cycleSpeed * 50);
+                        } else if (propsToScale.includes(propName)) {
+                            currentValue = Math.round(parseFloat(currentValue) / 4);
+                        } else if (!floatProps.includes(propName)) {
+                            // Only round numbers that are not meant to be floats
+                            currentValue = Math.round(parseFloat(currentValue));
+                        }
+                        // For properties in floatProps, we do nothing, preserving their decimal value.
+                    }
+                    if (typeof currentValue === 'boolean') { currentValue = String(currentValue); }
+                    newConf.default = currentValue;
+                    objectConfigsInOrder.push(newConf);
+                });
+            });
+            const configsToSave = [...generalConfigs, ...objectConfigsInOrder];
+
+            const titleConfig = configsToSave.find(c => c.name === 'title');
+            if (titleConfig) titleConfig.default = formValues['title'] || 'Untitled Effect';
+
+            const descriptionConfig = configsToSave.find(c => c.name === 'description');
+            if (descriptionConfig) descriptionConfig.default = formValues['description'] || 'Built with Effect Builder';
+
+            const publisherConfig = configsToSave.find(c => c.name === 'publisher');
+            if (publisherConfig) publisherConfig.default = formValues['publisher'] || 'Anonymous';
+
+            const animationConfig = configsToSave.find(c => c.property === 'enableAnimation');
+            if (animationConfig) animationConfig.default = String(formValues['enableAnimation']);
+
+            // --- START: Thumbnail Generation without Selection UI ---
+            const originalSelection = [...selectedObjectIds]; // 1. Store the current selection
+            selectedObjectIds = [];                         // 2. Temporarily deselect all objects
+            drawFrame();                                    // 3. Redraw the canvas to get a clean image
+            const thumbnail = generateThumbnail(document.getElementById('signalCanvas')); // 4. Generate the thumbnail
+            selectedObjectIds = originalSelection;          // 5. Restore the original selection
+            drawFrame();                                    // 6. Redraw again to make the selection box reappear
+            // --- END: Thumbnail Generation without Selection UI ---
+
+            return {
+                name: trimmedName,
+                thumbnail: thumbnail,
+                configs: configsToSave,
+                objects: objects.map((o, index) => ({ id: index + 1, name: o.name, locked: o.locked })),
+                updatedAt: new Date()
+            };
+        };
+
         if (!querySnapshot.empty) {
-            // Project exists, confirm overwrite
-            const existingDocId = querySnapshot.docs[0].id;
-            showConfirmModal(
-                'Confirm Overwrite',
-                `A project named "${trimmedName}" already exists. Do you want to overwrite it?`,
-                'Overwrite',
-                async () => {
+            const existingDoc = querySnapshot.docs[0];
+            if (existingDoc.data().userId === user.uid || isAdmin) {
+                showConfirmModal('Confirm Overwrite', `A project named "${trimmedName}" already exists. Do you want to overwrite it?`, 'Overwrite', async () => {
                     try {
-                        const docRef = window.doc(window.db, "projects", existingDocId);
-                        await window.updateDoc(docRef, projectData);
-                        currentProjectDocId = existingDocId;
+                        const projectData = buildProjectData();
+                        await window.updateDoc(existingDoc.ref, projectData);
+                        currentProjectDocId = existingDoc.id;
                         updateShareButtonState();
                         showToast(`Project "${trimmedName}" was overwritten successfully!`, 'success');
                     } catch (error) {
-                        console.error("Error overwriting document: ", error);
                         showToast("Error overwriting project: " + error.message, 'danger');
                     }
-                }
-            );
+                });
+            } else {
+                showToast("A project with this name already exists. Please choose a different name.", 'danger');
+            }
         } else {
-            // Project is new, create it
+            const banDocRef = window.doc(window.db, "bans", user.uid);
+            const banDoc = await window.getDoc(banDocRef);
+            if (banDoc.exists()) {
+                showToast("You are unable to save new effects.", 'danger');
+                return;
+            }
+
             try {
+                const projectData = buildProjectData();
                 projectData.userId = user.uid;
                 projectData.creatorName = user.displayName || 'Anonymous';
                 projectData.isPublic = true;
@@ -3269,11 +3821,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 updateShareButtonState();
                 showToast(`Effect "${trimmedName}" was saved successfully!`, 'success');
             } catch (error) {
-                console.error("Error saving new document: ", error);
                 showToast("Error saving project: " + error.message, 'danger');
             }
         }
-    });;
+    });
 
     // MY PROJECTS BUTTON
     document.getElementById('load-ws-btn').addEventListener('click', () => {
@@ -3312,8 +3863,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!button || button.disabled || button.id === 'constrain-btn') return;
         const action = button.dataset.action;
         if (!action || selectedObjectIds.length === 0) return;
+
         const selected = selectedObjectIds.map(id => objects.find(o => o.id === id)).filter(o => o);
         if (selected.length === 0) return;
+
         const anchor = selected[0]; // The first selected object is typically the anchor
 
         switch (action) {
@@ -3335,27 +3888,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 break;
             case 'match-text-size':
-                const selected = selectedObjectIds.map(id => objects.find(o => o.id === id)).filter(o => o);
+                // FIX: The redundant 'const selected = ...' line that caused the error has been removed from here.
                 const textObjects = selected.filter(obj => obj.shape === 'text');
                 const gridObjects = selected.filter(obj => obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1));
 
                 if (textObjects.length >= 1 && gridObjects.length >= 1) {
-                    // --- Scenario 1: Match Text to Grid ---
-                    const sourceGrid = gridObjects[0]; // Use the first selected grid as the source
+                    const sourceGrid = gridObjects[0];
                     const cellHeight = sourceGrid.height / sourceGrid.numberOfRows;
-
-                    // Apply the new font size to all selected text objects
                     textObjects.forEach(textObject => {
-                        textObject.fontSize = cellHeight * 10; // Scale up for internal value
+                        textObject.fontSize = cellHeight * 10;
                         textObject._updateTextMetrics();
                     });
-
                 } else if (textObjects.length >= 2 && gridObjects.length === 0) {
-                    // --- Scenario 2: Match Text to other Text ---
-                    const sourceText = textObjects[0]; // Use the first selected text as the source
+                    const sourceText = textObjects[0];
                     const sourceFontSize = sourceText.fontSize;
-
-                    // Apply the font size to all other selected text objects
                     textObjects.slice(1).forEach(targetText => {
                         targetText.fontSize = sourceFontSize;
                         targetText._updateTextMetrics();
@@ -3363,7 +3909,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 break;
         }
-        updateFormFromShapes();
+        updateFormValuesFromObjects();
         recordHistory(); // Record state after a toolbar action
     });
 
@@ -3395,32 +3941,26 @@ document.addEventListener('DOMContentLoaded', function () {
         if (selectedObjectIds.length === 1) {
             const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
             if (selectedObject && !selectedObject.locked) {
-                // Check for rotation handle first
                 const rotationHandle = selectedObject.getRotationHandleAtPoint(x, y);
                 if (rotationHandle) {
                     isRotating = true;
                     isResizing = false;
                     isDragging = false;
-
                     const center = selectedObject.getCenter();
                     const startAngle = Math.atan2(y - center.y, x - center.x);
-
                     initialDragState = [{
                         id: selectedObject.id,
                         startAngle: startAngle,
                         initialObjectAngle: selectedObject.getRenderAngle()
                     }];
-                    return; // Stop further checks
+                    return;
                 }
-
-                // Check for resize handles next
                 const handle = selectedObject.getHandleAtPoint(x, y);
                 if (handle) {
                     isResizing = true;
                     isRotating = false;
                     isDragging = false;
-                    activeResizeHandle = handle.name; // Set the active handle
-
+                    activeResizeHandle = handle.name;
                     const oppositeHandleName = getOppositeHandle(handle.name);
                     initialDragState = [{
                         id: selectedObject.id,
@@ -3440,22 +3980,19 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Find all objects under the cursor, from top to bottom.
         const hitObjects = [];
         for (let i = objects.length - 1; i >= 0; i--) {
-            if (objects[i].isPointInside(x, y) && !objects[i].locked) {
+            if (objects[i].isPointInside(x, y)) {
                 hitObjects.push(objects[i]);
             }
         }
 
         let targetObject = null;
         if (hitObjects.length > 0) {
-            // Prioritize dragging an already-selected object if it's under the cursor.
             const alreadySelectedHit = hitObjects.find(obj => selectedObjectIds.includes(obj.id));
             if (alreadySelectedHit) {
                 targetObject = alreadySelectedHit;
             } else {
-                // Otherwise, select the topmost new object.
                 targetObject = hitObjects[0];
             }
         }
@@ -3463,48 +4000,47 @@ document.addEventListener('DOMContentLoaded', function () {
         if (targetObject) {
             const hitObjectId = targetObject.id;
             const wasAlreadySelected = selectedObjectIds.includes(hitObjectId);
-
             if (e.shiftKey || e.ctrlKey || e.metaKey) {
-                // Multi-select logic: Add or remove from selection
                 if (wasAlreadySelected) {
                     selectedObjectIds = selectedObjectIds.filter(id => id !== hitObjectId);
                 } else {
                     selectedObjectIds.push(hitObjectId);
                 }
             } else {
-                // Single-select logic: Clear all and select only this one
                 if (!wasAlreadySelected) {
                     selectedObjectIds = [hitObjectId];
                 }
-                // If already selected and not multi-selecting, keep it selected for dragging
             }
-
-            // If the newly selected object (or the one clicked in multi-select) is spinning, reset its rotation.
             if (targetObject.rotationSpeed !== 0) {
                 targetObject.rotation = 0;
                 targetObject.rotationAngle = 0;
             }
-
         } else {
-            // Clicked on empty space, clear selection
             selectedObjectIds = [];
         }
 
         if (selectedObjectIds.length > 0) {
-            isDragging = true;
-            dragStartX = x;
-            dragStartY = y;
-            initialDragState = selectedObjectIds.map(id => {
-                const obj = objects.find(o => o.id === id);
-                return { id, x: obj.x, y: obj.y };
-            });
+            if (targetObject && !targetObject.locked) {
+                isDragging = true;
+                dragStartX = x;
+                dragStartY = y;
+                initialDragState = selectedObjectIds.map(id => {
+                    const obj = objects.find(o => o.id === id);
+                    if (obj && !obj.locked) {
+                        return { id, x: obj.x, y: obj.y };
+                    }
+                    return null;
+                }).filter(Boolean);
+            } else {
+                isDragging = false;
+            }
         } else {
             isDragging = false;
         }
 
         updateToolbarState();
         syncPanelsWithSelection();
-        drawFrame();
+        needsRedraw = true; // Request a redraw instead of drawing directly
     });
 
 
@@ -3742,7 +4278,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             updateFormValuesFromObjects();
-            drawFrame();
         } else if (isDragging) {
             const SNAP_THRESHOLD = 30;
             let dx = x - dragStartX;
@@ -3899,8 +4434,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             updateFormValuesFromObjects();
-            // console.log('Calling drawFrame from isDragging, snapLines:', snapLines);
-            drawFrame();
         } else {
             // Update Cursor
             canvasContainer.style.cursor = 'default';
@@ -3959,29 +4492,25 @@ document.addEventListener('DOMContentLoaded', function () {
             recordHistory();
         }
 
-        drawFrame();
+        needsRedraw = true; // Request a final redraw instead of drawing directly
     });
-
-
-
 
     canvasContainer.addEventListener('mouseleave', e => {
         isDragging = false;
         isResizing = false;
     });
 
-
     exportBtn.addEventListener('click', exportFile);
+
+
 
     /**
      * The main initialization function for the application.
      * It sets up the initial configuration, creates objects, renders the form,
      * initializes tooltips, starts the animation loop, and sets up the resizable panels.
      */
-    function init() {
-        const template = document.getElementById('initial-config');
-        const metaElements = Array.from(template.content.querySelectorAll('meta'));
-        configStore = metaElements.map(parseMetaToConfig);
+    async function init() {
+        const constrainBtn = document.getElementById('constrain-btn');
 
         constrainBtn.classList.remove('btn-secondary');
         if (constrainToCanvas) {
@@ -3990,9 +4519,22 @@ document.addEventListener('DOMContentLoaded', function () {
             constrainBtn.classList.add('btn-outline-secondary');
         }
 
-        createInitialObjects();
-        renderForm();
+        let effectLoaded = await loadSharedEffect();
+        if (!effectLoaded) {
+            effectLoaded = await loadFeaturedEffect();
+        }
+
+        if (!effectLoaded) {
+            // If no shared or featured effect was loaded, load the default template
+            const template = document.getElementById('initial-config');
+            const metaElements = Array.from(template.content.querySelectorAll('meta'));
+            configStore = metaElements.map(parseMetaToConfig);
+            createInitialObjects();
+            renderForm();
+        }
+
         updateAll();
+
         new bootstrap.Tooltip(document.body, {
             selector: "[data-bs-toggle='tooltip']",
             trigger: 'hover'
@@ -4007,7 +4549,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const savedHSizes = getCookie('split-h-sizes');
         const initialVSizes = savedVSizes ? JSON.parse(savedVSizes) : [30, 70];
         const initialHSizes = savedHSizes ? JSON.parse(savedHSizes) : [75, 25];
-
         lastHSizes = initialHSizes;
         lastVSizes = initialVSizes;
 
@@ -4017,7 +4558,7 @@ document.addEventListener('DOMContentLoaded', function () {
             gutterSize: 12,
             gutter: (index, direction) => {
                 const gutter = document.createElement('div');
-                gutter.className = `gutter gutter - ${direction}`;
+                gutter.className = `gutter gutter-${direction}`;
                 const icon = document.createElement('i');
                 icon.className = 'bi bi-three-dots-vertical';
                 gutter.appendChild(icon);
@@ -4036,7 +4577,7 @@ document.addEventListener('DOMContentLoaded', function () {
             gutterSize: 12,
             gutter: (index, direction) => {
                 const gutter = document.createElement('div');
-                gutter.className = `gutter gutter - ${direction}`;
+                gutter.className = `gutter gutter-${direction}`;
                 const icon = document.createElement('i');
                 icon.className = 'bi bi-three-dots';
                 gutter.appendChild(icon);
@@ -4049,32 +4590,14 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         initializeSortable();
-        loadSharedEffect();
-        recordHistory(); // Record the initial state of the application
-        updateUndoRedoButtons(); // Set initial button states
-
-        const lastUpdatedSpan = document.getElementById('last-updated-span');
-        if (lastUpdatedSpan) {
-            const now = new Date();
-            const formattedDate = now.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            const formattedTime = now.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                timeZoneName: 'short'
-            });
-            lastUpdatedSpan.textContent = `Current as of: ${formattedDate}, ${formattedTime}`;
-        }
+        recordHistory();
+        updateUndoRedoButtons();
     }
 
     // --- SHARE BUTTON LOGIC ---
     document.getElementById('share-btn').addEventListener('click', async () => {
         const user = window.auth.currentUser;
-        syncConfigStoreWithForm();
+        //syncConfigStoreWithForm();
         const thumbnail = generateThumbnail(document.getElementById('signalCanvas'));
         const name = getControlValues()['title'] || 'My Shared Effect';
 
@@ -4091,10 +4614,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const docRef = await window.addDoc(window.collection(window.db, "projects"), shareableData);
-            const shareUrl = `${window.location.origin}${window.location.pathname} ? effectId = ${docRef.id}`;
+            const shareUrl = `${window.location.origin}${window.location.pathname}?effectId=${docRef.id}`;
             navigator.clipboard.writeText(shareUrl)
                 .then(() => showToast("Share link copied to clipboard!", 'success'))
                 .catch(() => prompt("Copy this link:", shareUrl));
+                
         } catch (error) {
             console.error("Error creating share link: ", error);
             showToast("Could not create share link.", 'danger');
@@ -4113,6 +4637,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // BROWSE GALLERY BUTTON
     document.getElementById('browse-btn').addEventListener('click', async () => {
+        if (galleryListener) {
+            galleryListener();
+            galleryListener = null;
+        }
         document.getElementById('galleryOffcanvasLabel').textContent = 'Community Gallery';
         const galleryList = document.getElementById('gallery-project-list');
         galleryList.innerHTML = '<li class="list-group-item text-center"><div class="spinner-border spinner-border-sm"></div></li>';
@@ -4125,7 +4653,10 @@ document.addEventListener('DOMContentLoaded', function () {
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.createdAt && data.createdAt.toDate) data.createdAt = data.createdAt.toDate();
-                projects.push({ docId: doc.id, ...data });
+                projects.push({
+                    docId: doc.id,
+                    ...data
+                });
             });
             populateGallery(projects);
         } catch (error) {
@@ -4141,7 +4672,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const effectId = params.get('effectId');
 
         if (!effectId) {
-            return; // No share ID in the URL, so do nothing.
+            return false;
         }
 
         try {
@@ -4155,6 +4686,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (projectData.isPublic) {
                     loadWorkspace(projectData);
                     showNotification("Shared effect loaded!");
+                    return true;
                 } else {
                     showNotification("This effect is not public.", 'danger');
                 }
@@ -4367,7 +4899,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // If saved, populate the input and show the modal
-        const shareUrl = `${window.location.origin}${window.location.pathname} ? effectId = ${currentProjectDocId}`;
+        const shareUrl = `${window.location.origin}${window.location.pathname}?effectId=${currentProjectDocId}`;
         const shareLinkInput = document.getElementById('share-link-input');
         shareLinkInput.value = shareUrl;
 
@@ -4396,6 +4928,7 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     });
 
+    // In main.js, REPLACE the 'addObjectBtn' event listener
     addObjectBtn.addEventListener('click', () => {
         currentProjectDocId = null;
         updateShareButtonState();
@@ -4405,7 +4938,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const state = {
             id: newId,
-            name: `Object ${newId}`, // Explicitly sets the default name
+            name: `Object ${newId}`,
             gradient: {}
         };
 
@@ -4435,14 +4968,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const newShape = new Shape({ ...state, ctx });
+        const newShape = new Shape({ ...state, ctx, fps });
         objects.push(newShape);
 
         renderForm();
         updateFormValuesFromObjects();
         drawFrame();
         recordHistory();
-    });;
+    });
 
     /**
      * CONFIRMATION MODAL: General listener for confirm button.
@@ -4457,6 +4990,98 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('change', (e) => {
         recordHistory();
     });
+
+    // --- Logic for the Copy Properties Modal ---
+    const confirmCopyBtn = document.getElementById('confirm-copy-btn');
+    if (confirmCopyBtn) {
+        confirmCopyBtn.addEventListener('click', () => {
+            if (sourceObjectIdForCopy === null) return;
+
+            const sourceObject = objects.find(o => o.id === sourceObjectIdForCopy);
+            if (!sourceObject) return;
+
+            // A map of checkbox IDs to all copyable properties
+            const propertyGroups = {
+                position: ['x', 'y', 'rotation'],
+                size: ['width', 'height', 'innerDiameter', 'angularWidth', 'numberOfSegments'],
+                fillStyle: ['gradient', 'gradType', 'gradientDirection', 'useSharpGradient', 'gradientStop'],
+                animation: ['animationSpeed', 'animationMode', 'scrollDirection', 'rotationSpeed', 'bouncePauseTime'],
+                colorAnimation: ['cycleColors', 'cycleSpeed'],
+                grid: ['numberOfRows', 'numberOfColumns', 'phaseOffset'],
+                text: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'],
+                visualizer: ['visStyle', 'visColorMode', 'visSmoothing', 'visGain', 'visBarCount', 'visNormalize'],
+                oscilloscope: ['oscAmplitude', 'oscFrequency', 'oscRadial', 'oscWaveType', 'oscDrawAsLine', 'oscLineThickness', 'oscAnimationType', 'oscAmplitude2', 'oscFrequency2', 'oscAmplitudeDriver']
+            };
+
+            // --- START: New Additive Logic ---
+            // Start with an empty object and only add properties from checked groups.
+            const propsToCopy = {};
+
+            for (const group in propertyGroups) {
+                const checkbox = document.getElementById(`copy-${group}`);
+                if (checkbox && checkbox.checked) {
+                    propertyGroups[group].forEach(prop => {
+                        // Deep copy nested objects like 'gradient'
+                        if (typeof sourceObject[prop] === 'object' && sourceObject[prop] !== null) {
+                            propsToCopy[prop] = JSON.parse(JSON.stringify(sourceObject[prop]));
+                        }
+                        // Copy primitive values
+                        else if (sourceObject[prop] !== undefined) {
+                            propsToCopy[prop] = sourceObject[prop];
+                        }
+                    });
+                }
+            }
+            // --- END: New Additive Logic ---
+
+            // Store the filtered properties in the clipboard
+            propertyClipboard = {
+                sourceId: sourceObjectIdForCopy,
+                properties: propsToCopy
+            };
+            showToast(`Selected properties copied from "${sourceObject.name}"`, 'info');
+            updateCopyPasteUI(); // Show the 'Paste' buttons
+
+            const copyModal = bootstrap.Modal.getInstance(document.getElementById('copy-properties-modal'));
+            copyModal.hide();
+            //sourceObjectIdForCopy = null; // Reset for next time
+        });
+    }
+
+    document.getElementById('start-audio-btn').addEventListener('click', async () => {
+        const btn = document.getElementById('start-audio-btn');
+        const success = await engine.start(); // Wait for the user to give permission
+
+        if (success) {
+            // Only update the button if audio was successfully started
+            btn.querySelector('.button-text').textContent = 'Audio Active';
+            btn.disabled = true;
+        }
+    });
+
+    /**
+     * Finds and loads the single "featured" effect from the database.
+     * @returns {boolean} True if a featured effect was found and loaded, otherwise false.
+     */
+    async function loadFeaturedEffect() {
+        try {
+            const q = window.query(window.collection(window.db, "projects"), window.where("isFeatured", "==", true), window.limit(1));
+            const querySnapshot = await window.getDocs(q);
+            if (!querySnapshot.empty) {
+                const projectDoc = querySnapshot.docs[0];
+                const projectData = { docId: projectDoc.id, ...projectDoc.data() };
+                if (projectData.createdAt && projectData.createdAt.toDate) {
+                    projectData.createdAt = projectData.createdAt.toDate();
+                }
+                loadWorkspace(projectData);
+                showToast(`Loaded featured effect: "${projectData.name}"`, 'info');
+                return true; // Success
+            }
+        } catch (error) {
+            console.error("Error loading featured effect:", error);
+        }
+        return false; // No featured effect found or an error occurred
+    }
 
     // Start the application.
     init();
