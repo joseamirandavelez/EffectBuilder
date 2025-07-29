@@ -12,26 +12,48 @@ let dragStartY = 0;
 // Helper function to compute world-coordinate edges and center
 function getWorldPoints(obj) {
     const center = obj.getCenter();
+  
+    if (obj.shape === 'circle' || obj.shape === 'ring') {
+        const outerRadius = obj.width / 2;
+        let points = [
+            { x: center.x, y: center.y - outerRadius, type: 'edge', handle: 'top' },
+            { x: center.x, y: center.y + outerRadius, type: 'edge', handle: 'bottom' },
+            { x: center.x - outerRadius, y: center.y, type: 'edge', handle: 'left' },
+            { x: center.x + outerRadius, y: center.y, type: 'edge', handle: 'right' },
+            { x: center.x, y: center.y, type: 'center', handle: 'center' }
+        ];
+        if (obj.shape === 'ring' && obj.innerDiameter > 0) {
+            const innerRadius = obj.innerDiameter / 2;
+            points.push(
+                { x: center.x, y: center.y - innerRadius, type: 'edge', handle: 'top' },
+                { x: center.x, y: center.y + innerRadius, type: 'edge', handle: 'bottom' },
+                { x: center.x - innerRadius, y: center.y, type: 'edge', handle: 'left' },
+                { x: center.x + innerRadius, y: center.y, type: 'edge', handle: 'right' }
+            );
+        }
+        return points;
+    }
     const angle = obj.getRenderAngle();
     const cosA = Math.cos(angle);
     const sinA = Math.sin(angle);
     const halfWidth = obj.width / 2;
     const halfHeight = obj.height / 2;
     const localPoints = [
-        { x: -halfWidth, y: -halfHeight, type: 'edge' },   // Top-left
-        { x: halfWidth, y: -halfHeight, type: 'edge' },    // Top-right
-        { x: halfWidth, y: halfHeight, type: 'edge' },     // Bottom-right
-        { x: -halfWidth, y: halfHeight, type: 'edge' },    // Bottom-left
-        { x: 0, y: -halfHeight, type: 'center' },          // Top-center
-        { x: 0, y: halfHeight, type: 'center' },           // Bottom-center
-        { x: -halfWidth, y: 0, type: 'center' },           // Center-left
-        { x: halfWidth, y: 0, type: 'center' },            // Center-right
-        { x: 0, y: 0, type: 'center' }                     // True center
+        { x: -halfWidth, y: -halfHeight, type: 'edge', handle: 'top-left' },
+        { x: halfWidth, y: -halfHeight, type: 'edge', handle: 'top-right' },
+        { x: halfWidth, y: halfHeight, type: 'edge', handle: 'bottom-right' },
+        { x: -halfWidth, y: halfHeight, type: 'edge', handle: 'bottom-left' },
+        { x: 0, y: -halfHeight, type: 'center', handle: 'top' },
+        { x: 0, y: halfHeight, type: 'center', handle: 'bottom' },
+        { x: -halfWidth, y: 0, type: 'center', handle: 'left' },
+        { x: halfWidth, y: 0, type: 'center', handle: 'right' },
+        { x: 0, y: 0, type: 'center', handle: 'center' }
     ];
     return localPoints.map(point => ({
         x: center.x + (point.x * cosA - point.y * sinA),
         y: center.y + (point.x * sinA + point.y * cosA),
-        type: point.type
+        type: point.type,
+        handle: point.handle
     }));
 }
 
@@ -302,7 +324,7 @@ function getBoundingBox(obj) {
 // In main.js, DELETE your entire existing "class Shape { ... }" block and replace it with this:
 
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape }) {
         this.id = id;
         this.name = name || `Object ${id}`;
         this.shape = shape;
@@ -360,6 +382,14 @@ class Shape {
         this.typewriterWaitTimer = 0;
         this.showTime = showTime || false;
         this.showDate = showDate || false;
+        this.lineWidth = lineWidth || 2;
+        this.waveType = waveType || 'sine';
+        this.frequency = frequency || 5;
+        this.pulseDepth = pulseDepth !== undefined ? pulseDepth : 50;
+        this.fillShape = fillShape || false;
+        this.oscDisplayMode = oscDisplayMode || 'linear';
+        this.waveMinY = this.y;
+        this.waveMaxY = this.y + this.height;
         this._pausedRotationSpeed = null;
     }
 
@@ -413,45 +443,28 @@ class Shape {
         return (this.rotationSpeed !== 0) ? this.rotationAngle : (this.rotation * Math.PI / 180);
     }
 
-    getHandlePositions() {
-        const h2 = this.handleSize / 2;
-        return {
-            'top-left': { x: this.x - h2, y: this.y - h2 },
-            'top': { x: this.x + this.width / 2 - h2, y: this.y - h2 },
-            'top-right': { x: this.x + this.width - h2, y: this.y - h2 },
-            'left': { x: this.x - h2, y: this.y + this.height / 2 - h2 },
-            'right': { x: this.x + this.width - h2, y: this.y + this.height / 2 - h2 },
-            'bottom-left': { x: this.x - h2, y: this.y + this.height - h2 },
-            'bottom': { x: this.x + this.width / 2 - h2, y: this.y + this.height - h2 },
-            'bottom-right': { x: this.x + this.width - h2, y: this.y + this.height - h2 }
-        };
-    }
-
     getWorldCoordsOfCorner(handleName) {
-        const handlePositions = this.getHandlePositions();
-        const h2 = this.handleSize / 2;
-        const localCorner = {
-            x: handlePositions[handleName].x + h2,
-            y: handlePositions[handleName].y + h2
-        };
         const center = this.getCenter();
+        const halfW = this.width / 2;
+        const halfH = this.height / 2;
+
+        let localCorner = { x: 0, y: 0 };
+        if (handleName.includes('left')) localCorner.x = -halfW;
+        if (handleName.includes('right')) localCorner.x = halfW;
+        if (handleName.includes('top')) localCorner.y = -halfH;
+        if (handleName.includes('bottom')) localCorner.y = halfH;
+
         const angle = this.getRenderAngle();
         const s = Math.sin(angle);
         const c = Math.cos(angle);
-        let tempX = localCorner.x - center.x;
-        let tempY = localCorner.y - center.y;
-        const rotatedX = tempX * c - tempY * s;
-        const rotatedY = tempX * s + tempY * c;
-        return { x: rotatedX + center.x, y: rotatedY + center.y };
-    }
+        const rotatedX = localCorner.x * c - localCorner.y * s;
+        const rotatedY = localCorner.x * s + localCorner.y * c;
 
-    getRotationHandlePosition() {
-        return { x: this.x + this.width / 2, y: this.y + this.rotationHandleOffset };
+        return { x: center.x + rotatedX, y: center.y + rotatedY };
     }
 
     getHandleAtPoint(px, py) {
         if (this.locked) return null;
-
         let minX, minY, bbWidth, bbHeight;
 
         if (this.shape === 'circle' || this.shape === 'ring') {
@@ -478,7 +491,6 @@ class Shape {
         const maxX = minX + bbWidth;
         const maxY = minY + bbHeight;
 
-        // Check for Rotation Handle
         const topMargin = 40;
         let rotHandleY;
         if (minY < topMargin) { rotHandleY = maxY - this.rotationHandleOffset; }
@@ -488,8 +500,7 @@ class Shape {
         if (dist <= this.rotationHandleRadius + this.handleSize / 2) {
             return { name: 'rotate', cursor: 'crosshair', type: 'rotation' };
         }
-
-        // Check for Resize Handles
+      
         const h2 = this.handleSize / 2;
         const handlePositions = {
             'top-left': { x: minX, y: minY }, 'top': { x: minX + bbWidth / 2, y: minY }, 'top-right': { x: maxX, y: minY },
@@ -515,6 +526,7 @@ class Shape {
         const local_dy = dx * Math.sin(angle) + dy * Math.cos(angle);
         const halfWidth = this.width / 2;
         const halfHeight = this.height / 2;
+
         return (local_dx >= -halfWidth && local_dx <= halfWidth &&
             local_dy >= -halfHeight && local_dy <= halfHeight);
     }
@@ -537,7 +549,8 @@ class Shape {
                 if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
                     if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
                     if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
-                } else if (this.hasOwnProperty(key)) {
+                } else {
+                    // FIX: Removed hasOwnProperty check to allow all properties from the form to update.
                     this[key] = props[key];
                 }
             }
@@ -627,7 +640,9 @@ class Shape {
         }
         const rotationIncrement = (this.rotationSpeed || 0) / 1000;
         this.rotationAngle += rotationIncrement;
-        this.animationAngle += rotationIncrement;
+
+        const animationIncrement = (this.animationSpeed || 0) * 0.05;
+        this.animationAngle += animationIncrement;
     }
 
     createFillStyle(phase = 0) {
@@ -711,13 +726,19 @@ class Shape {
         return c1 || 'black';
     }
 
-    draw(enableAnimation, isSelected) {
+    draw(isSelected) {
+        // --- NEW: CLIPPING LOGIC ---
+        this.ctx.save(); // Save the canvas state before applying the clip
+        this.ctx.beginPath();
+        this.ctx.rect(this.x, this.y, this.width, this.height);
+        this.ctx.clip(); // From now on, nothing can be drawn outside this rectangle
+
+        // --- Original drawing logic starts here ---
         if (isSelected && this.rotationSpeed !== 0) {
-            // If the object is selected and spinning, pause it internally.
+            this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
             this._pausedRotationSpeed = this.rotationSpeed;
             this.rotationSpeed = 0;
         } else if (!isSelected && this._pausedRotationSpeed !== null) {
-            // If the object is deselected and has a paused speed, resume it.
             this.rotationSpeed = this._pausedRotationSpeed;
             this._pausedRotationSpeed = null;
         }
@@ -763,7 +784,7 @@ class Shape {
             const isRandom = this.gradType === 'random';
             const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
             const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-            if (isRandom && enableAnimation) {
+            if (isRandom) {
                 this.randomColorTimer -= 1;
                 if (this.randomColorTimer <= 0) {
                     this.cellColors = [];
@@ -794,6 +815,81 @@ class Shape {
         } else if (this.shape === 'text') {
             this.ctx.fillStyle = this.createFillStyle();
             drawPixelText(this.ctx, this);
+        } else if (this.shape === 'oscilloscope') {
+            this.ctx.lineWidth = this.lineWidth;
+            this.ctx.beginPath();
+
+            if (this.oscDisplayMode === 'radial') {
+                const radialCenterX = this.x + this.width / 2;
+                const radialCenterY = this.y + this.height / 2;
+                const frequency = this.frequency;
+
+                const totalRadius = (Math.min(this.width, this.height) / 2) - (this.lineWidth / 2);
+                const pulseRatio = (this.pulseDepth || 0) / 100.0;
+                const baseRadius = totalRadius * (0.5 + pulseRatio * 0.5);
+                const maxAmplitude = totalRadius - baseRadius;
+                const breathFactor = 1 + Math.sin(this.animationAngle) * 0.2;
+
+                for (let i = 0; i <= 360; i++) {
+                    const angleRad = (i * Math.PI) / 180;
+                    const progress = i / 360;
+                    const waveFuncAngle = 2 * Math.PI * frequency * progress + this.animationAngle * 2;
+                    let y_wave;
+                    switch (this.waveType) {
+                        case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
+                        case 'sawtooth': y_wave = (((waveFuncAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
+                        case 'triangle': y_wave = Math.asin(Math.sin(waveFuncAngle)) * (2 / Math.PI); break;
+                        case 'sine': default: y_wave = Math.sin(waveFuncAngle); break;
+                    }
+                    const modulatedRadius = baseRadius + y_wave * maxAmplitude;
+                    const finalRadius = modulatedRadius * breathFactor;
+                    const px = radialCenterX + finalRadius * Math.cos(angleRad);
+                    const py = radialCenterY + finalRadius * Math.sin(angleRad);
+                    if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
+                }
+                this.ctx.closePath();
+                this.waveMinY = radialCenterY - totalRadius * breathFactor;
+                this.waveMaxY = radialCenterY + totalRadius * breathFactor;
+
+            } else { // Linear mode
+                const waveCenterY = this.y + this.height / 2;
+                const amplitude = (this.height - this.lineWidth) / 2;
+                const frequency = this.frequency;
+                let minY = Infinity, maxY = -Infinity;
+                for (let i = 0; i <= this.width; i++) {
+                    const progress = i / this.width;
+                    const angle = 2 * Math.PI * frequency * progress + this.animationAngle;
+                    let y_wave;
+                    switch (this.waveType) {
+                        case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;
+                        case 'sawtooth': y_wave = 2 * (progress * frequency - Math.floor(0.5 + progress * frequency)); break;
+                        case 'triangle': y_wave = Math.asin(Math.sin(angle)) * (2 / Math.PI); break;
+                        case 'sine': default: y_wave = Math.sin(angle); break;
+                    }
+                    const px = this.x + i;
+                    const py = waveCenterY - y_wave * amplitude;
+                    if (py < minY) minY = py;
+                    if (py > maxY) maxY = py;
+                    if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
+                }
+
+                if (this.fillShape) {
+                    this.ctx.lineTo(this.x + this.width, this.y + this.height);
+                    this.ctx.lineTo(this.x, this.y + this.height);
+                    this.ctx.closePath();
+                }
+
+                this.waveMinY = minY;
+                this.waveMaxY = maxY;
+            }
+
+            if (this.fillShape) {
+                this.ctx.fillStyle = this.createFillStyle();
+                this.ctx.fill();
+            }
+            this.ctx.strokeStyle = this.createFillStyle();
+            this.ctx.stroke();
+
         } else {
             this.ctx.beginPath();
             switch (this.shape) {
@@ -808,6 +904,9 @@ class Shape {
             this.ctx.fill();
         }
         this.ctx.restore();
+
+        // --- NEW: CLIPPING LOGIC ---
+        this.ctx.restore(); // This final restore removes the clipping region
     }
 
     drawSelectionUI() {
@@ -821,14 +920,12 @@ class Shape {
         let minX, minY, bbWidth, bbHeight;
 
         if (this.shape === 'circle' || this.shape === 'ring') {
-            // For circles/rings, the selection box is always an un-rotated square
             const center = this.getCenter();
-            bbWidth = this.width; // Diameter
-            bbHeight = this.height; // Diameter
+            bbWidth = this.width;
+            bbHeight = this.height;
             minX = center.x - bbWidth / 2;
             minY = center.y - bbHeight / 2;
         } else {
-            // For other shapes (rectangles), calculate the rotated bounding box
             const corners = [
                 this.getWorldCoordsOfCorner('top-left'),
                 this.getWorldCoordsOfCorner('top-right'),
@@ -843,11 +940,9 @@ class Shape {
             bbHeight = maxY - minY;
         }
 
-        // Draw the selection box
         this.ctx.strokeRect(minX, minY, bbWidth, bbHeight);
         this.ctx.setLineDash([]);
 
-        // Draw handles (common logic for all shapes based on the calculated bounding box)
         const h2 = this.handleSize / 2;
         const maxX = minX + bbWidth;
         const maxY = minY + bbHeight;
@@ -858,7 +953,6 @@ class Shape {
         ];
         handlePositions.forEach(pos => this.ctx.fillRect(pos.x, pos.y, this.handleSize, this.handleSize));
 
-        // Draw rotation handle (common logic)
         const topMargin = 40;
         let handleY;
         let stemStartY;
@@ -881,7 +975,6 @@ class Shape {
         this.ctx.restore();
 
         if (this.locked) {
-            // Use the calculated bounding box center for the lock icon
             const centerX = minX + bbWidth / 2;
             const centerY = minY + bbHeight / 2;
             this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -1889,8 +1982,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Color Animation': ['cycleColors', 'cycleSpeed']
             };
 
-            const shapeConf = objectConfigs.find(c => c.property.endsWith('_shape'));
-            const currentShape = form.elements[`obj${id}_shape`]?.value || (shapeConf ? shapeConf.default : 'rectangle');
+            const currentShape = obj.shape;
 
             for (const groupName in groups) {
                 const groupContainer = document.createElement('div');
@@ -1901,7 +1993,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 groupContainer.appendChild(groupHeader);
                 const propsInGroup = groups[groupName];
                 objectConfigs
-                    .filter(conf => propsInGroup.includes(conf.property.substring(conf.property.indexOf('_') + 1)))
+                    .filter(conf => {
+                        const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+                        return propsInGroup.includes(propName);
+                    })
                     .forEach(conf => groupContainer.appendChild(createFormControl(conf)));
                 if (groupContainer.children.length > 1) {
                     collapseWrapper.appendChild(groupContainer);
@@ -1910,11 +2005,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
             const gridSettings = ['numberOfRows', 'numberOfColumns', 'phaseOffset'];
-            // const textSubGroups = {
-            //     'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign', 'autoWidth'],
-            //     'Time & Date Display': ['showTime', 'showDate'],
-            //     'Text Animation': ['textAnimation', 'textAnimationSpeed']
-            // };
+            const oscilloscopeSettings = ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape'];
             const textSubGroups = {
                 'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
                 'Time & Date Display': ['showTime', 'showDate'],
@@ -1922,7 +2013,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
 
             const ringGroup = document.createElement('div');
-            ringGroup.className = 'control-group mb-4 ring-settings-group';
+            ringGroup.className = 'control-group card card-body bg-body mb-3 ring-settings-group';
             ringGroup.style.display = currentShape === 'ring' ? 'block' : 'none';
             const ringHeader = document.createElement('h6');
             ringHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
@@ -1930,6 +2021,16 @@ document.addEventListener('DOMContentLoaded', function () {
             ringGroup.appendChild(ringHeader);
             objectConfigs.filter(c => ringSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => ringGroup.appendChild(createFormControl(c)));
             collapseWrapper.appendChild(ringGroup);
+
+            const oscilloscopeGroup = document.createElement('div');
+            oscilloscopeGroup.className = 'control-group card card-body bg-body mb-3 oscilloscope-settings-group';
+            oscilloscopeGroup.style.display = currentShape === 'oscilloscope' ? 'block' : 'none';
+            const oscilloscopeHeader = document.createElement('h6');
+            oscilloscopeHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
+            oscilloscopeHeader.textContent = 'Oscilloscope Settings';
+            oscilloscopeGroup.appendChild(oscilloscopeHeader);
+            objectConfigs.filter(c => oscilloscopeSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => oscilloscopeGroup.appendChild(createFormControl(c)));
+            collapseWrapper.appendChild(oscilloscopeGroup);
 
             const textGroup = document.createElement('div');
             textGroup.className = 'text-settings-group';
@@ -1953,7 +2054,7 @@ document.addEventListener('DOMContentLoaded', function () {
             collapseWrapper.appendChild(textGroup);
 
             const gridGroup = document.createElement('div');
-            gridGroup.className = 'control-group mb-4 grid-settings-group';
+            gridGroup.className = 'control-group card card-body bg-body mb-3 grid-settings-group';
             gridGroup.style.display = currentShape === 'rectangle' ? 'block' : 'none';
             const gridHeader = document.createElement('h6');
             gridHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
@@ -2251,13 +2352,16 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Get the current animation setting from the form once per frame.
         const animationEnabled = getControlValues().enableAnimation;
 
-        // Draw all objects, passing the live animation setting.
+        // Draw all objects
         objects.forEach(obj => {
             if (obj instanceof Shape) {
-                obj.draw(animationEnabled, selectedObjectIds.includes(obj.id));
+                // Animation state is now updated here, for all unselected objects
+                if (animationEnabled && !selectedObjectIds.includes(obj.id)) {
+                    obj.updateAnimationState();
+                }
+                obj.draw(selectedObjectIds.includes(obj.id));
             } else {
                 console.error('Invalid object in objects array:', obj);
             }
@@ -2276,9 +2380,6 @@ document.addEventListener('DOMContentLoaded', function () {
         drawSnapLines(snapLines);
     }
 
-    /**
-     * The main animation loop, called via requestAnimationFrame, and throttled to a specific FPS.
-     */
     function animate(timestamp) {
         requestAnimationFrame(animate);
 
@@ -2288,14 +2389,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (elapsed > fpsInterval) {
             then = now - (elapsed % fpsInterval);
 
-            const enableAnimationCheckbox = document.getElementById('enableAnimation');
-            const isAnimationEnabled = enableAnimationCheckbox ? enableAnimationCheckbox.checked : false;
-
-            // THE FIX: We add `isRotating` and `needsRedraw` to this condition.
-            if (isAnimationEnabled || isDragging || isResizing || isRotating || needsRedraw) {
-                drawFrame();
-                needsRedraw = false; // Reset the flag after drawing the frame.
-            }
+            // Always draw a frame to keep the UI responsive
+            drawFrame();
         }
     }
 
@@ -2531,7 +2626,41 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {object[]} workspace.objects - The array of saved object states (name, id, locked).
      */
     function loadWorkspace(workspace) {
-        configStore = workspace.configs;
+        const loadedConfigs = workspace.configs;
+
+        // Identify all unique object IDs from the loaded configuration
+        const objectIds = [...new Set(
+            loadedConfigs
+                .map(c => (c.property || '').match(/^obj(\d+)_/))
+                .filter(match => match)
+                .map(match => parseInt(match[1], 10))
+        )];
+
+        // Start building the new, merged config store. First, take all general (non-object) settings.
+        const mergedConfigStore = loadedConfigs.filter(c => !(c.property || '').startsWith('obj'));
+
+        // For each object, merge its saved properties with the latest default properties
+        objectIds.forEach(id => {
+            const fullDefaultConfig = getDefaultObjectConfig(id);
+            const savedObjectConfigs = loadedConfigs.filter(c => c.property && c.property.startsWith(`obj${id}_`));
+            const savedPropsMap = new Map(savedObjectConfigs.map(c => [c.property, c]));
+
+            const mergedObjectConfigs = fullDefaultConfig.map(defaultConf => {
+                // If a property exists in the saved data, use the saved version.
+                if (savedPropsMap.has(defaultConf.property)) {
+                    return savedPropsMap.get(defaultConf.property);
+                }
+                // Otherwise, use the new default from the current application code.
+                return defaultConf;
+            });
+
+            mergedConfigStore.push(...mergedObjectConfigs);
+        });
+
+        // The application's main configStore is now the complete, merged version.
+        configStore = mergedConfigStore;
+
+        // Proceed with the rest of the loading process as before.
         createInitialObjects();
 
         if (workspace.objects) {
@@ -2598,8 +2727,8 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function getDefaultObjectConfig(newId) {
         return [
-            // Shape and non-pixel properties remain the same
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,text' },
+            // Adds "oscilloscope" to the dropdown list
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,text,oscilloscope' },
 
             // --- SCALED PROPERTIES ---
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320' },
@@ -2609,7 +2738,15 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_innerDiameter`, label: `Object ${newId}: Inner Diameter`, type: 'number', default: '25', min: '1', max: '318' },
             { property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '15', min: '2', max: '100' },
 
-            // --- NON-SCALED PROPERTIES ---
+            // --- OSCILLOSCOPE PROPERTIES ---
+            { property: `obj${newId}_lineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20' },
+            { property: `obj${newId}_waveType`, label: `Object ${newId}: Wave Type`, type: 'combobox', default: 'sine', values: 'sine,square,sawtooth,triangle' },
+            { property: `obj${newId}_frequency`, label: `Object ${newId}: Frequency`, type: 'number', default: '5', min: '1', max: '50' },
+            { property: `obj${newId}_oscDisplayMode`, label: `Object ${newId}: Display Mode`, type: 'combobox', default: 'linear', values: 'linear,radial' },
+            { property: `obj${newId}_pulseDepth`, label: `Object ${newId}: Pulse Depth`, type: 'number', default: '50', min: '0', max: '100' },
+            { property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false' },
+
+            // --- OTHER PROPERTIES ---
             { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360' },
             { property: `obj${newId}_numberOfSegments`, label: `Object ${newId}: Segments`, type: 'number', default: '12', min: '1', max: '50' },
             { property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', min: '1', max: '360', default: '20' },
@@ -2634,7 +2771,6 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_textAnimationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', min: '1', max: '100', default: '10' },
             { property: `obj${newId}_showTime`, label: `Object ${newId}: Show Current Time`, type: 'boolean', default: 'false' },
             { property: `obj${newId}_showDate`, label: `Object ${newId}: Show Current Date`, type: 'boolean', default: 'false' },
-            //{ property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'true' }
         ];
     }
 
@@ -3140,6 +3276,56 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
+     * Updates the global configStore with the current live state of all Shape objects.
+     * This ensures that when the project is saved, the most recent changes (including those
+     * made via direct canvas manipulation) are captured in the configuration blueprint.
+     */
+    function syncConfigStoreWithState() {
+        objects.forEach(obj => {
+            const configsForThisObject = configStore.filter(c => c.property && c.property.startsWith(`obj${obj.id}_`));
+
+            configsForThisObject.forEach(conf => {
+                const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+                let liveValue;
+
+                // Get the live value from the object instance
+                if (propName.startsWith('gradColor')) {
+                    const colorKey = propName.replace('gradColor', 'color');
+                    liveValue = obj.gradient[colorKey];
+                } else if (propName === 'scrollDir') {
+                    liveValue = obj.scrollDirection;
+                } else {
+                    liveValue = obj[propName];
+                }
+
+                if (liveValue === undefined) return;
+
+                // Apply transformations to convert internal value to config value
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+                if (propsToScale.includes(propName)) {
+                    liveValue /= 4;
+                } else if (propName === 'animationSpeed') {
+                    liveValue *= 10;
+                } else if (propName === 'cycleSpeed') {
+                    liveValue *= 50;
+                }
+
+                if (typeof liveValue === 'boolean') {
+                    liveValue = String(liveValue);
+                }
+
+                // Round numbers to avoid floating point issues
+                if (typeof liveValue === 'number') {
+                    liveValue = Math.round(liveValue);
+                }
+
+                // Update the 'default' attribute in the configStore
+                conf.default = liveValue;
+            });
+        });
+    }
+
+    /**
      * SAVE BUTTON: Checks for duplicates before saving.
      */
     document.getElementById('save-ws-btn').addEventListener('click', async () => {
@@ -3148,6 +3334,10 @@ document.addEventListener('DOMContentLoaded', function () {
             showToast("You must be logged in to save.", 'danger');
             return;
         }
+
+        // --- FIX: Sync configStore with the live object state before saving ---
+        syncConfigStoreWithState();
+        // --- END FIX ---
 
         const name = getControlValues()['title'] || 'Untitled Effect';
         const trimmedName = name.trim();
@@ -3167,7 +3357,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const projectData = {
             name: trimmedName,
             thumbnail: thumbnail,
-            configs: sanitizedConfigs, // Use the sanitized version
+            configs: sanitizedConfigs, // This will now have the correct, up-to-date values
             objects: objects.map(o => ({ id: o.id, name: o.name, locked: o.locked })),
             updatedAt: new Date()
         };
@@ -3212,7 +3402,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showToast("Error saving project: " + error.message, 'danger');
             }
         }
-    });;
+    });
 
     // MY PROJECTS BUTTON
     document.getElementById('load-ws-btn').addEventListener('click', () => {
@@ -3389,8 +3579,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         const oppositeHandleName = getOppositeHandle(handle.name);
 
                         let anchorPoint;
-                        if (selectedObject.shape === 'circle' || selectedObject.shape === 'ring') {
-                            // For circles, calculate the anchor from the simple, UN-ROTATED box.
+
+                        if (selectedObject.shape === 'circle' || selectedObject.shape === 'ring' || selectedObject.shape === 'oscilloscope') {
                             const center = selectedObject.getCenter();
                             const halfSize = selectedObject.width / 2;
                             const signX = oppositeHandleName.includes('left') ? -1 : (oppositeHandleName.includes('right') ? 1 : 0);
@@ -3400,29 +3590,15 @@ document.addEventListener('DOMContentLoaded', function () {
                                 y: center.y + (signY * halfSize)
                             };
                         } else {
-                            // For rectangles, calculate the anchor from the ROTATED bounding box.
-                            const corners = [
-                                selectedObject.getWorldCoordsOfCorner('top-left'), selectedObject.getWorldCoordsOfCorner('top-right'),
-                                selectedObject.getWorldCoordsOfCorner('bottom-right'), selectedObject.getWorldCoordsOfCorner('bottom-left')
-                            ];
-                            const minX = Math.min(...corners.map(c => c.x));
-                            const minY = Math.min(...corners.map(c => c.y));
-                            const maxX = Math.max(...corners.map(c => c.x));
-                            const maxY = Math.max(...corners.map(c => c.y));
-                            switch (oppositeHandleName) {
-                                case 'top-left': anchorPoint = { x: minX, y: minY }; break;
-                                case 'top-right': anchorPoint = { x: maxX, y: minY }; break;
-                                case 'bottom-left': anchorPoint = { x: minX, y: maxY }; break;
-                                case 'bottom-right': anchorPoint = { x: maxX, y: maxY }; break;
-                                case 'top': anchorPoint = { x: (minX + maxX) / 2, y: minY }; break;
-                                case 'bottom': anchorPoint = { x: (minX + maxX) / 2, y: maxY }; break;
-                                case 'left': anchorPoint = { x: minX, y: (minY + maxY) / 2 }; break;
-                                case 'right': anchorPoint = { x: maxX, y: (minY + maxY) / 2 }; break;
-                            }
+                            anchorPoint = selectedObject.getWorldCoordsOfCorner(oppositeHandleName);
                         }
 
                         initialDragState = [{
                             id: selectedObject.id,
+                            initialX: selectedObject.x,
+                            initialY: selectedObject.y,
+                            initialWidth: selectedObject.width,
+                            initialHeight: selectedObject.height,
                             anchorPoint: anchorPoint,
                             diameterRatio: selectedObject.shape === 'ring' ? selectedObject.innerDiameter / selectedObject.width : 1
                         }];
@@ -3498,7 +3674,7 @@ document.addEventListener('DOMContentLoaded', function () {
     canvasContainer.addEventListener('mousemove', e => {
         if (coordsDisplay) {
             const { x, y } = getCanvasCoordinates(e);
-            coordsDisplay.textContent = `${Math.round(x)}, ${Math.round(y)}`;
+            coordsDisplay.textContent = `${Math.round(x / 4)}, ${Math.round(y / 4)}: (${Math.round(x)}, ${Math.round(y)})`;
         }
 
         e.preventDefault();
@@ -3515,77 +3691,187 @@ document.addEventListener('DOMContentLoaded', function () {
                 needsRedraw = true;
             }
         } else if (isResizing) {
+            const SNAP_THRESHOLD = 10;
             const initial = initialDragState[0];
+            let mouseX = x;
+            let mouseY = y;
+            snapLines = [];
+
+            if (!cachedSnapTargets) {
+                cachedSnapTargets = [];
+                const otherObjects = objects.filter(o => !selectedObjectIds.includes(o.id));
+                otherObjects.forEach(otherObj => cachedSnapTargets.push(...getWorldPoints(otherObj)));
+                cachedSnapTargets.push(
+                    { x: canvas.width / 2, y: canvas.height / 2, type: 'center' }, { x: canvas.width / 2, y: 0, type: 'edge' }, { x: canvas.width / 2, y: canvas.height, type: 'edge' }, { x: 0, y: canvas.height / 2, type: 'edge' }, { x: canvas.width, y: canvas.height / 2, type: 'edge' }
+                );
+            }
+
+            const unSnappedState = (() => {
+                const tempObj = new Shape({ ...objects.find(o => o.id === initial.id) });
+                const anchorPoint = initial.anchorPoint;
+                const resizeAngle = tempObj.getRenderAngle();
+                const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
+                if (isSideHandle) {
+                    const dragVecX = x - dragStartX;
+                    const dragVecY = y - dragStartY;
+                    const s = Math.sin(resizeAngle);
+                    const c = Math.cos(resizeAngle);
+                    let newWidth = initial.initialWidth;
+                    let newHeight = initial.initialHeight;
+                    let centerShiftX = 0, centerShiftY = 0;
+                    if (activeResizeHandle === 'right' || activeResizeHandle === 'left') {
+                        const change = dragVecX * c + dragVecY * s;
+                        newWidth += activeResizeHandle === 'left' ? -change : change;
+                        centerShiftX = (change / 2) * c;
+                        centerShiftY = (change / 2) * s;
+                    } else {
+                        const change = -dragVecX * s + dragVecY * c;
+                        newHeight += activeResizeHandle === 'top' ? -change : change;
+                        centerShiftX = (change / 2) * -s;
+                        centerShiftY = (change / 2) * c;
+                    }
+                    const initialCenter = { x: initial.initialX + initial.initialWidth / 2, y: initial.initialY + initial.initialHeight / 2 };
+                    const newCenterX = initialCenter.x + centerShiftX;
+                    const newCenterY = initialCenter.y + centerShiftY;
+                    tempObj.width = newWidth;
+                    tempObj.height = newHeight;
+                    tempObj.x = newCenterX - tempObj.width / 2;
+                    tempObj.y = newCenterY - tempObj.height / 2;
+                } else {
+                    const worldVecX = x - anchorPoint.x;
+                    const worldVecY = y - anchorPoint.y;
+                    const localVecX = worldVecX * Math.cos(-resizeAngle) - worldVecY * Math.sin(-resizeAngle);
+                    const localVecY = worldVecX * Math.sin(-resizeAngle) + worldVecY * Math.cos(-resizeAngle);
+                    const handleXSign = activeResizeHandle.includes('left') ? -1 : 1;
+                    const handleYSign = activeResizeHandle.includes('top') ? -1 : 1;
+                    tempObj.width = localVecX * handleXSign;
+                    tempObj.height = localVecY * handleYSign;
+                    const worldSizingVecX = (tempObj.width * handleXSign) * Math.cos(resizeAngle) - (tempObj.height * handleYSign) * Math.sin(resizeAngle);
+                    const worldSizingVecY = (tempObj.width * handleXSign) * Math.sin(resizeAngle) + (tempObj.height * handleYSign) * Math.cos(resizeAngle);
+                    const newCenterX = anchorPoint.x + worldSizingVecX / 2;
+                    const newCenterY = anchorPoint.y + worldSizingVecY / 2;
+                    tempObj.x = newCenterX - tempObj.width / 2;
+                    tempObj.y = newCenterY - tempObj.height / 2;
+                }
+                return tempObj;
+            })();
+
+            const ghostPoints = getWorldPoints(unSnappedState);
+
+            // Filter points to only check the ones being moved by the active handle
+            let pointsToSnap;
+            const isHorizontalOnly = activeResizeHandle === 'left' || activeResizeHandle === 'right';
+            const isVerticalOnly = activeResizeHandle === 'top' || activeResizeHandle === 'bottom';
+
+            if (isHorizontalOnly) {
+                pointsToSnap = ghostPoints.filter(p => p.handle && p.handle.includes(activeResizeHandle));
+            } else if (isVerticalOnly) {
+                pointsToSnap = ghostPoints.filter(p => p.handle && p.handle.includes(activeResizeHandle));
+            } else { // Corner handles
+                pointsToSnap = ghostPoints;
+            }
+
+            const hSnaps = [], vSnaps = [];
+
+            pointsToSnap.forEach(point => {
+                cachedSnapTargets.forEach(target => {
+                    if (point.type === target.type) {
+                        if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x });
+                        if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y });
+                    }
+                });
+            });
+
+            if (!isVerticalOnly && hSnaps.length > 0) {
+                hSnaps.sort((a, b) => a.dist - b.dist);
+                mouseX += hSnaps[0].adj;
+                snapLines.push({ type: 'vertical', x: hSnaps[0].line, duration: 2 });
+            }
+            if (!isHorizontalOnly && vSnaps.length > 0) {
+                vSnaps.sort((a, b) => a.dist - b.dist);
+                mouseY += vSnaps[0].adj;
+                snapLines.push({ type: 'horizontal', y: vSnaps[0].line, duration: 2 });
+            }
+
             const obj = objects.find(o => o.id === initial.id);
             if (obj) {
-                const anchorPoint = initial.anchorPoint;
-                const mouseX = x;
-                const mouseY = y;
-
-                if (obj.shape === 'circle' || obj.shape === 'ring') {
+                const finalState = (() => { // Rerun final state calculation with snapped mouse coords
+                    const tempObj = new Shape({ ...objects.find(o => o.id === initial.id) });
+                    const anchorPoint = initial.anchorPoint;
+                    const resizeAngle = tempObj.getRenderAngle();
                     const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
                     if (isSideHandle) {
-                        let diameter;
-                        if (activeResizeHandle === 'top' || activeResizeHandle === 'bottom') {
-                            diameter = Math.abs(mouseY - anchorPoint.y);
-                            const newCenterY = (mouseY + anchorPoint.y) / 2;
-                            obj.y = Math.round(newCenterY - diameter / 2);
-                            obj.x = Math.round(anchorPoint.x - diameter / 2);
+                        const dragVecX = mouseX - dragStartX;
+                        const dragVecY = mouseY - dragStartY;
+                        const s = Math.sin(resizeAngle);
+                        const c = Math.cos(resizeAngle);
+                        let newWidth = initial.initialWidth;
+                        let newHeight = initial.initialHeight;
+                        let centerShiftX = 0, centerShiftY = 0;
+                        if (activeResizeHandle === 'right' || activeResizeHandle === 'left') {
+                            const change = dragVecX * c + dragVecY * s;
+                            newWidth += activeResizeHandle === 'left' ? -change : change;
+                            centerShiftX = (change / 2) * c;
+                            centerShiftY = (change / 2) * s;
                         } else {
-                            diameter = Math.abs(mouseX - anchorPoint.x);
-                            const newCenterX = (mouseX + anchorPoint.x) / 2;
-                            obj.x = Math.round(newCenterX - diameter / 2);
-                            obj.y = Math.round(anchorPoint.y - diameter / 2);
+                            const change = -dragVecX * s + dragVecY * c;
+                            newHeight += activeResizeHandle === 'top' ? -change : change;
+                            centerShiftX = (change / 2) * -s;
+                            centerShiftY = (change / 2) * c;
                         }
-                        obj.width = Math.round(Math.max(10, diameter));
-                        obj.height = obj.width;
+                        const initialCenter = { x: initial.initialX + initial.initialWidth / 2, y: initial.initialY + initial.initialHeight / 2 };
+                        const newCenterX = initialCenter.x + centerShiftX;
+                        const newCenterY = initialCenter.y + centerShiftY;
+                        tempObj.width = newWidth;
+                        tempObj.height = newHeight;
+                        tempObj.x = newCenterX - tempObj.width / 2;
+                        tempObj.y = newCenterY - tempObj.height / 2;
                     } else {
-                        let newWidth = Math.abs(mouseX - anchorPoint.x);
-                        let newHeight = Math.abs(mouseY - anchorPoint.y);
-                        let newX = Math.min(mouseX, anchorPoint.x);
-                        let newY = Math.min(mouseY, anchorPoint.y);
-                        const diameter = Math.max(newWidth, newHeight);
-                        if (activeResizeHandle.includes('left')) newX = anchorPoint.x - diameter;
-                        if (activeResizeHandle.includes('top')) newY = anchorPoint.y - diameter;
-                        obj.width = Math.round(Math.max(10, diameter));
-                        obj.height = obj.width;
-                        obj.x = Math.round(newX);
-                        obj.y = Math.round(newY);
+                        const worldVecX = mouseX - anchorPoint.x;
+                        const worldVecY = mouseY - anchorPoint.y;
+                        const localVecX = worldVecX * Math.cos(-resizeAngle) - worldVecY * Math.sin(-resizeAngle);
+                        const localVecY = worldVecX * Math.sin(-resizeAngle) + worldVecY * Math.cos(-resizeAngle);
+                        const handleXSign = activeResizeHandle.includes('left') ? -1 : 1;
+                        const handleYSign = activeResizeHandle.includes('top') ? -1 : 1;
+                        tempObj.width = localVecX * handleXSign;
+                        tempObj.height = localVecY * handleYSign;
+                        const worldSizingVecX = (tempObj.width * handleXSign) * Math.cos(resizeAngle) - (tempObj.height * handleYSign) * Math.sin(resizeAngle);
+                        const worldSizingVecY = (tempObj.width * handleXSign) * Math.sin(resizeAngle) + (tempObj.height * handleYSign) * Math.cos(resizeAngle);
+                        const newCenterX = anchorPoint.x + worldSizingVecX / 2;
+                        const newCenterY = anchorPoint.y + worldSizingVecY / 2;
+                        tempObj.x = newCenterX - tempObj.width / 2;
+                        tempObj.y = newCenterY - tempObj.height / 2;
                     }
-                    if (obj.shape === 'ring') {
-                        obj.innerDiameter = Math.round(obj.width * initial.diameterRatio);
-                    }
-                } else {
-                    const newBBWidth = Math.abs(mouseX - anchorPoint.x);
-                    const newBBHeight = Math.abs(mouseY - anchorPoint.y);
-                    const scaleX = (initial.initialBBWidth > 1) ? newBBWidth / initial.initialBBWidth : 1;
-                    const scaleY = (initial.initialBBHeight > 1) ? newBBHeight / initial.initialBBHeight : 1;
-                    obj.width = Math.round(initial.initialWidth * scaleX);
-                    obj.height = Math.round(initial.initialHeight * scaleY);
-                    const newCenterX = Math.min(mouseX, anchorPoint.x) + newBBWidth / 2;
-                    const newCenterY = Math.min(mouseY, anchorPoint.y) + newBBHeight / 2;
-                    obj.x = Math.round(newCenterX - obj.width / 2);
-                    obj.y = Math.round(newCenterY - obj.height / 2);
+                    return tempObj;
+                })();
+
+                obj.width = Math.round(Math.max(10, finalState.width));
+                obj.height = Math.round(Math.max(10, finalState.height));
+                obj.x = Math.round(finalState.x);
+                obj.y = Math.round(finalState.y);
+
+                if ((obj.shape === 'circle' || obj.shape === 'ring') && obj.width !== obj.height) {
+                    obj.width = obj.height = Math.max(obj.width, obj.height);
+                }
+                if (obj.shape === 'ring') {
+                    obj.innerDiameter = Math.round(obj.width * initial.diameterRatio);
                 }
                 needsRedraw = true;
             }
         } else if (isDragging) {
-            snapLines = []; // Clear previous snap lines
+            snapLines = [];
             const dx = x - dragStartX;
             const dy = y - dragStartY;
             const SNAP_THRESHOLD = 10;
             let finalDx = dx;
             let finalDy = dy;
 
-            // On the first drag frame, cache all possible snap targets.
             if (!cachedSnapTargets) {
                 cachedSnapTargets = [];
-                // Add snap points from all non-selected objects
                 const otherObjects = objects.filter(o => !selectedObjectIds.includes(o.id));
                 otherObjects.forEach(otherObj => {
                     cachedSnapTargets.push(...getWorldPoints(otherObj));
                 });
-                // Add canvas centerlines as snap targets
                 cachedSnapTargets.push(
                     { x: canvas.width / 2, y: canvas.height / 2, type: 'center' },
                     { x: canvas.width / 2, y: 0, type: 'edge' },
@@ -3595,63 +3881,46 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
             }
 
-            const hSnaps = [];
-            const vSnaps = [];
+            const hSnaps = [], vSnaps = [];
 
-            // Find potential snaps for all selected objects
             initialDragState.forEach(state => {
                 const obj = objects.find(o => o.id === state.id);
                 if (obj) {
                     const originalX = obj.x;
                     const originalY = obj.y;
-                    // Temporarily move object to its potential new position
                     obj.x = state.x + dx;
                     obj.y = state.y + dy;
                     const selectedPoints = getWorldPoints(obj);
-
-                    // Find all potential horizontal and vertical snaps for this object
                     selectedPoints.forEach(point => {
                         cachedSnapTargets.forEach(target => {
                             if (point.type === target.type) {
-                                if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) {
-                                    // FIX: Store the target's coordinate ('line') for drawing
-                                    hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x });
-                                }
-                                if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) {
-                                    // FIX: Store the target's coordinate ('line') for drawing
-                                    vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y });
-                                }
+                                if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x });
+                                if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y });
                             }
                         });
                     });
-                    // Revert object to its actual current position
                     obj.x = originalX;
                     obj.y = originalY;
                 }
             });
 
-            // Apply the closest snap
             if (hSnaps.length > 0) {
                 hSnaps.sort((a, b) => a.dist - b.dist);
                 finalDx += hSnaps[0].adj;
-                // FIX: Use the stored 'line' property for the correct position
                 snapLines.push({ type: 'vertical', x: hSnaps[0].line, duration: 2 });
             }
             if (vSnaps.length > 0) {
                 vSnaps.sort((a, b) => a.dist - b.dist);
                 finalDy += vSnaps[0].adj;
-                // FIX: Use the stored 'line' property for the correct position
                 snapLines.push({ type: 'horizontal', y: vSnaps[0].line, duration: 2 });
             }
 
-            // Apply canvas boundary constraints if enabled
             if (constrainToCanvas) {
                 let constrainedDx = finalDx;
                 let constrainedDy = finalDy;
                 initialDragState.forEach(state => {
                     const obj = objects.find(o => o.id === state.id);
                     if (obj) {
-                        // Temporarily move the object to its potential final position to get its bounding box
                         const originalX = obj.x;
                         const originalY = obj.y;
                         obj.x = state.x + finalDx;
@@ -3659,8 +3928,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         const { minX, minY, maxX, maxY } = getBoundingBox(obj);
                         obj.x = originalX;
                         obj.y = originalY;
-
-                        // Check if this bounding box is out of bounds and adjust the delta
                         if (minX < 0) constrainedDx = Math.max(constrainedDx, -minX + finalDx);
                         if (maxX > canvas.width) constrainedDx = Math.min(constrainedDx, canvas.width - maxX + finalDx);
                         if (minY < 0) constrainedDy = Math.max(constrainedDy, -minY + finalDy);
@@ -3671,7 +3938,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 finalDy = constrainedDy;
             }
 
-            // Apply the final, corrected delta to all selected objects
             initialDragState.forEach(state => {
                 const obj = objects.find(o => o.id === state.id);
                 if (obj) {
@@ -3679,7 +3945,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     obj.y = state.y + finalDy;
                 }
             });
-
             needsRedraw = true;
         } else {
             let cursor = 'default';
