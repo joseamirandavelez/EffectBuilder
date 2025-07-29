@@ -12,26 +12,49 @@ let dragStartY = 0;
 // Helper function to compute world-coordinate edges and center
 function getWorldPoints(obj) {
     const center = obj.getCenter();
+
+    if (obj.shape === 'circle' || obj.shape === 'ring') {
+        const outerRadius = obj.width / 2;
+        let points = [
+            { x: center.x, y: center.y - outerRadius, type: 'edge', handle: 'top' },
+            { x: center.x, y: center.y + outerRadius, type: 'edge', handle: 'bottom' },
+            { x: center.x - outerRadius, y: center.y, type: 'edge', handle: 'left' },
+            { x: center.x + outerRadius, y: center.y, type: 'edge', handle: 'right' },
+            { x: center.x, y: center.y, type: 'center', handle: 'center' }
+        ];
+        if (obj.shape === 'ring' && obj.innerDiameter > 0) {
+            const innerRadius = obj.innerDiameter / 2;
+            points.push(
+                { x: center.x, y: center.y - innerRadius, type: 'edge', handle: 'top' },
+                { x: center.x, y: center.y + innerRadius, type: 'edge', handle: 'bottom' },
+                { x: center.x - innerRadius, y: center.y, type: 'edge', handle: 'left' },
+                { x: center.x + innerRadius, y: center.y, type: 'edge', handle: 'right' }
+            );
+        }
+        return points;
+    }
+
     const angle = obj.getRenderAngle();
     const cosA = Math.cos(angle);
     const sinA = Math.sin(angle);
     const halfWidth = obj.width / 2;
     const halfHeight = obj.height / 2;
     const localPoints = [
-        { x: -halfWidth, y: -halfHeight, type: 'edge' },   // Top-left
-        { x: halfWidth, y: -halfHeight, type: 'edge' },    // Top-right
-        { x: halfWidth, y: halfHeight, type: 'edge' },     // Bottom-right
-        { x: -halfWidth, y: halfHeight, type: 'edge' },    // Bottom-left
-        { x: 0, y: -halfHeight, type: 'center' },          // Top-center
-        { x: 0, y: halfHeight, type: 'center' },           // Bottom-center
-        { x: -halfWidth, y: 0, type: 'center' },           // Center-left
-        { x: halfWidth, y: 0, type: 'center' },            // Center-right
-        { x: 0, y: 0, type: 'center' }                     // True center
+        { x: -halfWidth, y: -halfHeight, type: 'edge', handle: 'top-left' },
+        { x: halfWidth, y: -halfHeight, type: 'edge', handle: 'top-right' },
+        { x: halfWidth, y: halfHeight, type: 'edge', handle: 'bottom-right' },
+        { x: -halfWidth, y: halfHeight, type: 'edge', handle: 'bottom-left' },
+        { x: 0, y: -halfHeight, type: 'center', handle: 'top' },
+        { x: 0, y: halfHeight, type: 'center', handle: 'bottom' },
+        { x: -halfWidth, y: 0, type: 'center', handle: 'left' },
+        { x: halfWidth, y: 0, type: 'center', handle: 'right' },
+        { x: 0, y: 0, type: 'center', handle: 'center' }
     ];
     return localPoints.map(point => ({
         x: center.x + (point.x * cosA - point.y * sinA),
         y: center.y + (point.x * sinA + point.y * cosA),
-        type: point.type
+        type: point.type,
+        handle: point.handle
     }));
 }
 
@@ -3647,7 +3670,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         e.preventDefault();
-        const { x, y } = getCanvasCoordinates(e); // Displayed coordinates
+        const { x, y } = getCanvasCoordinates(e);
 
         if (isRotating) {
             const initial = initialDragState[0];
@@ -3660,144 +3683,187 @@ document.addEventListener('DOMContentLoaded', function () {
                 needsRedraw = true;
             }
         } else if (isResizing) {
+            const SNAP_THRESHOLD = 10;
             const initial = initialDragState[0];
+            let mouseX = x;
+            let mouseY = y;
+            snapLines = [];
+
+            if (!cachedSnapTargets) {
+                cachedSnapTargets = [];
+                const otherObjects = objects.filter(o => !selectedObjectIds.includes(o.id));
+                otherObjects.forEach(otherObj => cachedSnapTargets.push(...getWorldPoints(otherObj)));
+                cachedSnapTargets.push(
+                    { x: canvas.width / 2, y: canvas.height / 2, type: 'center' }, { x: canvas.width / 2, y: 0, type: 'edge' }, { x: canvas.width / 2, y: canvas.height, type: 'edge' }, { x: 0, y: canvas.height / 2, type: 'edge' }, { x: canvas.width, y: canvas.height / 2, type: 'edge' }
+                );
+            }
+
+            const unSnappedState = (() => {
+                const tempObj = new Shape({ ...objects.find(o => o.id === initial.id) });
+                const anchorPoint = initial.anchorPoint;
+                const resizeAngle = tempObj.getRenderAngle();
+                const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
+                if (isSideHandle) {
+                    const dragVecX = x - dragStartX;
+                    const dragVecY = y - dragStartY;
+                    const s = Math.sin(resizeAngle);
+                    const c = Math.cos(resizeAngle);
+                    let newWidth = initial.initialWidth;
+                    let newHeight = initial.initialHeight;
+                    let centerShiftX = 0, centerShiftY = 0;
+                    if (activeResizeHandle === 'right' || activeResizeHandle === 'left') {
+                        const change = dragVecX * c + dragVecY * s;
+                        newWidth += activeResizeHandle === 'left' ? -change : change;
+                        centerShiftX = (change / 2) * c;
+                        centerShiftY = (change / 2) * s;
+                    } else {
+                        const change = -dragVecX * s + dragVecY * c;
+                        newHeight += activeResizeHandle === 'top' ? -change : change;
+                        centerShiftX = (change / 2) * -s;
+                        centerShiftY = (change / 2) * c;
+                    }
+                    const initialCenter = { x: initial.initialX + initial.initialWidth / 2, y: initial.initialY + initial.initialHeight / 2 };
+                    const newCenterX = initialCenter.x + centerShiftX;
+                    const newCenterY = initialCenter.y + centerShiftY;
+                    tempObj.width = newWidth;
+                    tempObj.height = newHeight;
+                    tempObj.x = newCenterX - tempObj.width / 2;
+                    tempObj.y = newCenterY - tempObj.height / 2;
+                } else {
+                    const worldVecX = x - anchorPoint.x;
+                    const worldVecY = y - anchorPoint.y;
+                    const localVecX = worldVecX * Math.cos(-resizeAngle) - worldVecY * Math.sin(-resizeAngle);
+                    const localVecY = worldVecX * Math.sin(-resizeAngle) + worldVecY * Math.cos(-resizeAngle);
+                    const handleXSign = activeResizeHandle.includes('left') ? -1 : 1;
+                    const handleYSign = activeResizeHandle.includes('top') ? -1 : 1;
+                    tempObj.width = localVecX * handleXSign;
+                    tempObj.height = localVecY * handleYSign;
+                    const worldSizingVecX = (tempObj.width * handleXSign) * Math.cos(resizeAngle) - (tempObj.height * handleYSign) * Math.sin(resizeAngle);
+                    const worldSizingVecY = (tempObj.width * handleXSign) * Math.sin(resizeAngle) + (tempObj.height * handleYSign) * Math.cos(resizeAngle);
+                    const newCenterX = anchorPoint.x + worldSizingVecX / 2;
+                    const newCenterY = anchorPoint.y + worldSizingVecY / 2;
+                    tempObj.x = newCenterX - tempObj.width / 2;
+                    tempObj.y = newCenterY - tempObj.height / 2;
+                }
+                return tempObj;
+            })();
+
+            const ghostPoints = getWorldPoints(unSnappedState);
+
+            // Filter points to only check the ones being moved by the active handle
+            let pointsToSnap;
+            const isHorizontalOnly = activeResizeHandle === 'left' || activeResizeHandle === 'right';
+            const isVerticalOnly = activeResizeHandle === 'top' || activeResizeHandle === 'bottom';
+
+            if (isHorizontalOnly) {
+                pointsToSnap = ghostPoints.filter(p => p.handle && p.handle.includes(activeResizeHandle));
+            } else if (isVerticalOnly) {
+                pointsToSnap = ghostPoints.filter(p => p.handle && p.handle.includes(activeResizeHandle));
+            } else { // Corner handles
+                pointsToSnap = ghostPoints;
+            }
+
+            const hSnaps = [], vSnaps = [];
+
+            pointsToSnap.forEach(point => {
+                cachedSnapTargets.forEach(target => {
+                    if (point.type === target.type) {
+                        if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x });
+                        if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y });
+                    }
+                });
+            });
+
+            if (!isVerticalOnly && hSnaps.length > 0) {
+                hSnaps.sort((a, b) => a.dist - b.dist);
+                mouseX += hSnaps[0].adj;
+                snapLines.push({ type: 'vertical', x: hSnaps[0].line, duration: 2 });
+            }
+            if (!isHorizontalOnly && vSnaps.length > 0) {
+                vSnaps.sort((a, b) => a.dist - b.dist);
+                mouseY += vSnaps[0].adj;
+                snapLines.push({ type: 'horizontal', y: vSnaps[0].line, duration: 2 });
+            }
+
             const obj = objects.find(o => o.id === initial.id);
             if (obj) {
-                const anchorPoint = initial.anchorPoint;
-                const mouseX = x;
-                const mouseY = y;
-
-                if (obj.shape === 'circle' || obj.shape === 'ring') {
+                const finalState = (() => { // Rerun final state calculation with snapped mouse coords
+                    const tempObj = new Shape({ ...objects.find(o => o.id === initial.id) });
+                    const anchorPoint = initial.anchorPoint;
+                    const resizeAngle = tempObj.getRenderAngle();
                     const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
-                    if (isSideHandle) {
-                        let diameter;
-                        if (activeResizeHandle === 'top' || activeResizeHandle === 'bottom') {
-                            diameter = Math.abs(mouseY - anchorPoint.y);
-                            const newCenterY = (mouseY + anchorPoint.y) / 2;
-                            obj.y = Math.round(newCenterY - diameter / 2);
-                            obj.x = Math.round(anchorPoint.x - diameter / 2);
-                        } else {
-                            diameter = Math.abs(mouseX - anchorPoint.x);
-                            const newCenterX = (mouseX + anchorPoint.x) / 2;
-                            obj.x = Math.round(newCenterX - diameter / 2);
-                            obj.y = Math.round(anchorPoint.y - diameter / 2);
-                        }
-                        obj.width = Math.round(Math.max(10, diameter));
-                        obj.height = obj.width;
-                    } else {
-                        let newWidth = Math.abs(mouseX - anchorPoint.x);
-                        let newHeight = Math.abs(mouseY - anchorPoint.y);
-                        let newX = Math.min(mouseX, anchorPoint.x);
-                        let newY = Math.min(mouseY, anchorPoint.y);
-                        const diameter = Math.max(newWidth, newHeight);
-
-                        if (activeResizeHandle.includes('left')) newX = anchorPoint.x - diameter;
-                        if (activeResizeHandle.includes('top')) newY = anchorPoint.y - diameter;
-
-                        obj.width = Math.round(Math.max(10, diameter));
-                        obj.height = obj.width;
-                        obj.x = Math.round(newX);
-                        obj.y = Math.round(newY);
-                    }
-                    if (obj.shape === 'ring') {
-                        obj.innerDiameter = Math.round(obj.width * initial.diameterRatio);
-                    }
-                } else {
-                    // --- ROTATION-AWARE LOGIC FOR RECTANGLES ---
-                    const angle = obj.getRenderAngle();
-                    const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
-
                     if (isSideHandle) {
                         const dragVecX = mouseX - dragStartX;
                         const dragVecY = mouseY - dragStartY;
-                        const s = Math.sin(angle);
-                        const c = Math.cos(angle);
-
+                        const s = Math.sin(resizeAngle);
+                        const c = Math.cos(resizeAngle);
                         let newWidth = initial.initialWidth;
                         let newHeight = initial.initialHeight;
-                        let centerShiftX = 0;
-                        let centerShiftY = 0;
-
-                        if (activeResizeHandle === 'right') {
+                        let centerShiftX = 0, centerShiftY = 0;
+                        if (activeResizeHandle === 'right' || activeResizeHandle === 'left') {
                             const change = dragVecX * c + dragVecY * s;
-                            newWidth += change;
+                            newWidth += activeResizeHandle === 'left' ? -change : change;
                             centerShiftX = (change / 2) * c;
                             centerShiftY = (change / 2) * s;
-                        } else if (activeResizeHandle === 'left') {
-                            const change = dragVecX * c + dragVecY * s;
-                            newWidth -= change;
-                            centerShiftX = (change / 2) * c;
-                            centerShiftY = (change / 2) * s;
-                        } else if (activeResizeHandle === 'bottom') {
+                        } else {
                             const change = -dragVecX * s + dragVecY * c;
-                            newHeight += change;
-                            centerShiftX = (change / 2) * -s;
-                            centerShiftY = (change / 2) * c;
-                        } else if (activeResizeHandle === 'top') {
-                            const change = -dragVecX * s + dragVecY * c;
-                            newHeight -= change;
+                            newHeight += activeResizeHandle === 'top' ? -change : change;
                             centerShiftX = (change / 2) * -s;
                             centerShiftY = (change / 2) * c;
                         }
-
-                        const initialCenter = {
-                            x: initial.initialX + initial.initialWidth / 2,
-                            y: initial.initialY + initial.initialHeight / 2
-                        };
+                        const initialCenter = { x: initial.initialX + initial.initialWidth / 2, y: initial.initialY + initial.initialHeight / 2 };
                         const newCenterX = initialCenter.x + centerShiftX;
                         const newCenterY = initialCenter.y + centerShiftY;
-
-                        obj.width = Math.round(Math.max(10, newWidth));
-                        obj.height = Math.round(Math.max(10, newHeight));
-                        obj.x = Math.round(newCenterX - obj.width / 2);
-                        obj.y = Math.round(newCenterY - obj.height / 2);
+                        tempObj.width = newWidth;
+                        tempObj.height = newHeight;
+                        tempObj.x = newCenterX - tempObj.width / 2;
+                        tempObj.y = newCenterY - tempObj.height / 2;
                     } else {
-                        const worldVecX = x - anchorPoint.x;
-                        const worldVecY = y - anchorPoint.y;
-                        const s_local = Math.sin(-angle);
-                        const c_local = Math.cos(-angle);
-                        const localVecX = worldVecX * c_local - worldVecY * s_local;
-                        const localVecY = worldVecX * s_local + worldVecY * c_local;
+                        const worldVecX = mouseX - anchorPoint.x;
+                        const worldVecY = mouseY - anchorPoint.y;
+                        const localVecX = worldVecX * Math.cos(-resizeAngle) - worldVecY * Math.sin(-resizeAngle);
+                        const localVecY = worldVecX * Math.sin(-resizeAngle) + worldVecY * Math.cos(-resizeAngle);
                         const handleXSign = activeResizeHandle.includes('left') ? -1 : 1;
                         const handleYSign = activeResizeHandle.includes('top') ? -1 : 1;
-                        let newWidth = localVecX * handleXSign;
-                        let newHeight = localVecY * handleYSign;
-
-                        const localSizingVecX = newWidth * handleXSign;
-                        const localSizingVecY = newHeight * handleYSign;
-                        const s_world = Math.sin(angle);
-                        const c_world = Math.cos(angle);
-                        const worldSizingVecX = localSizingVecX * c_world - localSizingVecY * s_world;
-                        const worldSizingVecY = localSizingVecX * s_world + localSizingVecY * c_world;
+                        tempObj.width = localVecX * handleXSign;
+                        tempObj.height = localVecY * handleYSign;
+                        const worldSizingVecX = (tempObj.width * handleXSign) * Math.cos(resizeAngle) - (tempObj.height * handleYSign) * Math.sin(resizeAngle);
+                        const worldSizingVecY = (tempObj.width * handleXSign) * Math.sin(resizeAngle) + (tempObj.height * handleYSign) * Math.cos(resizeAngle);
                         const newCenterX = anchorPoint.x + worldSizingVecX / 2;
                         const newCenterY = anchorPoint.y + worldSizingVecY / 2;
-
-                        obj.width = Math.round(Math.max(10, newWidth));
-                        obj.height = Math.round(Math.max(10, newHeight));
-                        obj.x = Math.round(newCenterX - obj.width / 2);
-                        obj.y = Math.round(newCenterY - obj.height / 2);
+                        tempObj.x = newCenterX - tempObj.width / 2;
+                        tempObj.y = newCenterY - tempObj.height / 2;
                     }
-                }
+                    return tempObj;
+                })();
 
+                obj.width = Math.round(Math.max(10, finalState.width));
+                obj.height = Math.round(Math.max(10, finalState.height));
+                obj.x = Math.round(finalState.x);
+                obj.y = Math.round(finalState.y);
+
+                if ((obj.shape === 'circle' || obj.shape === 'ring') && obj.width !== obj.height) {
+                    obj.width = obj.height = Math.max(obj.width, obj.height);
+                }
+                if (obj.shape === 'ring') {
+                    obj.innerDiameter = Math.round(obj.width * initial.diameterRatio);
+                }
                 needsRedraw = true;
             }
         } else if (isDragging) {
-            snapLines = []; // Clear previous snap lines
+            snapLines = [];
             const dx = x - dragStartX;
             const dy = y - dragStartY;
             const SNAP_THRESHOLD = 10;
             let finalDx = dx;
             let finalDy = dy;
 
-            // On the first drag frame, cache all possible snap targets.
             if (!cachedSnapTargets) {
                 cachedSnapTargets = [];
-                // Add snap points from all non-selected objects
                 const otherObjects = objects.filter(o => !selectedObjectIds.includes(o.id));
                 otherObjects.forEach(otherObj => {
                     cachedSnapTargets.push(...getWorldPoints(otherObj));
                 });
-                // Add canvas centerlines as snap targets
                 cachedSnapTargets.push(
                     { x: canvas.width / 2, y: canvas.height / 2, type: 'center' },
                     { x: canvas.width / 2, y: 0, type: 'edge' },
@@ -3807,63 +3873,46 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
             }
 
-            const hSnaps = [];
-            const vSnaps = [];
+            const hSnaps = [], vSnaps = [];
 
-            // Find potential snaps for all selected objects
             initialDragState.forEach(state => {
                 const obj = objects.find(o => o.id === state.id);
                 if (obj) {
                     const originalX = obj.x;
                     const originalY = obj.y;
-                    // Temporarily move object to its potential new position
                     obj.x = state.x + dx;
                     obj.y = state.y + dy;
                     const selectedPoints = getWorldPoints(obj);
-
-                    // Find all potential horizontal and vertical snaps for this object
                     selectedPoints.forEach(point => {
                         cachedSnapTargets.forEach(target => {
                             if (point.type === target.type) {
-                                if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) {
-                                    // FIX: Store the target's coordinate ('line') for drawing
-                                    hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x });
-                                }
-                                if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) {
-                                    // FIX: Store the target's coordinate ('line') for drawing
-                                    vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y });
-                                }
+                                if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x });
+                                if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y });
                             }
                         });
                     });
-                    // Revert object to its actual current position
                     obj.x = originalX;
                     obj.y = originalY;
                 }
             });
 
-            // Apply the closest snap
             if (hSnaps.length > 0) {
                 hSnaps.sort((a, b) => a.dist - b.dist);
                 finalDx += hSnaps[0].adj;
-                // FIX: Use the stored 'line' property for the correct position
                 snapLines.push({ type: 'vertical', x: hSnaps[0].line, duration: 2 });
             }
             if (vSnaps.length > 0) {
                 vSnaps.sort((a, b) => a.dist - b.dist);
                 finalDy += vSnaps[0].adj;
-                // FIX: Use the stored 'line' property for the correct position
                 snapLines.push({ type: 'horizontal', y: vSnaps[0].line, duration: 2 });
             }
 
-            // Apply canvas boundary constraints if enabled
             if (constrainToCanvas) {
                 let constrainedDx = finalDx;
                 let constrainedDy = finalDy;
                 initialDragState.forEach(state => {
                     const obj = objects.find(o => o.id === state.id);
                     if (obj) {
-                        // Temporarily move the object to its potential final position to get its bounding box
                         const originalX = obj.x;
                         const originalY = obj.y;
                         obj.x = state.x + finalDx;
@@ -3871,8 +3920,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         const { minX, minY, maxX, maxY } = getBoundingBox(obj);
                         obj.x = originalX;
                         obj.y = originalY;
-
-                        // Check if this bounding box is out of bounds and adjust the delta
                         if (minX < 0) constrainedDx = Math.max(constrainedDx, -minX + finalDx);
                         if (maxX > canvas.width) constrainedDx = Math.min(constrainedDx, canvas.width - maxX + finalDx);
                         if (minY < 0) constrainedDy = Math.max(constrainedDy, -minY + finalDy);
@@ -3883,7 +3930,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 finalDy = constrainedDy;
             }
 
-            // Apply the final, corrected delta to all selected objects
             initialDragState.forEach(state => {
                 const obj = objects.find(o => o.id === state.id);
                 if (obj) {
@@ -3891,7 +3937,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     obj.y = state.y + finalDy;
                 }
             });
-
             needsRedraw = true;
         } else {
             let cursor = 'default';
