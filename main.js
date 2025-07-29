@@ -12,7 +12,7 @@ let dragStartY = 0;
 // Helper function to compute world-coordinate edges and center
 function getWorldPoints(obj) {
     const center = obj.getCenter();
-  
+
     if (obj.shape === 'circle' || obj.shape === 'ring') {
         const outerRadius = obj.width / 2;
         let points = [
@@ -323,7 +323,7 @@ function getBoundingBox(obj) {
  * Manages its own state, including position, size, appearance, and animation properties.
  */
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation }) {
         this.id = id;
         this.name = name || `Object ${id}`;
         this.shape = shape;
@@ -386,6 +386,7 @@ class Shape {
         this.frequency = frequency || 5;
         this.pulseDepth = pulseDepth !== undefined ? pulseDepth : 50;
         this.fillShape = fillShape || false;
+        this.enableWaveAnimation = enableWaveAnimation !== undefined ? enableWaveAnimation : true;
         this.oscDisplayMode = oscDisplayMode || 'linear';
         this.waveMinY = this.y;
         this.waveMaxY = this.y + this.height;
@@ -638,11 +639,220 @@ class Shape {
             }
         }
 
+        if (this.shape === 'oscilloscope' && this.oscAnimationMode === 'trace' && this.enableWaveAnimation) {
+            // Increased the speed multiplier for a more visible animation
+            this.traceProgress += this.animationSpeed * 0.05;
+            if (this.traceProgress > 1.25) {
+                this.traceProgress = 0;
+            }
+        } else {
+            this.traceProgress = 0;
+        }
+
         const rotationIncrement = (this.rotationSpeed || 0) / 1000;
         this.rotationAngle += rotationIncrement;
 
         const animationIncrement = (this.animationSpeed || 0) * 0.05;
         this.animationAngle += animationIncrement;
+    }
+
+    draw(isSelected) {
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(this.x, this.y, this.width, this.height);
+        this.ctx.clip();
+
+        if (isSelected && this.rotationSpeed !== 0) {
+            this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
+            this._pausedRotationSpeed = this.rotationSpeed;
+            this.rotationSpeed = 0;
+        } else if (!isSelected && this._pausedRotationSpeed !== null) {
+            this.rotationSpeed = this._pausedRotationSpeed;
+            this._pausedRotationSpeed = null;
+        }
+
+        const centerX = this.x + this.width / 2;
+        const centerY = this.y + this.height / 2;
+        const angleToUse = this.getRenderAngle();
+        this.ctx.save();
+        this.ctx.translate(centerX, centerY);
+        this.ctx.rotate(angleToUse);
+        this.ctx.translate(-centerX, -centerY);
+        if (this.shape === 'ring') {
+            const outerRadius = this.width / 2;
+            const innerRadius = this.innerDiameter / 2;
+            const angleStep = (2 * Math.PI) / this.numberOfSegments;
+            const segmentAngleRad = (this.angularWidth * Math.PI) / 180;
+            if (innerRadius >= 0 && innerRadius < outerRadius && this.numberOfSegments > 0) {
+                const isAlternating = this.gradType === 'alternating';
+                const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
+                const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
+                const genericFill = isAlternating ? null : this.createFillStyle();
+                for (let i = 0; i < this.numberOfSegments; i++) {
+                    this.ctx.beginPath();
+                    const startAngle = i * angleStep + this.animationAngle;
+                    const endAngle = startAngle + segmentAngleRad;
+                    this.ctx.moveTo(centerX + Math.cos(startAngle) * outerRadius, centerY + Math.sin(startAngle) * outerRadius);
+                    this.ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle, false);
+                    this.ctx.lineTo(centerX + Math.cos(endAngle) * innerRadius, centerY + Math.sin(endAngle) * innerRadius);
+                    this.ctx.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
+                    this.ctx.closePath();
+                    if (isAlternating) {
+                        this.ctx.fillStyle = (i % 2 === 0) ? c1 : c2;
+                    } else {
+                        this.ctx.fillStyle = genericFill;
+                    }
+                    this.ctx.fill();
+                }
+            }
+        } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
+            const cellWidth = this.width / this.numberOfColumns;
+            const cellHeight = this.height / this.numberOfRows;
+            const isRandom = this.gradType === 'random';
+            const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
+            const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
+            if (isRandom) {
+                this.randomColorTimer -= 1;
+                if (this.randomColorTimer <= 0) {
+                    this.cellColors = [];
+                    const rawSpeed = this.animationSpeed * 25;
+                    this.randomColorTimer = Math.max(1, 200 / rawSpeed);
+                }
+            }
+            for (let row = 0; row < this.numberOfRows; row++) {
+                for (let col = 0; col < this.numberOfColumns; col++) {
+                    const cellX = this.x + col * cellWidth;
+                    const cellY = this.y + row * cellHeight;
+                    const cellIndex = row * this.numberOfColumns + col;
+                    if (isRandom) {
+                        if (!this.cellColors[cellIndex]) { this.cellColors[cellIndex] = Math.random() < 0.5 ? c1 : c2; }
+                        this.ctx.fillStyle = this.cellColors[cellIndex];
+                        this.ctx.fillRect(cellX, cellY, cellWidth, cellHeight);
+                    } else {
+                        this.ctx.save();
+                        this.ctx.beginPath();
+                        this.ctx.rect(cellX, cellY, cellWidth, cellHeight);
+                        this.ctx.clip();
+                        this.ctx.fillStyle = this.createFillStyle(cellIndex);
+                        this.ctx.fillRect(this.x, this.y, this.width, this.height);
+                        this.ctx.restore();
+                    }
+                }
+            }
+        } else if (this.shape === 'text') {
+            this.ctx.fillStyle = this.createFillStyle();
+            drawPixelText(this.ctx, this);
+        } else if (this.shape === 'oscilloscope') {
+            this.ctx.lineWidth = this.lineWidth;
+            this.ctx.beginPath();
+            const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
+
+            let effectiveFrequency = this.frequency;
+            let effectivePulseDepth = this.pulseDepth;
+
+            if (this.enableWaveAnimation) {
+                switch (this.oscAnimationMode) {
+                    case 'fmPulse':
+                        const freqModulation = (Math.sin(activeAnimationAngle * 0.5) + 1) / 2;
+                        effectiveFrequency += freqModulation * (this.frequency * 0.75);
+                        break;
+                    case 'depthPulse':
+                        effectivePulseDepth = ((Math.sin(activeAnimationAngle * 0.5) + 1) / 2) * 100;
+                        break;
+                }
+            }
+
+            if (this.oscDisplayMode === 'radial') {
+                const radialCenterX = this.x + this.width / 2;
+                const radialCenterY = this.y + this.height / 2;
+                const totalRadius = (Math.min(this.width, this.height) / 2) - (this.lineWidth / 2);
+                const pulseRatio = (effectivePulseDepth || 0) / 100.0;
+                const baseRadius = totalRadius * (0.5 + pulseRatio * 0.5);
+                const maxAmplitude = totalRadius - baseRadius;
+                const breathFactor = 1 + Math.sin(activeAnimationAngle) * 0.2;
+
+                for (let i = 0; i <= 360; i++) {
+                    const angleRad = (i * Math.PI) / 180;
+                    const progress = i / 360;
+                    const waveFuncAngle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle * 2;
+                    let y_wave;
+                    switch (this.waveType) {
+                        case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
+                        case 'sawtooth': y_wave = (((waveFuncAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
+                        case 'triangle': y_wave = Math.asin(Math.sin(waveFuncAngle)) * (2 / Math.PI); break;
+                        case 'sine': default: y_wave = Math.sin(waveFuncAngle); break;
+                    }
+                    const modulatedRadius = baseRadius + y_wave * maxAmplitude;
+                    const finalRadius = modulatedRadius * breathFactor;
+                    const px = radialCenterX + finalRadius * Math.cos(angleRad);
+                    const py = radialCenterY + finalRadius * Math.sin(angleRad);
+                    if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
+                }
+                this.ctx.closePath();
+                this.waveMinY = radialCenterY - totalRadius * breathFactor;
+                this.waveMaxY = radialCenterY + totalRadius * breathFactor;
+
+            } else { // Linear mode
+                const waveCenterY = this.y + this.height / 2;
+                const amplitude = (this.height - this.lineWidth) / 2;
+                let limit = this.width;
+
+                if (this.oscAnimationMode === 'trace' && this.enableWaveAnimation) {
+                    limit = this.width * Math.min(1, this.traceProgress);
+                }
+
+                let minY = Infinity, maxY = -Infinity;
+                for (let i = 0; i <= limit; i++) {
+                    const progress = i / this.width;
+                    const angle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle;
+                    let y_wave;
+                    switch (this.waveType) {
+                        case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;
+                        case 'sawtooth':
+                            // Corrected to use effectiveFrequency
+                            y_wave = 2 * (progress * effectiveFrequency - Math.floor(0.5 + progress * effectiveFrequency));
+                            break;
+                        case 'triangle': y_wave = Math.asin(Math.sin(angle)) * (2 / Math.PI); break;
+                        case 'sine': default: y_wave = Math.sin(angle); break;
+                    }
+                    const px = this.x + i;
+                    const py = waveCenterY - y_wave * amplitude;
+                    if (py < minY) minY = py;
+                    if (py > maxY) maxY = py;
+                    if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
+                }
+
+                if (this.fillShape) {
+                    this.ctx.lineTo(this.x + limit, this.y + this.height);
+                    this.ctx.lineTo(this.x, this.y + this.height);
+                    this.ctx.closePath();
+                }
+
+                this.waveMinY = minY;
+                this.waveMaxY = maxY;
+            }
+
+            if (this.fillShape) {
+                this.ctx.fillStyle = this.createFillStyle();
+                this.ctx.fill();
+            }
+            this.ctx.strokeStyle = this.createFillStyle();
+            this.ctx.stroke();
+
+        } else {
+            this.ctx.beginPath();
+            switch (this.shape) {
+                case 'rectangle':
+                    this.ctx.rect(this.x, this.y, this.width, this.height);
+                    break;
+                case 'circle':
+                    this.ctx.arc(centerX, centerY, this.width / 2, 0, 2 * Math.PI);
+                    break;
+            }
+            this.ctx.fillStyle = this.createFillStyle();
+            this.ctx.fill();
+        }
+        this.ctx.restore();
     }
 
     createFillStyle(phase = 0) {
@@ -727,13 +937,11 @@ class Shape {
     }
 
     draw(isSelected) {
-        // --- NEW: CLIPPING LOGIC ---
-        this.ctx.save(); // Save the canvas state before applying the clip
+        this.ctx.save();
         this.ctx.beginPath();
         this.ctx.rect(this.x, this.y, this.width, this.height);
-        this.ctx.clip(); // From now on, nothing can be drawn outside this rectangle
+        this.ctx.clip();
 
-        // --- Original drawing logic starts here ---
         if (isSelected && this.rotationSpeed !== 0) {
             this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
             this._pausedRotationSpeed = this.rotationSpeed;
@@ -817,22 +1025,36 @@ class Shape {
         } else if (this.shape === 'oscilloscope') {
             this.ctx.lineWidth = this.lineWidth;
             this.ctx.beginPath();
+            const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
+
+            let effectiveFrequency = this.frequency;
+            let effectivePulseDepth = this.pulseDepth;
+
+            if (this.enableWaveAnimation) {
+                switch (this.oscAnimationMode) {
+                    case 'fmPulse':
+                        const freqModulation = (Math.sin(activeAnimationAngle * 0.5) + 1) / 2;
+                        effectiveFrequency += freqModulation * (this.frequency * 0.75);
+                        break;
+                    case 'depthPulse':
+                        effectivePulseDepth = ((Math.sin(activeAnimationAngle * 0.5) + 1) / 2) * 100;
+                        break;
+                }
+            }
 
             if (this.oscDisplayMode === 'radial') {
                 const radialCenterX = this.x + this.width / 2;
                 const radialCenterY = this.y + this.height / 2;
-                const frequency = this.frequency;
-
                 const totalRadius = (Math.min(this.width, this.height) / 2) - (this.lineWidth / 2);
-                const pulseRatio = (this.pulseDepth || 0) / 100.0;
+                const pulseRatio = (effectivePulseDepth || 0) / 100.0;
                 const baseRadius = totalRadius * (0.5 + pulseRatio * 0.5);
                 const maxAmplitude = totalRadius - baseRadius;
-                const breathFactor = 1 + Math.sin(this.animationAngle) * 0.2;
+                const breathFactor = 1 + Math.sin(activeAnimationAngle) * 0.2;
 
                 for (let i = 0; i <= 360; i++) {
                     const angleRad = (i * Math.PI) / 180;
                     const progress = i / 360;
-                    const waveFuncAngle = 2 * Math.PI * frequency * progress + this.animationAngle * 2;
+                    const waveFuncAngle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle * 2;
                     let y_wave;
                     switch (this.waveType) {
                         case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
@@ -853,15 +1075,23 @@ class Shape {
             } else { // Linear mode
                 const waveCenterY = this.y + this.height / 2;
                 const amplitude = (this.height - this.lineWidth) / 2;
-                const frequency = this.frequency;
+                let limit = this.width;
+
+                if (this.oscAnimationMode === 'trace' && this.enableWaveAnimation) {
+                    limit = this.width * Math.min(1, this.traceProgress);
+                }
+
                 let minY = Infinity, maxY = -Infinity;
-                for (let i = 0; i <= this.width; i++) {
+                for (let i = 0; i <= limit; i++) {
                     const progress = i / this.width;
-                    const angle = 2 * Math.PI * frequency * progress + this.animationAngle;
+                    const angle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle;
                     let y_wave;
                     switch (this.waveType) {
                         case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;
-                        case 'sawtooth': y_wave = 2 * (progress * frequency - Math.floor(0.5 + progress * frequency)); break;
+                        case 'sawtooth':
+                            // This line is now corrected to use the effectiveFrequency
+                            y_wave = 2 * (progress * effectiveFrequency - Math.floor(0.5 + progress * effectiveFrequency));
+                            break;
                         case 'triangle': y_wave = Math.asin(Math.sin(angle)) * (2 / Math.PI); break;
                         case 'sine': default: y_wave = Math.sin(angle); break;
                     }
@@ -873,7 +1103,7 @@ class Shape {
                 }
 
                 if (this.fillShape) {
-                    this.ctx.lineTo(this.x + this.width, this.y + this.height);
+                    this.ctx.lineTo(this.x + limit, this.y + this.height);
                     this.ctx.lineTo(this.x, this.y + this.height);
                     this.ctx.closePath();
                 }
@@ -904,8 +1134,7 @@ class Shape {
         }
         this.ctx.restore();
 
-        // --- NEW: CLIPPING LOGIC ---
-        this.ctx.restore(); // This final restore removes the clipping region
+        this.ctx.restore();
     }
 
     drawSelectionUI() {
@@ -1997,7 +2226,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 objectConfigs
                     .filter(conf => {
                         const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                        // Hide Animation Speed control if the shape is a ring
                         if (propName === 'animationSpeed' && currentShape === 'ring') {
                             return false;
                         }
@@ -2011,7 +2239,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
             const gridSettings = ['numberOfRows', 'numberOfColumns', 'phaseOffset'];
-            const oscilloscopeSettings = ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape'];
+            const oscilloscopeSettings = ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationMode'];
             const textSubGroups = {
                 'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
                 'Time & Date Display': ['showTime', 'showDate'],
@@ -2108,7 +2336,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-
 
     /**
       * Retrieves all current values from the form controls.
@@ -2641,7 +2868,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function loadWorkspace(workspace) {
         const loadedConfigs = workspace.configs;
 
-        // Identify all unique object IDs from the loaded configuration
         const objectIds = [...new Set(
             loadedConfigs
                 .map(c => (c.property || '').match(/^obj(\d+)_/))
@@ -2649,31 +2875,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 .map(match => parseInt(match[1], 10))
         )];
 
-        // Start building the new, merged config store. First, take all general (non-object) settings.
         const mergedConfigStore = loadedConfigs.filter(c => !(c.property || '').startsWith('obj'));
 
-        // For each object, merge its saved properties with the latest default properties
         objectIds.forEach(id => {
             const fullDefaultConfig = getDefaultObjectConfig(id);
             const savedObjectConfigs = loadedConfigs.filter(c => c.property && c.property.startsWith(`obj${id}_`));
             const savedPropsMap = new Map(savedObjectConfigs.map(c => [c.property, c]));
 
             const mergedObjectConfigs = fullDefaultConfig.map(defaultConf => {
-                // If a property exists in the saved data, use the saved version.
                 if (savedPropsMap.has(defaultConf.property)) {
                     return savedPropsMap.get(defaultConf.property);
                 }
-                // Otherwise, use the new default from the current application code.
                 return defaultConf;
             });
 
             mergedConfigStore.push(...mergedObjectConfigs);
         });
 
-        // The application's main configStore is now the complete, merged version.
         configStore = mergedConfigStore;
 
-        // Proceed with the rest of the loading process as before.
         createInitialObjects();
 
         if (workspace.objects) {
@@ -2709,7 +2929,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         currentProjectDocId = workspace.docId || null;
         updateShareButtonState();
-        updateAll();
+        generateOutputScript();
         drawFrame();
     }
 
@@ -2740,26 +2960,21 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function getDefaultObjectConfig(newId) {
         return [
-            // Adds "oscilloscope" to the dropdown list
             { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,text,oscilloscope' },
-
-            // --- SCALED PROPERTIES ---
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200' },
             { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320' },
             { property: `obj${newId}_height`, label: `Object ${newId}: Height`, type: 'number', default: '38', min: '2', max: '200' },
             { property: `obj${newId}_innerDiameter`, label: `Object ${newId}: Inner Diameter`, type: 'number', default: '25', min: '1', max: '318' },
             { property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '15', min: '2', max: '100' },
-
-            // --- OSCILLOSCOPE PROPERTIES ---
             { property: `obj${newId}_lineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20' },
             { property: `obj${newId}_waveType`, label: `Object ${newId}: Wave Type`, type: 'combobox', default: 'sine', values: 'sine,square,sawtooth,triangle' },
             { property: `obj${newId}_frequency`, label: `Object ${newId}: Frequency`, type: 'number', default: '5', min: '1', max: '50' },
             { property: `obj${newId}_oscDisplayMode`, label: `Object ${newId}: Display Mode`, type: 'combobox', default: 'linear', values: 'linear,radial' },
             { property: `obj${newId}_pulseDepth`, label: `Object ${newId}: Pulse Depth`, type: 'number', default: '50', min: '0', max: '100' },
             { property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false' },
-
-            // --- OTHER PROPERTIES ---
+            { property: `obj${newId}_enableWaveAnimation`, label: `Object ${newId}: Enable Wave Animation`, type: 'boolean', default: 'true' },
+            { property: `obj${newId}_oscAnimationMode`, label: `Object ${newId}: Wave Animation Mode`, type: 'combobox', default: 'default', values: 'default,fmPulse,depthPulse,trace' },
             { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360' },
             { property: `obj${newId}_numberOfSegments`, label: `Object ${newId}: Segments`, type: 'number', default: '12', min: '1', max: '50' },
             { property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', min: '1', max: '360', default: '20' },
@@ -4033,7 +4248,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // In main.js, replace your entire init function with this:
 
     async function init() {
-        // Setup UI elements that don't depend on loaded objects
         const constrainBtn = document.getElementById('constrain-btn');
         constrainBtn.classList.remove('btn-secondary', 'btn-outline-secondary');
         if (constrainToCanvas) {
@@ -4042,23 +4256,30 @@ document.addEventListener('DOMContentLoaded', function () {
             constrainBtn.classList.add('btn-outline-secondary');
         }
 
-        // --- Core Loading Logic ---
-        // First, try to load a shared or featured effect from the network.
-        // The 'await' keyword forces the code to wait here until the function is finished.
         const effectLoaded = await loadSharedEffect();
 
-        // If, and only if, no effect was loaded from the network, then
-        // load the default effect from the HTML template.
         if (!effectLoaded) {
             const template = document.getElementById('initial-config');
             const metaElements = Array.from(template.content.querySelectorAll('meta'));
             configStore = metaElements.map(parseMetaToConfig);
             createInitialObjects();
             renderForm();
-            updateAll();
+
+            // Explicitly set form values from the default config
+            for (const config of configStore) {
+                const key = config.property || config.name;
+                const el = form.elements[key];
+                if (el) {
+                    if (el.type === 'checkbox') {
+                        el.checked = (config.default === true || config.default === 'true');
+                    } else {
+                        el.value = config.default;
+                    }
+                }
+            }
+            generateOutputScript(); // Generate script after setup
         }
 
-        // --- Final Setup (runs after objects are loaded from one source or the other) ---
         new bootstrap.Tooltip(document.body, {
             selector: "[data-bs-toggle='tooltip']",
             trigger: 'hover'
