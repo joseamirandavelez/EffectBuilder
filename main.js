@@ -300,7 +300,7 @@ function getBoundingBox(obj) {
  * Manages its own state, including position, size, appearance, and animation properties.
  */
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, lineColor, waveType, frequency, oscDisplayMode, pulseDepth }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape }) {
         this.id = id;
         this.name = name || `Object ${id}`;
         this.shape = shape;
@@ -359,10 +359,10 @@ class Shape {
         this.showTime = showTime || false;
         this.showDate = showDate || false;
         this.lineWidth = lineWidth || 2;
-        this.lineColor = lineColor || '#00ff00';
         this.waveType = waveType || 'sine';
         this.frequency = frequency || 5;
         this.pulseDepth = pulseDepth !== undefined ? pulseDepth : 50;
+        this.fillShape = fillShape || false;
         this.oscDisplayMode = oscDisplayMode || 'linear';
         this.waveMinY = this.y;
         this.waveMaxY = this.y + this.height;
@@ -789,7 +789,6 @@ class Shape {
             this.ctx.fillStyle = this.createFillStyle();
             drawPixelText(this.ctx, this);
         } else if (this.shape === 'oscilloscope') {
-            this.ctx.strokeStyle = this.createFillStyle();
             this.ctx.lineWidth = this.lineWidth;
             this.ctx.beginPath();
 
@@ -797,19 +796,15 @@ class Shape {
                 const radialCenterX = this.x + this.width / 2;
                 const radialCenterY = this.y + this.height / 2;
                 const frequency = this.frequency;
-
                 const totalRadius = Math.min(this.width, this.height) / 2;
                 const pulseRatio = (this.pulseDepth || 0) / 100.0;
                 const baseRadius = totalRadius * (0.5 + pulseRatio * 0.5);
                 const maxAmplitude = totalRadius - baseRadius;
-
-                // Animation for the entire shape "breathing" in and out
                 const breathFactor = 1 + Math.sin(this.animationAngle) * 0.2;
 
                 for (let i = 0; i <= 360; i++) {
                     const angleRad = (i * Math.PI) / 180;
                     const progress = i / 360;
-                    // Wave pattern rotates at a different speed than the breathing animation
                     const waveFuncAngle = 2 * Math.PI * frequency * progress + this.animationAngle * 2;
                     let y_wave;
                     switch (this.waveType) {
@@ -819,8 +814,7 @@ class Shape {
                         case 'sine': default: y_wave = Math.sin(waveFuncAngle); break;
                     }
                     const modulatedRadius = baseRadius + y_wave * maxAmplitude;
-                    const finalRadius = modulatedRadius * breathFactor; // Apply breathing animation
-
+                    const finalRadius = modulatedRadius * breathFactor;
                     const px = radialCenterX + finalRadius * Math.cos(angleRad);
                     const py = radialCenterY + finalRadius * Math.sin(angleRad);
                     if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
@@ -850,9 +844,22 @@ class Shape {
                     if (py > maxY) maxY = py;
                     if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
                 }
+
+                if (this.fillShape) {
+                    this.ctx.lineTo(this.x + this.width, this.y + this.height);
+                    this.ctx.lineTo(this.x, this.y + this.height);
+                    this.ctx.closePath();
+                }
+
                 this.waveMinY = minY;
                 this.waveMaxY = maxY;
             }
+
+            if (this.fillShape) {
+                this.ctx.fillStyle = this.createFillStyle();
+                this.ctx.fill();
+            }
+            this.ctx.strokeStyle = this.createFillStyle();
             this.ctx.stroke();
 
         } else {
@@ -1967,7 +1974,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
             const gridSettings = ['numberOfRows', 'numberOfColumns', 'phaseOffset'];
-            const oscilloscopeSettings = ['lineWidth', 'lineColor', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth'];
+            const oscilloscopeSettings = ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape'];
             const textSubGroups = {
                 'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
                 'Time & Date Display': ['showTime', 'showDate'],
@@ -1975,7 +1982,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
 
             const ringGroup = document.createElement('div');
-            ringGroup.className = 'control-group mb-4 ring-settings-group';
+            ringGroup.className = 'control-group card card-body bg-body mb-3 ring-settings-group';
             ringGroup.style.display = currentShape === 'ring' ? 'block' : 'none';
             const ringHeader = document.createElement('h6');
             ringHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
@@ -1985,7 +1992,7 @@ document.addEventListener('DOMContentLoaded', function () {
             collapseWrapper.appendChild(ringGroup);
 
             const oscilloscopeGroup = document.createElement('div');
-            oscilloscopeGroup.className = 'control-group mb-4 oscilloscope-settings-group';
+            oscilloscopeGroup.className = 'control-group card card-body bg-body mb-3 oscilloscope-settings-group';
             oscilloscopeGroup.style.display = currentShape === 'oscilloscope' ? 'block' : 'none';
             const oscilloscopeHeader = document.createElement('h6');
             oscilloscopeHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
@@ -2016,7 +2023,7 @@ document.addEventListener('DOMContentLoaded', function () {
             collapseWrapper.appendChild(textGroup);
 
             const gridGroup = document.createElement('div');
-            gridGroup.className = 'control-group mb-4 grid-settings-group';
+            gridGroup.className = 'control-group card card-body bg-body mb-3 grid-settings-group';
             gridGroup.style.display = currentShape === 'rectangle' ? 'block' : 'none';
             const gridHeader = document.createElement('h6');
             gridHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
@@ -2588,7 +2595,41 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {object[]} workspace.objects - The array of saved object states (name, id, locked).
      */
     function loadWorkspace(workspace) {
-        configStore = workspace.configs;
+        const loadedConfigs = workspace.configs;
+
+        // Identify all unique object IDs from the loaded configuration
+        const objectIds = [...new Set(
+            loadedConfigs
+                .map(c => (c.property || '').match(/^obj(\d+)_/))
+                .filter(match => match)
+                .map(match => parseInt(match[1], 10))
+        )];
+
+        // Start building the new, merged config store. First, take all general (non-object) settings.
+        const mergedConfigStore = loadedConfigs.filter(c => !(c.property || '').startsWith('obj'));
+
+        // For each object, merge its saved properties with the latest default properties
+        objectIds.forEach(id => {
+            const fullDefaultConfig = getDefaultObjectConfig(id);
+            const savedObjectConfigs = loadedConfigs.filter(c => c.property && c.property.startsWith(`obj${id}_`));
+            const savedPropsMap = new Map(savedObjectConfigs.map(c => [c.property, c]));
+
+            const mergedObjectConfigs = fullDefaultConfig.map(defaultConf => {
+                // If a property exists in the saved data, use the saved version.
+                if (savedPropsMap.has(defaultConf.property)) {
+                    return savedPropsMap.get(defaultConf.property);
+                }
+                // Otherwise, use the new default from the current application code.
+                return defaultConf;
+            });
+
+            mergedConfigStore.push(...mergedObjectConfigs);
+        });
+
+        // The application's main configStore is now the complete, merged version.
+        configStore = mergedConfigStore;
+
+        // Proceed with the rest of the loading process as before.
         createInitialObjects();
 
         if (workspace.objects) {
@@ -2668,11 +2709,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // --- OSCILLOSCOPE PROPERTIES ---
             { property: `obj${newId}_lineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20' },
-            { property: `obj${newId}_lineColor`, label: `Object ${newId}: Line Color`, type: 'color', default: '#00ff00' },
             { property: `obj${newId}_waveType`, label: `Object ${newId}: Wave Type`, type: 'combobox', default: 'sine', values: 'sine,square,sawtooth,triangle' },
             { property: `obj${newId}_frequency`, label: `Object ${newId}: Frequency`, type: 'number', default: '5', min: '1', max: '50' },
             { property: `obj${newId}_oscDisplayMode`, label: `Object ${newId}: Display Mode`, type: 'combobox', default: 'linear', values: 'linear,radial' },
             { property: `obj${newId}_pulseDepth`, label: `Object ${newId}: Pulse Depth`, type: 'number', default: '50', min: '0', max: '100' },
+            { property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false' },
 
             // --- OTHER PROPERTIES ---
             { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360' },
