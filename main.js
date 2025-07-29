@@ -873,11 +873,14 @@ class Shape {
         if (this.gradType === 'alternating') { return (phase % 2 === 0) ? c1 : c2; }
         if (isLinear) {
             let grad;
-            if (this.gradientDirection === 'horizontal') {
-                grad = this.ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y);
-            } else {
+            // This logic now directly checks the scrollDirection to create the correct gradient
+            const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
+            if (isVertical) {
                 grad = this.ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+            } else {
+                grad = this.ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y);
             }
+
             if (this.useSharpGradient) {
                 const stopRatio = this.gradientStop / 100.0;
                 if (this.animationMode === 'loop') {
@@ -2021,7 +2024,7 @@ document.addEventListener('DOMContentLoaded', function () {
         objects.forEach(obj => {
             const name = obj.name || `Object ${obj.id}`;
             const allPossibleConfigs = getDefaultObjectConfig(obj.id);
-            const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+            const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth'];
 
             allPossibleConfigs.forEach(conf => {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
@@ -2048,7 +2051,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     } else if (propName === 'cycleSpeed') {
                         value = Math.round(obj.cycleSpeed * 50);
                     } else if (propsToScale.includes(propName)) {
-                        // Scale down pixel values by 4 for export
                         value = Math.round(parseFloat(value) / 4);
                     } else {
                         value = Math.round(parseFloat(value));
@@ -3023,7 +3025,7 @@ document.addEventListener('DOMContentLoaded', function () {
         exportButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Preparing...';
 
         try {
-            generateOutputScript(); // Ensure meta tags are up-to-date
+            generateOutputScript();
             const effectTitle = getControlValues()['title'] || 'MyEffect';
             const metaTags = document.getElementById('output-script').value;
             const thumbnailDataUrl = generateThumbnail(document.getElementById('signalCanvas'));
@@ -3052,7 +3054,6 @@ document.addEventListener('DOMContentLoaded', function () {
     let objects = [];
     let propertyKeys = [];
 
-    // --- Injected Functions, Classes, and Data ---
     ${fontData4pxString}
     ${fontData5pxString}
     ${drawPixelTextString}
@@ -3094,13 +3095,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } catch (e) {}
             });
             
-            // --- SPEED FIX: Divide all speeds by 4 ---
-            const scaleFactor = 4.0;
-            if (config.animationSpeed) config.animationSpeed /= scaleFactor;
-            if (config.cycleSpeed) config.cycleSpeed /= scaleFactor;
-            if (config.rotationSpeed) config.rotationSpeed /= scaleFactor;
-            if (config.textAnimationSpeed) config.textAnimationSpeed /= scaleFactor;
-            
+            // Apply correct internal scaling for speeds
             config.animationSpeed = (config.animationSpeed || 0) / 10.0;
             config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
             
@@ -3121,21 +3116,30 @@ document.addEventListener('DOMContentLoaded', function () {
         try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
 
         objects.forEach(obj => {
+            if (shouldAnimate) {
+                obj.updateAnimationState();
+            }
+
             const prefix = 'obj' + obj.id + '_';
             propertyKeys.filter(p => p.startsWith(prefix)).forEach(key => {
                 const propName = key.substring(prefix.length);
                 try {
                     const value = eval(key);
-                    const scaleFactor = 4.0;
+                    // This switch handles live updates from SignalRGB with corrected speed logic
                     switch(propName) {
                         case 'gradColor1': obj.gradient.color1 = value; break;
                         case 'gradColor2': obj.gradient.color2 = value; break;
                         case 'scrollDir': obj.scrollDirection = value; break;
-                        // --- SPEED FIX: Also divide speeds by 4 during live updates ---
-                        case 'animationSpeed': obj.animationSpeed = ((value || 0) / scaleFactor) / 10.0; break;
-                        case 'cycleSpeed': obj.cycleSpeed = ((value || 0) / scaleFactor) / 50.0; break;
-                        case 'rotationSpeed': obj.rotationSpeed = (value || 0) / scaleFactor; break;
-                        case 'textAnimationSpeed': obj.textAnimationSpeed = (value || 0) / scaleFactor; break;
+                        case 'animationSpeed': obj.animationSpeed = (value || 0) / 10.0; break;
+                        case 'cycleSpeed': obj.cycleSpeed = (value || 0) / 50.0; break;
+                        case 'rotationSpeed': obj.rotationSpeed = (value || 0); break;
+                        // MODIFICATION: The text animation speed is now divided by 4.
+                        case 'textAnimationSpeed': obj.textAnimationSpeed = (value || 0) / 4; break;
+                        case 'oscAnimationMode': obj.oscAnimationMode = value; break;
+                        case 'pulseDepth': obj.pulseDepth = value; break;
+                        case 'fillShape': obj.fillShape = value; break;
+                        case 'enableWaveAnimation': obj.enableWaveAnimation = value; break;
+                        case 'oscDisplayMode': obj.oscDisplayMode = value; break;
                         default:
                             if(obj.hasOwnProperty(propName)) {
                                 obj[propName] = value;
@@ -3150,7 +3154,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         for (let i = objects.length - 1; i >= 0; i--) {
-            objects[i].draw(shouldAnimate, false);
+            objects[i].draw(false);
         }
     }
 
@@ -3516,7 +3520,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
                 let liveValue;
 
-                // Get the live value from the object instance
                 if (propName.startsWith('gradColor')) {
                     const colorKey = propName.replace('gradColor', 'color');
                     liveValue = obj.gradient[colorKey];
@@ -3528,7 +3531,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (liveValue === undefined) return;
 
-                // Apply transformations to convert internal value to config value
                 const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
                 if (propsToScale.includes(propName)) {
                     liveValue /= 4;
@@ -3541,13 +3543,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (typeof liveValue === 'boolean') {
                     liveValue = String(liveValue);
                 }
-
-                // Round numbers to avoid floating point issues
                 if (typeof liveValue === 'number') {
                     liveValue = Math.round(liveValue);
                 }
-
-                // Update the 'default' attribute in the configStore
                 conf.default = liveValue;
             });
         });
@@ -3563,14 +3561,11 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // --- FIX: Sync configStore with the live object state before saving ---
         syncConfigStoreWithState();
-        // --- END FIX ---
 
         const name = getControlValues()['title'] || 'Untitled Effect';
         const trimmedName = name.trim();
 
-        // Sanitize the configStore to remove any keys with undefined values
         const sanitizedConfigs = configStore.map(conf => {
             const sanitized = {};
             for (const key in conf) {
@@ -3585,7 +3580,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const projectData = {
             name: trimmedName,
             thumbnail: thumbnail,
-            configs: sanitizedConfigs, // This will now have the correct, up-to-date values
+            configs: sanitizedConfigs,
             objects: objects.map(o => ({ id: o.id, name: o.name, locked: o.locked })),
             updatedAt: new Date()
         };
@@ -3594,7 +3589,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const querySnapshot = await window.getDocs(q);
 
         if (!querySnapshot.empty) {
-            // Project exists, confirm overwrite
             const existingDocId = querySnapshot.docs[0].id;
             showConfirmModal(
                 'Confirm Overwrite',
@@ -3614,7 +3608,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             );
         } else {
-            // Project is new, create it
             try {
                 projectData.userId = user.uid;
                 projectData.creatorName = user.displayName || 'Anonymous';
