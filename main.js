@@ -445,12 +445,7 @@ class Shape {
     getWorldCoordsOfCorner(handleName) {
         const center = this.getCenter();
         const halfW = this.width / 2;
-        let halfH = this.height / 2;
-
-        if (this.shape === 'oscilloscope') {
-            const waveHeight = this.waveMaxY - this.waveMinY;
-            halfH = waveHeight / 2;
-        }
+        const halfH = this.height / 2;
 
         let localCorner = { x: 0, y: 0 };
         if (handleName.includes('left')) localCorner.x = -halfW;
@@ -530,6 +525,7 @@ class Shape {
         const local_dy = dx * Math.sin(angle) + dy * Math.cos(angle);
         const halfWidth = this.width / 2;
         const halfHeight = this.height / 2;
+
         return (local_dx >= -halfWidth && local_dx <= halfWidth &&
             local_dy >= -halfHeight && local_dy <= halfHeight);
     }
@@ -731,6 +727,13 @@ class Shape {
     }
 
     draw(isSelected) {
+        // --- NEW: CLIPPING LOGIC ---
+        this.ctx.save(); // Save the canvas state before applying the clip
+        this.ctx.beginPath();
+        this.ctx.rect(this.x, this.y, this.width, this.height);
+        this.ctx.clip(); // From now on, nothing can be drawn outside this rectangle
+
+        // --- Original drawing logic starts here ---
         if (isSelected && this.rotationSpeed !== 0) {
             this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
             this._pausedRotationSpeed = this.rotationSpeed;
@@ -819,7 +822,8 @@ class Shape {
                 const radialCenterX = this.x + this.width / 2;
                 const radialCenterY = this.y + this.height / 2;
                 const frequency = this.frequency;
-                const totalRadius = Math.min(this.width, this.height) / 2;
+
+                const totalRadius = (Math.min(this.width, this.height) / 2) - (this.lineWidth / 2);
                 const pulseRatio = (this.pulseDepth || 0) / 100.0;
                 const baseRadius = totalRadius * (0.5 + pulseRatio * 0.5);
                 const maxAmplitude = totalRadius - baseRadius;
@@ -848,7 +852,7 @@ class Shape {
 
             } else { // Linear mode
                 const waveCenterY = this.y + this.height / 2;
-                const amplitude = this.height / 2;
+                const amplitude = (this.height - this.lineWidth) / 2;
                 const frequency = this.frequency;
                 let minY = Infinity, maxY = -Infinity;
                 for (let i = 0; i <= this.width; i++) {
@@ -899,6 +903,9 @@ class Shape {
             this.ctx.fill();
         }
         this.ctx.restore();
+
+        // --- NEW: CLIPPING LOGIC ---
+        this.ctx.restore(); // This final restore removes the clipping region
     }
 
     drawSelectionUI() {
@@ -3666,7 +3673,7 @@ document.addEventListener('DOMContentLoaded', function () {
     canvasContainer.addEventListener('mousemove', e => {
         if (coordsDisplay) {
             const { x, y } = getCanvasCoordinates(e);
-            coordsDisplay.textContent = `${Math.round(x)}, ${Math.round(y)}`;
+            coordsDisplay.textContent = `${Math.round(x / 4)}, ${Math.round(y / 4)}: (${Math.round(x)}, ${Math.round(y)})`;
         }
 
         e.preventDefault();
