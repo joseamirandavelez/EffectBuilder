@@ -12,7 +12,7 @@ let dragStartY = 0;
 // Helper function to compute world-coordinate edges and center
 function getWorldPoints(obj) {
     const center = obj.getCenter();
-
+  
     if (obj.shape === 'circle' || obj.shape === 'ring') {
         const outerRadius = obj.width / 2;
         let points = [
