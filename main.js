@@ -12,7 +12,7 @@ let dragStartY = 0;
 // Helper function to compute world-coordinate edges and center
 function getWorldPoints(obj) {
     const center = obj.getCenter();
-
+  
     if (obj.shape === 'circle' || obj.shape === 'ring') {
         const outerRadius = obj.width / 2;
         let points = [
@@ -33,7 +33,6 @@ function getWorldPoints(obj) {
         }
         return points;
     }
-
     const angle = obj.getRenderAngle();
     const cosA = Math.cos(angle);
     const sinA = Math.sin(angle);
@@ -322,6 +321,8 @@ function getBoundingBox(obj) {
  * Represents a drawable, interactive shape on the canvas.
  * Manages its own state, including position, size, appearance, and animation properties.
  */
+// In main.js, DELETE your entire existing "class Shape { ... }" block and replace it with this:
+
 class Shape {
     constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape }) {
         this.id = id;
@@ -499,7 +500,7 @@ class Shape {
         if (dist <= this.rotationHandleRadius + this.handleSize / 2) {
             return { name: 'rotate', cursor: 'crosshair', type: 'rotation' };
         }
-
+      
         const h2 = this.handleSize / 2;
         const handlePositions = {
             'top-left': { x: minX, y: minY }, 'top': { x: minX + bbWidth / 2, y: minY }, 'top-right': { x: maxX, y: minY },
@@ -637,7 +638,6 @@ class Shape {
                 this.scrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
             }
         }
-
         const rotationIncrement = (this.rotationSpeed || 0) / 1000;
         this.rotationAngle += rotationIncrement;
 
@@ -743,6 +743,7 @@ class Shape {
             this._pausedRotationSpeed = null;
         }
 
+        if (enableAnimation && !isSelected) { this.updateAnimationState(); }
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
         const angleToUse = this.getRenderAngle();
@@ -3677,7 +3678,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         e.preventDefault();
-        const { x, y } = getCanvasCoordinates(e);
+        const { x, y } = getCanvasCoordinates(e); // Displayed coordinates
 
         if (isRotating) {
             const initial = initialDragState[0];
