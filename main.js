@@ -1,4 +1,39 @@
+// At the top of main.js
+let cachedSnapTargets = null;
 let snapLines = [];
+let isDragging = false;
+let isResizing = false;
+let isRotating = false;
+let activeResizeHandle = null;
+let initialDragState = [];
+let dragStartX = 0;
+let dragStartY = 0;
+
+// Helper function to compute world-coordinate edges and center
+function getWorldPoints(obj) {
+    const center = obj.getCenter();
+    const angle = obj.getRenderAngle();
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    const halfWidth = obj.width / 2;
+    const halfHeight = obj.height / 2;
+    const localPoints = [
+        { x: -halfWidth, y: -halfHeight, type: 'edge' },   // Top-left
+        { x: halfWidth, y: -halfHeight, type: 'edge' },    // Top-right
+        { x: halfWidth, y: halfHeight, type: 'edge' },     // Bottom-right
+        { x: -halfWidth, y: halfHeight, type: 'edge' },    // Bottom-left
+        { x: 0, y: -halfHeight, type: 'center' },          // Top-center
+        { x: 0, y: halfHeight, type: 'center' },           // Bottom-center
+        { x: -halfWidth, y: 0, type: 'center' },           // Center-left
+        { x: halfWidth, y: 0, type: 'center' },            // Center-right
+        { x: 0, y: 0, type: 'center' }                     // True center
+    ];
+    return localPoints.map(point => ({
+        x: center.x + (point.x * cosA - point.y * sinA),
+        y: center.y + (point.x * sinA + point.y * cosA),
+        type: point.type
+    }));
+}
 
 const FONT_DATA_4PX = {
     name: 'small', charWidth: 3, charHeight: 4, charSpacing: 1, lineSpacing: 2,
@@ -245,21 +280,27 @@ function getPatternColor(t, c1, c2) {
     }
 }
 
+function getBoundingBox(obj) {
+    const corners = [
+        obj.getWorldCoordsOfCorner('top-left'),
+        obj.getWorldCoordsOfCorner('top-right'),
+        obj.getWorldCoordsOfCorner('bottom-right'),
+        obj.getWorldCoordsOfCorner('bottom-left')
+    ];
+    return {
+        minX: Math.min(...corners.map(c => c.x)),
+        minY: Math.min(...corners.map(c => c.y)),
+        maxX: Math.max(...corners.map(c => c.x)),
+        maxY: Math.max(...corners.map(c => c.y)),
+    };
+}
+
 /**
  * Represents a drawable, interactive shape on the canvas.
  * Manages its own state, including position, size, appearance, and animation properties.
  */
 class Shape {
-    /**
-     * @param {object} config - The configuration object for the shape.
-     */
-    constructor({
-        id, name, shape, x, y, width, height, rotation, gradient, gradType,
-        gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx,
-        innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked,
-        numberOfRows, numberOfColumns, phaseOffset, animationMode,
-        text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate //,autoWidth
-    }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, lineColor, waveType, frequency, oscDisplayMode, pulseDepth }) {
         this.id = id;
         this.name = name || `Object ${id}`;
         this.shape = shape;
@@ -267,7 +308,7 @@ class Shape {
         this.y = y;
         this.width = width;
         this.height = height;
-        this.rotation = rotation || 0; // Add this line
+        this.rotation = rotation || 0;
         this.gradient = gradient || { color1: '#000000', color2: '#000000' };
         this.gradType = gradType || 'solid';
         this.gradientDirection = gradientDirection || 'horizontal';
@@ -287,8 +328,8 @@ class Shape {
         this.angularWidth = angularWidth;
         this.numberOfSegments = numberOfSegments;
         this.rotationSpeed = rotationSpeed || 0;
-        this.rotationAngle = 0; // The object's actual geometric rotation
-        this.animationAngle = 0; // The visual-only animation angle for rings
+        this.rotationAngle = 0;
+        this.animationAngle = 0;
         this.useSharpGradient = useSharpGradient !== undefined ? useSharpGradient : false;
         this.gradientStop = gradientStop !== undefined ? parseFloat(gradientStop) : 50;
         this.locked = locked || false;
@@ -297,14 +338,10 @@ class Shape {
         this.phaseOffset = phaseOffset || 10;
         this.cellOrder = [];
         this._shuffleCellOrder();
-        this.handleSize = 8;
-        this.rotationHandleOffset = -30; // Vertical distance from the box top
-        this.rotationHandleRadius = 6;   // The size of the handle circle
-        this.handles = [
-            { name: 'top-left', cursor: 'nwse-resize' }, { name: 'top', cursor: 'ns-resize' }, { name: 'top-right', cursor: 'nesw-resize' },
-            { name: 'left', cursor: 'ew-resize' }, { name: 'right', cursor: 'ew-resize' },
-            { name: 'bottom-left', cursor: 'nesw-resize' }, { name: 'bottom', cursor: 'ns-resize' }, { name: 'bottom-right', cursor: 'nwse-resize' }
-        ];
+        this.handleSize = 15;
+        this.rotationHandleOffset = -30;
+        this.rotationHandleRadius = 15;
+        this.handles = [{ name: 'top-left', cursor: 'nwse-resize' }, { name: 'top', cursor: 'ns-resize' }, { name: 'top-right', cursor: 'nesw-resize' }, { name: 'left', cursor: 'ew-resize' }, { name: 'right', cursor: 'ew-resize' }, { name: 'bottom-left', cursor: 'nesw-resize' }, { name: 'bottom', cursor: 'ns-resize' }, { name: 'bottom-right', cursor: 'nwse-resize' }];
         this.randomColorTimer = 0;
         this.cellColors = [];
         this.text = text || 'Hello';
@@ -318,21 +355,27 @@ class Shape {
         this.scrollOffsetX = 0;
         this.visibleCharCount = 0;
         this.waveAngle = 0;
-        this.typewriterWaitTimer = 0; // Add this line
-        //this.autoWidth = autoWidth !== undefined ? autoWidth : true;
+        this.typewriterWaitTimer = 0;
         this.showTime = showTime || false;
         this.showDate = showDate || false;
+        this.lineWidth = lineWidth || 2;
+        this.lineColor = lineColor || '#00ff00';
+        this.waveType = waveType || 'sine';
+        this.frequency = frequency || 5;
+        this.pulseDepth = pulseDepth !== undefined ? pulseDepth : 50;
+        this.oscDisplayMode = oscDisplayMode || 'linear';
+        this.waveMinY = this.y;
+        this.waveMaxY = this.y + this.height;
+        this._pausedRotationSpeed = null;
     }
 
     getDisplayText() {
         const now = new Date();
         const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
         const year = now.getFullYear();
         const dateString = `${month}/${day}/${year}`;
-
         if (this.showDate && this.showTime) {
             return `${dateString} ${timeString}`;
         } else if (this.showTime) {
@@ -340,40 +383,25 @@ class Shape {
         } else if (this.showDate) {
             return dateString;
         }
-
         return this.text || '';
     }
 
     getWrappedText() {
-        const text = this.getDisplayText(); // Uses the new helper
-        // Note: The wrapping feature from a previous request is not in your current file.
-        // If you want it back, the logic would go here. For now, it just returns the text.
+        const text = this.getDisplayText();
         return text;
     }
 
     _updateTextMetrics() {
         if (this.shape !== 'text' || !this.ctx) return;
-
         const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
         const { charWidth, charHeight, charSpacing, lineSpacing } = fontData;
         const textToMeasure = this.getWrappedText() || ' ';
         const lines = textToMeasure.split('\n');
         const pixelSize = this.fontSize / 10;
-
-        // if (this.autoWidth) {
-        //     const widths = lines.map(line => line.length * (charWidth + charSpacing) * pixelSize - (charSpacing * pixelSize));
-        //     this.width = Math.max(0, ...widths);
-        // }
-
         const textBlockHeight = lines.length * (charHeight + lineSpacing) * pixelSize - (lineSpacing * pixelSize);
-        // Add top and bottom margins, each equal to one pixel cell's size
         this.height = textBlockHeight + (2 * pixelSize);
     }
 
-    /**
-     * Shuffles the order of cells for 'bounce-random' animation mode.
-     * @private
-     */
     _shuffleCellOrder() {
         const totalCells = this.numberOfRows * this.numberOfColumns;
         this.cellOrder = Array.from({ length: totalCells }, (_, i) => i);
@@ -383,114 +411,145 @@ class Shape {
         }
     }
 
-    /**
-     * Calculates the center point of the shape.
-     * @returns {{x: number, y: number}} The center coordinates.
-     */
-    getCenter() { return { x: this.x + this.width / 2, y: this.y + this.height / 2 }; }
+    getCenter() {
+        return { x: this.x + this.width / 2, y: this.y + this.height / 2 };
+    }
 
-    /**
-     * Determines the correct angle to use for rendering and hit detection.
-     * @returns {number} The angle in radians.
-     */
     getRenderAngle() {
-        return (this.rotationSpeed !== 0)
-            ? this.rotationAngle
-            : (this.rotation * Math.PI / 180);
+        return (this.rotationSpeed !== 0) ? this.rotationAngle : (this.rotation * Math.PI / 180);
     }
 
-    /**
-     * Calculates the local positions of all resize handles.
-     * @returns {Object.<string, {x: number, y: number}>} An object mapping handle names to their local positions.
-     */
-    getHandlePositions() {
-        const h2 = this.handleSize / 2;
-        return {
-            'top-left': { x: this.x - h2, y: this.y - h2 },
-            'top': { x: this.x + this.width / 2 - h2, y: this.y - h2 },
-            'top-right': { x: this.x + this.width - h2, y: this.y - h2 },
-            'left': { x: this.x - h2, y: this.y + this.height / 2 - h2 },
-            'right': { x: this.x + this.width - h2, y: this.y + this.height / 2 - h2 },
-            'bottom-left': { x: this.x - h2, y: this.y + this.height - h2 },
-            'bottom': { x: this.x + this.width / 2 - h2, y: this.y + this.height - h2 },
-            'bottom-right': { x: this.x + this.width - h2, y: this.y + this.height - h2 }
-        };
+    getWorldCoordsOfCorner(handleName) {
+        const center = this.getCenter();
+        const halfW = this.width / 2;
+        let halfH = this.height / 2;
+
+        if (this.shape === 'oscilloscope') {
+            const waveHeight = this.waveMaxY - this.waveMinY;
+            halfH = waveHeight / 2;
+        }
+
+        let localCorner = { x: 0, y: 0 };
+        if (handleName.includes('left')) localCorner.x = -halfW;
+        if (handleName.includes('right')) localCorner.x = halfW;
+        if (handleName.includes('top')) localCorner.y = -halfH;
+        if (handleName.includes('bottom')) localCorner.y = halfH;
+
+        const angle = this.getRenderAngle();
+        const s = Math.sin(angle);
+        const c = Math.cos(angle);
+        const rotatedX = localCorner.x * c - localCorner.y * s;
+        const rotatedY = localCorner.x * s + localCorner.y * c;
+
+        return { x: center.x + rotatedX, y: center.y + rotatedY };
     }
 
-    /**
-     * Determines which resize handle, if any, is at a given point on the canvas, accounting for rotation.
-     * @param {number} px - The x-coordinate to check.
-     * @param {number} py - The y-coordinate to check.
-     * @returns {{name: string, cursor: string}|null} The handle object or null if no handle is found.
-     */
     getHandleAtPoint(px, py) {
         if (this.locked) return null;
+        let minX, minY, bbWidth, bbHeight;
 
-        // Convert the mouse click coordinate into the object's local (rotated) space
-        const localPoint = this.getLocalPoint(px, py);
-        const handlePositions = this.getHandlePositions();
+        if (this.shape === 'circle' || this.shape === 'ring') {
+            const center = this.getCenter();
+            bbWidth = this.width;
+            bbHeight = this.height;
+            minX = center.x - bbWidth / 2;
+            minY = center.y - bbHeight / 2;
+        } else {
+            const corners = [
+                this.getWorldCoordsOfCorner('top-left'),
+                this.getWorldCoordsOfCorner('top-right'),
+                this.getWorldCoordsOfCorner('bottom-right'),
+                this.getWorldCoordsOfCorner('bottom-left')
+            ];
+            minX = Math.min(...corners.map(c => c.x));
+            minY = Math.min(...corners.map(c => c.y));
+            const maxX = Math.max(...corners.map(c => c.x));
+            const maxY = Math.max(...corners.map(c => c.y));
+            bbWidth = maxX - minX;
+            bbHeight = maxY - minY;
+        }
 
-        // Check if the local point hits any of the local handle positions
+        const maxX = minX + bbWidth;
+        const maxY = minY + bbHeight;
+
+        const topMargin = 40;
+        let rotHandleY;
+        if (minY < topMargin) { rotHandleY = maxY - this.rotationHandleOffset; }
+        else { rotHandleY = minY + this.rotationHandleOffset; }
+        const rotHandleX = minX + bbWidth / 2;
+        const dist = Math.sqrt(Math.pow(px - rotHandleX, 2) + Math.pow(py - rotHandleY, 2));
+        if (dist <= this.rotationHandleRadius + this.handleSize / 2) {
+            return { name: 'rotate', cursor: 'crosshair', type: 'rotation' };
+        }
+
+        const h2 = this.handleSize / 2;
+        const handlePositions = {
+            'top-left': { x: minX, y: minY }, 'top': { x: minX + bbWidth / 2, y: minY }, 'top-right': { x: maxX, y: minY },
+            'left': { x: minX, y: minY + bbHeight / 2 }, 'right': { x: maxX, y: minY + bbHeight / 2 },
+            'bottom-left': { x: minX, y: maxY }, 'bottom': { x: minX + bbWidth / 2, y: maxY }, 'bottom-right': { x: maxX, y: maxY }
+        };
         for (const handle of this.handles) {
             const pos = handlePositions[handle.name];
-            if (localPoint.x >= pos.x && localPoint.x <= pos.x + this.handleSize &&
-                localPoint.y >= pos.y && localPoint.y <= pos.y + this.handleSize) {
+            if (px >= pos.x - h2 && px <= pos.x + h2 && py >= pos.y - h2 && py <= pos.y + h2) {
                 return handle;
             }
         }
+
         return null;
     }
 
-    /**
-     * Converts world coordinates to the shape's local (rotated) coordinate system.
-     * @param {number} px - The world x-coordinate.
-     * @param {number} py - The world y-coordinate.
-     * @returns {{x: number, y: number}} The coordinates in the shape's local space.
-     */
-    getLocalPoint(px, py) {
+    isPointInside(px, py) {
         const center = this.getCenter();
-        const angle = -this.getRenderAngle(); // Use the new helper function
-        const s = Math.sin(angle);
-        const c = Math.cos(angle);
-        let tempX = px - center.x;
-        let tempY = py - center.y;
-        const rotatedX = tempX * c - tempY * s;
-        const rotatedY = tempX * s + tempY * c;
-        return { x: rotatedX + center.x, y: rotatedY + center.y };
+        const angle = -this.getRenderAngle();
+        const dx = px - center.x;
+        const dy = py - center.y;
+        const local_dx = dx * Math.cos(angle) - dy * Math.sin(angle);
+        const local_dy = dx * Math.sin(angle) + dy * Math.cos(angle);
+        const halfWidth = this.width / 2;
+        const halfHeight = this.height / 2;
+        return (local_dx >= -halfWidth && local_dx <= halfWidth &&
+            local_dy >= -halfHeight && local_dy <= halfHeight);
     }
 
-    /**
-     * Converts a local corner handle position to world coordinates, accounting for rotation.
-     * @param {string} handleName - The name of the handle (e.g., 'top-left').
-     * @returns {{x: number, y: number}} The world coordinates of the handle's center.
-     */
-    getWorldCoordsOfCorner(handleName) {
-        const handlePositions = this.getHandlePositions();
-        const h2 = this.handleSize / 2;
-        const localCorner = { x: handlePositions[handleName].x + h2, y: handlePositions[handleName].y + h2 };
-
-        const center = this.getCenter();
-        const angle = this.getRenderAngle(); // Use the new helper function
-        const s = Math.sin(angle);
-        const c = Math.cos(angle);
-        let tempX = localCorner.x - center.x;
-        let tempY = localCorner.y - center.y;
-        const rotatedX = tempX * c - tempY * s;
-        const rotatedY = tempX * s + tempY * c;
-        return { x: rotatedX + center.x, y: rotatedY + center.y };
+    update(props) {
+        const textChanged = props.text !== undefined && props.text !== this.text;
+        const animationChanged = props.textAnimation !== undefined && props.textAnimation !== this.textAnimation;
+        if ((textChanged && this.textAnimation === 'typewriter') || (animationChanged && props.textAnimation === 'typewriter')) {
+            this.visibleCharCount = 0;
+            this.typewriterWaitTimer = 0;
+        }
+        if ((textChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave')) || (animationChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave'))) {
+            this.scrollOffsetX = 0;
+            this.waveAngle = 0;
+        }
+        const oldRows = this.numberOfRows;
+        const oldCols = this.numberOfColumns;
+        for (const key in props) {
+            if (props[key] !== undefined) {
+                if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
+                    if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
+                    if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
+                } else {
+                    // FIX: Removed hasOwnProperty check to allow all properties from the form to update.
+                    this[key] = props[key];
+                }
+            }
+        }
+        if (this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols) {
+            this._shuffleCellOrder();
+        }
+        if (this.shape === 'text') {
+            this._updateTextMetrics();
+        }
     }
 
     updateAnimationState() {
-        // --- Color Cycling ---
         if (this.cycleColors) {
             this.hue1 += this.cycleSpeed;
             this.hue2 += this.cycleSpeed;
         }
-
-        // --- Text Animation State ---
-        const currentText = this.getDisplayText(); // Get the current text (or time)
+        const currentText = this.getDisplayText();
         const textSpeed = this.textAnimationSpeed / 100;
-
         switch (this.textAnimation) {
             case 'marquee':
             case 'wave':
@@ -498,53 +557,38 @@ class Shape {
                 const pixelSize = this.fontSize / 10;
                 const textWidth = currentText.length * (fontData.charWidth + fontData.charSpacing) * pixelSize;
                 this.scrollOffsetX -= textSpeed * 20;
-                if (this.scrollOffsetX < -textWidth) {
-                    this.scrollOffsetX = this.width;
-                }
-                if (this.textAnimation === 'wave') {
-                    this.waveAngle += textSpeed;
-                }
+                if (this.scrollOffsetX < -textWidth) { this.scrollOffsetX = this.width; }
+                if (this.textAnimation === 'wave') { this.waveAngle += textSpeed; }
                 this.visibleCharCount = currentText.length;
                 break;
             case 'typewriter':
                 if (this.typewriterWaitTimer > 0) {
-                    // We are in the pause phase
                     this.typewriterWaitTimer--;
-                    if (this.typewriterWaitTimer <= 0) {
-                        // Pause is over, reset the animation
-                        this.visibleCharCount = 0;
-                    }
+                    if (this.typewriterWaitTimer <= 0) { this.visibleCharCount = 0; }
                 } else {
-                    // We are in the typing phase
                     this.visibleCharCount += textSpeed;
                     if (this.visibleCharCount >= currentText.length) {
-                        // Typing is finished, start the pause
                         this.visibleCharCount = currentText.length;
-                        this.typewriterWaitTimer = 50; // Pause for 50 frames (approx. 1 second)
+                        this.typewriterWaitTimer = 50;
                     }
                 }
                 this.scrollOffsetX = 0;
                 break;
-            default: // 'none'
+            default:
                 this.scrollOffsetX = 0;
                 this.visibleCharCount = currentText.length;
                 break;
         }
-
-        // --- Gradient Animation State ---
         if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
             const increment = this.animationSpeed * 0.01;
             const isBounceMode = this.animationMode.includes('bounce');
-
             if (isBounceMode) {
                 if (this.animationState === 'waiting') {
                     this.waitTimer--;
                     if (this.waitTimer <= 0) {
                         this.isReversing = !this.isReversing;
                         this.animationState = 'scrolling';
-                        if (this.animationMode === 'bounce-random') {
-                            this._shuffleCellOrder();
-                        }
+                        if (this.animationMode === 'bounce-random') { this._shuffleCellOrder(); }
                     }
                 } else if (this.animationState === 'scrolling') {
                     const bandWidth = this.gradientStop / 100.0;
@@ -568,48 +612,36 @@ class Shape {
                         }
                     }
                 }
-            } else { // Loop mode
+            } else {
                 const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
                 this.scrollOffset += increment * directionMultiplier;
                 this.scrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
             }
         }
 
-        // --- Object Rotation ---
         const rotationIncrement = (this.rotationSpeed || 0) / 1000;
         this.rotationAngle += rotationIncrement;
-        this.animationAngle += rotationIncrement;
+
+        const animationIncrement = (this.animationSpeed || 0) * 0.05;
+        this.animationAngle += animationIncrement;
     }
 
-    /**
-     * Creates a CanvasGradient or color string based on the current shape properties.
-     * @param {number} [phase=0] - The animation phase, used for grid-based effects.
-     * @returns {CanvasGradient|string} The fill style for the canvas context.
-     */
     createFillStyle(phase = 0) {
         let phaseIndex = phase;
         if (this.animationMode === 'bounce-random') {
-            if (this.cellOrder && this.cellOrder.length > phase) {
-                phaseIndex = this.cellOrder[phase];
-            }
+            if (this.cellOrder && this.cellOrder.length > phase) { phaseIndex = this.cellOrder[phase]; }
         } else if (this.animationMode === 'bounce-reversed' && this.isReversing) {
             const lastCellIndex = Math.max(0, (this.numberOfRows * this.numberOfColumns) - 1);
             phaseIndex = lastCellIndex - phase;
         }
-
         const phaseIncrement = this.phaseOffset / 100.0;
         const effectiveScrollOffset = this.scrollOffset + phaseIndex * phaseIncrement;
-
-        const p = this.animationMode === 'loop' ?
-            (effectiveScrollOffset % 1.0 + 1.0) % 1.0 :
-            effectiveScrollOffset;
+        const p = this.animationMode === 'loop' ? (effectiveScrollOffset % 1.0 + 1.0) % 1.0 : effectiveScrollOffset;
         const c1 = this.cycleColors ? `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color1;
         const c2 = this.cycleColors ? `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color2;
         const isLinear = this.gradType && this.gradType.includes('linear');
         const isRadial = this.gradType && this.gradType.includes('radial');
-        if (this.gradType === 'alternating') {
-            return (phase % 2 === 0) ? c1 : c2;
-        }
+        if (this.gradType === 'alternating') { return (phase % 2 === 0) ? c1 : c2; }
         if (isLinear) {
             let grad;
             if (this.gradientDirection === 'horizontal') {
@@ -620,44 +652,33 @@ class Shape {
             if (this.useSharpGradient) {
                 const stopRatio = this.gradientStop / 100.0;
                 if (this.animationMode === 'loop') {
-                    const p1 = p;
-                    const p2 = p1 + stopRatio;
+                    const p1 = p; const p2 = p1 + stopRatio;
                     if (p2 > 1.0) {
                         const wrapped_p2 = p2 - 1.0;
-                        grad.addColorStop(0, c1);
-                        grad.addColorStop(wrapped_p2, c1);
-                        grad.addColorStop(wrapped_p2, c2);
-                        grad.addColorStop(p1, c2);
-                        grad.addColorStop(p1, c1);
-                        grad.addColorStop(1, c1);
+                        grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
+                        grad.addColorStop(wrapped_p2, c2); grad.addColorStop(p1, c2);
+                        grad.addColorStop(p1, c1); grad.addColorStop(1, c1);
                     } else {
-                        grad.addColorStop(0, c2);
-                        grad.addColorStop(p1, c2);
-                        grad.addColorStop(p1, c1);
-                        grad.addColorStop(p2, c1);
-                        grad.addColorStop(p2, c2);
-                        grad.addColorStop(1, c2);
+                        grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
+                        grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
+                        grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
                     }
                 } else {
-                    const p1 = p;
-                    const p2 = p1 + stopRatio;
+                    const p1 = p; const p2 = p1 + stopRatio;
                     const clamped_p1 = Math.max(0, Math.min(1, p1));
                     const clamped_p2 = Math.max(0, Math.min(1, p2));
                     grad.addColorStop(0, c2);
                     if (clamped_p1 > 0) grad.addColorStop(clamped_p1, c2);
                     if (clamped_p1 < clamped_p2) {
-                        grad.addColorStop(clamped_p1, c1);
-                        grad.addColorStop(clamped_p2, c1);
+                        grad.addColorStop(clamped_p1, c1); grad.addColorStop(clamped_p2, c1);
                     }
                     if (clamped_p2 < 1) grad.addColorStop(clamped_p2, c2);
                     grad.addColorStop(1, c2);
                 }
             } else {
-                const stops = [];
-                stops.push({ pos: 0, color: getPatternColor(0 - p, c1, c2) });
+                const stops = [{ pos: 0, color: getPatternColor(0 - p, c1, c2) }];
                 for (let i = -2; i <= 2; i++) {
-                    const c1_pos = i + p;
-                    const c2_pos = i + 0.5 + p;
+                    const c1_pos = i + p; const c2_pos = i + 0.5 + p;
                     if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
                     if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
                 }
@@ -667,49 +688,42 @@ class Shape {
             }
             return grad;
         } else if (isRadial) {
-            const centerX = this.x + this.width / 2;
-            const centerY = this.y + this.height / 2;
+            const centerX = this.x + this.width / 2; const centerY = this.y + this.height / 2;
             const maxRadius = Math.max(this.width, this.height) / 2;
             const grad = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
             const radialP = (p % 1.0 + 1.0) % 1.0;
             const wave = 1 - Math.abs(2 * radialP - 1);
             if (this.useSharpGradient) {
                 const stopPoint = (this.gradientStop / 100) * wave;
-                grad.addColorStop(0, c1);
-                grad.addColorStop(stopPoint, c1);
-                grad.addColorStop(Math.min(1, stopPoint + 0.001), c2);
-                grad.addColorStop(1, c2);
+                grad.addColorStop(0, c1); grad.addColorStop(stopPoint, c1);
+                grad.addColorStop(Math.min(1, stopPoint + 0.001), c2); grad.addColorStop(1, c2);
             } else {
                 const gradientStopPosition = this.gradientStop / 100.0;
                 const midPoint = gradientStopPosition * wave;
-                grad.addColorStop(0, c1);
-                grad.addColorStop(midPoint, c2);
-                grad.addColorStop(1, c1);
+                grad.addColorStop(0, c1); grad.addColorStop(midPoint, c2); grad.addColorStop(1, c1);
             }
             return grad;
         }
         return c1 || 'black';
     }
 
-    /**
-     * Draws the shape on the canvas, applying animations, selections, and locked states.
-     * @param {boolean} enableAnimation - Whether the global animation is enabled.
-     * @param {boolean} isSelected - Whether the shape is currently selected.
-     */
-    draw(enableAnimation, isSelected) {
-        if (enableAnimation && !isSelected) {
-            this.updateAnimationState();
+    draw(isSelected) {
+        if (isSelected && this.rotationSpeed !== 0) {
+            this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
+            this._pausedRotationSpeed = this.rotationSpeed;
+            this.rotationSpeed = 0;
+        } else if (!isSelected && this._pausedRotationSpeed !== null) {
+            this.rotationSpeed = this._pausedRotationSpeed;
+            this._pausedRotationSpeed = null;
         }
 
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
         const angleToUse = this.getRenderAngle();
-
         this.ctx.save();
         this.ctx.translate(centerX, centerY);
         this.ctx.rotate(angleToUse);
         this.ctx.translate(-centerX, -centerY);
-
         if (this.shape === 'ring') {
             const outerRadius = this.width / 2;
             const innerRadius = this.innerDiameter / 2;
@@ -743,7 +757,7 @@ class Shape {
             const isRandom = this.gradType === 'random';
             const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
             const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-            if (isRandom && enableAnimation) {
+            if (isRandom) {
                 this.randomColorTimer -= 1;
                 if (this.randomColorTimer <= 0) {
                     this.cellColors = [];
@@ -757,9 +771,7 @@ class Shape {
                     const cellY = this.y + row * cellHeight;
                     const cellIndex = row * this.numberOfColumns + col;
                     if (isRandom) {
-                        if (!this.cellColors[cellIndex]) {
-                            this.cellColors[cellIndex] = Math.random() < 0.5 ? c1 : c2;
-                        }
+                        if (!this.cellColors[cellIndex]) { this.cellColors[cellIndex] = Math.random() < 0.5 ? c1 : c2; }
                         this.ctx.fillStyle = this.cellColors[cellIndex];
                         this.ctx.fillRect(cellX, cellY, cellWidth, cellHeight);
                     } else {
@@ -776,6 +788,73 @@ class Shape {
         } else if (this.shape === 'text') {
             this.ctx.fillStyle = this.createFillStyle();
             drawPixelText(this.ctx, this);
+        } else if (this.shape === 'oscilloscope') {
+            this.ctx.strokeStyle = this.createFillStyle();
+            this.ctx.lineWidth = this.lineWidth;
+            this.ctx.beginPath();
+
+            if (this.oscDisplayMode === 'radial') {
+                const radialCenterX = this.x + this.width / 2;
+                const radialCenterY = this.y + this.height / 2;
+                const frequency = this.frequency;
+
+                const totalRadius = Math.min(this.width, this.height) / 2;
+                const pulseRatio = (this.pulseDepth || 0) / 100.0;
+                const baseRadius = totalRadius * (0.5 + pulseRatio * 0.5);
+                const maxAmplitude = totalRadius - baseRadius;
+
+                // Animation for the entire shape "breathing" in and out
+                const breathFactor = 1 + Math.sin(this.animationAngle) * 0.2;
+
+                for (let i = 0; i <= 360; i++) {
+                    const angleRad = (i * Math.PI) / 180;
+                    const progress = i / 360;
+                    // Wave pattern rotates at a different speed than the breathing animation
+                    const waveFuncAngle = 2 * Math.PI * frequency * progress + this.animationAngle * 2;
+                    let y_wave;
+                    switch (this.waveType) {
+                        case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
+                        case 'sawtooth': y_wave = (((waveFuncAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
+                        case 'triangle': y_wave = Math.asin(Math.sin(waveFuncAngle)) * (2 / Math.PI); break;
+                        case 'sine': default: y_wave = Math.sin(waveFuncAngle); break;
+                    }
+                    const modulatedRadius = baseRadius + y_wave * maxAmplitude;
+                    const finalRadius = modulatedRadius * breathFactor; // Apply breathing animation
+
+                    const px = radialCenterX + finalRadius * Math.cos(angleRad);
+                    const py = radialCenterY + finalRadius * Math.sin(angleRad);
+                    if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
+                }
+                this.ctx.closePath();
+                this.waveMinY = radialCenterY - totalRadius * breathFactor;
+                this.waveMaxY = radialCenterY + totalRadius * breathFactor;
+
+            } else { // Linear mode
+                const waveCenterY = this.y + this.height / 2;
+                const amplitude = this.height / 2;
+                const frequency = this.frequency;
+                let minY = Infinity, maxY = -Infinity;
+                for (let i = 0; i <= this.width; i++) {
+                    const progress = i / this.width;
+                    const angle = 2 * Math.PI * frequency * progress + this.animationAngle;
+                    let y_wave;
+                    switch (this.waveType) {
+                        case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;
+                        case 'sawtooth': y_wave = 2 * (progress * frequency - Math.floor(0.5 + progress * frequency)); break;
+                        case 'triangle': y_wave = Math.asin(Math.sin(angle)) * (2 / Math.PI); break;
+                        case 'sine': default: y_wave = Math.sin(angle); break;
+                    }
+                    const px = this.x + i;
+                    const py = waveCenterY - y_wave * amplitude;
+                    if (py < minY) minY = py;
+                    if (py > maxY) maxY = py;
+                    if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
+                }
+                this.waveMinY = minY;
+                this.waveMaxY = maxY;
+            }
+            this.ctx.stroke();
+
         } else {
             this.ctx.beginPath();
             switch (this.shape) {
@@ -792,203 +871,86 @@ class Shape {
         this.ctx.restore();
     }
 
-    /**
-     * Draws the UI for a selected or locked object (selection box, handles, lock icon).
-     * This is drawn in a separate pass to ensure it's on top of all other objects.
-     */
     drawSelectionUI() {
-        const centerX = this.x + this.width / 2;
-        const centerY = this.y + this.height / 2;
-
-        const corners = [this.getWorldCoordsOfCorner('top-left'), this.getWorldCoordsOfCorner('top-right'), this.getWorldCoordsOfCorner('bottom-right'), this.getWorldCoordsOfCorner('bottom-left')];
-        const minX = Math.min(...corners.map(c => c.x));
-        const minY = Math.min(...corners.map(c => c.y));
-        const maxX = Math.max(...corners.map(c => c.x));
-        const maxY = Math.max(...corners.map(c => c.y));
-        const bbWidth = maxX - minX;
-        const bbHeight = maxY - minY;
-
+        const selectionColor = this.locked ? 'orange' : '#00f6ff';
         this.ctx.save();
-        this.ctx.strokeStyle = this.locked ? 'orange' : '#00f6ff';
+        this.ctx.strokeStyle = selectionColor;
+        this.ctx.fillStyle = selectionColor;
         this.ctx.lineWidth = 2;
         this.ctx.setLineDash([5, 5]);
+
+        let minX, minY, bbWidth, bbHeight;
+
+        if (this.shape === 'circle' || this.shape === 'ring') {
+            const center = this.getCenter();
+            bbWidth = this.width;
+            bbHeight = this.height;
+            minX = center.x - bbWidth / 2;
+            minY = center.y - bbHeight / 2;
+        } else {
+            const corners = [
+                this.getWorldCoordsOfCorner('top-left'),
+                this.getWorldCoordsOfCorner('top-right'),
+                this.getWorldCoordsOfCorner('bottom-right'),
+                this.getWorldCoordsOfCorner('bottom-left')
+            ];
+            minX = Math.min(...corners.map(c => c.x));
+            minY = Math.min(...corners.map(c => c.y));
+            const maxX = Math.max(...corners.map(c => c.x));
+            const maxY = Math.max(...corners.map(c => c.y));
+            bbWidth = maxX - minX;
+            bbHeight = maxY - minY;
+        }
+
         this.ctx.strokeRect(minX, minY, bbWidth, bbHeight);
         this.ctx.setLineDash([]);
 
-        if (!this.locked) {
-            this.ctx.fillStyle = '#00f6ff';
-            const h2 = this.handleSize / 2;
+        const h2 = this.handleSize / 2;
+        const maxX = minX + bbWidth;
+        const maxY = minY + bbHeight;
+        const handlePositions = [
+            { x: minX - h2, y: minY - h2 }, { x: minX + bbWidth / 2 - h2, y: minY - h2 }, { x: maxX - h2, y: minY - h2 },
+            { x: minX - h2, y: minY + bbHeight / 2 - h2 }, { x: maxX - h2, y: minY + bbHeight / 2 - h2 },
+            { x: minX - h2, y: maxY - h2 }, { x: minX + bbWidth / 2 - h2, y: maxY - h2 }, { x: maxX - h2, y: maxY - h2 }
+        ];
+        handlePositions.forEach(pos => this.ctx.fillRect(pos.x, pos.y, this.handleSize, this.handleSize));
 
-            if (this.rotationSpeed === 0) {
-                const handlePositions = [
-                    { name: 'top-left', x: minX - h2, y: minY - h2 }, { name: 'top', x: minX + bbWidth / 2 - h2, y: minY - h2 }, { name: 'top-right', x: maxX - h2, y: minY - h2 },
-                    { name: 'left', x: minX - h2, y: minY + bbHeight / 2 - h2 }, { name: 'right', x: maxX - h2, y: minY + bbHeight / 2 - h2 },
-                    { name: 'bottom-left', x: minX - h2, y: maxY - h2 }, { name: 'bottom', x: minX + bbWidth / 2 - h2, y: maxY - h2 }, { name: 'bottom-right', x: maxX - h2, y: maxY - h2 }
-                ];
-                handlePositions.forEach(pos => this.ctx.fillRect(pos.x, pos.y, this.handleSize, this.handleSize));
-            }
-
-            // --- NEW: Dynamic Rotation Handle Position ---
-            const handleX = minX + bbWidth / 2;
-            let handleY;
-            let stemStartY;
-            const topMargin = 40; // How close to the top edge before flipping
-
-            if (minY < topMargin) {
-                // Flip handle to the bottom of the selection box
-                handleY = maxY - this.rotationHandleOffset; // Use negative offset to go down
-                stemStartY = maxY;
-            } else {
-                // Default position is above the selection box
-                handleY = minY + this.rotationHandleOffset;
-                stemStartY = minY;
-            }
-
-            this.ctx.beginPath();
-            this.ctx.moveTo(minX + bbWidth / 2, stemStartY); // Start from top or bottom of box
-            this.ctx.lineTo(handleX, handleY);
-            this.ctx.strokeStyle = '#00f6ff';
-            this.ctx.stroke();
-            this.ctx.beginPath();
-            this.ctx.arc(handleX, handleY, this.rotationHandleRadius, 0, Math.PI * 2);
-            this.ctx.fill();
+        const topMargin = 40;
+        let handleY;
+        let stemStartY;
+        const handleX = minX + bbWidth / 2;
+        if (minY < topMargin) {
+            stemStartY = maxY;
+            handleY = maxY - this.rotationHandleOffset;
+        } else {
+            stemStartY = minY;
+            handleY = minY + this.rotationHandleOffset;
         }
+        this.ctx.beginPath();
+        this.ctx.moveTo(handleX, stemStartY);
+        this.ctx.lineTo(handleX, handleY);
+        this.ctx.stroke();
+        this.ctx.beginPath();
+        this.ctx.arc(handleX, handleY, this.rotationHandleRadius, 0, 2 * Math.PI);
+        this.ctx.fill();
+
         this.ctx.restore();
 
         if (this.locked) {
-            this.ctx.save();
-            this.ctx.fillStyle = 'white';
+            const centerX = minX + bbWidth / 2;
+            const centerY = minY + bbHeight / 2;
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             this.ctx.font = '30px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText('🔒', centerX, centerY);
-            this.ctx.restore();
-        }
-    }
-
-    /**
-     * Calculates the position of the rotation handle in the object's local space.
-     * @returns {{x: number, y: number}} The local coordinates of the handle.
-     */
-    getRotationHandlePosition() {
-        return {
-            x: this.x + this.width / 2,
-            y: this.y + this.rotationHandleOffset
-        };
-    }
-
-    /**
-     * Determines if a point on the canvas is hitting the rotation handle.
-     * @param {number} px - The x-coordinate to check.
-     * @param {number} py - The y-coordinate to check.
-     * @returns {object|null} An object indicating a hit, or null.
-     */
-    getRotationHandleAtPoint(px, py) {
-        if (this.locked) return null;
-        const corners = [this.getWorldCoordsOfCorner('top-left'), this.getWorldCoordsOfCorner('top-right'), this.getWorldCoordsOfCorner('bottom-right'), this.getWorldCoordsOfCorner('bottom-left')];
-        const minX = Math.min(...corners.map(c => c.x));
-        const minY = Math.min(...corners.map(c => c.y));
-        const maxX = Math.max(...corners.map(c => c.x));
-        const maxY = Math.max(...corners.map(c => c.y));
-
-        // --- NEW: Dynamic Handle Position Calculation ---
-        const handleX = minX + (maxX - minX) / 2;
-        let handleY;
-        const topMargin = 40;
-
-        if (minY < topMargin) {
-            // Position is at the bottom
-            handleY = maxY - this.rotationHandleOffset;
-        } else {
-            // Position is at the top
-            handleY = minY + this.rotationHandleOffset;
-        }
-
-        const dist = Math.sqrt(Math.pow(px - handleX, 2) + Math.pow(py - handleY, 2));
-        if (dist <= this.rotationHandleRadius + this.handleSize / 2) {
-            return { type: 'rotation' };
-        }
-        return null;
-    }
-
-    /**
-     * Determines which resize handle, if any, is at a given point on the canvas.
-     * This now checks against the visual, axis-aligned handles.
-     * @param {number} px - The x-coordinate to check.
-     * @param {number} py - The y-coordinate to check.
-     * @returns {{name: string, cursor: string}|null} The handle object or null if no handle is found.
-     */
-    getHandleAtPoint(px, py) {
-        if (this.locked) return null;
-        const localPoint = this.getLocalPoint(px, py);
-        const handlePositions = this.getHandlePositions();
-
-        for (const handle of this.handles) {
-            const pos = handlePositions[handle.name];
-            if (localPoint.x >= pos.x && localPoint.x <= pos.x + this.handleSize &&
-                localPoint.y >= pos.y && localPoint.y <= pos.y + this.handleSize) {
-                return handle;
-            }
-        }
-        return null;
-    }
-
-
-    /**
-     * Checks if a given point is inside the shape's bounding box, considering rotation.
-     * @param {number} px - The x-coordinate to check.
-     * @param {number} py - The y-coordinate to check.
-     * @returns {boolean} True if the point is inside, false otherwise.
-     */
-    isPointInside(px, py) {
-        const localPoint = this.getLocalPoint(px, py);
-        return (localPoint.x >= this.x && localPoint.x <= this.x + this.width && localPoint.y >= this.y && localPoint.y <= this.y + this.height);
-    }
-
-    /**
-     * Updates the shape's properties from a given configuration object.
-     * @param {object} props - An object containing properties to update.
-     */
-    update(props) {
-        const textChanged = props.text !== undefined && props.text !== this.text;
-        const animationChanged = props.textAnimation !== undefined && props.textAnimation !== this.textAnimation;
-
-        if ((textChanged && this.textAnimation === 'typewriter') || (animationChanged && props.textAnimation === 'typewriter')) {
-            this.visibleCharCount = 0;
-            this.typewriterWaitTimer = 0;
-        }
-        if ((textChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave')) || (animationChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave'))) {
-            this.scrollOffsetX = 0;
-            this.waveAngle = 0;
-        }
-
-        const oldRows = this.numberOfRows;
-        const oldCols = this.numberOfColumns;
-
-        for (const key in props) {
-            if (props[key] !== undefined) {
-                if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
-                    if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
-                    if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
-                } else if (this.hasOwnProperty(key)) {
-                    this[key] = props[key];
-                }
-            }
-        }
-
-        if (this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols) {
-            this._shuffleCellOrder();
-        }
-
-        // This check is now outside the loop and correctly triggers a resize
-        if (this.shape === 'text') {
-            this._updateTextMetrics();
         }
     }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
     // --- DOM Element References ---
+    const ADMIN_UID = 'zMj8mtfMjXeFMt072027JT7Jc7i1';
     const undoBtn = document.getElementById('undo-btn');
     const redoBtn = document.getElementById('redo-btn');
     const canvas = document.getElementById('signalCanvas');
@@ -1031,12 +993,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirmImportBtn = document.getElementById('confirm-import-btn');
     const confirmBtn = document.getElementById('confirm-overwrite-btn');
     // const confirmModalEl = document.getElementById('confirm-overwrite-modal');
+    const coordsDisplay = document.getElementById('coords-display');
 
     // --- State Management ---
     let isRestoring = false; // Prevents history recording during an undo/redo action
     let configStore = [];
     let objects = [];
     let selectedObjectIds = [];
+    let needsRedraw = false;
     let isDragging = false;
     let isResizing = false;
     let isRotating = false;
@@ -1114,15 +1078,77 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const debouncedRecordHistory = debounce(recordHistory);
 
+    async function toggleFeaturedStatus(buttonEl, docIdToToggle) {
+        buttonEl.disabled = true;
+        buttonEl.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+        try {
+            const projectsRef = window.collection(window.db, "projects");
+            const docToToggleRef = window.doc(projectsRef, docIdToToggle);
+
+            // --- THE FIX IS HERE ---
+            // Step 1: Perform all READS before the transaction begins.
+            // Find any effect that is currently featured.
+            const q = window.query(projectsRef, window.where("featured", "==", true));
+            const currentlyFeaturedSnapshot = await window.getDocs(q);
+
+            // Step 2: Perform all WRITES inside the transaction.
+            await window.runTransaction(window.db, async (transaction) => {
+                const docToToggleSnap = await transaction.get(docToToggleRef);
+                if (!docToToggleSnap.exists()) {
+                    throw new Error("Document does not exist!");
+                }
+
+                const isCurrentlyFeatured = docToToggleSnap.data().featured === true;
+                const newFeaturedState = !isCurrentlyFeatured;
+
+                // If we are about to feature this item...
+                if (newFeaturedState === true) {
+                    // ...un-feature all other items found in our read step.
+                    currentlyFeaturedSnapshot.forEach((doc) => {
+                        transaction.update(doc.ref, { featured: false });
+                    });
+                }
+
+                // Finally, set the new featured state on the document we clicked.
+                transaction.update(docToToggleRef, { featured: newFeaturedState });
+            });
+
+            // --- UI update logic (unchanged) ---
+            const allFeatureButtons = document.querySelectorAll('.btn-feature');
+            allFeatureButtons.forEach(btn => {
+                if (btn.dataset.docId === docIdToToggle) {
+                    const isNowFeatured = !buttonEl.classList.contains('btn-warning');
+                    btn.className = `btn btn-sm btn-feature ${isNowFeatured ? 'btn-warning' : 'btn-outline-warning'}`;
+                    btn.innerHTML = isNowFeatured ? '<i class="bi bi-star-fill"></i>' : '<i class="bi bi-star"></i>';
+                    btn.title = isNowFeatured ? 'Unfeature this effect' : 'Feature this effect';
+                } else {
+                    btn.className = 'btn btn-sm btn-feature btn-outline-warning';
+                    btn.innerHTML = '<i class="bi bi-star"></i>';
+                    btn.title = 'Feature this effect';
+                }
+            });
+
+            showToast("Featured effect updated successfully!", 'success');
+
+        } catch (error) {
+            console.error("Error updating featured status: ", error);
+            showToast("Failed to update featured status.", 'danger');
+        } finally {
+            buttonEl.disabled = false;
+            // The UI update above will replace the spinner, so no need to restore innerHTML here.
+        }
+    }
+
     function drawSnapLines(snapLines) {
-        // console.log('Entering drawSnapLines with snapLines:', snapLines);
         ctx.save();
         ctx.resetTransform();
-        ctx.strokeStyle = 'blue'; // Solid blue, full opacity
-        ctx.lineWidth = 2; // Slightly thicker for visibility
-        ctx.setLineDash([]); // Solid line (no dashing)
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5]);
         snapLines.forEach(line => {
-            // console.log('Drawing line:', line);
+            if (line.duration <= 0) return;
+            ctx.strokeStyle = line.snapType === 'center' ? 'purple' : line.type === 'horizontal' ? 'blue' : 'red';
+            ctx.globalAlpha = 0.7;
             ctx.beginPath();
             if (line.type === 'horizontal') {
                 ctx.moveTo(0, line.y);
@@ -1132,13 +1158,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.lineTo(line.x, canvas.height);
             }
             ctx.stroke();
+            ctx.globalAlpha = 1.0;
         });
-        // console.log('Canvas context after drawing:', {
-        //     strokeStyle: ctx.strokeStyle,
-        //     lineWidth: ctx.lineWidth,
-        //     globalAlpha: ctx.globalAlpha,
-        //     lineDash: ctx.getLineDash()
-        // });
         ctx.restore();
     }
 
@@ -1258,6 +1279,7 @@ document.addEventListener('DOMContentLoaded', function () {
         projects.forEach(project => {
             const li = document.createElement('li');
             li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.id = `gallery-item-${project.docId}`; // Add an ID for easy access
 
             const contentDiv = document.createElement('div');
             contentDiv.className = 'd-flex align-items-center flex-grow-1 me-2';
@@ -1274,7 +1296,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const infoDiv = document.createElement('div');
             infoDiv.className = project.thumbnail ? 'ms-3' : '';
-            infoDiv.style.minWidth = '0'; // Add this line to allow truncation
+            infoDiv.style.minWidth = '0';
 
             const nameEl = document.createElement('strong');
             nameEl.textContent = project.name;
@@ -1284,14 +1306,13 @@ document.addEventListener('DOMContentLoaded', function () {
             metaEl.textContent = `By ${project.creatorName || 'Anonymous'} on ${formattedDate}`;
 
             infoDiv.appendChild(nameEl);
-            // Find and display the project description
             if (project.configs) {
                 const descriptionConf = project.configs.find(c => c.name === 'description');
                 if (descriptionConf && descriptionConf.default) {
                     const descEl = document.createElement('p');
                     descEl.className = 'mb-0 mt-1 small text-body-secondary';
                     descEl.textContent = descriptionConf.default;
-                    descEl.title = descriptionConf.default; // Show full description on hover
+                    descEl.title = descriptionConf.default;
                     infoDiv.appendChild(descEl);
                 }
             }
@@ -1300,6 +1321,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const controlsDiv = document.createElement('div');
             controlsDiv.className = 'd-flex flex-column gap-1';
+
+            // Load Button
             const loadBtn = document.createElement('button');
             loadBtn.className = 'btn btn-sm btn-outline-primary';
             loadBtn.innerHTML = '<i class="bi bi-box-arrow-down"></i>';
@@ -1312,6 +1335,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
             controlsDiv.appendChild(loadBtn);
 
+            // Delete Button (only for the project owner)
             if (currentUser && currentUser.uid === project.userId) {
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'btn btn-sm btn-outline-danger';
@@ -1323,9 +1347,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         'Delete Project',
                         `Are you sure you want to delete your project "${project.name}"? This cannot be undone.`,
                         'Delete',
-                        // FIX: Replace the entire async function below
                         async () => {
-                            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('confirm-overwrite-modal'));
                             try {
                                 await window.deleteDoc(window.doc(window.db, "projects", project.docId));
                                 showToast(`Project "${project.name}" deleted.`, 'info');
@@ -1335,17 +1357,31 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
                             } catch (error) {
                                 showToast("Error deleting project.", 'danger');
-                            } finally {
-                                // Ensure the modal is hidden
-                                if (modalInstance) {
-                                    modalInstance.hide();
-                                }
                             }
                         }
                     );
                 };
                 controlsDiv.appendChild(deleteBtn);
             }
+
+            // ================= START: NEW ADMIN "FEATURE" BUTTON =================
+            // Show the button only if the logged-in user is the admin
+            if (currentUser && currentUser.uid === ADMIN_UID) {
+                const featureBtn = document.createElement('button');
+                const isFeatured = project.featured === true;
+
+                featureBtn.className = `btn btn-sm btn-feature ${isFeatured ? 'btn-warning' : 'btn-outline-warning'}`;
+                featureBtn.innerHTML = isFeatured ? '<i class="bi bi-star-fill"></i>' : '<i class="bi bi-star"></i>';
+                featureBtn.title = isFeatured ? 'Unfeature this effect' : 'Feature this effect';
+                featureBtn.dataset.docId = project.docId;
+
+                featureBtn.onclick = function () { // Use a standard function to get `this`
+                    toggleFeaturedStatus(this, project.docId);
+                };
+
+                controlsDiv.appendChild(featureBtn);
+            }
+            // ================== END: NEW ADMIN "FEATURE" BUTTON ==================
 
             li.appendChild(controlsDiv);
             galleryList.appendChild(li);
@@ -1908,8 +1944,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Color Animation': ['cycleColors', 'cycleSpeed']
             };
 
-            const shapeConf = objectConfigs.find(c => c.property.endsWith('_shape'));
-            const currentShape = form.elements[`obj${id}_shape`]?.value || (shapeConf ? shapeConf.default : 'rectangle');
+            const currentShape = obj.shape;
 
             for (const groupName in groups) {
                 const groupContainer = document.createElement('div');
@@ -1920,7 +1955,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 groupContainer.appendChild(groupHeader);
                 const propsInGroup = groups[groupName];
                 objectConfigs
-                    .filter(conf => propsInGroup.includes(conf.property.substring(conf.property.indexOf('_') + 1)))
+                    .filter(conf => {
+                        const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+                        return propsInGroup.includes(propName);
+                    })
                     .forEach(conf => groupContainer.appendChild(createFormControl(conf)));
                 if (groupContainer.children.length > 1) {
                     collapseWrapper.appendChild(groupContainer);
@@ -1929,11 +1967,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
             const gridSettings = ['numberOfRows', 'numberOfColumns', 'phaseOffset'];
-            // const textSubGroups = {
-            //     'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign', 'autoWidth'],
-            //     'Time & Date Display': ['showTime', 'showDate'],
-            //     'Text Animation': ['textAnimation', 'textAnimationSpeed']
-            // };
+            const oscilloscopeSettings = ['lineWidth', 'lineColor', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth'];
             const textSubGroups = {
                 'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
                 'Time & Date Display': ['showTime', 'showDate'],
@@ -1949,6 +1983,16 @@ document.addEventListener('DOMContentLoaded', function () {
             ringGroup.appendChild(ringHeader);
             objectConfigs.filter(c => ringSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => ringGroup.appendChild(createFormControl(c)));
             collapseWrapper.appendChild(ringGroup);
+
+            const oscilloscopeGroup = document.createElement('div');
+            oscilloscopeGroup.className = 'control-group mb-4 oscilloscope-settings-group';
+            oscilloscopeGroup.style.display = currentShape === 'oscilloscope' ? 'block' : 'none';
+            const oscilloscopeHeader = document.createElement('h6');
+            oscilloscopeHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
+            oscilloscopeHeader.textContent = 'Oscilloscope Settings';
+            oscilloscopeGroup.appendChild(oscilloscopeHeader);
+            objectConfigs.filter(c => oscilloscopeSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => oscilloscopeGroup.appendChild(createFormControl(c)));
+            collapseWrapper.appendChild(oscilloscopeGroup);
 
             const textGroup = document.createElement('div');
             textGroup.className = 'text-settings-group';
@@ -2270,13 +2314,16 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Get the current animation setting from the form once per frame.
         const animationEnabled = getControlValues().enableAnimation;
 
-        // Draw all objects, passing the live animation setting.
+        // Draw all objects
         objects.forEach(obj => {
             if (obj instanceof Shape) {
-                obj.draw(animationEnabled, selectedObjectIds.includes(obj.id));
+                // Animation state is now updated here, for all unselected objects
+                if (animationEnabled && !selectedObjectIds.includes(obj.id)) {
+                    obj.updateAnimationState();
+                }
+                obj.draw(selectedObjectIds.includes(obj.id));
             } else {
                 console.error('Invalid object in objects array:', obj);
             }
@@ -2295,9 +2342,6 @@ document.addEventListener('DOMContentLoaded', function () {
         drawSnapLines(snapLines);
     }
 
-    /**
-     * The main animation loop, called via requestAnimationFrame, and throttled to a specific FPS.
-     */
     function animate(timestamp) {
         requestAnimationFrame(animate);
 
@@ -2307,14 +2351,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (elapsed > fpsInterval) {
             then = now - (elapsed % fpsInterval);
 
-            // Directly find the checkbox and check its status.
-            const enableAnimationCheckbox = document.getElementById('enableAnimation');
-            const isAnimationEnabled = enableAnimationCheckbox ? enableAnimationCheckbox.checked : false;
-
-            // Run the draw loop if animation is enabled, or if the user is interacting.
-            if (isAnimationEnabled || isDragging || isResizing) {
-                drawFrame();
-            }
+            // Always draw a frame to keep the UI responsive
+            drawFrame();
         }
     }
 
@@ -2442,6 +2480,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // This loop now correctly updates all form fields from the object's properties
             Object.keys(obj).forEach(key => {
+                if (key === 'rotationSpeed' && obj._pausedRotationSpeed !== null) {
+                    return;
+                }
                 if (propsToScale.includes(key)) {
                     // Scale down the high-res internal value for display in the form.
                     updateField(key, obj[key] / 4);
@@ -2614,8 +2655,8 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function getDefaultObjectConfig(newId) {
         return [
-            // Shape and non-pixel properties remain the same
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,text' },
+            // Adds "oscilloscope" to the dropdown list
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,text,oscilloscope' },
 
             // --- SCALED PROPERTIES ---
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320' },
@@ -2625,7 +2666,15 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_innerDiameter`, label: `Object ${newId}: Inner Diameter`, type: 'number', default: '25', min: '1', max: '318' },
             { property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '15', min: '2', max: '100' },
 
-            // --- NON-SCALED PROPERTIES ---
+            // --- OSCILLOSCOPE PROPERTIES ---
+            { property: `obj${newId}_lineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20' },
+            { property: `obj${newId}_lineColor`, label: `Object ${newId}: Line Color`, type: 'color', default: '#00ff00' },
+            { property: `obj${newId}_waveType`, label: `Object ${newId}: Wave Type`, type: 'combobox', default: 'sine', values: 'sine,square,sawtooth,triangle' },
+            { property: `obj${newId}_frequency`, label: `Object ${newId}: Frequency`, type: 'number', default: '5', min: '1', max: '50' },
+            { property: `obj${newId}_oscDisplayMode`, label: `Object ${newId}: Display Mode`, type: 'combobox', default: 'linear', values: 'linear,radial' },
+            { property: `obj${newId}_pulseDepth`, label: `Object ${newId}: Pulse Depth`, type: 'number', default: '50', min: '0', max: '100' },
+
+            // --- OTHER PROPERTIES ---
             { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360' },
             { property: `obj${newId}_numberOfSegments`, label: `Object ${newId}: Segments`, type: 'number', default: '12', min: '1', max: '50' },
             { property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', min: '1', max: '360', default: '20' },
@@ -2650,7 +2699,6 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_textAnimationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', min: '1', max: '100', default: '10' },
             { property: `obj${newId}_showTime`, label: `Object ${newId}: Show Current Time`, type: 'boolean', default: 'false' },
             { property: `obj${newId}_showDate`, label: `Object ${newId}: Show Current Date`, type: 'boolean', default: 'false' },
-            //{ property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'true' }
         ];
     }
 
@@ -2869,21 +2917,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     form.addEventListener('input', (e) => {
         const target = e.target;
+
         // Sync number inputs with their corresponding range sliders
         if (target.type === 'number' && document.getElementById(`${target.id}_slider`)) {
             document.getElementById(`${target.id}_slider`).value = target.value;
         } else if (target.type === 'range' && target.id.endsWith('_slider')) {
-            const numberInputId = target.id.replace('_slider', '');
-            document.getElementById(numberInputId).value = target.value;
+            document.getElementById(target.id.replace('_slider', '')).value = target.value;
         }
 
         // Sync color pickers with their corresponding hex input fields
         if (target.type === 'color' && document.getElementById(`${target.id}_hex`)) {
             document.getElementById(`${target.id}_hex`).value = target.value;
-        }
-        if (target.type === 'text' && target.id.endsWith('_hex')) {
-            const colorPickerId = target.id.replace('_hex', '');
-            const colorPicker = document.getElementById(colorPickerId);
+        } else if (target.type === 'text' && target.id.endsWith('_hex')) {
+            const colorPicker = document.getElementById(target.id.replace('_hex', ''));
             if (colorPicker && /^#[0-9A-F]{6}$/i.test(target.value)) {
                 colorPicker.value = target.value;
             }
@@ -2891,59 +2937,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // This block handles dynamically showing/hiding controls when the shape is changed.
         if (target.name && target.name.includes('_shape')) {
-            const objectId = target.name.match(/obj(\d+)_/)[1];
-            const shapeValue = target.value;
-            const fieldset = form.querySelector(`fieldset[data-object-id="${objectId}"]`);
-            if (fieldset) {
-                // Show/hide entire groups of settings based on shape
-                const ringControls = fieldset.querySelector('.ring-settings-group');
-                const gridControls = fieldset.querySelector('.grid-settings-group');
-                const textControls = fieldset.querySelector('.text-settings-group');
-
-                if (ringControls) ringControls.style.display = shapeValue === 'ring' ? 'block' : 'none';
-                if (gridControls) gridControls.style.display = shapeValue === 'rectangle' ? 'block' : 'none';
-                if (textControls) textControls.style.display = shapeValue === 'text' ? 'block' : 'none';
-
-                // Show/hide the 'Height' control, which is not needed for rings or text
-                const heightControl = fieldset.querySelector(`[name="obj${objectId}_height"]`);
-                if (heightControl) {
-                    const heightFormGroup = heightControl.closest('.mb-3');
-                    if (heightFormGroup) {
-                        heightFormGroup.style.display = (shapeValue === 'ring' || shapeValue === 'text') ? 'none' : 'block';
-                    }
-                }
-
-                // Update the 'Width' control's label to be more descriptive
-                const widthControl = fieldset.querySelector(`[name="obj${objectId}_width"]`);
-                if (widthControl) {
-                    const widthLabel = widthControl.closest('.mb-3').querySelector('label');
-                    if (widthLabel) {
-                        if (shapeValue === 'ring' || shapeValue === 'circle') {
-                            widthLabel.textContent = 'Width/Outer Diameter';
-                        } else {
-                            widthLabel.textContent = 'Width';
-                        }
-                    }
-                }
-            }
-        }
-        if (target.name && (target.name.includes('_showTime') || target.name.includes('_showDate'))) {
-            const objectId = target.name.match(/obj(\d+)_/)[1];
-            const fieldset = form.querySelector(`fieldset[data-object-id="${objectId}"]`);
-            if (fieldset) {
-                const timeToggle = fieldset.querySelector(`[name="obj${objectId}_showTime"]`);
-                const dateToggle = fieldset.querySelector(`[name="obj${objectId}_showDate"]`);
-                const textControl = fieldset.querySelector(`[name="obj${objectId}_text"]`);
-                if (textControl) {
-                    // Disable text input if either time or date is checked
-                    textControl.disabled = timeToggle.checked || dateToggle.checked;
-                }
-            }
+            // This requires a full re-render and state update
+            updateObjectsFromForm();
+            renderForm();
+            updateFormValuesFromObjects();
+            return; // Exit early
         }
 
-        updateAll();
-        updateObjectsFromForm(); // Update the live objects from the form
-        drawFrame();             // Redraw the canvas for a live preview
+        // For all other inputs, just update the object data and redraw
+        updateObjectsFromForm();
+        drawFrame();
     });
 
     form.addEventListener('click', (e) => {
@@ -3201,6 +3204,56 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
+     * Updates the global configStore with the current live state of all Shape objects.
+     * This ensures that when the project is saved, the most recent changes (including those
+     * made via direct canvas manipulation) are captured in the configuration blueprint.
+     */
+    function syncConfigStoreWithState() {
+        objects.forEach(obj => {
+            const configsForThisObject = configStore.filter(c => c.property && c.property.startsWith(`obj${obj.id}_`));
+
+            configsForThisObject.forEach(conf => {
+                const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+                let liveValue;
+
+                // Get the live value from the object instance
+                if (propName.startsWith('gradColor')) {
+                    const colorKey = propName.replace('gradColor', 'color');
+                    liveValue = obj.gradient[colorKey];
+                } else if (propName === 'scrollDir') {
+                    liveValue = obj.scrollDirection;
+                } else {
+                    liveValue = obj[propName];
+                }
+
+                if (liveValue === undefined) return;
+
+                // Apply transformations to convert internal value to config value
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+                if (propsToScale.includes(propName)) {
+                    liveValue /= 4;
+                } else if (propName === 'animationSpeed') {
+                    liveValue *= 10;
+                } else if (propName === 'cycleSpeed') {
+                    liveValue *= 50;
+                }
+
+                if (typeof liveValue === 'boolean') {
+                    liveValue = String(liveValue);
+                }
+
+                // Round numbers to avoid floating point issues
+                if (typeof liveValue === 'number') {
+                    liveValue = Math.round(liveValue);
+                }
+
+                // Update the 'default' attribute in the configStore
+                conf.default = liveValue;
+            });
+        });
+    }
+
+    /**
      * SAVE BUTTON: Checks for duplicates before saving.
      */
     document.getElementById('save-ws-btn').addEventListener('click', async () => {
@@ -3209,6 +3262,10 @@ document.addEventListener('DOMContentLoaded', function () {
             showToast("You must be logged in to save.", 'danger');
             return;
         }
+
+        // --- FIX: Sync configStore with the live object state before saving ---
+        syncConfigStoreWithState();
+        // --- END FIX ---
 
         const name = getControlValues()['title'] || 'Untitled Effect';
         const trimmedName = name.trim();
@@ -3228,7 +3285,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const projectData = {
             name: trimmedName,
             thumbnail: thumbnail,
-            configs: sanitizedConfigs, // Use the sanitized version
+            configs: sanitizedConfigs, // This will now have the correct, up-to-date values
             objects: objects.map(o => ({ id: o.id, name: o.name, locked: o.locked })),
             updatedAt: new Date()
         };
@@ -3273,7 +3330,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showToast("Error saving project: " + error.message, 'danger');
             }
         }
-    });;
+    });
 
     // MY PROJECTS BUTTON
     document.getElementById('load-ws-btn').addEventListener('click', () => {
@@ -3307,27 +3364,61 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    toolbar.addEventListener('click', e => {
+    /**
+     * Handles toolbar button clicks for alignment and matching actions.
+     * @param {Event} e - The click event.
+     */
+    function handleToolbarAction(e) {
         const button = e.target.closest('button');
         if (!button || button.disabled || button.id === 'constrain-btn') return;
         const action = button.dataset.action;
-        if (!action || selectedObjectIds.length === 0) return;
-        const selected = selectedObjectIds.map(id => objects.find(o => o.id === id)).filter(o => o);
-        if (selected.length === 0) return;
-        const anchor = selected[0]; // The first selected object is typically the anchor
+        if (!action || selectedObjectIds.length === 0) {
+            console.log('No action or no objects selected:', { action, selectedObjectIds });
+            return;
+        }
+
+        const selectedObjects = selectedObjectIds.map(id => objects.find(o => o.id === id)).filter(o => o);
+        if (selectedObjects.length === 0) {
+            console.log('No valid objects found for selection:', { selectedObjectIds });
+            return;
+        }
+        const anchor = selectedObjects[0]; // The first selected object is typically the anchor
+
+        console.log('Handling toolbar action:', { action, selectedCount: selectedObjects.length });
 
         switch (action) {
-            case 'align-screen-left': selected.forEach(o => o.x = 0); break;
-            case 'align-screen-right': selected.forEach(o => o.x = canvas.width - o.width); break;
-            case 'align-screen-h-center': selected.forEach(o => o.x = (canvas.width - o.width) / 2); break;
-            case 'align-screen-top': selected.forEach(o => o.y = 0); break;
-            case 'align-screen-bottom': selected.forEach(o => o.y = canvas.height - o.height); break;
-            case 'align-screen-v-center': selected.forEach(o => o.y = (canvas.height - o.height) / 2); break;
-            case 'match-width': selected.slice(1).forEach(o => o.width = anchor.width); break;
-            case 'match-height': selected.slice(1).forEach(o => o.height = anchor.height); break;
-            case 'match-both': selected.slice(1).forEach(o => { o.width = anchor.width; o.height = anchor.height; }); break;
+            case 'align-screen-left':
+                selectedObjects.forEach(o => o.x = 0);
+                break;
+            case 'align-screen-right':
+                selectedObjects.forEach(o => o.x = canvas.width - o.width);
+                break;
+            case 'align-screen-h-center':
+                selectedObjects.forEach(o => o.x = (canvas.width - o.width) / 2);
+                break;
+            case 'align-screen-top':
+                selectedObjects.forEach(o => o.y = 0);
+                break;
+            case 'align-screen-bottom':
+                selectedObjects.forEach(o => o.y = canvas.height - o.height);
+                break;
+            case 'align-screen-v-center':
+                selectedObjects.forEach(o => o.y = (canvas.height - o.height) / 2);
+                break;
+            case 'match-width':
+                selectedObjects.slice(1).forEach(o => o.width = anchor.width);
+                break;
+            case 'match-height':
+                selectedObjects.slice(1).forEach(o => o.height = anchor.height);
+                break;
+            case 'match-both':
+                selectedObjects.slice(1).forEach(o => {
+                    o.width = anchor.width;
+                    o.height = anchor.height;
+                });
+                break;
             case 'fit-canvas':
-                selected.forEach(o => {
+                selectedObjects.forEach(o => {
                     o.x = 0;
                     o.y = 0;
                     o.width = canvas.width;
@@ -3335,37 +3426,43 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 break;
             case 'match-text-size':
-                const selected = selectedObjectIds.map(id => objects.find(o => o.id === id)).filter(o => o);
-                const textObjects = selected.filter(obj => obj.shape === 'text');
-                const gridObjects = selected.filter(obj => obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1));
-
+                const textObjects = selectedObjects.filter(obj => obj.shape === 'text');
+                const gridObjects = selectedObjects.filter(obj => obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1));
                 if (textObjects.length >= 1 && gridObjects.length >= 1) {
-                    // --- Scenario 1: Match Text to Grid ---
-                    const sourceGrid = gridObjects[0]; // Use the first selected grid as the source
+                    // Scenario 1: Match Text to Grid
+                    const sourceGrid = gridObjects[0];
                     const cellHeight = sourceGrid.height / sourceGrid.numberOfRows;
-
-                    // Apply the new font size to all selected text objects
                     textObjects.forEach(textObject => {
-                        textObject.fontSize = cellHeight * 10; // Scale up for internal value
+                        textObject.fontSize = cellHeight * 10;
                         textObject._updateTextMetrics();
                     });
-
                 } else if (textObjects.length >= 2 && gridObjects.length === 0) {
-                    // --- Scenario 2: Match Text to other Text ---
-                    const sourceText = textObjects[0]; // Use the first selected text as the source
+                    // Scenario 2: Match Text to other Text
+                    const sourceText = textObjects[0];
                     const sourceFontSize = sourceText.fontSize;
-
-                    // Apply the font size to all other selected text objects
                     textObjects.slice(1).forEach(targetText => {
                         targetText.fontSize = sourceFontSize;
                         targetText._updateTextMetrics();
                     });
                 }
                 break;
+            default:
+                console.log('Unknown action:', action);
         }
+
+        // Round positions to avoid floating-point drift
+        selectedObjects.forEach(o => {
+            o.x = Math.round(o.x);
+            o.y = Math.round(o.y);
+        });
+
         updateFormFromShapes();
-        recordHistory(); // Record state after a toolbar action
-    });
+        recordHistory();
+        needsRedraw = true;
+        drawFrame();
+    }
+
+    toolbar.addEventListener('click', handleToolbarAction);
 
     /**
      * Handles the click event for the "Constrain to Canvas" button.
@@ -3391,48 +3488,49 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     canvasContainer.addEventListener('mousedown', e => {
         const { x, y } = getCanvasCoordinates(e);
+        const oldSelection = [...selectedObjectIds];
 
+        // Check for handle interaction on a single selected object
         if (selectedObjectIds.length === 1) {
             const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
-            if (selectedObject && !selectedObject.locked) {
-                // Check for rotation handle first
-                const rotationHandle = selectedObject.getRotationHandleAtPoint(x, y);
-                if (rotationHandle) {
-                    isRotating = true;
-                    isResizing = false;
-                    isDragging = false;
-
-                    const center = selectedObject.getCenter();
-                    const startAngle = Math.atan2(y - center.y, x - center.x);
-
-                    initialDragState = [{
-                        id: selectedObject.id,
-                        startAngle: startAngle,
-                        initialObjectAngle: selectedObject.getRenderAngle()
-                    }];
-                    return; // Stop further checks
-                }
-
-                // Check for resize handles next
+            if (selectedObject) {
                 const handle = selectedObject.getHandleAtPoint(x, y);
                 if (handle) {
-                    isResizing = true;
-                    isRotating = false;
-                    isDragging = false;
-                    activeResizeHandle = handle.name; // Set the active handle
+                    if (handle.type === 'rotation') {
+                        isRotating = true;
+                        const center = selectedObject.getCenter();
+                        const startAngle = Math.atan2(y - center.y, x - center.x);
+                        initialDragState = [{ id: selectedObject.id, startAngle: startAngle, initialObjectAngle: selectedObject.getRenderAngle() }];
+                    } else {
+                        isResizing = true;
+                        activeResizeHandle = handle.name;
+                        const oppositeHandleName = getOppositeHandle(handle.name);
 
-                    const oppositeHandleName = getOppositeHandle(handle.name);
-                    initialDragState = [{
-                        id: selectedObject.id,
-                        x: selectedObject.x,
-                        y: selectedObject.y,
-                        width: selectedObject.width,
-                        height: selectedObject.height,
-                        rotationAngle: selectedObject.rotationAngle,
-                        fontSize: selectedObject.fontSize,
-                        anchorPoint: selectedObject.getWorldCoordsOfCorner(oppositeHandleName),
-                        diameterRatio: selectedObject.shape === 'ring' ? selectedObject.innerDiameter / selectedObject.width : 1
-                    }];
+                        let anchorPoint;
+
+                        if (selectedObject.shape === 'circle' || selectedObject.shape === 'ring' || selectedObject.shape === 'oscilloscope') {
+                            const center = selectedObject.getCenter();
+                            const halfSize = selectedObject.width / 2;
+                            const signX = oppositeHandleName.includes('left') ? -1 : (oppositeHandleName.includes('right') ? 1 : 0);
+                            const signY = oppositeHandleName.includes('top') ? -1 : (oppositeHandleName.includes('bottom') ? 1 : 0);
+                            anchorPoint = {
+                                x: center.x + (signX * halfSize),
+                                y: center.y + (signY * halfSize)
+                            };
+                        } else {
+                            anchorPoint = selectedObject.getWorldCoordsOfCorner(oppositeHandleName);
+                        }
+
+                        initialDragState = [{
+                            id: selectedObject.id,
+                            initialX: selectedObject.x,
+                            initialY: selectedObject.y,
+                            initialWidth: selectedObject.width,
+                            initialHeight: selectedObject.height,
+                            anchorPoint: anchorPoint,
+                            diameterRatio: selectedObject.shape === 'ring' ? selectedObject.innerDiameter / selectedObject.width : 1
+                        }];
+                    }
                     dragStartX = x;
                     dragStartY = y;
                     return;
@@ -3440,67 +3538,56 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Find all objects under the cursor, from top to bottom.
-        const hitObjects = [];
-        for (let i = objects.length - 1; i >= 0; i--) {
-            if (objects[i].isPointInside(x, y) && !objects[i].locked) {
-                hitObjects.push(objects[i]);
-            }
-        }
+        // If no handles were touched, check for selection or dragging
+        const hitObject = [...objects].reverse().find(obj => obj.isPointInside(x, y));
 
-        let targetObject = null;
-        if (hitObjects.length > 0) {
-            // Prioritize dragging an already-selected object if it's under the cursor.
-            const alreadySelectedHit = hitObjects.find(obj => selectedObjectIds.includes(obj.id));
-            if (alreadySelectedHit) {
-                targetObject = alreadySelectedHit;
-            } else {
-                // Otherwise, select the topmost new object.
-                targetObject = hitObjects[0];
-            }
-        }
-
-        if (targetObject) {
-            const hitObjectId = targetObject.id;
-            const wasAlreadySelected = selectedObjectIds.includes(hitObjectId);
-
+        if (hitObject) {
+            const hitObjectId = hitObject.id;
+            const wasAlreadySelected = oldSelection.includes(hitObjectId);
             if (e.shiftKey || e.ctrlKey || e.metaKey) {
-                // Multi-select logic: Add or remove from selection
                 if (wasAlreadySelected) {
-                    selectedObjectIds = selectedObjectIds.filter(id => id !== hitObjectId);
+                    selectedObjectIds = oldSelection.filter(id => id !== hitObjectId);
                 } else {
                     selectedObjectIds.push(hitObjectId);
                 }
-            } else {
-                // Single-select logic: Clear all and select only this one
-                if (!wasAlreadySelected) {
-                    selectedObjectIds = [hitObjectId];
-                }
-                // If already selected and not multi-selecting, keep it selected for dragging
+            } else if (!wasAlreadySelected) {
+                selectedObjectIds = [hitObjectId];
             }
-
-            // If the newly selected object (or the one clicked in multi-select) is spinning, reset its rotation.
-            if (targetObject.rotationSpeed !== 0) {
-                targetObject.rotation = 0;
-                targetObject.rotationAngle = 0;
+            if (!hitObject.locked) {
+                isDragging = true;
+                dragStartX = x;
+                dragStartY = y;
+                initialDragState = selectedObjectIds.map(id => { const obj = objects.find(o => o.id === id); return { id, x: obj.x, y: obj.y }; });
             }
-
         } else {
-            // Clicked on empty space, clear selection
             selectedObjectIds = [];
         }
 
-        if (selectedObjectIds.length > 0) {
-            isDragging = true;
-            dragStartX = x;
-            dragStartY = y;
-            initialDragState = selectedObjectIds.map(id => {
-                const obj = objects.find(o => o.id === id);
-                return { id, x: obj.x, y: obj.y };
-            });
-        } else {
-            isDragging = false;
-        }
+        // --- PAUSE / RESUME LOGIC ---
+        const deselectedObjects = oldSelection
+            .filter(id => !selectedObjectIds.includes(id))
+            .map(id => objects.find(o => o.id === id))
+            .filter(o => o);
+
+        deselectedObjects.forEach(obj => {
+            if (obj._pausedRotationSpeed !== null) {
+                obj.rotationSpeed = obj._pausedRotationSpeed;
+                obj._pausedRotationSpeed = null;
+            }
+        });
+
+        const newlySelectedObjects = selectedObjectIds
+            .filter(id => !oldSelection.includes(id))
+            .map(id => objects.find(o => o.id === id))
+            .filter(o => o);
+
+        newlySelectedObjects.forEach(obj => {
+            if (obj.rotationSpeed !== 0) {
+                obj._pausedRotationSpeed = obj.rotationSpeed;
+                obj.rotationSpeed = 0;
+            }
+        });
+        // --- END PAUSE / RESUME ---
 
         updateToolbarState();
         syncPanelsWithSelection();
@@ -3513,411 +3600,273 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {MouseEvent} e - The mousemove event object.
      */
     canvasContainer.addEventListener('mousemove', e => {
+        if (coordsDisplay) {
+            const { x, y } = getCanvasCoordinates(e);
+            coordsDisplay.textContent = `${Math.round(x)}, ${Math.round(y)}`;
+        }
+
         e.preventDefault();
-        const { x, y } = getCanvasCoordinates(e);
+        const { x, y } = getCanvasCoordinates(e); // Displayed coordinates
 
         if (isRotating) {
             const initial = initialDragState[0];
             const obj = objects.find(o => o.id === initial.id);
-            if (!obj) return;
-
-            const center = obj.getCenter();
-            const currentAngle = Math.atan2(y - center.y, x - center.x);
-            const angleDelta = currentAngle - initial.startAngle;
-            const newAngleRad = initial.initialObjectAngle + angleDelta;
-
-            obj.rotation = newAngleRad * 180 / Math.PI;
-            obj.rotationAngle = newAngleRad;
-
-            updateFormValuesFromObjects();
-            drawFrame();
+            if (obj) {
+                const center = { x: obj.x, y: obj.y };
+                const currentAngle = Math.atan2(y - center.y, x - center.x);
+                const angleDelta = currentAngle - initial.startAngle;
+                obj.rotation = (initial.initialObjectAngle + angleDelta) * 180 / Math.PI;
+                needsRedraw = true;
+            }
         } else if (isResizing) {
-            const obj = objects.find(o => o.id === selectedObjectIds[0]);
-            if (!obj) return;
-
-            snapLines = [];
             const initial = initialDragState[0];
+            const obj = objects.find(o => o.id === initial.id);
+            if (obj) {
+                const anchorPoint = initial.anchorPoint;
+                const mouseX = x;
+                const mouseY = y;
+
+                if (obj.shape === 'circle' || obj.shape === 'ring') {
+                    const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
+                    if (isSideHandle) {
+                        let diameter;
+                        if (activeResizeHandle === 'top' || activeResizeHandle === 'bottom') {
+                            diameter = Math.abs(mouseY - anchorPoint.y);
+                            const newCenterY = (mouseY + anchorPoint.y) / 2;
+                            obj.y = Math.round(newCenterY - diameter / 2);
+                            obj.x = Math.round(anchorPoint.x - diameter / 2);
+                        } else {
+                            diameter = Math.abs(mouseX - anchorPoint.x);
+                            const newCenterX = (mouseX + anchorPoint.x) / 2;
+                            obj.x = Math.round(newCenterX - diameter / 2);
+                            obj.y = Math.round(anchorPoint.y - diameter / 2);
+                        }
+                        obj.width = Math.round(Math.max(10, diameter));
+                        obj.height = obj.width;
+                    } else {
+                        let newWidth = Math.abs(mouseX - anchorPoint.x);
+                        let newHeight = Math.abs(mouseY - anchorPoint.y);
+                        let newX = Math.min(mouseX, anchorPoint.x);
+                        let newY = Math.min(mouseY, anchorPoint.y);
+                        const diameter = Math.max(newWidth, newHeight);
+
+                        if (activeResizeHandle.includes('left')) newX = anchorPoint.x - diameter;
+                        if (activeResizeHandle.includes('top')) newY = anchorPoint.y - diameter;
+
+                        obj.width = Math.round(Math.max(10, diameter));
+                        obj.height = obj.width;
+                        obj.x = Math.round(newX);
+                        obj.y = Math.round(newY);
+                    }
+                    if (obj.shape === 'ring') {
+                        obj.innerDiameter = Math.round(obj.width * initial.diameterRatio);
+                    }
+                } else {
+                    // --- ROTATION-AWARE LOGIC FOR RECTANGLES ---
+                    const angle = obj.getRenderAngle();
+                    const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
+
+                    if (isSideHandle) {
+                        const dragVecX = mouseX - dragStartX;
+                        const dragVecY = mouseY - dragStartY;
+                        const s = Math.sin(angle);
+                        const c = Math.cos(angle);
+
+                        let newWidth = initial.initialWidth;
+                        let newHeight = initial.initialHeight;
+                        let centerShiftX = 0;
+                        let centerShiftY = 0;
+
+                        if (activeResizeHandle === 'right') {
+                            const change = dragVecX * c + dragVecY * s;
+                            newWidth += change;
+                            centerShiftX = (change / 2) * c;
+                            centerShiftY = (change / 2) * s;
+                        } else if (activeResizeHandle === 'left') {
+                            const change = dragVecX * c + dragVecY * s;
+                            newWidth -= change;
+                            centerShiftX = (change / 2) * c;
+                            centerShiftY = (change / 2) * s;
+                        } else if (activeResizeHandle === 'bottom') {
+                            const change = -dragVecX * s + dragVecY * c;
+                            newHeight += change;
+                            centerShiftX = (change / 2) * -s;
+                            centerShiftY = (change / 2) * c;
+                        } else if (activeResizeHandle === 'top') {
+                            const change = -dragVecX * s + dragVecY * c;
+                            newHeight -= change;
+                            centerShiftX = (change / 2) * -s;
+                            centerShiftY = (change / 2) * c;
+                        }
+
+                        const initialCenter = {
+                            x: initial.initialX + initial.initialWidth / 2,
+                            y: initial.initialY + initial.initialHeight / 2
+                        };
+                        const newCenterX = initialCenter.x + centerShiftX;
+                        const newCenterY = initialCenter.y + centerShiftY;
+
+                        obj.width = Math.round(Math.max(10, newWidth));
+                        obj.height = Math.round(Math.max(10, newHeight));
+                        obj.x = Math.round(newCenterX - obj.width / 2);
+                        obj.y = Math.round(newCenterY - obj.height / 2);
+                    } else {
+                        const worldVecX = x - anchorPoint.x;
+                        const worldVecY = y - anchorPoint.y;
+                        const s_local = Math.sin(-angle);
+                        const c_local = Math.cos(-angle);
+                        const localVecX = worldVecX * c_local - worldVecY * s_local;
+                        const localVecY = worldVecX * s_local + worldVecY * c_local;
+                        const handleXSign = activeResizeHandle.includes('left') ? -1 : 1;
+                        const handleYSign = activeResizeHandle.includes('top') ? -1 : 1;
+                        let newWidth = localVecX * handleXSign;
+                        let newHeight = localVecY * handleYSign;
+
+                        const localSizingVecX = newWidth * handleXSign;
+                        const localSizingVecY = newHeight * handleYSign;
+                        const s_world = Math.sin(angle);
+                        const c_world = Math.cos(angle);
+                        const worldSizingVecX = localSizingVecX * c_world - localSizingVecY * s_world;
+                        const worldSizingVecY = localSizingVecX * s_world + localSizingVecY * c_world;
+                        const newCenterX = anchorPoint.x + worldSizingVecX / 2;
+                        const newCenterY = anchorPoint.y + worldSizingVecY / 2;
+
+                        obj.width = Math.round(Math.max(10, newWidth));
+                        obj.height = Math.round(Math.max(10, newHeight));
+                        obj.x = Math.round(newCenterX - obj.width / 2);
+                        obj.y = Math.round(newCenterY - obj.height / 2);
+                    }
+                }
+
+                needsRedraw = true;
+            }
+        } else if (isDragging) {
+            snapLines = []; // Clear previous snap lines
             const dx = x - dragStartX;
             const dy = y - dragStartY;
+            const SNAP_THRESHOLD = 10;
+            let finalDx = dx;
+            let finalDy = dy;
 
-            let potentialX = initial.x;
-            let potentialY = initial.y;
-            let potentialWidth = initial.width;
-            let potentialHeight = initial.height;
-            let potentialFontSize = initial.fontSize;
-            let isTextResize = obj.shape === 'text';
-
-            if (isTextResize) {
-                if (activeResizeHandle.includes('left') || activeResizeHandle.includes('right')) {
-                    if (activeResizeHandle.includes('right')) {
-                        potentialWidth = initial.width + dx;
-                    }
-                    if (activeResizeHandle.includes('left')) {
-                        potentialWidth = initial.width - dx;
-                        potentialX = initial.x + dx;
-                    }
-                    //obj.autoWidth = false;
-                } else {
-                    const scaleFactor = (initial.height + dy) / initial.height;
-                    if (isFinite(scaleFactor) && scaleFactor > 0) {
-                        potentialFontSize = Math.max(10, initial.fontSize * scaleFactor);
-                    }
-                }
-            } else {
-                if (activeResizeHandle.includes('right')) {
-                    potentialWidth = initial.width + dx;
-                }
-                if (activeResizeHandle.includes('left')) {
-                    potentialWidth = initial.width - dx;
-                    potentialX = initial.x + dx;
-                }
-                if (activeResizeHandle.includes('bottom')) {
-                    potentialHeight = initial.height + dy;
-                }
-                if (activeResizeHandle.includes('top')) {
-                    potentialHeight = initial.height - dy;
-                    potentialY = initial.y + dy;
-                }
+            // On the first drag frame, cache all possible snap targets.
+            if (!cachedSnapTargets) {
+                cachedSnapTargets = [];
+                // Add snap points from all non-selected objects
+                const otherObjects = objects.filter(o => !selectedObjectIds.includes(o.id));
+                otherObjects.forEach(otherObj => {
+                    cachedSnapTargets.push(...getWorldPoints(otherObj));
+                });
+                // Add canvas centerlines as snap targets
+                cachedSnapTargets.push(
+                    { x: canvas.width / 2, y: canvas.height / 2, type: 'center' },
+                    { x: canvas.width / 2, y: 0, type: 'edge' },
+                    { x: canvas.width / 2, y: canvas.height, type: 'edge' },
+                    { x: 0, y: canvas.height / 2, type: 'edge' },
+                    { x: canvas.width, y: canvas.height / 2, type: 'edge' }
+                );
             }
 
-            potentialWidth = Math.max(10, potentialWidth);
-            potentialHeight = Math.max(10, potentialHeight);
+            const hSnaps = [];
+            const vSnaps = [];
 
-            const movingEdges = {
-                left: potentialX,
-                right: potentialX + potentialWidth,
-                top: potentialY,
-                bottom: potentialY + potentialHeight,
-                hCenter: potentialX + potentialWidth / 2,
-                vCenter: potentialY + potentialHeight / 2
-            };
+            // Find potential snaps for all selected objects
+            initialDragState.forEach(state => {
+                const obj = objects.find(o => o.id === state.id);
+                if (obj) {
+                    const originalX = obj.x;
+                    const originalY = obj.y;
+                    // Temporarily move object to its potential new position
+                    obj.x = state.x + dx;
+                    obj.y = state.y + dy;
+                    const selectedPoints = getWorldPoints(obj);
 
-            const SNAP_THRESHOLD = 20;
-            const otherObjects = objects.filter(o => o.id !== obj.id);
-            const snapTargets = otherObjects.map(o => ({
-                left: o.x,
-                right: o.x + o.width,
-                top: o.y,
-                bottom: o.y + o.height,
-                hCenter: o.x + o.width / 2,
-                vCenter: o.y + o.height / 2,
-                width: o.width,
-                height: o.height
-            }));
-            snapTargets.push({
-                left: 0,
-                right: canvas.width,
-                top: 0,
-                bottom: canvas.height,
-                hCenter: canvas.width / 2,
-                vCenter: canvas.height / 2
+                    // Find all potential horizontal and vertical snaps for this object
+                    selectedPoints.forEach(point => {
+                        cachedSnapTargets.forEach(target => {
+                            if (point.type === target.type) {
+                                if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) {
+                                    // FIX: Store the target's coordinate ('line') for drawing
+                                    hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x });
+                                }
+                                if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) {
+                                    // FIX: Store the target's coordinate ('line') for drawing
+                                    vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y });
+                                }
+                            }
+                        });
+                    });
+                    // Revert object to its actual current position
+                    obj.x = originalX;
+                    obj.y = originalY;
+                }
             });
 
-            let snapDx = 0;
-            let snapDy = 0;
-            let minSnapDistX = SNAP_THRESHOLD;
-            let minSnapDistY = SNAP_THRESHOLD;
-
-            for (const target of snapTargets) {
-                // Horizontal snapping
-                if (activeResizeHandle.includes('right') || isTextResize) {
-                    const snaps = [
-                        { dist: Math.abs(movingEdges.right - target.left), adj: target.left - movingEdges.right, type: 'vertical', line: target.left },
-                        { dist: Math.abs(movingEdges.right - target.right), adj: target.right - movingEdges.right, type: 'vertical', line: target.right },
-                        { dist: Math.abs(movingEdges.right - target.hCenter), adj: target.hCenter - movingEdges.right, type: 'vertical', line: target.hCenter }
-                    ];
-                    for (const s of snaps) {
-                        if (s.dist < minSnapDistX) {
-                            minSnapDistX = s.dist;
-                            snapDx = s.adj;
-                            snapLines.push({ type: s.type, x: s.line });
-                        }
-                    }
-                    if (target.width && Math.abs(potentialWidth - target.width) < minSnapDistX) {
-                        minSnapDistX = Math.abs(potentialWidth - target.width);
-                        snapDx = (potentialWidth - target.width) * -1;
-                        snapLines.push({ type: 'vertical', x: potentialX + target.width });
-                    }
-                }
-                if (activeResizeHandle.includes('left')) {
-                    const snaps = [
-                        { dist: Math.abs(movingEdges.left - target.left), adj: target.left - movingEdges.left, type: 'vertical', line: target.left },
-                        { dist: Math.abs(movingEdges.left - target.right), adj: target.right - movingEdges.left, type: 'vertical', line: target.right },
-                        { dist: Math.abs(movingEdges.left - target.hCenter), adj: target.hCenter - movingEdges.left, type: 'vertical', line: target.hCenter }
-                    ];
-                    for (const s of snaps) {
-                        if (s.dist < minSnapDistX) {
-                            minSnapDistX = s.dist;
-                            snapDx = s.adj;
-                            snapLines.push({ type: s.type, x: s.line });
-                        }
-                    }
-                }
-                if (activeResizeHandle.includes('h-center')) {
-                    const snaps = [
-                        { dist: Math.abs(movingEdges.hCenter - target.hCenter), adj: target.hCenter - movingEdges.hCenter, type: 'vertical', line: target.hCenter }
-                    ];
-                    for (const s of snaps) {
-                        if (s.dist < minSnapDistX) {
-                            minSnapDistX = s.dist;
-                            snapDx = s.adj;
-                            snapLines.push({ type: s.type, x: s.line });
-                        }
-                    }
-                }
-
-                // Vertical snapping
-                if (activeResizeHandle.includes('bottom') || (isTextResize && !activeResizeHandle.includes('left') && !activeResizeHandle.includes('right'))) {
-                    const snaps = [
-                        { dist: Math.abs(movingEdges.bottom - target.top), adj: target.top - movingEdges.bottom, type: 'horizontal', line: target.top },
-                        { dist: Math.abs(movingEdges.bottom - target.bottom), adj: target.bottom - movingEdges.bottom, type: 'horizontal', line: target.bottom },
-                        { dist: Math.abs(movingEdges.bottom - target.vCenter), adj: target.vCenter - movingEdges.bottom, type: 'horizontal', line: target.vCenter }
-                    ];
-                    for (const s of snaps) {
-                        if (s.dist < minSnapDistY) {
-                            minSnapDistY = s.dist;
-                            snapDy = s.adj;
-                            snapLines.push({ type: s.type, y: s.line });
-                        }
-                    }
-                    if (target.height && Math.abs(potentialHeight - target.height) < minSnapDistY) {
-                        minSnapDistY = Math.abs(potentialHeight - target.height);
-                        snapDy = (potentialHeight - target.height) * -1;
-                        snapLines.push({ type: 'horizontal', y: potentialY + target.height });
-                    }
-                }
-                if (activeResizeHandle.includes('top')) {
-                    const snaps = [
-                        { dist: Math.abs(movingEdges.top - target.top), adj: target.top - movingEdges.top, type: 'horizontal', line: target.top },
-                        { dist: Math.abs(movingEdges.top - target.bottom), adj: target.bottom - movingEdges.top, type: 'horizontal', line: target.bottom },
-                        { dist: Math.abs(movingEdges.top - target.vCenter), adj: target.vCenter - movingEdges.top, type: 'horizontal', line: target.vCenter }
-                    ];
-                    for (const s of snaps) {
-                        if (s.dist < minSnapDistY) {
-                            minSnapDistY = s.dist;
-                            snapDy = s.adj;
-                            snapLines.push({ type: s.type, y: s.line });
-                        }
-                    }
-                }
-                if (activeResizeHandle.includes('v-center')) {
-                    const snaps = [
-                        { dist: Math.abs(movingEdges.vCenter - target.vCenter), adj: target.vCenter - movingEdges.vCenter, type: 'horizontal', line: target.vCenter }
-                    ];
-                    for (const s of snaps) {
-                        if (s.dist < minSnapDistY) {
-                            minSnapDistY = s.dist;
-                            snapDy = s.adj;
-                            snapLines.push({ type: s.type, y: s.line });
-                        }
-                    }
-                }
+            // Apply the closest snap
+            if (hSnaps.length > 0) {
+                hSnaps.sort((a, b) => a.dist - b.dist);
+                finalDx += hSnaps[0].adj;
+                // FIX: Use the stored 'line' property for the correct position
+                snapLines.push({ type: 'vertical', x: hSnaps[0].line, duration: 2 });
+            }
+            if (vSnaps.length > 0) {
+                vSnaps.sort((a, b) => a.dist - b.dist);
+                finalDy += vSnaps[0].adj;
+                // FIX: Use the stored 'line' property for the correct position
+                snapLines.push({ type: 'horizontal', y: vSnaps[0].line, duration: 2 });
             }
 
-            if (isTextResize) {
-                if (activeResizeHandle.includes('left')) {
-                    obj.x = potentialX + snapDx;
-                    obj.width = Math.max(20, initial.width - dx - snapDx);
-                }
-                if (activeResizeHandle.includes('right')) {
-                    obj.width = Math.max(20, initial.width + dx + snapDx);
-                }
-                if (activeResizeHandle.includes('top') || activeResizeHandle.includes('bottom')) {
-                    obj.fontSize = Math.max(10, initial.fontSize * ((initial.height + dy + snapDy) / initial.height));
-                }
-                obj._updateTextMetrics();
-
-            } else {
-                obj.x = activeResizeHandle.includes('left') ? potentialX + snapDx : initial.x;
-                obj.y = activeResizeHandle.includes('top') ? potentialY + snapDy : initial.y;
-                obj.width = Math.max(10, activeResizeHandle.includes('left') ? potentialWidth - snapDx : potentialWidth + snapDx);
-                obj.height = Math.max(10, activeResizeHandle.includes('top') ? potentialHeight - snapDy : potentialHeight + snapDy);
-            }
-
-            if (obj.shape === 'circle' || obj.shape === 'ring') {
-                obj.height = obj.width;
-                if (obj.shape === 'ring') {
-                    obj.innerDiameter = obj.width * initial.diameterRatio;
-                }
-            }
-
-            updateFormValuesFromObjects();
-            drawFrame();
-        } else if (isDragging) {
-            const SNAP_THRESHOLD = 30;
-            let dx = x - dragStartX;
-            let dy = y - dragStartY;
-
-            // Clear snap lines at the start of each mousemove
-            snapLines = [];
-
-            if (selectedObjectIds.length === 1) {
-                const draggedObj = objects.find(o => o.id === selectedObjectIds[0]);
-                const initial = initialDragState[0];
-                if (draggedObj) {
-                    let newX = initial.x + dx;
-                    let newY = initial.y + dy;
-                    let finalX = newX;
-                    let finalY = newY;
-
-                    // Define moving edges
-                    const draggedEdges = {
-                        left: newX,
-                        right: newX + draggedObj.width,
-                        top: newY,
-                        bottom: newY + draggedObj.height,
-                        hCenter: newX + draggedObj.width / 2,
-                        vCenter: newY + draggedObj.height / 2
-                    };
-
-                    // Collect snap targets (other objects and canvas)
-                    const otherObjects = objects.filter(o => o.id !== draggedObj.id);
-                    const snapTargets = otherObjects.map(o => ({
-                        left: o.x,
-                        right: o.x + o.width,
-                        top: o.y,
-                        bottom: o.y + o.height,
-                        hCenter: o.x + o.width / 2,
-                        vCenter: o.y + o.height / 2
-                    }));
-                    snapTargets.push({
-                        left: 0,
-                        right: canvas.width,
-                        top: 0,
-                        bottom: canvas.height,
-                        hCenter: canvas.width / 2,
-                        vCenter: canvas.height / 2
-                    });
-
-                    // Calculate snapping adjustments
-                    let minSnapDistX = SNAP_THRESHOLD;
-                    let minSnapDistY = SNAP_THRESHOLD;
-                    let bestSnapX = null;
-                    let bestSnapY = null;
-
-                    for (const target of snapTargets) {
-                        // Horizontal snapping
-                        const hSnaps = [
-                            { dist: Math.abs(draggedEdges.left - target.left), newX: target.left, lineX: target.left },
-                            { dist: Math.abs(draggedEdges.left - target.right), newX: target.right, lineX: target.right },
-                            { dist: Math.abs(draggedEdges.right - target.left), newX: target.left - draggedObj.width, lineX: target.left },
-                            { dist: Math.abs(draggedEdges.right - target.right), newX: target.right - draggedObj.width, lineX: target.right },
-                            { dist: Math.abs(draggedEdges.hCenter - target.hCenter), newX: target.hCenter - draggedObj.width / 2, lineX: target.hCenter }
-                        ];
-                        for (const snap of hSnaps) {
-                            if (snap.dist < minSnapDistX) {
-                                minSnapDistX = snap.dist;
-                                bestSnapX = snap.newX;
-                                snapLines.push({ type: 'vertical', x: snap.lineX });
-                            }
-                        }
-
-                        // Vertical snapping
-                        const vSnaps = [
-                            { dist: Math.abs(draggedEdges.top - target.top), newY: target.top, lineY: target.top },
-                            { dist: Math.abs(draggedEdges.top - target.bottom), newY: target.bottom, lineY: target.bottom },
-                            { dist: Math.abs(draggedEdges.bottom - target.top), newY: target.top - draggedObj.height, lineY: target.top },
-                            { dist: Math.abs(draggedEdges.bottom - target.bottom), newY: target.bottom - draggedObj.height, lineY: target.bottom },
-                            { dist: Math.abs(draggedEdges.vCenter - target.vCenter), newY: target.vCenter - draggedObj.height / 2, lineY: target.vCenter }
-                        ];
-                        for (const snap of vSnaps) {
-                            if (snap.dist < minSnapDistY) {
-                                minSnapDistY = snap.dist;
-                                bestSnapY = snap.newY;
-                                snapLines.push({ type: 'horizontal', y: snap.lineY });
-                            }
-                        }
-                    }
-
-                    // Apply snapping
-                    if (bestSnapX !== null) {
-                        finalX = bestSnapX;
-                    }
-                    if (bestSnapY !== null) {
-                        finalY = bestSnapY;
-                    }
-
-                    // Constrain to canvas if enabled
-                    if (constrainToCanvas) {
-                        finalX = Math.max(0, Math.min(finalX, canvas.width - draggedObj.width));
-                        finalY = Math.max(0, Math.min(finalY, canvas.height - draggedObj.height));
-                    }
-
-                    draggedObj.x = finalX;
-                    draggedObj.y = finalY;
-
-                    // console.log('snapLines:', snapLines); // Debug: Verify snap lines are populated
-                }
-            } else { // This is the block for multi-object dragging
-                let dx = x - dragStartX;
-                let dy = y - dragStartY;
-
-                if (constrainToCanvas) {
-                    // First, find the boundaries of the entire selection at its proposed new position
-                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-                    initialDragState.forEach(initial => {
-                        const obj = objects.find(o => o.id === initial.id);
-                        if (obj) {
-                            const newObjX = initial.x + dx;
-                            const newObjY = initial.y + dy;
-                            minX = Math.min(minX, newObjX);
-                            maxX = Math.max(maxX, newObjX + obj.width);
-                            minY = Math.min(minY, newObjY);
-                            maxY = Math.max(maxY, newObjY + obj.height);
-                        }
-                    });
-
-                    // Next, calculate how much the entire group has overshot the canvas boundaries
-                    let correctionDx = 0;
-                    let correctionDy = 0;
-
-                    if (minX < 0) {
-                        correctionDx = -minX; // Nudge the group to the right
-                    } else if (maxX > canvas.width) {
-                        correctionDx = canvas.width - maxX; // Nudge the group to the left
-                    }
-
-                    if (minY < 0) {
-                        correctionDy = -minY; // Nudge the group down
-                    } else if (maxY > canvas.height) {
-                        correctionDy = canvas.height - maxY; // Nudge the group up
-                    }
-
-                    // Apply the single correction to the overall mouse delta
-                    dx += correctionDx;
-                    dy += correctionDy;
-                }
-
-                // Finally, apply the same corrected delta to all objects in the selection
-                initialDragState.forEach(initial => {
-                    const obj = objects.find(o => o.id === initial.id);
+            // Apply canvas boundary constraints if enabled
+            if (constrainToCanvas) {
+                let constrainedDx = finalDx;
+                let constrainedDy = finalDy;
+                initialDragState.forEach(state => {
+                    const obj = objects.find(o => o.id === state.id);
                     if (obj) {
-                        obj.x = initial.x + dx;
-                        obj.y = initial.y + dy;
+                        // Temporarily move the object to its potential final position to get its bounding box
+                        const originalX = obj.x;
+                        const originalY = obj.y;
+                        obj.x = state.x + finalDx;
+                        obj.y = state.y + finalDy;
+                        const { minX, minY, maxX, maxY } = getBoundingBox(obj);
+                        obj.x = originalX;
+                        obj.y = originalY;
+
+                        // Check if this bounding box is out of bounds and adjust the delta
+                        if (minX < 0) constrainedDx = Math.max(constrainedDx, -minX + finalDx);
+                        if (maxX > canvas.width) constrainedDx = Math.min(constrainedDx, canvas.width - maxX + finalDx);
+                        if (minY < 0) constrainedDy = Math.max(constrainedDy, -minY + finalDy);
+                        if (maxY > canvas.height) constrainedDy = Math.min(constrainedDy, canvas.height - maxY + finalDy);
                     }
                 });
+                finalDx = constrainedDx;
+                finalDy = constrainedDy;
             }
 
-            updateFormValuesFromObjects();
-            // console.log('Calling drawFrame from isDragging, snapLines:', snapLines);
-            drawFrame();
+            // Apply the final, corrected delta to all selected objects
+            initialDragState.forEach(state => {
+                const obj = objects.find(o => o.id === state.id);
+                if (obj) {
+                    obj.x = state.x + finalDx;
+                    obj.y = state.y + finalDy;
+                }
+            });
+
+            needsRedraw = true;
         } else {
-            // Update Cursor
-            canvasContainer.style.cursor = 'default';
-            if (selectedObjectIds.length === 1) {
-                const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
-                if (selectedObject && !selectedObject.locked) {
-                    const rotationHandle = selectedObject.getRotationHandleAtPoint(x, y);
-                    const resizeHandle = selectedObject.getHandleAtPoint(x, y);
-                    if (rotationHandle) {
-                        canvasContainer.style.cursor = 'crosshair';
-                    } else if (resizeHandle) {
-                        canvasContainer.style.cursor = resizeHandle.cursor;
-                    } else if (selectedObject.isPointInside(x, y)) {
-                        canvasContainer.style.cursor = 'move';
+            let cursor = 'default';
+            const topObject = [...objects].reverse().find(obj => obj.isPointInside(x, y));
+            if (topObject) {
+                cursor = 'pointer';
+                if (selectedObjectIds.includes(topObject.id)) {
+                    const handle = topObject.getHandleAtPoint(x, y);
+                    if (handle) {
+                        cursor = handle.cursor;
+                    } else if (!topObject.locked) {
+                        cursor = 'move';
                     }
                 }
             }
+            canvasContainer.style.cursor = cursor;
         }
     });
 
@@ -3925,12 +3874,13 @@ document.addEventListener('DOMContentLoaded', function () {
      * Handles the mouseup event to finalize dragging or resizing operations.
      * @param {MouseEvent} e - The mouseup event object.
      */
-    canvasContainer.addEventListener('mouseup', () => {
+    canvasContainer.addEventListener('mouseup', e => {
+        // console.log('canvasContainer mouseup fired', { isDragging, isResizing, isRotating });
+        e.preventDefault();
         const wasManipulating = isDragging || isResizing || isRotating;
 
         if (isRotating) {
-            const initial = initialDragState[0];
-            const obj = objects.find(o => o.id === initial.id);
+            const obj = objects.find(o => o.id === initialDragState[0].id);
             if (obj) {
                 obj.rotation = Math.round(obj.rotation);
             }
@@ -3940,11 +3890,13 @@ document.addEventListener('DOMContentLoaded', function () {
         isResizing = false;
         isRotating = false;
         activeResizeHandle = null;
-        snapLines = []; // Clear snap lines
+        initialDragState = [];
+        snapLines = [];
+        cachedSnapTargets = null;
 
         if (wasManipulating) {
-            initialDragState.forEach(initial => {
-                const obj = objects.find(o => o.id === initial.id);
+            selectedObjectIds.forEach(id => {
+                const obj = objects.find(o => o.id === id);
                 if (obj) {
                     obj.x = Math.round(obj.x);
                     obj.y = Math.round(obj.y);
@@ -3954,20 +3906,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (obj.fontSize) obj.fontSize = Math.round(obj.fontSize);
                 }
             });
-
             updateFormValuesFromObjects();
             recordHistory();
         }
 
+        canvasContainer.style.cursor = 'default';
+        needsRedraw = true;
         drawFrame();
     });
 
-
-
-
     canvasContainer.addEventListener('mouseleave', e => {
-        isDragging = false;
-        isResizing = false;
+        // isDragging = false;
+        // isResizing = false;
     });
 
 
@@ -3978,21 +3928,35 @@ document.addEventListener('DOMContentLoaded', function () {
      * It sets up the initial configuration, creates objects, renders the form,
      * initializes tooltips, starts the animation loop, and sets up the resizable panels.
      */
-    function init() {
-        const template = document.getElementById('initial-config');
-        const metaElements = Array.from(template.content.querySelectorAll('meta'));
-        configStore = metaElements.map(parseMetaToConfig);
+    // In main.js, replace your entire init function with this:
 
-        constrainBtn.classList.remove('btn-secondary');
+    async function init() {
+        // Setup UI elements that don't depend on loaded objects
+        const constrainBtn = document.getElementById('constrain-btn');
+        constrainBtn.classList.remove('btn-secondary', 'btn-outline-secondary');
         if (constrainToCanvas) {
             constrainBtn.classList.add('btn-secondary');
         } else {
             constrainBtn.classList.add('btn-outline-secondary');
         }
 
-        createInitialObjects();
-        renderForm();
-        updateAll();
+        // --- Core Loading Logic ---
+        // First, try to load a shared or featured effect from the network.
+        // The 'await' keyword forces the code to wait here until the function is finished.
+        const effectLoaded = await loadSharedEffect();
+
+        // If, and only if, no effect was loaded from the network, then
+        // load the default effect from the HTML template.
+        if (!effectLoaded) {
+            const template = document.getElementById('initial-config');
+            const metaElements = Array.from(template.content.querySelectorAll('meta'));
+            configStore = metaElements.map(parseMetaToConfig);
+            createInitialObjects();
+            renderForm();
+            updateAll();
+        }
+
+        // --- Final Setup (runs after objects are loaded from one source or the other) ---
         new bootstrap.Tooltip(document.body, {
             selector: "[data-bs-toggle='tooltip']",
             trigger: 'hover'
@@ -4017,7 +3981,7 @@ document.addEventListener('DOMContentLoaded', function () {
             gutterSize: 12,
             gutter: (index, direction) => {
                 const gutter = document.createElement('div');
-                gutter.className = `gutter gutter - ${direction}`;
+                gutter.className = `gutter gutter-${direction}`;
                 const icon = document.createElement('i');
                 icon.className = 'bi bi-three-dots-vertical';
                 gutter.appendChild(icon);
@@ -4036,7 +4000,7 @@ document.addEventListener('DOMContentLoaded', function () {
             gutterSize: 12,
             gutter: (index, direction) => {
                 const gutter = document.createElement('div');
-                gutter.className = `gutter gutter - ${direction}`;
+                gutter.className = `gutter gutter-${direction}`;
                 const icon = document.createElement('i');
                 icon.className = 'bi bi-three-dots';
                 gutter.appendChild(icon);
@@ -4049,23 +4013,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         initializeSortable();
-        loadSharedEffect();
-        recordHistory(); // Record the initial state of the application
-        updateUndoRedoButtons(); // Set initial button states
+        recordHistory();
+        updateUndoRedoButtons();
 
         const lastUpdatedSpan = document.getElementById('last-updated-span');
         if (lastUpdatedSpan) {
             const now = new Date();
             const formattedDate = now.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
             });
             const formattedTime = now.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                timeZoneName: 'short'
+                hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
             });
             lastUpdatedSpan.textContent = `Current as of: ${formattedDate}, ${formattedTime}`;
         }
@@ -4140,31 +4098,46 @@ document.addEventListener('DOMContentLoaded', function () {
         const params = new URLSearchParams(window.location.search);
         const effectId = params.get('effectId');
 
-        if (!effectId) {
-            return; // No share ID in the URL, so do nothing.
+        if (effectId) {
+            try {
+                const effectDocRef = window.doc(window.db, "projects", effectId);
+                const effectDoc = await window.getDoc(effectDocRef);
+
+                if (effectDoc.exists()) {
+                    const projectData = { docId: effectDoc.id, ...effectDoc.data() };
+                    if (projectData.isPublic) {
+                        loadWorkspace(projectData);
+                        showToast("Shared effect loaded!", 'success');
+                        return true; // Report success
+                    } else {
+                        showToast("This effect is not public.", 'danger');
+                    }
+                } else {
+                    showToast("Shared effect not found.", 'danger');
+                }
+            } catch (error) {
+                console.error("Error loading shared effect:", error);
+                showToast("Could not load the shared effect.", 'danger');
+            }
+            return false; // Report failure
         }
 
         try {
-            const effectDocRef = window.doc(window.db, "projects", effectId);
-            const effectDoc = await window.getDoc(effectDocRef);
+            const q = window.query(window.collection(window.db, "projects"), window.where("featured", "==", true), window.limit(1));
+            const querySnapshot = await window.getDocs(q);
 
-            if (effectDoc.exists()) {
-                // FIX: Pass the document ID along with the data
-                const projectData = { docId: effectDoc.id, ...effectDoc.data() };
-
-                if (projectData.isPublic) {
-                    loadWorkspace(projectData);
-                    showNotification("Shared effect loaded!");
-                } else {
-                    showNotification("This effect is not public.", 'danger');
-                }
-            } else {
-                showNotification("Shared effect not found.", 'danger');
+            if (!querySnapshot.empty) {
+                const featuredDoc = querySnapshot.docs[0];
+                const projectData = { docId: featuredDoc.id, ...featuredDoc.data() };
+                loadWorkspace(projectData);
+                showToast(`Featured effect "${projectData.name}" loaded!`, 'info');
+                return true; // Report success
             }
         } catch (error) {
-            console.error("Error loading shared effect:", error);
-            showNotification("Could not load the shared effect.", 'danger');
+            console.error("Error loading featured effect:", error);
         }
+
+        return false; // Report failure (no featured effect found)
     }
 
     // MY PROJECTS BUTTON
