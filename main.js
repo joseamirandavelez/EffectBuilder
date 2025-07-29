@@ -33,6 +33,7 @@ function getWorldPoints(obj) {
         }
         return points;
     }
+
     const angle = obj.getRenderAngle();
     const cosA = Math.cos(angle);
     const sinA = Math.sin(angle);
@@ -321,8 +322,6 @@ function getBoundingBox(obj) {
  * Represents a drawable, interactive shape on the canvas.
  * Manages its own state, including position, size, appearance, and animation properties.
  */
-// In main.js, DELETE your entire existing "class Shape { ... }" block and replace it with this:
-
 class Shape {
     constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape }) {
         this.id = id;
@@ -500,7 +499,7 @@ class Shape {
         if (dist <= this.rotationHandleRadius + this.handleSize / 2) {
             return { name: 'rotate', cursor: 'crosshair', type: 'rotation' };
         }
-      
+
         const h2 = this.handleSize / 2;
         const handlePositions = {
             'top-left': { x: minX, y: minY }, 'top': { x: minX + bbWidth / 2, y: minY }, 'top-right': { x: maxX, y: minY },
@@ -638,6 +637,7 @@ class Shape {
                 this.scrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
             }
         }
+
         const rotationIncrement = (this.rotationSpeed || 0) / 1000;
         this.rotationAngle += rotationIncrement;
 
@@ -743,7 +743,6 @@ class Shape {
             this._pausedRotationSpeed = null;
         }
 
-        if (enableAnimation && !isSelected) { this.updateAnimationState(); }
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
         const angleToUse = this.getRenderAngle();
@@ -992,6 +991,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const undoBtn = document.getElementById('undo-btn');
     const redoBtn = document.getElementById('redo-btn');
     const canvas = document.getElementById('signalCanvas');
+
     if (!canvas) {
         console.error('Canvas element not found');
         return;
@@ -1059,6 +1059,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentProjectDocId = null; // Tracks the current saved project ID
     let confirmActionCallback = null; // For the confirmation modal
     let exportPayload = {};
+    let propertyClipboard = null;
+    let sourceObjectId = null;
 
     const galleryOffcanvasEl = document.getElementById('gallery-offcanvas');
     const galleryList = document.getElementById('gallery-project-list');
@@ -1995,6 +1997,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 objectConfigs
                     .filter(conf => {
                         const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+                        // Hide Animation Speed control if the shape is a ring
+                        if (propName === 'animationSpeed' && currentShape === 'ring') {
+                            return false;
+                        }
                         return propsInGroup.includes(propName);
                     })
                     .forEach(conf => groupContainer.appendChild(createFormControl(conf)));
@@ -2237,21 +2243,28 @@ document.addEventListener('DOMContentLoaded', function () {
         const multiSelectButtons = toolbar.querySelectorAll('[data-action^="match-"]');
         const singleSelectButtons = toolbar.querySelectorAll('[data-action^="align-screen-"], [data-action="fit-canvas"]');
         const matchTextSizeBtn = document.getElementById('match-text-size-btn');
+        const copyBtn = document.getElementById('copy-props-btn');
+        const pasteBtn = document.getElementById('paste-props-btn');
 
         singleSelectButtons.forEach(btn => btn.disabled = selectedObjectIds.length === 0);
-        // Disable all generic "match" buttons if less than 2 objects are selected
         multiSelectButtons.forEach(btn => {
             if (btn.id !== 'match-text-size-btn') {
                 btn.disabled = selectedObjectIds.length < 2;
             }
         });
 
+        if (copyBtn) {
+            copyBtn.disabled = selectedObjectIds.length === 0;
+        }
+        if (pasteBtn) {
+            pasteBtn.disabled = !propertyClipboard || selectedObjectIds.length === 0;
+        }
+
         if (matchTextSizeBtn) {
             const selected = selectedObjectIds.map(id => objects.find(o => o.id === id)).filter(o => o);
             const textObjects = selected.filter(obj => obj.shape === 'text');
             const gridObjects = selected.filter(obj => obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1));
 
-            // Enable if we have at least one of each, OR if we have two or more text objects.
             const canMatchTextToGrid = textObjects.length >= 1 && gridObjects.length >= 1;
             const canMatchTextToText = textObjects.length >= 2 && gridObjects.length === 0;
 
@@ -3442,21 +3455,21 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function handleToolbarAction(e) {
         const button = e.target.closest('button');
-        if (!button || button.disabled || button.id === 'constrain-btn') return;
+        // Ignore clicks on disabled buttons or buttons without a data-action
+        if (!button || button.disabled || !button.dataset.action) {
+            return;
+        }
+
         const action = button.dataset.action;
-        if (!action || selectedObjectIds.length === 0) {
-            console.log('No action or no objects selected:', { action, selectedObjectIds });
+        if (selectedObjectIds.length === 0) {
             return;
         }
 
         const selectedObjects = selectedObjectIds.map(id => objects.find(o => o.id === id)).filter(o => o);
         if (selectedObjects.length === 0) {
-            console.log('No valid objects found for selection:', { selectedObjectIds });
             return;
         }
         const anchor = selectedObjects[0]; // The first selected object is typically the anchor
-
-        console.log('Handling toolbar action:', { action, selectedCount: selectedObjects.length });
 
         switch (action) {
             case 'align-screen-left':
@@ -3501,7 +3514,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const textObjects = selectedObjects.filter(obj => obj.shape === 'text');
                 const gridObjects = selectedObjects.filter(obj => obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1));
                 if (textObjects.length >= 1 && gridObjects.length >= 1) {
-                    // Scenario 1: Match Text to Grid
                     const sourceGrid = gridObjects[0];
                     const cellHeight = sourceGrid.height / sourceGrid.numberOfRows;
                     textObjects.forEach(textObject => {
@@ -3509,7 +3521,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         textObject._updateTextMetrics();
                     });
                 } else if (textObjects.length >= 2 && gridObjects.length === 0) {
-                    // Scenario 2: Match Text to other Text
                     const sourceText = textObjects[0];
                     const sourceFontSize = sourceText.fontSize;
                     textObjects.slice(1).forEach(targetText => {
@@ -3518,11 +3529,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                 }
                 break;
-            default:
-                console.log('Unknown action:', action);
         }
 
-        // Round positions to avoid floating-point drift
         selectedObjects.forEach(o => {
             o.x = Math.round(o.x);
             o.y = Math.round(o.y);
@@ -3678,7 +3686,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         e.preventDefault();
-        const { x, y } = getCanvasCoordinates(e); // Displayed coordinates
+        const { x, y } = getCanvasCoordinates(e);
 
         if (isRotating) {
             const initial = initialDragState[0];
@@ -4524,6 +4532,97 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('change', (e) => {
         recordHistory();
     });
+
+    // --- FINAL: Robust Copy/Paste Properties Logic ---
+    const copyPropsBtn = document.getElementById('copy-props-btn');
+    const pastePropsBtn = document.getElementById('paste-props-btn');
+    const copyPropsModalEl = document.getElementById('copy-props-modal');
+    const confirmCopyBtn = document.getElementById('confirm-copy-props-btn');
+    const copyPropsForm = document.getElementById('copy-props-form');
+
+    if (copyPropsBtn && pastePropsBtn && copyPropsModalEl && confirmCopyBtn && copyPropsForm) {
+        const copyPropsModal = new bootstrap.Modal(copyPropsModalEl);
+
+        copyPropsBtn.addEventListener('click', () => {
+            if (selectedObjectIds.length === 0) return;
+            sourceObjectId = selectedObjectIds[0];
+            const sourceObject = objects.find(o => o.id === sourceObjectId);
+            if (!sourceObject) return;
+
+            copyPropsForm.reset();
+
+            const shapeSpecificContainer = document.getElementById('shape-specific-props-container');
+            const shapeSpecificName = document.getElementById('shape-specific-name');
+            const shapeSpecificProps = ['ring', 'oscilloscope', 'text', 'rectangle'];
+
+            if (shapeSpecificProps.includes(sourceObject.shape)) {
+                shapeSpecificName.textContent = sourceObject.shape.charAt(0).toUpperCase() + sourceObject.shape.slice(1);
+                shapeSpecificContainer.classList.remove('d-none');
+            } else {
+                shapeSpecificContainer.classList.add('d-none');
+            }
+
+            copyPropsModal.show();
+        });
+
+        confirmCopyBtn.addEventListener('click', () => {
+            const sourceObject = objects.find(o => o.id === sourceObjectId);
+            if (!sourceObject) return;
+
+            const propsToCopy = {};
+
+            if (copyPropsForm.elements['copy-position'].checked) { Object.assign(propsToCopy, { x: sourceObject.x, y: sourceObject.y }); }
+            if (copyPropsForm.elements['copy-size'].checked) { Object.assign(propsToCopy, { width: sourceObject.width, height: sourceObject.height }); }
+            if (copyPropsForm.elements['copy-rotation'].checked) { Object.assign(propsToCopy, { rotation: sourceObject.rotation, rotationSpeed: sourceObject.rotationSpeed }); }
+            if (copyPropsForm.elements['copy-fill-style'].checked) { Object.assign(propsToCopy, { gradType: sourceObject.gradType, useSharpGradient: sourceObject.useSharpGradient, gradientStop: sourceObject.gradientStop, gradient: { ...sourceObject.gradient } }); }
+
+            // CORRECTED: This block now properly includes animationSpeed
+            if (copyPropsForm.elements['copy-animation'].checked) {
+                Object.assign(propsToCopy, {
+                    animationMode: sourceObject.animationMode,
+                    animationSpeed: sourceObject.animationSpeed,
+                    scrollDirection: sourceObject.scrollDirection
+                });
+            }
+
+            if (copyPropsForm.elements['copy-color-animation'].checked) { Object.assign(propsToCopy, { cycleColors: sourceObject.cycleColors, cycleSpeed: sourceObject.cycleSpeed }); }
+
+            if (copyPropsForm.elements['copy-shape-type'].checked) { propsToCopy.shape = sourceObject.shape; }
+            if (copyPropsForm.elements['copy-shape-specific'].checked) {
+                switch (sourceObject.shape) {
+                    case 'ring': Object.assign(propsToCopy, { innerDiameter: sourceObject.innerDiameter, numberOfSegments: sourceObject.numberOfSegments, angularWidth: sourceObject.angularWidth }); break;
+                    case 'oscilloscope': Object.assign(propsToCopy, { lineWidth: sourceObject.lineWidth, waveType: sourceObject.waveType, frequency: sourceObject.frequency, oscDisplayMode: sourceObject.oscDisplayMode, pulseDepth: sourceObject.pulseDepth, fillShape: sourceObject.fillShape }); break;
+                    case 'text': Object.assign(propsToCopy, { text: sourceObject.text, fontSize: sourceObject.fontSize, textAlign: sourceObject.textAlign, pixelFont: sourceObject.pixelFont, textAnimation: sourceObject.textAnimation, textAnimationSpeed: sourceObject.textAnimationSpeed, showTime: sourceObject.showTime, showDate: sourceObject.showDate }); break;
+                    case 'rectangle': Object.assign(propsToCopy, { numberOfRows: sourceObject.numberOfRows, numberOfColumns: sourceObject.numberOfColumns, phaseOffset: sourceObject.phaseOffset }); break;
+                }
+            }
+
+            propertyClipboard = propsToCopy;
+            updateToolbarState();
+            showToast("Properties copied to clipboard!", 'info');
+            copyPropsModal.hide();
+        });
+
+        pastePropsBtn.addEventListener('click', () => {
+            if (!propertyClipboard || selectedObjectIds.length === 0) return;
+
+            const destObjects = selectedObjectIds.map(id => objects.find(o => o.id === id));
+            destObjects.forEach(obj => {
+                if (obj) {
+                    obj.update(propertyClipboard);
+                }
+            });
+
+            if (propertyClipboard.hasOwnProperty('shape')) {
+                renderForm();
+            }
+
+            updateFormValuesFromObjects();
+            drawFrame();
+            recordHistory();
+            showToast(`Properties pasted to ${destObjects.length} object(s).`, 'success');
+        });
+    }
 
     // Start the application.
     init();
