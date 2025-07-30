@@ -352,7 +352,7 @@ class Shape {
         this.numberOfSegments = numberOfSegments;
         this.rotationSpeed = rotationSpeed || 0;
         this.rotationAngle = 0;
-        this.animationAngle = 0;
+        this.animationAngle = Math.random() * 2 * Math.PI;
         this.useSharpGradient = useSharpGradient !== undefined ? useSharpGradient : false;
         this.gradientStop = gradientStop !== undefined ? parseFloat(gradientStop) : 50;
         this.locked = locked || false;
@@ -550,7 +550,6 @@ class Shape {
                     if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
                     if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
                 } else {
-                    // FIX: Removed hasOwnProperty check to allow all properties from the form to update.
                     this[key] = props[key];
                 }
             }
@@ -640,7 +639,6 @@ class Shape {
         }
 
         if (this.shape === 'oscilloscope' && this.oscAnimationMode === 'trace' && this.enableWaveAnimation) {
-            // Increased the speed multiplier for a more visible animation
             this.traceProgress += this.animationSpeed * 0.05;
             if (this.traceProgress > 1.25) {
                 this.traceProgress = 0;
@@ -656,205 +654,6 @@ class Shape {
         this.animationAngle += animationIncrement;
     }
 
-    draw(isSelected) {
-        this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.rect(this.x, this.y, this.width, this.height);
-        this.ctx.clip();
-
-        if (isSelected && this.rotationSpeed !== 0) {
-            this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
-            this._pausedRotationSpeed = this.rotationSpeed;
-            this.rotationSpeed = 0;
-        } else if (!isSelected && this._pausedRotationSpeed !== null) {
-            this.rotationSpeed = this._pausedRotationSpeed;
-            this._pausedRotationSpeed = null;
-        }
-
-        const centerX = this.x + this.width / 2;
-        const centerY = this.y + this.height / 2;
-        const angleToUse = this.getRenderAngle();
-        this.ctx.save();
-        this.ctx.translate(centerX, centerY);
-        this.ctx.rotate(angleToUse);
-        this.ctx.translate(-centerX, -centerY);
-        if (this.shape === 'ring') {
-            const outerRadius = this.width / 2;
-            const innerRadius = this.innerDiameter / 2;
-            const angleStep = (2 * Math.PI) / this.numberOfSegments;
-            const segmentAngleRad = (this.angularWidth * Math.PI) / 180;
-            if (innerRadius >= 0 && innerRadius < outerRadius && this.numberOfSegments > 0) {
-                const isAlternating = this.gradType === 'alternating';
-                const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
-                const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-                const genericFill = isAlternating ? null : this.createFillStyle();
-                for (let i = 0; i < this.numberOfSegments; i++) {
-                    this.ctx.beginPath();
-                    const startAngle = i * angleStep + this.animationAngle;
-                    const endAngle = startAngle + segmentAngleRad;
-                    this.ctx.moveTo(centerX + Math.cos(startAngle) * outerRadius, centerY + Math.sin(startAngle) * outerRadius);
-                    this.ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle, false);
-                    this.ctx.lineTo(centerX + Math.cos(endAngle) * innerRadius, centerY + Math.sin(endAngle) * innerRadius);
-                    this.ctx.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
-                    this.ctx.closePath();
-                    if (isAlternating) {
-                        this.ctx.fillStyle = (i % 2 === 0) ? c1 : c2;
-                    } else {
-                        this.ctx.fillStyle = genericFill;
-                    }
-                    this.ctx.fill();
-                }
-            }
-        } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
-            const cellWidth = this.width / this.numberOfColumns;
-            const cellHeight = this.height / this.numberOfRows;
-            const isRandom = this.gradType === 'random';
-            const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
-            const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-            if (isRandom) {
-                this.randomColorTimer -= 1;
-                if (this.randomColorTimer <= 0) {
-                    this.cellColors = [];
-                    const rawSpeed = this.animationSpeed * 25;
-                    this.randomColorTimer = Math.max(1, 200 / rawSpeed);
-                }
-            }
-            for (let row = 0; row < this.numberOfRows; row++) {
-                for (let col = 0; col < this.numberOfColumns; col++) {
-                    const cellX = this.x + col * cellWidth;
-                    const cellY = this.y + row * cellHeight;
-                    const cellIndex = row * this.numberOfColumns + col;
-                    if (isRandom) {
-                        if (!this.cellColors[cellIndex]) { this.cellColors[cellIndex] = Math.random() < 0.5 ? c1 : c2; }
-                        this.ctx.fillStyle = this.cellColors[cellIndex];
-                        this.ctx.fillRect(cellX, cellY, cellWidth, cellHeight);
-                    } else {
-                        this.ctx.save();
-                        this.ctx.beginPath();
-                        this.ctx.rect(cellX, cellY, cellWidth, cellHeight);
-                        this.ctx.clip();
-                        this.ctx.fillStyle = this.createFillStyle(cellIndex);
-                        this.ctx.fillRect(this.x, this.y, this.width, this.height);
-                        this.ctx.restore();
-                    }
-                }
-            }
-        } else if (this.shape === 'text') {
-            this.ctx.fillStyle = this.createFillStyle();
-            drawPixelText(this.ctx, this);
-        } else if (this.shape === 'oscilloscope') {
-            this.ctx.lineWidth = this.lineWidth;
-            this.ctx.beginPath();
-            const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
-
-            let effectiveFrequency = this.frequency;
-            let effectivePulseDepth = this.pulseDepth;
-
-            if (this.enableWaveAnimation) {
-                switch (this.oscAnimationMode) {
-                    case 'fmPulse':
-                        const freqModulation = (Math.sin(activeAnimationAngle * 0.5) + 1) / 2;
-                        effectiveFrequency += freqModulation * (this.frequency * 0.75);
-                        break;
-                    case 'depthPulse':
-                        effectivePulseDepth = ((Math.sin(activeAnimationAngle * 0.5) + 1) / 2) * 100;
-                        break;
-                }
-            }
-
-            if (this.oscDisplayMode === 'radial') {
-                const radialCenterX = this.x + this.width / 2;
-                const radialCenterY = this.y + this.height / 2;
-                const totalRadius = (Math.min(this.width, this.height) / 2) - (this.lineWidth / 2);
-                const pulseRatio = (effectivePulseDepth || 0) / 100.0;
-                const baseRadius = totalRadius * (0.5 + pulseRatio * 0.5);
-                const maxAmplitude = totalRadius - baseRadius;
-                const breathFactor = 1 + Math.sin(activeAnimationAngle) * 0.2;
-
-                for (let i = 0; i <= 360; i++) {
-                    const angleRad = (i * Math.PI) / 180;
-                    const progress = i / 360;
-                    const waveFuncAngle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle * 2;
-                    let y_wave;
-                    switch (this.waveType) {
-                        case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
-                        case 'sawtooth': y_wave = (((waveFuncAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
-                        case 'triangle': y_wave = Math.asin(Math.sin(waveFuncAngle)) * (2 / Math.PI); break;
-                        case 'sine': default: y_wave = Math.sin(waveFuncAngle); break;
-                    }
-                    const modulatedRadius = baseRadius + y_wave * maxAmplitude;
-                    const finalRadius = modulatedRadius * breathFactor;
-                    const px = radialCenterX + finalRadius * Math.cos(angleRad);
-                    const py = radialCenterY + finalRadius * Math.sin(angleRad);
-                    if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
-                }
-                this.ctx.closePath();
-                this.waveMinY = radialCenterY - totalRadius * breathFactor;
-                this.waveMaxY = radialCenterY + totalRadius * breathFactor;
-
-            } else { // Linear mode
-                const waveCenterY = this.y + this.height / 2;
-                const amplitude = (this.height - this.lineWidth) / 2;
-                let limit = this.width;
-
-                if (this.oscAnimationMode === 'trace' && this.enableWaveAnimation) {
-                    limit = this.width * Math.min(1, this.traceProgress);
-                }
-
-                let minY = Infinity, maxY = -Infinity;
-                for (let i = 0; i <= limit; i++) {
-                    const progress = i / this.width;
-                    const angle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle;
-                    let y_wave;
-                    switch (this.waveType) {
-                        case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;
-                        case 'sawtooth':
-                            // Corrected to use effectiveFrequency
-                            y_wave = 2 * (progress * effectiveFrequency - Math.floor(0.5 + progress * effectiveFrequency));
-                            break;
-                        case 'triangle': y_wave = Math.asin(Math.sin(angle)) * (2 / Math.PI); break;
-                        case 'sine': default: y_wave = Math.sin(angle); break;
-                    }
-                    const px = this.x + i;
-                    const py = waveCenterY - y_wave * amplitude;
-                    if (py < minY) minY = py;
-                    if (py > maxY) maxY = py;
-                    if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
-                }
-
-                if (this.fillShape) {
-                    this.ctx.lineTo(this.x + limit, this.y + this.height);
-                    this.ctx.lineTo(this.x, this.y + this.height);
-                    this.ctx.closePath();
-                }
-
-                this.waveMinY = minY;
-                this.waveMaxY = maxY;
-            }
-
-            if (this.fillShape) {
-                this.ctx.fillStyle = this.createFillStyle();
-                this.ctx.fill();
-            }
-            this.ctx.strokeStyle = this.createFillStyle();
-            this.ctx.stroke();
-
-        } else {
-            this.ctx.beginPath();
-            switch (this.shape) {
-                case 'rectangle':
-                    this.ctx.rect(this.x, this.y, this.width, this.height);
-                    break;
-                case 'circle':
-                    this.ctx.arc(centerX, centerY, this.width / 2, 0, 2 * Math.PI);
-                    break;
-            }
-            this.ctx.fillStyle = this.createFillStyle();
-            this.ctx.fill();
-        }
-        this.ctx.restore();
-    }
-
     createFillStyle(phase = 0) {
         let phaseIndex = phase;
         if (this.animationMode === 'bounce-random') {
@@ -868,12 +667,13 @@ class Shape {
         const p = this.animationMode === 'loop' ? (effectiveScrollOffset % 1.0 + 1.0) % 1.0 : effectiveScrollOffset;
         const c1 = this.cycleColors ? `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color1;
         const c2 = this.cycleColors ? `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color2;
-        const isLinear = this.gradType && this.gradType.includes('linear');
-        const isRadial = this.gradType && this.gradType.includes('radial');
+
+        const isLinear = this.gradType === 'linear';
+        const isRadial = this.gradType === 'radial';
+
         if (this.gradType === 'alternating') { return (phase % 2 === 0) ? c1 : c2; }
         if (isLinear) {
             let grad;
-            // This logic now directly checks the scrollDirection to create the correct gradient
             const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
             if (isVertical) {
                 grad = this.ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
@@ -935,285 +735,214 @@ class Shape {
                 grad.addColorStop(0, c1); grad.addColorStop(midPoint, c2); grad.addColorStop(1, c1);
             }
             return grad;
+        } else if (this.gradType === 'rainbow') {
+            let grad;
+            const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
+            if (isVertical) {
+                grad = this.ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+            } else {
+                grad = this.ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y);
+            }
+            const hueOffset = (1 - p) * 360;
+            for (let i = 0; i <= 30; i++) {
+                const hue = (i * 12 + hueOffset) % 360;
+                const stopPosition = i / 30;
+                grad.addColorStop(stopPosition, `hsl(${hue}, 100%, 50%)`);
+            }
+            return grad;
+        } else if (this.gradType === 'rainbow-radial') {
+            const centerX = this.x + this.width / 2;
+            const centerY = this.y + this.height / 2;
+            const maxRadius = Math.max(this.width, this.height) / 2;
+            const grad = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
+            const hueOffset = (1 - p) * 360;
+            for (let i = 0; i <= 30; i++) {
+                const hue = (i * 12 + hueOffset) % 360;
+                const stopPosition = i / 30;
+                grad.addColorStop(stopPosition, `hsl(${hue}, 100%, 50%)`);
+            }
+            return grad;
         }
         return c1 || 'black';
     }
 
     draw(isSelected) {
-        this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.rect(this.x, this.y, this.width, this.height);
-        this.ctx.clip();
-
-        if (isSelected && this.rotationSpeed !== 0) {
-            this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
-            this._pausedRotationSpeed = this.rotationSpeed;
-            this.rotationSpeed = 0;
-        } else if (!isSelected && this._pausedRotationSpeed !== null) {
-            this.rotationSpeed = this._pausedRotationSpeed;
-            this._pausedRotationSpeed = null;
-        }
-
+        console.log(`Drawing shape ID: ${this.id}, Type: ${this.shape}, Fill: ${this.gradType}`);
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
         const angleToUse = this.getRenderAngle();
         this.ctx.save();
-        this.ctx.translate(centerX, centerY);
-        this.ctx.rotate(angleToUse);
-        this.ctx.translate(-centerX, -centerY);
-        if (this.shape === 'ring') {
-            const outerRadius = this.width / 2;
-            const innerRadius = this.innerDiameter / 2;
-            const angleStep = (2 * Math.PI) / this.numberOfSegments;
-            const segmentAngleRad = (this.angularWidth * Math.PI) / 180;
-            if (innerRadius >= 0 && innerRadius < outerRadius && this.numberOfSegments > 0) {
-                const isAlternating = this.gradType === 'alternating';
+        if (this.shape === 'ring' || this.shape === 'text' || this.shape === 'oscilloscope' || (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1))) {
+            this.ctx.translate(centerX, centerY);
+            this.ctx.rotate(angleToUse);
+            this.ctx.translate(-centerX, -centerY);
+            if (this.shape === 'ring') {
+                const outerRadius = this.width / 2;
+                const innerRadius = this.innerDiameter / 2;
+                const angleStep = (2 * Math.PI) / this.numberOfSegments;
+                const segmentAngleRad = (this.angularWidth * Math.PI) / 180;
+                if (innerRadius >= 0 && innerRadius < outerRadius && this.numberOfSegments > 0) {
+                    const isAlternating = this.gradType === 'alternating';
+                    const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
+                    const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
+                    const genericFill = isAlternating ? null : this.createFillStyle();
+                    for (let i = 0; i < this.numberOfSegments; i++) {
+                        this.ctx.beginPath();
+                        const startAngle = i * angleStep + this.animationAngle;
+                        const endAngle = startAngle + segmentAngleRad;
+                        this.ctx.moveTo(centerX + Math.cos(startAngle) * outerRadius, centerY + Math.sin(startAngle) * outerRadius);
+                        this.ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle, false);
+                        this.ctx.lineTo(centerX + Math.cos(endAngle) * innerRadius, centerY + Math.sin(endAngle) * innerRadius);
+                        this.ctx.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
+                        this.ctx.closePath();
+                        if (isAlternating) {
+                            this.ctx.fillStyle = (i % 2 === 0) ? c1 : c2;
+                        } else {
+                            this.ctx.fillStyle = genericFill;
+                        }
+                        this.ctx.fill();
+                    }
+                }
+            } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
+                const cellWidth = this.width / this.numberOfColumns;
+                const cellHeight = this.height / this.numberOfRows;
+                const isRandom = this.gradType === 'random';
                 const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
                 const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-                const genericFill = isAlternating ? null : this.createFillStyle();
-                for (let i = 0; i < this.numberOfSegments; i++) {
-                    this.ctx.beginPath();
-                    const startAngle = i * angleStep + this.animationAngle;
-                    const endAngle = startAngle + segmentAngleRad;
-                    this.ctx.moveTo(centerX + Math.cos(startAngle) * outerRadius, centerY + Math.sin(startAngle) * outerRadius);
-                    this.ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle, false);
-                    this.ctx.lineTo(centerX + Math.cos(endAngle) * innerRadius, centerY + Math.sin(endAngle) * innerRadius);
-                    this.ctx.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
-                    this.ctx.closePath();
-                    if (isAlternating) {
-                        this.ctx.fillStyle = (i % 2 === 0) ? c1 : c2;
-                    } else {
-                        this.ctx.fillStyle = genericFill;
+                if (isRandom) {
+                    this.randomColorTimer -= 1;
+                    if (this.randomColorTimer <= 0) {
+                        this.cellColors = [];
+                        const rawSpeed = this.animationSpeed * 25;
+                        this.randomColorTimer = Math.max(1, 200 / rawSpeed);
                     }
+                }
+                for (let row = 0; row < this.numberOfRows; row++) {
+                    for (let col = 0; col < this.numberOfColumns; col++) {
+                        const cellX = this.x + col * cellWidth;
+                        const cellY = this.y + row * cellHeight;
+                        const cellIndex = row * this.numberOfColumns + col;
+                        if (isRandom) {
+                            if (!this.cellColors[cellIndex]) { this.cellColors[cellIndex] = Math.random() < 0.5 ? c1 : c2; }
+                            this.ctx.fillStyle = this.cellColors[cellIndex];
+                            this.ctx.fillRect(cellX, cellY, cellWidth, cellHeight);
+                        } else {
+                            this.ctx.save();
+                            this.ctx.beginPath();
+                            this.ctx.rect(cellX, cellY, cellWidth, cellHeight);
+                            this.ctx.clip();
+                            this.ctx.fillStyle = this.createFillStyle(cellIndex);
+                            this.ctx.fillRect(this.x, this.y, this.width, this.height);
+                            this.ctx.restore();
+                        }
+                    }
+                }
+            } else if (this.shape === 'text') {
+                this.ctx.fillStyle = this.createFillStyle();
+                drawPixelText(this.ctx, this);
+            } else if (this.shape === 'oscilloscope') {
+                if (this.enableWaveAnimation === undefined) { this.enableWaveAnimation = true; }
+                this.ctx.lineWidth = this.lineWidth;
+                this.ctx.beginPath();
+                const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
+                let effectiveFrequency = this.frequency;
+                let effectivePulseDepth = this.pulseDepth;
+                if (this.enableWaveAnimation) {
+                    switch (this.oscAnimationMode) {
+                        case 'fmPulse':
+                            const freqModulation = (Math.sin(activeAnimationAngle * 0.5) + 1) / 2;
+                            effectiveFrequency += freqModulation * (this.frequency * 0.75);
+                            break;
+                        case 'depthPulse':
+                            effectivePulseDepth = ((Math.sin(activeAnimationAngle * 0.5) + 1) / 2) * 100;
+                            break;
+                    }
+                }
+                if (this.oscDisplayMode === 'radial') {
+                    const radialCenterX = this.x + this.width / 2;
+                    const radialCenterY = this.y + this.height / 2;
+                    const totalRadius = (Math.min(this.width, this.height) / 2) - (this.lineWidth / 2);
+                    const pulseRatio = (effectivePulseDepth || 0) / 100.0;
+                    const baseRadius = totalRadius * (0.5 + pulseRatio * 0.5);
+                    const maxAmplitude = totalRadius - baseRadius;
+                    const breathFactor = 1 + Math.sin(activeAnimationAngle) * 0.2;
+                    for (let i = 0; i <= 360; i++) {
+                        const angleRad = (i * Math.PI) / 180;
+                        const progress = i / 360;
+                        const waveFuncAngle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle * 2;
+                        let y_wave;
+                        switch (this.waveType) {
+                            case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
+                            case 'sawtooth': y_wave = (((waveFuncAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
+                            case 'triangle': y_wave = Math.asin(Math.sin(waveFuncAngle)) * (2 / Math.PI); break;
+                            case 'sine': default: y_wave = Math.sin(waveFuncAngle); break;
+                        }
+                        const modulatedRadius = baseRadius + y_wave * maxAmplitude;
+                        const finalRadius = modulatedRadius * breathFactor;
+                        const px = radialCenterX + finalRadius * Math.cos(angleRad);
+                        const py = radialCenterY + finalRadius * Math.sin(angleRad);
+                        if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
+                    }
+                    this.ctx.closePath();
+                } else { // Linear mode
+                    const waveCenterY = this.y + this.height / 2;
+                    const amplitude = (this.height - this.lineWidth) / 2;
+                    let limit = this.width;
+                    if (this.oscAnimationMode === 'trace' && this.enableWaveAnimation) {
+                        limit = this.width * Math.min(1, this.traceProgress);
+                    }
+                    for (let i = 0; i <= limit; i++) {
+                        const progress = i / this.width;
+                        const angle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle;
+                        let y_wave;
+                        switch (this.waveType) {
+                            case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;
+                            case 'sawtooth':
+                                y_wave = 2 * (progress * effectiveFrequency - Math.floor(0.5 + progress * effectiveFrequency));
+                                break;
+                            case 'triangle': y_wave = Math.asin(Math.sin(angle)) * (2 / Math.PI); break;
+                            case 'sine': default: y_wave = Math.sin(angle); break;
+                        }
+                        const px = this.x + i;
+                        const py = waveCenterY - y_wave * amplitude;
+                        if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
+                    }
+                    if (this.fillShape) {
+                        this.ctx.lineTo(this.x + limit, this.y + this.height);
+                        this.ctx.lineTo(this.x, this.y + this.height);
+                        this.ctx.closePath();
+                    }
+                }
+                if (this.fillShape) {
+                    this.ctx.fillStyle = this.createFillStyle();
                     this.ctx.fill();
                 }
+                this.ctx.strokeStyle = this.createFillStyle();
+                this.ctx.stroke();
             }
-        } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
-            const cellWidth = this.width / this.numberOfColumns;
-            const cellHeight = this.height / this.numberOfRows;
-            const isRandom = this.gradType === 'random';
-            const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
-            const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-            if (isRandom) {
-                this.randomColorTimer -= 1;
-                if (this.randomColorTimer <= 0) {
-                    this.cellColors = [];
-                    const rawSpeed = this.animationSpeed * 25;
-                    this.randomColorTimer = Math.max(1, 200 / rawSpeed);
-                }
-            }
-            for (let row = 0; row < this.numberOfRows; row++) {
-                for (let col = 0; col < this.numberOfColumns; col++) {
-                    const cellX = this.x + col * cellWidth;
-                    const cellY = this.y + row * cellHeight;
-                    const cellIndex = row * this.numberOfColumns + col;
-                    if (isRandom) {
-                        if (!this.cellColors[cellIndex]) { this.cellColors[cellIndex] = Math.random() < 0.5 ? c1 : c2; }
-                        this.ctx.fillStyle = this.cellColors[cellIndex];
-                        this.ctx.fillRect(cellX, cellY, cellWidth, cellHeight);
-                    } else {
-                        this.ctx.save();
-                        this.ctx.beginPath();
-                        this.ctx.rect(cellX, cellY, cellWidth, cellHeight);
-                        this.ctx.clip();
-                        this.ctx.fillStyle = this.createFillStyle(cellIndex);
-                        this.ctx.fillRect(this.x, this.y, this.width, this.height);
-                        this.ctx.restore();
-                    }
-                }
-            }
-        } else if (this.shape === 'text') {
-            this.ctx.fillStyle = this.createFillStyle();
-            drawPixelText(this.ctx, this);
-        } else if (this.shape === 'oscilloscope') {
-            this.ctx.lineWidth = this.lineWidth;
-            this.ctx.beginPath();
-            const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
-
-            let effectiveFrequency = this.frequency;
-            let effectivePulseDepth = this.pulseDepth;
-
-            if (this.enableWaveAnimation) {
-                switch (this.oscAnimationMode) {
-                    case 'fmPulse':
-                        const freqModulation = (Math.sin(activeAnimationAngle * 0.5) + 1) / 2;
-                        effectiveFrequency += freqModulation * (this.frequency * 0.75);
-                        break;
-                    case 'depthPulse':
-                        effectivePulseDepth = ((Math.sin(activeAnimationAngle * 0.5) + 1) / 2) * 100;
-                        break;
-                }
-            }
-
-            if (this.oscDisplayMode === 'radial') {
-                const radialCenterX = this.x + this.width / 2;
-                const radialCenterY = this.y + this.height / 2;
-                const totalRadius = (Math.min(this.width, this.height) / 2) - (this.lineWidth / 2);
-                const pulseRatio = (effectivePulseDepth || 0) / 100.0;
-                const baseRadius = totalRadius * (0.5 + pulseRatio * 0.5);
-                const maxAmplitude = totalRadius - baseRadius;
-                const breathFactor = 1 + Math.sin(activeAnimationAngle) * 0.2;
-
-                for (let i = 0; i <= 360; i++) {
-                    const angleRad = (i * Math.PI) / 180;
-                    const progress = i / 360;
-                    const waveFuncAngle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle * 2;
-                    let y_wave;
-                    switch (this.waveType) {
-                        case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
-                        case 'sawtooth': y_wave = (((waveFuncAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
-                        case 'triangle': y_wave = Math.asin(Math.sin(waveFuncAngle)) * (2 / Math.PI); break;
-                        case 'sine': default: y_wave = Math.sin(waveFuncAngle); break;
-                    }
-                    const modulatedRadius = baseRadius + y_wave * maxAmplitude;
-                    const finalRadius = modulatedRadius * breathFactor;
-                    const px = radialCenterX + finalRadius * Math.cos(angleRad);
-                    const py = radialCenterY + finalRadius * Math.sin(angleRad);
-                    if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
-                }
-                this.ctx.closePath();
-                this.waveMinY = radialCenterY - totalRadius * breathFactor;
-                this.waveMaxY = radialCenterY + totalRadius * breathFactor;
-
-            } else { // Linear mode
-                const waveCenterY = this.y + this.height / 2;
-                const amplitude = (this.height - this.lineWidth) / 2;
-                let limit = this.width;
-
-                if (this.oscAnimationMode === 'trace' && this.enableWaveAnimation) {
-                    limit = this.width * Math.min(1, this.traceProgress);
-                }
-
-                let minY = Infinity, maxY = -Infinity;
-                for (let i = 0; i <= limit; i++) {
-                    const progress = i / this.width;
-                    const angle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle;
-                    let y_wave;
-                    switch (this.waveType) {
-                        case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;
-                        case 'sawtooth':
-                            // This line is now corrected to use the effectiveFrequency
-                            y_wave = 2 * (progress * effectiveFrequency - Math.floor(0.5 + progress * effectiveFrequency));
-                            break;
-                        case 'triangle': y_wave = Math.asin(Math.sin(angle)) * (2 / Math.PI); break;
-                        case 'sine': default: y_wave = Math.sin(angle); break;
-                    }
-                    const px = this.x + i;
-                    const py = waveCenterY - y_wave * amplitude;
-                    if (py < minY) minY = py;
-                    if (py > maxY) maxY = py;
-                    if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
-                }
-
-                if (this.fillShape) {
-                    this.ctx.lineTo(this.x + limit, this.y + this.height);
-                    this.ctx.lineTo(this.x, this.y + this.height);
-                    this.ctx.closePath();
-                }
-
-                this.waveMinY = minY;
-                this.waveMaxY = maxY;
-            }
-
-            if (this.fillShape) {
-                this.ctx.fillStyle = this.createFillStyle();
-                this.ctx.fill();
-            }
-            this.ctx.strokeStyle = this.createFillStyle();
-            this.ctx.stroke();
 
         } else {
+            // Step 1: Move canvas origin to the object's center and apply rotation
+            this.ctx.translate(centerX, centerY);
+            this.ctx.rotate(angleToUse);
+
+            // Step 2: Define the shape's path, now centered around the NEW origin (0,0)
             this.ctx.beginPath();
-            switch (this.shape) {
-                case 'rectangle':
-                    this.ctx.rect(this.x, this.y, this.width, this.height);
-                    break;
-                case 'circle':
-                    this.ctx.arc(centerX, centerY, this.width / 2, 0, 2 * Math.PI);
-                    break;
+            if (this.shape === 'circle') {
+                this.ctx.arc(0, 0, this.width / 2, 0, 2 * Math.PI);
+            } else { // rectangle
+                this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
             }
+
+            // Step 3: Use the created path to set the fill style
             this.ctx.fillStyle = this.createFillStyle();
+
+            // Step 4: Fill the path
             this.ctx.fill();
         }
+
+        // Final restore to undo all transforms and clips from this draw call
         this.ctx.restore();
-
-        this.ctx.restore();
-    }
-
-    drawSelectionUI() {
-        const selectionColor = this.locked ? 'orange' : '#00f6ff';
-        this.ctx.save();
-        this.ctx.strokeStyle = selectionColor;
-        this.ctx.fillStyle = selectionColor;
-        this.ctx.lineWidth = 2;
-        this.ctx.setLineDash([5, 5]);
-
-        let minX, minY, bbWidth, bbHeight;
-
-        if (this.shape === 'circle' || this.shape === 'ring') {
-            const center = this.getCenter();
-            bbWidth = this.width;
-            bbHeight = this.height;
-            minX = center.x - bbWidth / 2;
-            minY = center.y - bbHeight / 2;
-        } else {
-            const corners = [
-                this.getWorldCoordsOfCorner('top-left'),
-                this.getWorldCoordsOfCorner('top-right'),
-                this.getWorldCoordsOfCorner('bottom-right'),
-                this.getWorldCoordsOfCorner('bottom-left')
-            ];
-            minX = Math.min(...corners.map(c => c.x));
-            minY = Math.min(...corners.map(c => c.y));
-            const maxX = Math.max(...corners.map(c => c.x));
-            const maxY = Math.max(...corners.map(c => c.y));
-            bbWidth = maxX - minX;
-            bbHeight = maxY - minY;
-        }
-
-        this.ctx.strokeRect(minX, minY, bbWidth, bbHeight);
-        this.ctx.setLineDash([]);
-
-        const h2 = this.handleSize / 2;
-        const maxX = minX + bbWidth;
-        const maxY = minY + bbHeight;
-        const handlePositions = [
-            { x: minX - h2, y: minY - h2 }, { x: minX + bbWidth / 2 - h2, y: minY - h2 }, { x: maxX - h2, y: minY - h2 },
-            { x: minX - h2, y: minY + bbHeight / 2 - h2 }, { x: maxX - h2, y: minY + bbHeight / 2 - h2 },
-            { x: minX - h2, y: maxY - h2 }, { x: minX + bbWidth / 2 - h2, y: maxY - h2 }, { x: maxX - h2, y: maxY - h2 }
-        ];
-        handlePositions.forEach(pos => this.ctx.fillRect(pos.x, pos.y, this.handleSize, this.handleSize));
-
-        const topMargin = 40;
-        let handleY;
-        let stemStartY;
-        const handleX = minX + bbWidth / 2;
-        if (minY < topMargin) {
-            stemStartY = maxY;
-            handleY = maxY - this.rotationHandleOffset;
-        } else {
-            stemStartY = minY;
-            handleY = minY + this.rotationHandleOffset;
-        }
-        this.ctx.beginPath();
-        this.ctx.moveTo(handleX, stemStartY);
-        this.ctx.lineTo(handleX, handleY);
-        this.ctx.stroke();
-        this.ctx.beginPath();
-        this.ctx.arc(handleX, handleY, this.rotationHandleRadius, 0, 2 * Math.PI);
-        this.ctx.fill();
-
-        this.ctx.restore();
-
-        if (this.locked) {
-            const centerX = minX + bbWidth / 2;
-            const centerY = minY + bbHeight / 2;
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            this.ctx.font = '30px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText('🔒', centerX, centerY);
-        }
     }
 }
 
@@ -2209,11 +1938,20 @@ document.addEventListener('DOMContentLoaded', function () {
             collapseWrapper.appendChild(document.createElement('hr'));
 
             const groups = {
-                'Transform & Shape': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed'],
-                'Fill Style': ['gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2'],
-                'Animation': ['animationMode', 'animationSpeed', 'scrollDir'],
-                'Color Animation': ['cycleColors', 'cycleSpeed']
+                'Geometry & Transform': [
+                    'shape',
+                    'x', 'y',
+                    'width', 'height',
+                    'rotation', 'rotationSpeed'
+                ],
+                'Fill & Animation': [
+                    'gradType', 'gradColor1', 'gradColor2',
+                    'useSharpGradient', 'gradientStop',
+                    'animationMode', 'scrollDir', 'animationSpeed',
+                    'cycleColors', 'cycleSpeed'
+                ]
             };
+
 
             const currentShape = obj.shape;
 
@@ -2225,15 +1963,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 groupHeader.textContent = groupName;
                 groupContainer.appendChild(groupHeader);
                 const propsInGroup = groups[groupName];
-                objectConfigs
-                    .filter(conf => {
-                        const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+
+                // Iterate over the logically ordered property list first.
+                propsInGroup.forEach(propName => {
+                    // Find the matching configuration for the current property.
+                    const conf = objectConfigs.find(c => c.property.endsWith(`_${propName}`));
+
+                    if (conf) {
+                        // Special case: Don't show animation speed for rings.
                         if (propName === 'animationSpeed' && currentShape === 'ring') {
-                            return false;
+                            return; // This acts like 'continue' in a forEach loop
                         }
-                        return propsInGroup.includes(propName);
-                    })
-                    .forEach(conf => groupContainer.appendChild(createFormControl(conf)));
+                        // Create the control and add it to the container.
+                        groupContainer.appendChild(createFormControl(conf));
+                    }
+                });
+
                 if (groupContainer.children.length > 1) {
                     collapseWrapper.appendChild(groupContainer);
                 }
@@ -2885,9 +2630,19 @@ document.addEventListener('DOMContentLoaded', function () {
             const savedPropsMap = new Map(savedObjectConfigs.map(c => [c.property, c]));
 
             const mergedObjectConfigs = fullDefaultConfig.map(defaultConf => {
+                // Check if a saved configuration exists for this property
                 if (savedPropsMap.has(defaultConf.property)) {
-                    return savedPropsMap.get(defaultConf.property);
+                    const savedConf = savedPropsMap.get(defaultConf.property);
+
+                    // Create an updated config object. Start with the latest default
+                    // from the code (which has the new 'rainbow' option),
+                    // then apply the user's value from the saved file.
+                    const updatedConf = { ...defaultConf };
+                    updatedConf.default = savedConf.default;
+                    return updatedConf;
                 }
+
+                // If the property never existed in the save file, use the new default entirely.
                 return defaultConf;
             });
 
@@ -2984,8 +2739,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '1', max: '50' },
             { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop' },
             { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down' },
-            { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,alternating,random' },
-            { property: `obj${newId}_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false' },
+            { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,alternating,random,rainbow,rainbow-radial' },
             { property: `obj${newId}_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100' },
             { property: `obj${newId}_gradColor1`, label: `Object ${newId}: Color 1`, type: 'color', default: '#cccccc' },
             { property: `obj${newId}_gradColor2`, label: `Object ${newId}: Color 2`, type: 'color', default: '#888888' },
@@ -3019,7 +2773,197 @@ document.addEventListener('DOMContentLoaded', function () {
      * Handles UI updates for the export button to indicate loading state.
      * @async
      */
-    async function exportFile() {
+//     async function exportFile() {
+//         const exportButton = document.getElementById('export-btn');
+//         exportButton.disabled = true;
+//         exportButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Preparing...';
+
+//         try {
+//             generateOutputScript();
+//             const effectTitle = getControlValues()['title'] || 'MyEffect';
+//             const metaTags = document.getElementById('output-script').value;
+//             const thumbnailDataUrl = generateThumbnail(document.getElementById('signalCanvas'));
+//             const safeFilename = effectTitle.replace(/[\s\/\\?%*:|"<>]/g, '_');
+
+//             const styleContent =
+//                 '        canvas { width: 100%; height: 100%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #000000; }\n' +
+//                 '        body { background-color: #000000; overflow: hidden; margin: 0; }\n';
+
+//             const bodyContent = '<body><canvas id="signalCanvas"></canvas></body>';
+            
+//             // This now correctly captures the entire class with all its methods in a single step
+//             const fullShapeClass = Shape.toString();
+
+//             const exportedScript = `
+// document.addEventListener('DOMContentLoaded', function () {
+//     const canvas = document.getElementById('signalCanvas');
+//     if (!canvas) return;
+//     const ctx = canvas.getContext('2d');
+//     canvas.width = 320;
+//     canvas.height = 200;
+//     let objects = [];
+//     let propertyKeys = [];
+
+//     const FONT_DATA_4PX = ${JSON.stringify(FONT_DATA_4PX)};
+//     const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};
+//     const drawPixelText = ${drawPixelText.toString()};
+//     const lerpColor = ${lerpColor.toString()};
+//     const getPatternColor = ${getPatternColor.toString()};
+    
+//     // Inject the complete Shape class
+//     ${fullShapeClass}
+
+//     let fps = 50;
+//     let fpsInterval;
+//     let then;
+
+//     function discoverProperties() {
+//         const metaElements = Array.from(document.querySelectorAll('head > meta[property^="obj"]'));
+//         propertyKeys = metaElements.map(meta => meta.getAttribute('property'));
+//     }
+
+//     function createInitialObjects() {
+//         if (propertyKeys.length === 0) return;
+//         const uniqueIds = [...new Set(propertyKeys.map(p => {
+//             const match = p.match(/obj(\\\\d+)_/);
+//             return match ? match[1] : null;
+//         }).filter(id => id !== null))];
+        
+//         objects = uniqueIds.map(id => {
+//             const config = { id: parseInt(id), ctx: ctx, gradient: {} };
+//             const prefix = 'obj' + id + '_';
+            
+//             propertyKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+//                 const propName = key.substring(prefix.length);
+//                 try {
+//                     const value = eval(key);
+//                     if (propName.startsWith('gradColor')) {
+//                         config.gradient[propName.replace('grad', '').toLowerCase()] = value;
+//                     } else if (propName === 'scrollDir') {
+//                         config.scrollDirection = value;
+//                     } else {
+//                         config[propName] = value;
+//                     }
+//                 } catch (e) {}
+//             });
+            
+//             config.animationSpeed = (config.animationSpeed || 0) / 10.0;
+//             config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
+            
+//             if (config.shape === 'ring' || config.shape === 'circle') {
+//                 config.height = config.width;
+//             }
+//             return new Shape(config);
+//         });
+//     }
+
+//     function drawFrame() {
+//         if (!ctx) return;
+//         ctx.clearRect(0, 0, canvas.width, canvas.height);
+//         ctx.fillStyle = '#000';
+//         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+//         let shouldAnimate = false;
+//         try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
+
+//         objects.forEach(obj => {
+//             if (shouldAnimate) {
+//                 obj.updateAnimationState();
+//             }
+
+//             const prefix = 'obj' + obj.id + '_';
+//             propertyKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+//                 const propName = key.substring(prefix.length);
+//                 try {
+//                     const value = eval(key);
+//                     switch(propName) {
+//                         case 'gradColor1': obj.gradient.color1 = value; break;
+//                         case 'gradColor2': obj.gradient.color2 = value; break;
+//                         case 'scrollDir': obj.scrollDirection = value; break;
+//                         case 'animationSpeed': obj.animationSpeed = (value || 0) / 10.0; break;
+//                         case 'cycleSpeed': obj.cycleSpeed = (value || 0) / 50.0; break;
+//                         case 'rotationSpeed': obj.rotationSpeed = (value || 0); break;
+//                         case 'textAnimationSpeed': obj.textAnimationSpeed = (value || 0) / 4; break;
+//                         default:
+//                             if (propName in obj) {
+//                                 obj[propName] = value;
+//                             }
+//                             break;
+//                     }
+//                 } catch (e) {}
+//             });
+//              if (obj.shape === 'text' && obj._updateTextMetrics) {
+//                 obj._updateTextMetrics();
+//             }
+//         });
+
+//         for (let i = objects.length - 1; i >= 0; i--) {
+//             objects[i].draw(false);
+//         }
+//     }
+
+//     function animate(timestamp) {
+//         requestAnimationFrame(animate);
+//         const now = timestamp;
+//         const elapsed = now - then;
+
+//         if (elapsed > fpsInterval) {
+//             then = now - (elapsed % fpsInterval);
+//             drawFrame();
+//         }
+//     }
+
+//     function init() {
+//         discoverProperties();
+//         createInitialObjects();
+        
+//         fpsInterval = 1000 / fps;
+//         then = window.performance.now();
+//         animate(then);
+//     }
+
+//     init();
+// });`;
+
+//             const finalHtml = [
+//                 '<!DOCTYPE html>',
+//                 '<html lang="en">',
+//                 '<head>',
+//                 '    <meta charset="UTF-8">',
+//                 '    <title>' + effectTitle + '</title>',
+//                 metaTags,
+//                 '    <style>',
+//                 styleContent,
+//                 '    </style>',
+//                 '</head>',
+//                 bodyContent,
+//                 '<script>',
+//                 exportedScript,
+//                 '</script>',
+//                 '</html>'
+//             ].join('\n');
+
+//             exportPayload = {
+//                 safeFilename,
+//                 finalHtml,
+//                 thumbnailDataUrl,
+//                 imageExtension: 'png',
+//                 exportDate: new Date()
+//             };
+
+//             const exportModal = new bootstrap.Modal(document.getElementById('export-options-modal'));
+//             exportModal.show();
+
+//         } catch (error) {
+//             console.error('Export preparation failed:', error);
+//             showToast('Failed to prepare export: ' + error.message, 'danger');
+//         } finally {
+//             exportButton.disabled = false;
+//             exportButton.innerHTML = '<i class="bi bi-download"></i> Export';
+//         }
+//     }
+
+async function exportFile() {
         const exportButton = document.getElementById('export-btn');
         exportButton.disabled = true;
         exportButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Preparing...';
@@ -3036,13 +2980,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 '        body { background-color: #000000; overflow: hidden; margin: 0; }\n';
 
             const bodyContent = '<body><canvas id="signalCanvas"></canvas></body>';
-
-            const fontData4pxString = 'const FONT_DATA_4PX = ' + JSON.stringify(FONT_DATA_4PX) + ';';
-            const fontData5pxString = 'const FONT_DATA_5PX = ' + JSON.stringify(FONT_DATA_5PX) + ';';
-            const shapeClassString = Shape.toString();
-            const drawPixelTextString = drawPixelText.toString();
-            const lerpColorString = lerpColor.toString();
-            const getPatternColorString = getPatternColor.toString();
+            
+            const fullShapeClass = Shape.toString();
 
             const exportedScript = `
 document.addEventListener('DOMContentLoaded', function () {
@@ -3054,12 +2993,13 @@ document.addEventListener('DOMContentLoaded', function () {
     let objects = [];
     let propertyKeys = [];
 
-    ${fontData4pxString}
-    ${fontData5pxString}
-    ${drawPixelTextString}
-    ${lerpColorString}
-    ${getPatternColorString}
-    ${shapeClassString}
+    const FONT_DATA_4PX = ${JSON.stringify(FONT_DATA_4PX)};
+    const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};
+    const drawPixelText = ${drawPixelText.toString()};
+    const lerpColor = ${lerpColor.toString()};
+    const getPatternColor = ${getPatternColor.toString()};
+    
+    ${fullShapeClass}
 
     let fps = 50;
     let fpsInterval;
@@ -3072,9 +3012,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function createInitialObjects() {
         if (propertyKeys.length === 0) return;
+        
+        // --- FIX: Replaced the failing regex with a simpler, more reliable parsing method ---
         const uniqueIds = [...new Set(propertyKeys.map(p => {
-            const match = p.match(/obj(\\\d+)_/);
-            return match ? match[1] : null;
+            if (!p.startsWith('obj')) return null;
+            const end = p.indexOf('_');
+            if (end <= 3) return null; // e.g. must be at least 'obj1_'
+            const idString = p.substring(3, end);
+            const id = parseInt(idString, 10);
+            return isNaN(id) ? null : String(id);
         }).filter(id => id !== null))];
         
         objects = uniqueIds.map(id => {
@@ -3095,7 +3041,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 } catch (e) {}
             });
             
-            // Apply correct internal scaling for speeds
             config.animationSpeed = (config.animationSpeed || 0) / 10.0;
             config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
             
@@ -3125,7 +3070,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const propName = key.substring(prefix.length);
                 try {
                     const value = eval(key);
-                    // This switch handles live updates from SignalRGB with corrected speed logic
                     switch(propName) {
                         case 'gradColor1': obj.gradient.color1 = value; break;
                         case 'gradColor2': obj.gradient.color2 = value; break;
@@ -3133,15 +3077,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         case 'animationSpeed': obj.animationSpeed = (value || 0) / 10.0; break;
                         case 'cycleSpeed': obj.cycleSpeed = (value || 0) / 50.0; break;
                         case 'rotationSpeed': obj.rotationSpeed = (value || 0); break;
-                        // MODIFICATION: The text animation speed is now divided by 4.
                         case 'textAnimationSpeed': obj.textAnimationSpeed = (value || 0) / 4; break;
-                        case 'oscAnimationMode': obj.oscAnimationMode = value; break;
-                        case 'pulseDepth': obj.pulseDepth = value; break;
-                        case 'fillShape': obj.fillShape = value; break;
-                        case 'enableWaveAnimation': obj.enableWaveAnimation = value; break;
-                        case 'oscDisplayMode': obj.oscDisplayMode = value; break;
                         default:
-                            if(obj.hasOwnProperty(propName)) {
+                            if (propName in obj) {
                                 obj[propName] = value;
                             }
                             break;
@@ -3218,6 +3156,9 @@ document.addEventListener('DOMContentLoaded', function () {
             exportButton.innerHTML = '<i class="bi bi-download"></i> Export';
         }
     }
+
+
+
 
     form.addEventListener('input', (e) => {
         const target = e.target;
@@ -3513,11 +3454,28 @@ document.addEventListener('DOMContentLoaded', function () {
      * made via direct canvas manipulation) are captured in the configuration blueprint.
      */
     function syncConfigStoreWithState() {
-        objects.forEach(obj => {
-            const configsForThisObject = configStore.filter(c => c.property && c.property.startsWith(`obj${obj.id}_`));
+        const currentValues = getControlValues(); // Get all current values from the form
 
-            configsForThisObject.forEach(conf => {
-                const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+        // Update all configs (general and object) with the latest values
+        configStore.forEach(conf => {
+            const key = conf.property || conf.name;
+            const isObjectProp = key.startsWith('obj');
+
+            if (!isObjectProp) {
+                // This is a general setting, like 'title' or 'description'
+                if (currentValues[key] !== undefined) {
+                    conf.default = currentValues[key];
+                }
+            } else {
+                // This is an object-specific setting
+                const match = key.match(/^obj(\d+)_/);
+                if (!match) return;
+
+                const id = parseInt(match[1], 10);
+                const propName = key.substring(match[0].length);
+                const obj = objects.find(o => o.id === id);
+                if (!obj) return;
+
                 let liveValue;
 
                 if (propName.startsWith('gradColor')) {
@@ -3531,6 +3489,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (liveValue === undefined) return;
 
+                // Apply inverse scaling for UI values before saving
                 const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
                 if (propsToScale.includes(propName)) {
                     liveValue /= 4;
@@ -3547,7 +3506,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     liveValue = Math.round(liveValue);
                 }
                 conf.default = liveValue;
-            });
+            }
         });
     }
 
@@ -3900,7 +3859,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const initial = initialDragState[0];
             const obj = objects.find(o => o.id === initial.id);
             if (obj) {
-                const center = { x: obj.x, y: obj.y };
+                const center = obj.getCenter();
                 const currentAngle = Math.atan2(y - center.y, x - center.x);
                 const angleDelta = currentAngle - initial.startAngle;
                 obj.rotation = (initial.initialObjectAngle + angleDelta) * 180 / Math.PI;
@@ -4272,6 +4231,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             generateOutputScript(); // Generate script after setup
         }
+
+        updateObjectsFromForm();
 
         new bootstrap.Tooltip(document.body, {
             selector: "[data-bs-toggle='tooltip']",

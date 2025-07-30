@@ -340,28 +340,53 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <p>This guide explains the main features of the Effect Builder.</p>
+
                     <h6 class="text-info">The Controls Panel (Left)</h6>
                     <p>This is where you manage all the objects in your scene.</p>
-                    <ul class="list-unstyled">
+                    <ul>
                         <li><strong>Add New Object:</strong> Use the green button at the bottom to add a new shape to the canvas.</li>
                         <li><strong>Object Panels:</strong> Each object gets its own collapsible panel. Click the object's name to expand or collapse its properties.</li>
                         <li><strong>Rename:</strong> Click directly on an object's name (e.g., "Object 1") to edit it.</li>
-                        <li><strong>Reorder:</strong> Click and drag the <i class="bi bi-grip-vertical"></i> icon to change the rendering order of the objects (what's drawn on top).</li>
+                        <li><strong>Reorder:</strong> Click and drag the <i class="bi bi-grip-vertical"></i> icon to change the rendering order (what's drawn on top).</li>
                         <li><strong>Lock/Unlock:</strong> Use the <i class="bi bi-unlock-fill"></i> / <i class="bi bi-lock-fill"></i> button to prevent an object from being moved or resized on the canvas.</li>
                         <li><strong>Duplicate/Delete:</strong> Use the menu button (<i class="bi bi-list"></i>) to access options for duplicating or deleting an object.</li>
+                        <li><strong>Shape-Specific Settings:</strong> When you change an object's shape to something complex like a <strong>Ring</strong>, <strong>Grid</strong>, or <strong>Oscilloscope</strong>, a new settings card will appear in its panel with unique properties.
+                            <ul>
+                                <li>The <strong>Oscilloscope</strong>, for example, has controls for `Wave Type`, radial `Display Mode`, `Pulse Depth`, and unique `Wave Animation Modes` like <em>FM Pulse</em> and <em>Trace Wipe</em>.</li>
+                            </ul>
+                        </li>
                     </ul>
 
                     <h6 class="text-info mt-4">The Canvas (Center)</h6>
                     <p>This is the visual editor where you can directly manipulate objects.</p>
-                    <ul class="list-unstyled">
+                    <ul>
                         <li><strong>Select:</strong> Click an object to select it. Hold <kbd>Shift</kbd> or <kbd>Ctrl</kbd> to select multiple objects.</li>
-                        <li><strong>Drag & Resize:</strong> Drag a selected object to move it. Drag the handles on the selection box to resize it. Objects will snap to each other and the canvas edges.</li>
-                        <li><strong>Rotate:</strong> Drag the circular handle attached to the selection box to rotate an object.</li>
-                        <li><strong>Keyboard Shortcuts:</strong> Use <kbd>Arrow Keys</kbd> to move selected objects, and hold <kbd>Shift</kbd> for larger steps. Use <kbd>Delete</kbd> or <kbd>Backspace</kbd> to remove selected objects. <kbd>Ctrl+Z</kbd> and <kbd>Ctrl+Y</kbd> work for undo/redo.</li>
+                        <li><strong>Drag, Resize & Rotate:</strong> Drag a selected object to move it. Drag the handles on the selection box to resize it, or drag the circular handle to rotate.</li>
+                        <li><strong>Snapping:</strong> Objects will snap to each other and to the canvas edges/centerlines during both <strong>dragging and resizing</strong>. Guiding lines will appear to show the alignment. Snapping also works on the inner and outer edges of rings.</li>
+                        <li><strong>Clipping:</strong> All objects are clipped to their rectangular bounding box. This means that the corners of rotated shapes will not be drawn outside of this boundary.</li>
+                        <li><strong>Keyboard Shortcuts:</strong> Use <kbd>Arrow Keys</kbd> to move selected objects (hold <kbd>Shift</kbd> for larger steps). Use <kbd>Delete</kbd> or <kbd>Backspace</kbd> to remove selected objects. <kbd>Ctrl+Z</kbd> and <kbd>Ctrl+Y</kbd> work for undo/redo.</li>
                     </ul>
 
-                    <h6 class="text-info mt-4">Main Toolbar (Top)</h6>
-                    <p>The main toolbar provides actions for managing your workspace. Most cloud actions require you to be signed in.</p>
+                    <h6 class="text-info mt-4">The Canvas Toolbar (Above the Canvas)</h6>
+                    <p>This toolbar provides quick access to object manipulation tools.</p>
+                    <ul>
+                        <li><strong>Undo/Redo:</strong> The <i class="bi bi-arrow-90deg-left"></i> and <i class="bi bi-arrow-90deg-right"></i> buttons allow you to undo or redo your actions.</li>
+                        <li><strong>Alignment & Matching:</strong> These button groups allow you to align objects to the screen or match their width and height to the first selected object.</li>
+                        <li><strong>Copy/Paste Properties:</strong>
+                            <ol>
+                                <li>Select an object to copy from (it should be the first one in your selection).</li>
+                                <li>Click the <strong>Copy Properties</strong> <i class="bi bi-clipboard-plus"></i> button.</li>
+                                <li>In the popup window, check the categories of properties you wish to copy (e.g., Size, Fill Style, Shape-Specific).</li>
+                                <li>Select one or more destination objects on the canvas.</li>
+                                <li>Click the <strong>Paste Properties</strong> <i class="bi bi-clipboard-check"></i> button to apply them.</li>
+                            </ol>
+                        </li>
+                        <li><strong>Toggle Snapping:</strong> The <i class="bi bi-magnet-fill"></i> button toggles object snapping on and off.</li>
+                    </ul>
+
+                    <h6 class="text-info mt-4">The Main Toolbar (Top)</h6>
+                    <p>The main toolbar provides actions for managing your project. Most cloud actions require you to be signed in.</p>
                     <ul class="list-unstyled">
                         <li><strong class="text-primary-emphasis"><i class="bi bi-cloud-arrow-up me-1"></i> Save:</strong> Saves your current workspace to the cloud. It uses the "Effect Title" as the project name.</li>
                         <li><strong class="text-secondary-emphasis"><i class="bi bi-folder2-open me-1"></i> My Projects:</strong> Opens a side panel showing all effects you have saved.</li>
