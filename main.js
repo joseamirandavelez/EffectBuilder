@@ -3204,49 +3204,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-
-
-
-    // form.addEventListener('input', (e) => {
-    //     const target = e.target;
-
-    //     // Sync number inputs with their corresponding range sliders
-    //     if (target.type === 'number' && document.getElementById(`${target.id}_slider`)) {
-    //         document.getElementById(`${target.id}_slider`).value = target.value;
-    //     } else if (target.type === 'range' && target.id.endsWith('_slider')) {
-    //         document.getElementById(target.id.replace('_slider', '')).value = target.value;
-    //     }
-
-    //     // Sync color pickers with their corresponding hex input fields
-    //     if (target.type === 'color' && document.getElementById(`${target.id}_hex`)) {
-    //         document.getElementById(`${target.id}_hex`).value = target.value;
-    //     } else if (target.type === 'text' && target.id.endsWith('_hex')) {
-    //         const colorPicker = document.getElementById(target.id.replace('_hex', ''));
-    //         if (colorPicker && /^#[0-9A-F]{6}$/i.test(target.value)) {
-    //             colorPicker.value = target.value;
-    //         }
-    //     }
-
-    //     // This block handles dynamically showing/hiding controls when the shape is changed.
-    //     if (target.name && (
-    //         target.name.includes('_shape') ||
-    //         target.name.includes('_gradType') ||
-    //         target.name.includes('_numberOfRows') ||
-    //         target.name.includes('_numberOfColumns') ||
-    //         target.name.includes('_oscDisplayMode')
-    //     )) {
-    //         // This requires a full re-render and state update
-    //         updateObjectsFromForm();
-    //         renderForm();
-    //         updateFormValuesFromObjects();
-    //         return; // Exit early
-    //     }
-
-    //     // For all other inputs, just update the object data and redraw
-    //     updateObjectsFromForm();
-    //     drawFrame();
-    // });
-
     form.addEventListener('input', (e) => {
         const target = e.target;
 
