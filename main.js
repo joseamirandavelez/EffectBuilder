@@ -429,6 +429,25 @@ class Shape {
         this.height = textBlockHeight + (2 * pixelSize);
     }
 
+    _updateFontSizeFromHeight() {
+        if (this.shape !== 'text') return;
+
+        const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
+        const { charHeight, lineSpacing } = fontData;
+        const textToMeasure = this.getWrappedText() || ' ';
+        const lines = textToMeasure.split('\n');
+
+        // This formula is the inverse of the one in _updateTextMetrics
+        // It calculates the required pixel size to fit the current height.
+        const denominator = (lines.length * (charHeight + lineSpacing) - lineSpacing + 2);
+        if (denominator <= 0) return; // Avoid division by zero
+
+        const newPixelSize = this.height / denominator;
+
+        // Convert pixel size back to font size and ensure it's at least the minimum.
+        this.fontSize = Math.max(20, Math.round(newPixelSize * 10));
+    }
+
     _shuffleCellOrder() {
         const totalCells = this.numberOfRows * this.numberOfColumns;
         this.cellOrder = Array.from({ length: totalCells }, (_, i) => i);
@@ -1771,14 +1790,8 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function createFormControl(config) {
         const {
-            property,
-            name,
-            label,
-            type,
-            default: defaultValue,
-            values,
-            min,
-            max
+            property, name, label, type, default: defaultValue,
+            values, min, max, description
         } = config;
         const controlId = property || name;
         const formGroup = document.createElement('div');
@@ -1788,8 +1801,15 @@ document.addEventListener('DOMContentLoaded', function () {
         labelEl.className = 'form-label';
 
         if (label) {
-            labelEl.textContent = label.includes(':') ? label.substring(label.indexOf(':') + 1).trim() : label;
-            labelEl.title = `Controls the ${label.toLowerCase()}`;
+            // --- FIX: Use a clean label for both the text and the tooltip ---
+            const cleanLabel = label.includes(':') ? label.substring(label.indexOf(':') + 1).trim() : label;
+            labelEl.textContent = cleanLabel;
+
+            if (description) {
+                labelEl.title = description;
+            } else {
+                labelEl.title = `Controls the ${cleanLabel.toLowerCase()}`;
+            }
         }
         labelEl.dataset.bsToggle = 'tooltip';
         formGroup.appendChild(labelEl);
@@ -1835,7 +1855,7 @@ document.addEventListener('DOMContentLoaded', function () {
             vals.forEach(val => {
                 const option = document.createElement('option');
                 option.value = val;
-                option.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+                option.textContent = val.charAt(0).toUpperCase() + val.slice(1).replace('-', ' ');
                 if (val === defaultValue) option.selected = true;
                 select.appendChild(option);
             });
@@ -1853,18 +1873,19 @@ document.addEventListener('DOMContentLoaded', function () {
             checkLabel.className = 'form-check-label';
             checkLabel.htmlFor = controlId;
             if (label) {
-                checkLabel.textContent = label.includes(':') ? label.substring(label.indexOf(':') + 1).trim() : label;
+                const cleanLabel = label.includes(':') ? label.substring(label.indexOf(':') + 1).trim() : label;
+                checkLabel.textContent = cleanLabel;
             }
             checkGroup.appendChild(check);
             checkGroup.appendChild(checkLabel);
             formGroup.appendChild(checkGroup);
-        } else if (type === 'textarea' || type === 'textfield') { // This condition is now updated
+        } else if (type === 'textarea' || type === 'textfield') {
             const textarea = document.createElement('textarea');
             textarea.id = controlId;
             textarea.className = 'form-control';
             textarea.name = controlId;
             textarea.rows = 3;
-            textarea.textContent = defaultValue;
+            textarea.textContent = defaultValue.replace(/\\n/g, '\n');
             formGroup.appendChild(textarea);
         } else if (type === 'color') {
             const colorGroup = document.createElement('div');
@@ -2131,16 +2152,19 @@ document.addEventListener('DOMContentLoaded', function () {
             collapseWrapper.appendChild(document.createElement('hr'));
 
             const groups = {
-                'Geometry & Transform': [
-                    'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed'
+                'Geometry': [
+                    'shape', 'x', 'y', 'width', 'height', 'rotation'
                 ],
-                'Fill & Animation': [
+                'Color': [
                     'gradType', 'gradColor1', 'gradColor2',
-                    'useSharpGradient', 'gradientStop',
-                    'animationMode', 'scrollDir', 'animationSpeed',
-                    'cycleColors', 'cycleSpeed'
+                    'useSharpGradient', 'gradientStop', 'cycleColors'
+                ],
+                'Animation': [
+                    'animationMode', 'animationSpeed', 'rotationSpeed',
+                    'cycleSpeed', 'scrollDir', 'phaseOffset'
                 ]
             };
+
             const currentShape = obj.shape;
 
             for (const groupName in groups) {
@@ -2154,6 +2178,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 propsInGroup.forEach(propName => {
                     const conf = objectConfigs.find(c => c.property.endsWith(`_${propName}`));
                     if (conf) {
+                        const showForGradient = obj.gradType === 'linear' || obj.gradType === 'radial';
+
+                        if ((propName === 'useSharpGradient' || propName === 'gradientStop') && !showForGradient) {
+                            return;
+                        }
+
+                        // --- START: New Phase Offset Logic ---
+                        if (propName === 'phaseOffset') {
+                            const isGrid = obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1);
+                            const isSeismic = obj.shape === 'oscilloscope' && obj.oscDisplayMode === 'seismic';
+                            if (!isGrid && !isSeismic) {
+                                return; // Don't show unless it's a grid or seismic o-scope
+                            }
+                        }
+                        // --- END: New Phase Offset Logic ---
+
                         if (propName === 'animationSpeed' && currentShape === 'ring') { return; }
                         groupContainer.appendChild(createFormControl(conf));
                     }
@@ -2164,7 +2204,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
-            const gridSettings = ['numberOfRows', 'numberOfColumns', 'phaseOffset'];
+            const gridSettings = ['numberOfRows', 'numberOfColumns'];
             const oscilloscopeSettings = ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationMode', 'waveStyle', 'waveCount'];
             const textSubGroups = {
                 'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
@@ -2176,7 +2216,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ringGroup.className = 'control-group card card-body bg-body mb-3 ring-settings-group';
             ringGroup.style.display = currentShape === 'ring' ? 'block' : 'none';
             const ringHeader = document.createElement('h6');
-            ringHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
+            ringHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
             ringHeader.textContent = 'Ring Settings';
             ringGroup.appendChild(ringHeader);
             objectConfigs.filter(c => ringSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => ringGroup.appendChild(createFormControl(c)));
@@ -2186,7 +2226,7 @@ document.addEventListener('DOMContentLoaded', function () {
             oscilloscopeGroup.className = 'control-group card card-body bg-body mb-3 oscilloscope-settings-group';
             oscilloscopeGroup.style.display = currentShape === 'oscilloscope' ? 'block' : 'none';
             const oscilloscopeHeader = document.createElement('h6');
-            oscilloscopeHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
+            oscilloscopeHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
             oscilloscopeHeader.textContent = 'Oscilloscope Settings';
             oscilloscopeGroup.appendChild(oscilloscopeHeader);
             objectConfigs.filter(c => oscilloscopeSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => oscilloscopeGroup.appendChild(createFormControl(c)));
@@ -2214,7 +2254,7 @@ document.addEventListener('DOMContentLoaded', function () {
             gridGroup.className = 'control-group card card-body bg-body mb-3 grid-settings-group';
             gridGroup.style.display = currentShape === 'rectangle' ? 'block' : 'none';
             const gridHeader = document.createElement('h6');
-            gridHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
+            gridHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
             gridHeader.textContent = 'Grid Settings';
             gridGroup.appendChild(gridHeader);
             objectConfigs.filter(c => gridSettings.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => gridGroup.appendChild(createFormControl(c)));
@@ -2755,12 +2795,17 @@ document.addEventListener('DOMContentLoaded', function () {
     /**
      * Creates the initial set of Shape objects based on the `configStore`.
      */
-    function createInitialObjects() {
+    function createInitialObjects(orderedIds = null) {
         const grouped = groupConfigs(configStore);
         const initialStates = [];
         const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
 
-        Object.keys(grouped.objects).forEach(id => {
+        // --- FIX: Use the provided order, or fall back to the default order ---
+        const idsToProcess = orderedIds || Object.keys(grouped.objects);
+
+        idsToProcess.forEach(id => {
+            if (!grouped.objects[id]) return; // Ensure the config for this ID exists
+
             const config = { id: parseInt(id), gradient: {} };
             const representativeConfig = grouped.objects[id][0];
             if (representativeConfig && representativeConfig.label.includes(':')) {
@@ -2782,14 +2827,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            // Scales up the pixel values from the 320x200 system to the 1280x800 builder canvas
             propsToScale.forEach(prop => {
                 if (config[prop] !== undefined) {
                     config[prop] *= 4;
                 }
             });
 
-            // Applies non-scaled transformations
             config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
             config.animationSpeed = (config.animationSpeed || 0) / 10.0;
             if (config.shape === 'ring' || config.shape === 'circle') {
@@ -2798,7 +2841,6 @@ document.addEventListener('DOMContentLoaded', function () {
             initialStates.push(config);
         });
 
-        // Creates the final Shape objects from the processed states
         objects = initialStates.map(state => new Shape({ ...state, ctx }));
     }
 
@@ -2810,13 +2852,18 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function loadWorkspace(workspace) {
         const loadedConfigs = workspace.configs;
+        let objectIds;
 
-        const objectIds = [...new Set(
-            loadedConfigs
-                .map(c => (c.property || '').match(/^obj(\d+)_/))
-                .filter(match => match)
-                .map(match => parseInt(match[1], 10))
-        )];
+        if (workspace.objects && workspace.objects.length > 0) {
+            objectIds = workspace.objects.map(obj => obj.id);
+        } else {
+            objectIds = [...new Set(
+                loadedConfigs
+                    .map(c => (c.property || '').match(/^obj(\d+)_/))
+                    .filter(match => match)
+                    .map(match => parseInt(match[1], 10))
+            )];
+        }
 
         const mergedConfigStore = loadedConfigs.filter(c => !(c.property || '').startsWith('obj'));
 
@@ -2826,28 +2873,20 @@ document.addEventListener('DOMContentLoaded', function () {
             const savedPropsMap = new Map(savedObjectConfigs.map(c => [c.property, c]));
 
             const mergedObjectConfigs = fullDefaultConfig.map(defaultConf => {
-                // Check if a saved configuration exists for this property
                 if (savedPropsMap.has(defaultConf.property)) {
                     const savedConf = savedPropsMap.get(defaultConf.property);
-
-                    // Create an updated config object. Start with the latest default
-                    // from the code (which has the new 'rainbow' option),
-                    // then apply the user's value from the saved file.
                     const updatedConf = { ...defaultConf };
                     updatedConf.default = savedConf.default;
                     return updatedConf;
                 }
-
-                // If the property never existed in the save file, use the new default entirely.
                 return defaultConf;
             });
-
             mergedConfigStore.push(...mergedObjectConfigs);
         });
 
         configStore = mergedConfigStore;
-
-        createInitialObjects();
+        // --- FIX: Pass the correct order to the creation function ---
+        createInitialObjects(objectIds);
 
         if (workspace.objects) {
             workspace.objects.forEach(savedObj => {
@@ -2913,44 +2952,50 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function getDefaultObjectConfig(newId) {
         return [
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,text,oscilloscope' },
+            // Geometry & Transform
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,text,oscilloscope', description: 'The basic shape of the object.' },
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200' },
             { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320' },
             { property: `obj${newId}_height`, label: `Object ${newId}: Height`, type: 'number', default: '38', min: '2', max: '200' },
-            { property: `obj${newId}_innerDiameter`, label: `Object ${newId}: Inner Diameter`, type: 'number', default: '25', min: '1', max: '318' },
-            { property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '15', min: '2', max: '100' },
-            { property: `obj${newId}_lineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20' },
-            { property: `obj${newId}_waveType`, label: `Object ${newId}: Wave Type`, type: 'combobox', default: 'sine', values: 'sine,square,sawtooth,triangle,earthquake' },
-            { property: `obj${newId}_frequency`, label: `Object ${newId}: Frequency / Wave Peaks`, type: 'number', default: '5', min: '1', max: '50' },
-            { property: `obj${newId}_oscDisplayMode`, label: `Object ${newId}: Display Mode`, type: 'combobox', default: 'linear', values: 'linear,radial,seismic' },
-            { property: `obj${newId}_pulseDepth`, label: `Object ${newId}: Pulse Depth`, type: 'number', default: '50', min: '0', max: '100' },
-            { property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false' },
-            { property: `obj${newId}_enableWaveAnimation`, label: `Object ${newId}: Enable Wave Animation`, type: 'boolean', default: 'true' },
-            { property: `obj${newId}_oscAnimationMode`, label: `Object ${newId}: Wave Animation Mode`, type: 'combobox', default: 'default', values: 'default,fmPulse,depthPulse,trace' },
-            { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360' },
-            { property: `obj${newId}_numberOfSegments`, label: `Object ${newId}: Segments`, type: 'number', default: '12', min: '1', max: '50' },
-            { property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', min: '1', max: '360', default: '20' },
-            { property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100' },
-            { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '1', max: '50' },
-            { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop' },
-            { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down' },
-            { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,alternating,random,rainbow,rainbow-radial' },
-            { property: `obj${newId}_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100' },
+            { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360', description: 'The static rotation of the object in degrees.' },
+
+            // Fill Style & Animation
+            { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,alternating,random,rainbow,rainbow-radial', description: 'The type of color fill or gradient to use.' },
+            { property: `obj${newId}_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false', description: 'If checked, creates a hard line between colors in Linear/Radial gradients instead of a smooth blend.' },
+            { property: `obj${newId}_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100', description: 'For sharp gradients, this is the percentage width of the primary color band.' },
             { property: `obj${newId}_gradColor1`, label: `Object ${newId}: Color 1`, type: 'color', default: '#00ff00' },
             { property: `obj${newId}_gradColor2`, label: `Object ${newId}: Color 2`, type: 'color', default: '#d400ff' },
-            { property: `obj${newId}_cycleColors`, label: `Object ${newId}: Cycle Colors`, type: 'boolean', default: 'false' },
-            { property: `obj${newId}_cycleSpeed`, label: `Object ${newId}: Color Cycle Speed`, type: 'number', default: '1', min: '1', max: '10' },
-            { property: `obj${newId}_numberOfRows`, label: `Object ${newId}: Number of Rows`, type: 'number', default: '1', min: '1', max: '100' },
-            { property: `obj${newId}_numberOfColumns`, label: `Object ${newId}: Number of Columns`, type: 'number', default: '1', min: '1', max: '100' },
-            { property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100' },
+            { property: `obj${newId}_cycleColors`, label: `Object ${newId}: Cycle Colors`, type: 'boolean', default: 'false', description: 'Animates the colors by cycling through the color spectrum.' },
+            { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop', description: 'Determines how the gradient animation behaves.' },
+            { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '1', max: '50', description: 'Master speed for gradient scroll, random color flicker, and oscilloscope movement.' },
+            { property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100', description: 'The continuous rotation speed of the object. Overrides static rotation.' },
+            { property: `obj${newId}_cycleSpeed`, label: `Object ${newId}: Color Cycle Speed`, type: 'number', default: '1', min: '1', max: '10', description: 'How fast the colors cycle when "Cycle Colors" is enabled.' },
+            { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down', description: 'The direction the gradient animation moves.' },
+            { property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100', description: 'Offsets the gradient animation for each item in a grid or seismic wave, creating a cascading effect.' },
+
+            // Shape-Specific Properties
+            { property: `obj${newId}_innerDiameter`, label: `Object ${newId}: Inner Diameter`, type: 'number', default: '25', min: '1', max: '318', description: '(Ring) The diameter of the inner hole of the ring.' },
+            { property: `obj${newId}_numberOfSegments`, label: `Object ${newId}: Segments`, type: 'number', default: '12', min: '1', max: '50', description: '(Ring) The number of individual segments that make up the ring.' },
+            { property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', min: '1', max: '360', default: '20', description: '(Ring) The width of each ring segment, in degrees.' },
+            { property: `obj${newId}_numberOfRows`, label: `Object ${newId}: Number of Rows`, type: 'number', default: '1', min: '1', max: '100', description: '(Grid) The number of vertical cells in the grid.' },
+            { property: `obj${newId}_numberOfColumns`, label: `Object ${newId}: Number of Columns`, type: 'number', default: '1', min: '1', max: '100', description: '(Grid) The number of horizontal cells in the grid.' },
             { property: `obj${newId}_text`, label: `Object ${newId}: Text`, type: 'textfield', default: 'New Text' },
+            { property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '15', min: '2', max: '100' },
             { property: `obj${newId}_textAlign`, label: `Object ${newId}: Justification`, type: 'combobox', values: 'left,center,right', default: 'center' },
             { property: `obj${newId}_pixelFont`, label: `Object ${newId}: Pixel Font Style`, type: 'combobox', values: 'small,large', default: 'small' },
             { property: `obj${newId}_textAnimation`, label: `Object ${newId}: Text Animation`, type: 'combobox', values: 'none,marquee,typewriter,wave', default: 'none' },
             { property: `obj${newId}_textAnimationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', min: '1', max: '100', default: '10' },
-            { property: `obj${newId}_showTime`, label: `Object ${newId}: Show Current Time`, type: 'boolean', default: 'false' },
-            { property: `obj${newId}_showDate`, label: `Object ${newId}: Show Current Date`, type: 'boolean', default: 'false' },
+            { property: `obj${newId}_showTime`, label: `Object ${newId}: Show Current Time`, type: 'boolean', default: 'false', description: 'Overrides the text content to show the current time.' },
+            { property: `obj${newId}_showDate`, label: `Object ${newId}: Show Current Date`, type: 'boolean', default: 'false', description: 'Overrides the text content to show the current date.' },
+            { property: `obj${newId}_lineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20' },
+            { property: `obj${newId}_waveType`, label: `Object ${newId}: Wave Type`, type: 'combobox', default: 'sine', values: 'sine,square,sawtooth,triangle,earthquake' },
+            { property: `obj${newId}_frequency`, label: `Object ${newId}: Frequency / Wave Peaks`, type: 'number', default: '5', min: '1', max: '50' },
+            { property: `obj${newId}_oscDisplayMode`, label: `Object ${newId}: Display Mode`, type: 'combobox', default: 'linear', values: 'linear,radial,seismic' },
+            { property: `obj${newId}_pulseDepth`, label: `Object ${newId}: Pulse Depth`, type: 'number', default: '50', min: '0', max: '100', description: 'The intensity of the wave\'s amplitude or pulse effect.' },
+            { property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false', description: 'For linear oscilloscopes, fills the area under the wave.' },
+            { property: `obj${newId}_enableWaveAnimation`, label: `Object ${newId}: Enable Wave Animation`, type: 'boolean', default: 'true', description: 'Toggles the movement of the oscilloscope wave.' },
+            { property: `obj${newId}_oscAnimationMode`, label: `Object ${newId}: Wave Animation Mode`, type: 'combobox', default: 'default', values: 'default,fmPulse,depthPulse,trace' },
             { property: `obj${newId}_waveStyle`, label: `Object ${newId}: Seismic Wave Style`, type: 'combobox', default: 'wavy', values: 'wavy,round' },
             { property: `obj${newId}_waveCount`, label: `Object ${newId}: Seismic Wave Count`, type: 'number', default: '5', min: '1', max: '20' },
         ];
@@ -3162,6 +3207,46 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
+    // form.addEventListener('input', (e) => {
+    //     const target = e.target;
+
+    //     // Sync number inputs with their corresponding range sliders
+    //     if (target.type === 'number' && document.getElementById(`${target.id}_slider`)) {
+    //         document.getElementById(`${target.id}_slider`).value = target.value;
+    //     } else if (target.type === 'range' && target.id.endsWith('_slider')) {
+    //         document.getElementById(target.id.replace('_slider', '')).value = target.value;
+    //     }
+
+    //     // Sync color pickers with their corresponding hex input fields
+    //     if (target.type === 'color' && document.getElementById(`${target.id}_hex`)) {
+    //         document.getElementById(`${target.id}_hex`).value = target.value;
+    //     } else if (target.type === 'text' && target.id.endsWith('_hex')) {
+    //         const colorPicker = document.getElementById(target.id.replace('_hex', ''));
+    //         if (colorPicker && /^#[0-9A-F]{6}$/i.test(target.value)) {
+    //             colorPicker.value = target.value;
+    //         }
+    //     }
+
+    //     // This block handles dynamically showing/hiding controls when the shape is changed.
+    //     if (target.name && (
+    //         target.name.includes('_shape') ||
+    //         target.name.includes('_gradType') ||
+    //         target.name.includes('_numberOfRows') ||
+    //         target.name.includes('_numberOfColumns') ||
+    //         target.name.includes('_oscDisplayMode')
+    //     )) {
+    //         // This requires a full re-render and state update
+    //         updateObjectsFromForm();
+    //         renderForm();
+    //         updateFormValuesFromObjects();
+    //         return; // Exit early
+    //     }
+
+    //     // For all other inputs, just update the object data and redraw
+    //     updateObjectsFromForm();
+    //     drawFrame();
+    // });
+
     form.addEventListener('input', (e) => {
         const target = e.target;
 
@@ -3182,16 +3267,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // This block handles dynamically showing/hiding controls when the shape is changed.
-        if (target.name && target.name.includes('_shape')) {
-            // This requires a full re-render and state update
-            updateObjectsFromForm();
-            renderForm();
-            updateFormValuesFromObjects();
-            return; // Exit early
-        }
-
-        // For all other inputs, just update the object data and redraw
+        // This listener now only handles live, non-destructive updates to the canvas.
         updateObjectsFromForm();
         drawFrame();
     });
@@ -3980,6 +4056,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 obj.height = Math.round(Math.max(10, finalState.height));
                 obj.x = Math.round(finalState.x);
                 obj.y = Math.round(finalState.y);
+
+                // --- START: New Text Resizing Logic ---
+                if (obj.shape === 'text') {
+                    const isVerticalResize = activeResizeHandle.includes('top') || activeResizeHandle.includes('bottom');
+                    if (isVerticalResize) {
+                        obj._updateFontSizeFromHeight();
+                    }
+                }
+                // --- END: New Text Resizing Logic ---
 
                 if ((obj.shape === 'circle' || obj.shape === 'ring') && obj.width !== obj.height) {
                     obj.width = obj.height = Math.max(obj.width, obj.height);
@@ -5060,6 +5145,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // This handles committed changes from text boxes, dropdowns, color pickers, and checkboxes.
     form.addEventListener('change', (e) => {
+        const target = e.target;
+
+        // Handle UI re-rendering for controls with dependencies.
+        // This runs only after the user has finished making a change.
+        if (target.name && (
+            target.name.includes('_shape') ||
+            target.name.includes('_gradType') ||
+            target.name.includes('_numberOfRows') ||
+            target.name.includes('_numberOfColumns') ||
+            target.name.includes('_oscDisplayMode')
+        )) {
+            updateObjectsFromForm(); // Sync state before re-rendering
+            renderForm();
+            updateFormValuesFromObjects(); // Sync state again after re-rendering to ensure consistency
+        }
+
         recordHistory();
     });
 
