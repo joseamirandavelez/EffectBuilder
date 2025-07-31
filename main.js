@@ -660,6 +660,7 @@ class Shape {
             } else {
                 const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
                 this.scrollOffset += increment * directionMultiplier;
+                // --- FIX: Restore the wrapping logic for stable animation ---
                 this.scrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
             }
         }
@@ -680,7 +681,7 @@ class Shape {
         this.animationAngle += animationIncrement;
     }
 
-    createFillStyle(phase = 0) {
+    _createLocalFillStyle(phase = 0) {
         let phaseIndex = phase;
         if (this.animationMode === 'bounce-random') {
             if (this.cellOrder && this.cellOrder.length > phase) { phaseIndex = this.cellOrder[phase]; }
@@ -694,44 +695,28 @@ class Shape {
         const c1 = this.cycleColors ? `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color1;
         const c2 = this.cycleColors ? `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color2;
 
-        const isLinear = this.gradType === 'linear';
-        const isRadial = this.gradType === 'radial';
-
         if (this.gradType === 'alternating') { return (phase % 2 === 0) ? c1 : c2; }
-        if (isLinear) {
-            let grad;
+
+        if (this.gradType === 'linear') {
+            const halfW = this.width / 2;
+            const halfH = this.height / 2;
             const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
-            if (isVertical) {
-                grad = this.ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
-            } else {
-                grad = this.ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y);
-            }
+            const grad = isVertical 
+                ? this.ctx.createLinearGradient(0, -halfH, 0, halfH) 
+                : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
 
             if (this.useSharpGradient) {
                 const stopRatio = this.gradientStop / 100.0;
-                if (this.animationMode === 'loop') {
-                    const p1 = p; const p2 = p1 + stopRatio;
-                    if (p2 > 1.0) {
-                        const wrapped_p2 = p2 - 1.0;
-                        grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
-                        grad.addColorStop(wrapped_p2, c2); grad.addColorStop(p1, c2);
-                        grad.addColorStop(p1, c1); grad.addColorStop(1, c1);
-                    } else {
-                        grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
-                        grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
-                        grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
-                    }
+                const p1 = p; const p2 = p1 + stopRatio;
+                if (p2 > 1.0) {
+                    const wrapped_p2 = p2 - 1.0;
+                    grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
+                    grad.addColorStop(wrapped_p2, c2); grad.addColorStop(p1, c2);
+                    grad.addColorStop(p1, c1); grad.addColorStop(1, c1);
                 } else {
-                    const p1 = p; const p2 = p1 + stopRatio;
-                    const clamped_p1 = Math.max(0, Math.min(1, p1));
-                    const clamped_p2 = Math.max(0, Math.min(1, p2));
-                    grad.addColorStop(0, c2);
-                    if (clamped_p1 > 0) grad.addColorStop(clamped_p1, c2);
-                    if (clamped_p1 < clamped_p2) {
-                        grad.addColorStop(clamped_p1, c1); grad.addColorStop(clamped_p2, c1);
-                    }
-                    if (clamped_p2 < 1) grad.addColorStop(clamped_p2, c2);
-                    grad.addColorStop(1, c2);
+                    grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
+                    grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
+                    grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
                 }
             } else {
                 const stops = [{ pos: 0, color: getPatternColor(0 - p, c1, c2) }];
@@ -745,50 +730,49 @@ class Shape {
                 uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
             }
             return grad;
-        } else if (isRadial) {
-            const centerX = this.x + this.width / 2; const centerY = this.y + this.height / 2;
+        }
+
+        if (this.gradType === 'radial') {
             const maxRadius = Math.max(this.width, this.height) / 2;
-            const grad = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
-            const radialP = (p % 1.0 + 1.0) % 1.0;
-            const wave = 1 - Math.abs(2 * radialP - 1);
+            const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
+            const wave = 1 - Math.abs(2 * p - 1);
             if (this.useSharpGradient) {
                 const stopPoint = (this.gradientStop / 100) * wave;
                 grad.addColorStop(0, c1); grad.addColorStop(stopPoint, c1);
                 grad.addColorStop(Math.min(1, stopPoint + 0.001), c2); grad.addColorStop(1, c2);
             } else {
-                const gradientStopPosition = this.gradientStop / 100.0;
-                const midPoint = gradientStopPosition * wave;
-                grad.addColorStop(0, c1); grad.addColorStop(midPoint, c2); grad.addColorStop(1, c1);
+                const midPoint = (this.gradientStop / 100) * wave;
+                grad.addColorStop(0, c1);
+                grad.addColorStop(midPoint, c2);
+                grad.addColorStop(1, c1);
             }
             return grad;
-        } else if (this.gradType === 'rainbow') {
+        }
+        
+        if (this.gradType === 'rainbow' || this.gradType === 'rainbow-radial') {
+            const hueOffset = (1 - p) * 360;
             let grad;
-            const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
-            if (isVertical) {
-                grad = this.ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+            
+            if (this.gradType === 'rainbow-radial') {
+                const maxRadius = Math.max(this.width, this.height) / 2;
+                grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
             } else {
-                grad = this.ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y);
+                const halfW = this.width / 2;
+                const halfH = this.height / 2;
+                const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
+                grad = isVertical ? this.ctx.createLinearGradient(0, -halfH, 0, halfH) : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
             }
-            const hueOffset = (1 - p) * 360;
-            for (let i = 0; i <= 30; i++) {
-                const hue = (i * 12 + hueOffset) % 360;
-                const stopPosition = i / 30;
-                grad.addColorStop(stopPosition, `hsl(${hue}, 100%, 50%)`);
-            }
-            return grad;
-        } else if (this.gradType === 'rainbow-radial') {
-            const centerX = this.x + this.width / 2;
-            const centerY = this.y + this.height / 2;
-            const maxRadius = Math.max(this.width, this.height) / 2;
-            const grad = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
-            const hueOffset = (1 - p) * 360;
-            for (let i = 0; i <= 30; i++) {
-                const hue = (i * 12 + hueOffset) % 360;
-                const stopPosition = i / 30;
+
+            // --- FIX: Restore the smooth, multi-stop loop for the rainbow animation ---
+            const numStops = 60;
+            for (let i = 0; i <= numStops; i++) {
+                const hue = (i * (360 / numStops) + hueOffset) % 360;
+                const stopPosition = i / numStops;
                 grad.addColorStop(stopPosition, `hsl(${hue}, 100%, 50%)`);
             }
             return grad;
         }
+
         return c1 || 'black';
     }
 
@@ -797,269 +781,190 @@ class Shape {
             this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
             this._pausedRotationSpeed = this.rotationSpeed;
             this.rotationSpeed = 0;
+        } else if (!isSelected && this._pausedRotationSpeed !== null) {
+            const speedInput = document.querySelector(`[name="obj${this.id}_rotationSpeed"]`);
+            this.rotationSpeed = speedInput ? parseFloat(speedInput.value) : this._pausedRotationSpeed;
+            this._pausedRotationSpeed = null;
         }
+
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
         const angleToUse = this.getRenderAngle();
+
         this.ctx.save();
-        if (this.shape === 'ring' || this.shape === 'text' || this.shape === 'oscilloscope' || (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1))) {
-            this.ctx.translate(centerX, centerY);
-            this.ctx.rotate(angleToUse);
-            this.ctx.translate(-centerX, -centerY);
-            if (this.shape === 'ring') {
-                const outerRadius = this.width / 2;
-                const innerRadius = this.innerDiameter / 2;
-                const angleStep = (2 * Math.PI) / this.numberOfSegments;
-                const segmentAngleRad = (this.angularWidth * Math.PI) / 180;
-                if (innerRadius >= 0 && innerRadius < outerRadius && this.numberOfSegments > 0) {
-                    const isAlternating = this.gradType === 'alternating';
-                    const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
-                    const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-                    const genericFill = isAlternating ? null : this.createFillStyle();
-                    for (let i = 0; i < this.numberOfSegments; i++) {
-                        this.ctx.beginPath();
-                        const startAngle = i * angleStep + this.animationAngle;
-                        const endAngle = startAngle + segmentAngleRad;
-                        this.ctx.moveTo(centerX + Math.cos(startAngle) * outerRadius, centerY + Math.sin(startAngle) * outerRadius);
-                        this.ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle, false);
-                        this.ctx.lineTo(centerX + Math.cos(endAngle) * innerRadius, centerY + Math.sin(endAngle) * innerRadius);
-                        this.ctx.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
-                        this.ctx.closePath();
-                        if (isAlternating) {
-                            this.ctx.fillStyle = (i % 2 === 0) ? c1 : c2;
-                        } else {
-                            this.ctx.fillStyle = genericFill;
-                        }
-                        this.ctx.fill();
-                    }
-                }
-            } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
-                const cellWidth = this.width / this.numberOfColumns;
-                const cellHeight = this.height / this.numberOfRows;
-                const isRandom = this.gradType === 'random';
+        this.ctx.translate(centerX, centerY);
+        this.ctx.rotate(angleToUse);
+
+        if (this.shape === 'ring') {
+            const outerRadius = this.width / 2;
+            const innerRadius = this.innerDiameter / 2;
+            const angleStep = (2 * Math.PI) / this.numberOfSegments;
+            const segmentAngleRad = (this.angularWidth * Math.PI) / 180;
+            if (innerRadius >= 0 && innerRadius < outerRadius && this.numberOfSegments > 0) {
+                const isAlternating = this.gradType === 'alternating';
                 const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
                 const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-                if (isRandom) {
-                    this.randomColorTimer -= 1;
-                    if (this.randomColorTimer <= 0) {
-                        this.cellColors = [];
-                        const rawSpeed = this.animationSpeed * 25;
-                        this.randomColorTimer = Math.max(1, 200 / rawSpeed);
-                    }
-                }
-                for (let row = 0; row < this.numberOfRows; row++) {
-                    for (let col = 0; col < this.numberOfColumns; col++) {
-                        const cellX = this.x + col * cellWidth;
-                        const cellY = this.y + row * cellHeight;
-                        const cellIndex = row * this.numberOfColumns + col;
-                        if (isRandom) {
-                            if (!this.cellColors[cellIndex]) { this.cellColors[cellIndex] = Math.random() < 0.5 ? c1 : c2; }
-                            this.ctx.fillStyle = this.cellColors[cellIndex];
-                            this.ctx.fillRect(cellX, cellY, cellWidth, cellHeight);
-                        } else {
-                            this.ctx.save();
-                            this.ctx.beginPath();
-                            this.ctx.rect(cellX, cellY, cellWidth, cellHeight);
-                            this.ctx.clip();
-                            this.ctx.fillStyle = this.createFillStyle(cellIndex);
-                            this.ctx.fillRect(this.x, this.y, this.width, this.height);
-                            this.ctx.restore();
-                        }
-                    }
-                }
-            } else if (this.shape === 'text') {
-                this.ctx.fillStyle = this.createFillStyle();
-                drawPixelText(this.ctx, this);
-            } else if (this.shape === 'oscilloscope') {
-                if (this.enableWaveAnimation === undefined) { this.enableWaveAnimation = true; }
-                this.ctx.lineWidth = this.lineWidth;
-                const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
-                let effectiveFrequency = this.frequency;
-                let effectivePulseDepth = this.pulseDepth;
-                if (this.enableWaveAnimation) {
-                    switch (this.oscAnimationMode) {
-                        case 'fmPulse':
-                            const freqModulation = (Math.sin(activeAnimationAngle * 0.5) + 1) / 2;
-                            effectiveFrequency += freqModulation * (this.frequency * 0.75);
-                            break;
-                        case 'depthPulse':
-                            effectivePulseDepth = ((Math.sin(activeAnimationAngle * 0.5) + 1) / 2) * 100;
-                            break;
-                    }
-                }
-                if (this.oscDisplayMode === 'radial') {
+                const genericFill = isAlternating ? null : this._createLocalFillStyle();
+                for (let i = 0; i < this.numberOfSegments; i++) {
                     this.ctx.beginPath();
-                    const radialCenterX = this.x + this.width / 2;
-                    const radialCenterY = this.y + this.height / 2;
-                    const totalRadius = (Math.min(this.width, this.height) / 2) - (this.lineWidth / 2);
-                    const pulseRatio = (effectivePulseDepth || 0) / 100.0;
-                    const baseRadius = totalRadius * (0.5 + pulseRatio * 0.5);
-                    const maxAmplitude = totalRadius - baseRadius;
-                    const breathFactor = 1 + Math.sin(activeAnimationAngle) * 0.2;
-                    for (let i = 0; i <= 360; i++) {
-                        const angleRad = (i * Math.PI) / 180;
-                        const progress = i / 360;
-                        const waveFuncAngle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle * 2;
-                        let y_wave;
-                        switch (this.waveType) {
-                            case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
-                            case 'sawtooth': y_wave = (((waveFuncAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
-                            case 'triangle': y_wave = Math.asin(Math.sin(waveFuncAngle)) * (2 / Math.PI); break;
-                            case 'sine': default: y_wave = Math.sin(waveFuncAngle); break;
-                        }
-                        const modulatedRadius = baseRadius + y_wave * maxAmplitude;
-                        const finalRadius = modulatedRadius * breathFactor;
-                        const px = radialCenterX + finalRadius * Math.cos(angleRad);
-                        const py = radialCenterY + finalRadius * Math.sin(angleRad);
-                        if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
-                    }
+                    const startAngle = i * angleStep + this.animationAngle;
+                    const endAngle = startAngle + segmentAngleRad;
+                    this.ctx.moveTo(Math.cos(startAngle) * outerRadius, Math.sin(startAngle) * outerRadius);
+                    this.ctx.arc(0, 0, outerRadius, startAngle, endAngle, false);
+                    this.ctx.lineTo(Math.cos(endAngle) * innerRadius, Math.sin(endAngle) * innerRadius);
+                    this.ctx.arc(0, 0, innerRadius, endAngle, startAngle, true);
                     this.ctx.closePath();
-                } else if (this.oscDisplayMode === 'seismic') {
-                    const maxRadius = Math.min(this.width, this.height) / 2;
-                    const waveCount = Math.max(1, this.waveCount);
-                    const spacing = maxRadius / waveCount;
-                    const totalCycle = maxRadius + spacing;
-                    const progress = (this.animationAngle * 5) % totalCycle;
-
-                    // --- NEW: Logic to handle random color generation ---
-                    if (this.gradType === 'random') {
-                        this.randomColorTimer -= 1;
-                        if (this.randomColorTimer <= 0) {
-                            this.waveColors = []; // Clear colors to regenerate them
-                            const rawSpeed = this.animationSpeed * 25;
-                            this.randomColorTimer = Math.max(1, 200 / (rawSpeed || 25));
-                        }
-                    }
-
-                    for (let i = 0; i < waveCount * 2; i++) {
-                        let radius = (progress + i * spacing) % totalCycle;
-                        if (radius > maxRadius) continue;
-                        let alpha = 1.0 - (radius / maxRadius);
-                        const fadeInLimit = spacing;
-                        if (radius < fadeInLimit) {
-                            alpha *= (radius / fadeInLimit);
-                        }
-                        if (alpha <= 0) continue;
-
-                        // Define colors c1 and c2 here, INSIDE the loop, to ensure they are always available.
-                        const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
-                        const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-
-                        // Determine the correct solid color for this wave's stroke
-                        let strokeStyle;
-                        if (this.gradType === 'random') {
-                            if (!this.waveColors[i]) {
-                                this.waveColors[i] = Math.random() < 0.5 ? c1 : c2;
-                            }
-                            strokeStyle = this.waveColors[i];
-                        } else if (this.gradType === 'alternating') {
-                            strokeStyle = (i % 2 === 0) ? c1 : c2;
-                        } else if (this.gradType.includes('rainbow')) {
-                            const totalWaveSlots = Math.max(1, this.waveCount * 2);
-                            const hueOffset = (1 - this.scrollOffset) * 360;
-                            const hue = ((i / totalWaveSlots) * 360 + hueOffset) % 360;
-                            strokeStyle = `hsl(${hue}, 100%, 50%)`;
-                        } else if (this.gradType === 'linear' || this.gradType === 'radial') {
-                            const phaseIncrement = this.phaseOffset / 100.0;
-                            const effectiveScrollOffset = this.scrollOffset + i * phaseIncrement;
-                            const t = (effectiveScrollOffset % 1.0 + 1.0) % 1.0;
-                            strokeStyle = getPatternColor(t, c1, c2);
-                        } else {
-                            strokeStyle = c1; // Default for 'solid'
-                        }
-                        this.ctx.strokeStyle = strokeStyle;
-
-                        this.ctx.globalAlpha = alpha;
-                        this.ctx.lineWidth = this.lineWidth;
-
-                        if (this.waveStyle === 'wavy') {
-                            this.ctx.beginPath();
-                            const points = Math.max(60, this.frequency * 20);
-                            const maxAmplitude = (this.pulseDepth / 100) * 20;
-                            const amplitude = maxAmplitude * (radius / maxRadius);
-                            for (let j = 0; j <= points; j++) {
-                                const angle = (j / points) * 2 * Math.PI;
-                                const wave = Math.sin(angle * this.frequency) * amplitude;
-                                const r = radius + wave;
-                                const px = centerX + Math.cos(angle) * r;
-                                const py = centerY + Math.sin(angle) * r;
-                                if (j === 0) { this.ctx.moveTo(px, py); }
-                                else { this.ctx.lineTo(px, py); }
-                            }
-                            this.ctx.closePath();
-                            this.ctx.stroke();
-                        } else {
-                            this.ctx.beginPath();
-                            this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-                            this.ctx.stroke();
-                        }
-                    }
-                    this.ctx.globalAlpha = 1.0;
-                } else { // Linear mode
-                    this.ctx.beginPath();
-                    const waveCenterY = this.y + this.height / 2;
-                    const amplitude = (this.height - this.lineWidth) / 2;
-                    let limit = this.width;
-                    if (this.oscAnimationMode === 'trace' && this.enableWaveAnimation) {
-                        limit = this.width * Math.min(1, this.traceProgress);
-                    }
-                    for (let i = 0; i <= limit; i++) {
-                        const progress = i / this.width;
-                        const angle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle;
-                        let y_wave;
-                        switch (this.waveType) {
-                            case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;
-                            case 'sawtooth':
-                                y_wave = 2 * (progress * effectiveFrequency - Math.floor(0.5 + progress * effectiveFrequency));
-                                break;
-                            case 'triangle': y_wave = Math.asin(Math.sin(angle)) * (2 / Math.PI); break;
-                            case 'earthquake': {
-                                // This new logic creates a complex, overlapping wave by combining three distinct sine waves.
-
-                                // A slow, foundational wave with a large amplitude.
-                                const wave1 = Math.sin(angle * 0.8) * 0.5;
-
-                                // A medium-speed wave that adds significant interference.
-                                const wave2 = Math.sin(angle * 2.2) * 0.3;
-
-                                // A fast, low-amplitude wave for fine detail.
-                                const wave3 = Math.sin(angle * 5.0) * 0.2;
-
-                                // Summing the waves creates the overlapping effect. The amplitudes are chosen to sum to 1.0.
-                                y_wave = wave1 + wave2 + wave3;
-                                break;
-                            }
-                            case 'sine': default: y_wave = Math.sin(angle); break;
-                        }
-                        const px = this.x + i;
-                        const py = waveCenterY - y_wave * amplitude;
-                        if (i === 0) { this.ctx.moveTo(px, py); } else { this.ctx.lineTo(px, py); }
-                    }
-                    if (this.fillShape) {
-                        this.ctx.lineTo(this.x + limit, this.y + this.height);
-                        this.ctx.lineTo(this.x, this.y + this.height);
-                        this.ctx.closePath();
-                    }
-                }
-                if (this.fillShape && this.oscDisplayMode !== 'seismic') {
-                    this.ctx.fillStyle = this.createFillStyle();
+                    this.ctx.fillStyle = isAlternating ? ((i % 2 === 0) ? c1 : c2) : genericFill;
                     this.ctx.fill();
                 }
-                if (this.oscDisplayMode !== 'seismic') {
-                    this.ctx.strokeStyle = this.createFillStyle();
-                    this.ctx.stroke();
+            }
+        } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
+            const cellWidth = this.width / this.numberOfColumns;
+            const cellHeight = this.height / this.numberOfRows;
+            const isRandom = this.gradType === 'random';
+            const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
+            const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
+            if (isRandom) {
+                this.randomColorTimer -= 1;
+                if (this.randomColorTimer <= 0) {
+                    this.cellColors = [];
+                    const rawSpeed = this.animationSpeed * 25;
+                    this.randomColorTimer = Math.max(1, 200 / rawSpeed);
                 }
             }
-        } else {
-            this.ctx.translate(centerX, centerY);
-            this.ctx.rotate(angleToUse);
+            for (let row = 0; row < this.numberOfRows; row++) {
+                for (let col = 0; col < this.numberOfColumns; col++) {
+                    const cellX = -this.width / 2 + col * cellWidth;
+                    const cellY = -this.height / 2 + row * cellHeight;
+                    const cellIndex = row * this.numberOfColumns + col;
+                    this.ctx.fillStyle = isRandom
+                        ? (this.cellColors[cellIndex] || (this.cellColors[cellIndex] = Math.random() < 0.5 ? c1 : c2))
+                        : this._createLocalFillStyle(cellIndex);
+                    this.ctx.fillRect(cellX, cellY, cellWidth, cellHeight);
+                }
+            }
+        } else if (this.shape === 'text') {
+            this.ctx.translate(-centerX, -centerY); // Undo parent translation for drawPixelText
+            this.ctx.fillStyle = this._createLocalFillStyle();
+            drawPixelText(this.ctx, this);
+        } else if (this.shape === 'oscilloscope') {
+            this.ctx.translate(-centerX, -centerY); // Undo parent translation for o-scope
+            this.ctx.lineWidth = this.lineWidth;
+            const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
+            let effectiveFrequency = this.frequency;
+            let effectivePulseDepth = this.pulseDepth;
+            if (this.enableWaveAnimation) {
+                switch (this.oscAnimationMode) {
+                    case 'fmPulse': effectiveFrequency += ((Math.sin(activeAnimationAngle * 0.5) + 1) / 2) * (this.frequency * 0.75); break;
+                    case 'depthPulse': effectivePulseDepth = ((Math.sin(activeAnimationAngle * 0.5) + 1) / 2) * 100; break;
+                }
+            }
+            if (this.oscDisplayMode === 'radial') {
+                this.ctx.beginPath();
+                const totalRadius = (Math.min(this.width, this.height) / 2) - (this.lineWidth / 2);
+                const baseRadius = totalRadius * (0.5 + (effectivePulseDepth || 0) / 100.0 * 0.5);
+                const maxAmplitude = totalRadius - baseRadius;
+                for (let i = 0; i <= 360; i++) {
+                    const angleRad = (i * Math.PI) / 180;
+                    const waveFuncAngle = 2 * Math.PI * effectiveFrequency * (i / 360) + activeAnimationAngle * 2;
+                    let y_wave;
+                    switch (this.waveType) {
+                        case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
+                        case 'sawtooth': y_wave = (((waveFuncAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
+                        case 'triangle': y_wave = Math.asin(Math.sin(waveFuncAngle)) * (2 / Math.PI); break;
+                        default: y_wave = Math.sin(waveFuncAngle); break;
+                    }
+                    const finalRadius = baseRadius + y_wave * maxAmplitude;
+                    const px = centerX + finalRadius * Math.cos(angleRad);
+                    const py = centerY + finalRadius * Math.sin(angleRad);
+                    if (i === 0) this.ctx.moveTo(px, py); else this.ctx.lineTo(px, py);
+                }
+                this.ctx.closePath();
+            } else if (this.oscDisplayMode === 'seismic') {
+                const maxRadius = Math.min(this.width, this.height) / 2;
+                const waveCount = Math.max(1, this.waveCount);
+                const spacing = maxRadius / waveCount;
+                const totalCycle = maxRadius + spacing;
+                const progress = (this.animationAngle * 5) % totalCycle;
+                if (this.gradType === 'random') {
+                    this.randomColorTimer -= 1;
+                    if (this.randomColorTimer <= 0) {
+                        this.waveColors = [];
+                        const rawSpeed = this.animationSpeed * 25;
+                        this.randomColorTimer = Math.max(1, 200 / (rawSpeed || 25));
+                    }
+                }
+                for (let i = 0; i < waveCount * 2; i++) {
+                    let radius = (progress + i * spacing) % totalCycle;
+                    if (radius > maxRadius) continue;
+                    let alpha = 1.0 - (radius / maxRadius);
+                    const fadeInLimit = spacing;
+                    if (radius < fadeInLimit) alpha *= (radius / fadeInLimit);
+                    if (alpha <= 0) continue;
+                    this.ctx.strokeStyle = this._createLocalFillStyle(i);
+                    this.ctx.globalAlpha = alpha;
+                    this.ctx.lineWidth = this.lineWidth;
+                    if (this.waveStyle === 'wavy') {
+                        this.ctx.beginPath();
+                        const points = Math.max(60, this.frequency * 20);
+                        const maxAmplitude = (this.pulseDepth / 100) * 20;
+                        const amplitude = maxAmplitude * (radius / maxRadius);
+                        for (let j = 0; j <= points; j++) {
+                            const angle = (j / points) * 2 * Math.PI;
+                            const wave = Math.sin(angle * this.frequency) * amplitude;
+                            const r = radius + wave;
+                            this.ctx[j === 0 ? 'moveTo' : 'lineTo'](centerX + Math.cos(angle) * r, centerY + Math.sin(angle) * r);
+                        }
+                        this.ctx.closePath();
+                        this.ctx.stroke();
+                    } else {
+                        this.ctx.beginPath();
+                        this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                        this.ctx.stroke();
+                    }
+                }
+                this.ctx.globalAlpha = 1.0;
+            } else { // Linear mode
+                this.ctx.beginPath();
+                const waveCenterY = this.y + this.height / 2;
+                const amplitude = (this.height - this.lineWidth) / 2;
+                let limit = this.width;
+                if (this.oscAnimationMode === 'trace' && this.enableWaveAnimation) {
+                    limit = this.width * Math.min(1, this.traceProgress);
+                }
+                for (let i = 0; i <= limit; i++) {
+                    const progress = i / this.width;
+                    const angle = 2 * Math.PI * effectiveFrequency * progress + activeAnimationAngle;
+                    let y_wave;
+                    switch (this.waveType) {
+                        case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;
+                        case 'sawtooth': y_wave = 2 * (progress * effectiveFrequency - Math.floor(0.5 + progress * effectiveFrequency)); break;
+                        case 'triangle': y_wave = Math.asin(Math.sin(angle)) * (2 / Math.PI); break;
+                        case 'earthquake': y_wave = Math.sin(angle * 0.8) * 0.5 + Math.sin(angle * 2.2) * 0.3 + Math.sin(angle * 5.0) * 0.2; break;
+                        default: y_wave = Math.sin(angle); break;
+                    }
+                    this.ctx[i === 0 ? 'moveTo' : 'lineTo'](this.x + i, waveCenterY - y_wave * amplitude);
+                }
+                if (this.fillShape) {
+                    this.ctx.lineTo(this.x + limit, this.y + this.height);
+                    this.ctx.lineTo(this.x, this.y + this.height);
+                    this.ctx.closePath();
+                }
+            }
+            if (this.oscDisplayMode !== 'seismic') {
+                this.ctx.fillStyle = this._createLocalFillStyle();
+                this.ctx.strokeStyle = this._createLocalFillStyle();
+                if (this.fillShape) this.ctx.fill();
+                this.ctx.stroke();
+            }
+        } else { // Simple rectangle or circle
             this.ctx.beginPath();
             if (this.shape === 'circle') {
                 this.ctx.arc(0, 0, this.width / 2, 0, 2 * Math.PI);
             } else {
                 this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
             }
-            this.ctx.fillStyle = this.createFillStyle();
+            this.ctx.fillStyle = this._createLocalFillStyle();
             this.ctx.fill();
         }
         this.ctx.restore();
