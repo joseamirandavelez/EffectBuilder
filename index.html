@@ -155,14 +155,12 @@
                 <div class="btn-group" role="group" aria-label="Help and settings">
                     <button class="btn btn-outline-secondary" id="help-btn" data-bs-toggle="modal" data-bs-target="#help-modal" title="Help"><i class="bi bi-question-circle"></i></button>
                     <button class="btn btn-outline-secondary" id="about-btn" data-bs-toggle="modal" data-bs-target="#about-modal" title="About"><i class="bi bi-info-circle"></i></button>
-                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="theme-dropdown-button" data-bs-toggle="dropdown" aria-expanded="false" title="Change Theme">
+                    <a class="btn btn-outline-secondary" id="contact-btn" href="https://github.com/joseamirandavelez/EffectBuilder/issues/new/choose" target="_blank" rel="noopener" title="Report Bug / Request Feature on GitHub">
+                        <i class="bi bi-github"></i>
+                    </a>
+                    <button class="btn btn-outline-secondary" type="button" id="theme-switcher-btn" title="Change Theme">
                         <i class="bi" id="theme-icon"></i>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><button class="dropdown-item d-flex align-items-center" type="button" data-bs-theme-value="light"><i class="bi bi-sun-fill me-2"></i>Light<i class="bi bi-check2 ms-auto d-none"></i></button></li>
-                        <li><button class="dropdown-item d-flex align-items-center" type="button" data-bs-theme-value="dark"><i class="bi bi-moon-stars-fill me-2"></i>Dark<i class="bi bi-check2 ms-auto d-none"></i></button></li>
-                        <li><button class="dropdown-item d-flex align-items-center" type="button" data-bs-theme-value="auto"><i class="bi bi-circle-half me-2"></i>Auto<i class="bi bi-check2 ms-auto d-none"></i></button></li>
-                    </ul>
                 </div>
 
                 <div class="ms-3">
@@ -345,15 +343,20 @@
                     <h6 class="text-info">The Controls Panel (Left)</h6>
                     <p>This is where you manage all the objects in your scene.</p>
                     <ul>
+                        <li><strong>General Settings:</strong> This panel contains global properties for your effect, like its Title and Description.
+                            <ul>
+                                <li><strong>Minimize Properties for Export:</strong> When checked, this reduces the number of editable controls in the final file, which can improve performance.</li>
+                                <li>When you load an effect from the gallery, the author's name and creation date will also appear here.</li>
+                            </ul>
+                        </li>
                         <li><strong>Add New Object:</strong> Use the green button at the bottom to add a new shape to the canvas.</li>
                         <li><strong>Object Panels:</strong> Each object gets its own collapsible panel. Click the object's name to expand or collapse its properties.</li>
-                        <li><strong>Rename:</strong> Click directly on an object's name (e.g., "Object 1") to edit it.</li>
                         <li><strong>Reorder:</strong> Click and drag the <i class="bi bi-grip-vertical"></i> icon to change the rendering order (what's drawn on top).</li>
                         <li><strong>Lock/Unlock:</strong> Use the <i class="bi bi-unlock-fill"></i> / <i class="bi bi-lock-fill"></i> button to prevent an object from being moved or resized on the canvas.</li>
                         <li><strong>Duplicate/Delete:</strong> Use the menu button (<i class="bi bi-list"></i>) to access options for duplicating or deleting an object.</li>
-                        <li><strong>Shape-Specific Settings:</strong> When you change an object's shape to something complex like a <strong>Ring</strong>, <strong>Grid</strong>, or <strong>Oscilloscope</strong>, a new settings card will appear in its panel with unique properties.
+                        <li><strong>Shape-Specific Settings:</strong> When you change an object's shape, new settings cards will appear.
                             <ul>
-                                <li>The <strong>Oscilloscope</strong>, for example, has controls for `Wave Type`, radial `Display Mode`, `Pulse Depth`, and unique `Wave Animation Modes` like <em>FM Pulse</em> and <em>Trace Wipe</em>.</li>
+                                <li>The <strong>Oscilloscope</strong> has unique display modes. The <strong>Seismic</strong> mode, for example, creates rotating, phased waves. Use the <strong>Phase Offset</strong> property to control the rotation between each wave.</li>
                             </ul>
                         </li>
                     </ul>
@@ -363,42 +366,33 @@
                     <ul>
                         <li><strong>Select:</strong> Click an object to select it. Hold <kbd>Shift</kbd> or <kbd>Ctrl</kbd> to select multiple objects.</li>
                         <li><strong>Drag, Resize & Rotate:</strong> Drag a selected object to move it. Drag the handles on the selection box to resize it, or drag the circular handle to rotate.</li>
-                        <li><strong>Snapping:</strong> Objects will snap to each other and to the canvas edges/centerlines during both <strong>dragging and resizing</strong>. Guiding lines will appear to show the alignment. Snapping also works on the inner and outer edges of rings.</li>
-                        <li><strong>Clipping:</strong> All objects are clipped to their rectangular bounding box. This means that the corners of rotated shapes will not be drawn outside of this boundary.</li>
+                        <li><strong>Snapping:</strong> Objects will snap to each other and to the canvas edges/centerlines.</li>
                         <li><strong>Keyboard Shortcuts:</strong> Use <kbd>Arrow Keys</kbd> to move selected objects (hold <kbd>Shift</kbd> for larger steps). Use <kbd>Delete</kbd> or <kbd>Backspace</kbd> to remove selected objects. <kbd>Ctrl+Z</kbd> and <kbd>Ctrl+Y</kbd> work for undo/redo.</li>
                     </ul>
 
                     <h6 class="text-info mt-4">The Canvas Toolbar (Above the Canvas)</h6>
                     <p>This toolbar provides quick access to object manipulation tools.</p>
                     <ul>
-                        <li><strong>Undo/Redo:</strong> The <i class="bi bi-arrow-90deg-left"></i> and <i class="bi bi-arrow-90deg-right"></i> buttons allow you to undo or redo your actions.</li>
-                        <li><strong>Alignment & Matching:</strong> These button groups allow you to align objects to the screen or match their width and height to the first selected object.</li>
-                        <li><strong>Copy/Paste Properties:</strong>
-                            <ol>
-                                <li>Select an object to copy from (it should be the first one in your selection).</li>
-                                <li>Click the <strong>Copy Properties</strong> <i class="bi bi-clipboard-plus"></i> button.</li>
-                                <li>In the popup window, check the categories of properties you wish to copy (e.g., Size, Fill Style, Shape-Specific).</li>
-                                <li>Select one or more destination objects on the canvas.</li>
-                                <li>Click the <strong>Paste Properties</strong> <i class="bi bi-clipboard-check"></i> button to apply them.</li>
-                            </ol>
-                        </li>
-                        <li><strong>Toggle Snapping:</strong> The <i class="bi bi-magnet-fill"></i> button toggles object snapping on and off.</li>
+                        <li><strong>Alignment & Matching:</strong> Align objects to the screen or match their width and height to the first selected object.</li>
+                        <li><strong>Copy/Paste Properties:</strong> Use the <i class="bi bi-clipboard-plus"></i> and <i class="bi bi-clipboard-check"></i> buttons to copy properties from one object to another.</li>
                     </ul>
 
                     <h6 class="text-info mt-4">The Main Toolbar (Top)</h6>
                     <p>The main toolbar provides actions for managing your project. Most cloud actions require you to be signed in.</p>
                     <ul class="list-unstyled">
-                        <li><strong class="text-primary-emphasis"><i class="bi bi-cloud-arrow-up me-1"></i> Save:</strong> Saves your current workspace to the cloud. It uses the "Effect Title" as the project name.</li>
-                        <li><strong class="text-secondary-emphasis"><i class="bi bi-folder2-open me-1"></i> My Projects:</strong> Opens a side panel showing all effects you have saved.</li>
+                        <li><strong class="text-primary-emphasis"><i class="bi bi-cloud-arrow-up me-1"></i> Save:</strong> Saves your current workspace to the cloud.</li>
+                        <li><strong class="text-secondary-emphasis"><i class="bi bi-folder2-open me-1"></i> Open:</strong> Opens a side panel showing all effects you have saved.</li>
                         <li><strong class="text-warning-emphasis"><i class="bi bi-view-list me-1"></i> Community Gallery:</strong> Opens a side panel showing public effects from all users.</li>
-                        <li><strong class="text-info-emphasis"><i class="bi bi-share me-1"></i> Share:</strong> After saving, this button provides a unique, shareable URL for your effect.</li>
-                        <li><strong class="text-success-emphasis"><i class="bi bi-download me-1"></i> Export:</strong> Opens a modal to either download a `.zip` file or copy the raw HTML code for your effect.</li>
+                        <li><strong class="text-info-emphasis"><i class="bi bi-share me-1"></i> Share:</strong> After saving, this provides a unique, shareable URL for your effect.</li>
+                        <li><strong class="text-success-emphasis"><i class="bi bi-download me-1"></i> Export:</strong> Prepares your effect for download.</li>
+                        <li><strong class="text-secondary-emphasis"><i class="bi bi-github me-1"></i> Feedback:</strong> Opens the project's GitHub page to report a bug or request a new feature.</li>
+                        <li><strong class="text-secondary-emphasis"><i class="bi bi-moon-stars-fill"></i> Theme:</strong> Cycles through Light, Dark, and Auto theme modes.</li>
                     </ul>
 
                     <h6 class="text-info mt-4">How to install the effect in SignalRGB</h6>
                     <ul class="list-unstyled">
                         <li>Click the <strong>Export</strong> button and choose <strong>Download .zip File</strong>.</li>
-                        <li>Extract the contents of the `.zip` file into your `Documents\WhirlwindFX\Effects` folder. For better organization, it's best to place them inside a new subfolder (e.g., `My Matrix Effect`).</li>
+                        <li>Extract the contents of the `.zip` file into your `Documents\WhirlwindFX\Effects` folder. For better organization, it's best to place them inside a new subfolder.</li>
                         <li>Restart SignalRGB, and your new effect should appear in the effects list.</li>
                     </ul>
                 </div>
@@ -550,41 +544,6 @@
                 <div class="modal-footer justify-content-center">
                     <button type="button" class="btn btn-success" id="export-download-btn"><i class="bi bi-file-earmark-zip-fill me-2"></i>Download .zip File</button>
                     <button type="button" class="btn btn-primary" id="export-copy-btn"><i class="bi bi-clipboard-check-fill me-2"></i>Copy HTML Code</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="copy-props-modal" tabindex="-1" aria-labelledby="copyPropsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="copyPropsModalLabel">Select Properties to Copy</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Select the property groups to copy from the source object.</p>
-                    <form id="copy-props-form">
-                        <h6>General</h6>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" value="position" id="copy-position"><label class="form-check-label" for="copy-position">Position (X, Y)</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" value="size" id="copy-size"><label class="form-check-label" for="copy-size">Size (Width, Height)</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" value="rotation" id="copy-rotation"><label class="form-check-label" for="copy-rotation">Rotation & Speed</label></div>
-
-                        <h6 class="mt-3">Style & Animation</h6>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" value="fillStyle" id="copy-fill-style"><label class="form-check-label" for="copy-fill-style">Fill Style</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" value="animation" id="copy-animation"><label class="form-check-label" for="copy-animation">Animation</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" value="colorAnimation" id="copy-color-animation"><label class="form-check-label" for="copy-color-animation">Color Animation</label></div>
-
-                        <div id="shape-specific-props-container" class="d-none mt-3">
-                            <h6>Shape-Specific (<span id="shape-specific-name"></span>)</h6>
-                            <div class="form-check"><input class="form-check-input" type="checkbox" value="shapeType" id="copy-shape-type"><label class="form-check-label" for="copy-shape-type">Shape Type</label></div>
-                            <div class="form-check"><input class="form-check-input" type="checkbox" value="shapeSpecific" id="copy-shape-specific"><label class="form-check-label" for="copy-shape-specific">All Shape Properties</label></div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="confirm-copy-props-btn">Copy Selected</button>
                 </div>
             </div>
         </div>
