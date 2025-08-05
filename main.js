@@ -1071,24 +1071,24 @@ class Shape {
                 p.age++;
             });
             this.fireParticles = this.fireParticles.filter(p => p.age < p.maxAge);
-            
+
             this.particleSpawnCounter += this.animationSpeed / 4.0;
             const particlesToSpawn = Math.floor(this.particleSpawnCounter);
             this.particleSpawnCounter -= particlesToSpawn;
-            
+
             for (let i = 0; i < particlesToSpawn; i++) {
                 if (this.fireParticles.length < 300) {
                     const spreadMultiplier = this.fireSpread / 100.0;
                     const maxRadius = Math.min(this.width, this.height) / 2;
-                    
+
                     // Give particles a longer, more consistent lifetime
                     const maxAge = (Math.random() * 60 + 90);
-                    
+
                     // Calculate speed based on how far they need to go in that time
                     const speed = (maxRadius / maxAge) * spreadMultiplier;
 
                     const startSize = (Math.random() * 0.5 + 0.5) * (Math.min(this.width, this.height) / 8);
-                    
+
                     this.fireParticles.push({
                         x: 0, y: 0,
                         sizeX: startSize, sizeY: startSize,
@@ -1192,7 +1192,7 @@ class Shape {
                         particleColor = lerpColor(emberColor, coolColor, segmentRatio);
                     }
                 }
-                
+
                 const opacity = Math.sin(lifeRatio * Math.PI);
 
                 this.ctx.beginPath();
@@ -1204,7 +1204,7 @@ class Shape {
 
             this.ctx.restore();
         } else if (this.shape === 'tetris' || this.shape === 'text' || this.shape === 'oscilloscope') {
-             if (this.shape === 'tetris') {
+            if (this.shape === 'tetris') {
                 this.ctx.beginPath();
                 this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
                 this.ctx.clip();
@@ -1218,7 +1218,7 @@ class Shape {
                     this.ctx.fillRect(Math.round(drawX), topY, Math.ceil(block.w), bottomY - topY);
                 });
                 this.ctx.globalAlpha = 1.0;
-            } else if (this.shape === 'text') { 
+            } else if (this.shape === 'text') {
                 this.ctx.translate(-centerX, -centerY);
                 this.ctx.fillStyle = this._createLocalFillStyle();
                 drawPixelText(this.ctx, this);
@@ -3739,15 +3739,15 @@ document.addEventListener('DOMContentLoaded', function () {
         redoBtn.addEventListener('click', () => history.redo());
     }
 
-     document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', (e) => {
         const target = e.target;
-        
+
         // --- THE FIX IS HERE ---
         // This check is now more comprehensive. It stops hotkeys from firing
         // if the user is focused on ANY input, textarea, or editable element.
         const isInputFocused = target.tagName === 'INPUT' ||
-                             target.tagName === 'TEXTAREA' ||
-                             target.isContentEditable;
+            target.tagName === 'TEXTAREA' ||
+            target.isContentEditable;
 
         if (isInputFocused) {
             // If the user is typing in any form field, do not trigger global hotkeys.
@@ -3799,16 +3799,16 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             if (moved) {
-                e.preventDefault(); 
+                e.preventDefault();
                 updateFormValuesFromObjects();
-                drawFrame(); 
+                drawFrame();
                 debouncedRecordHistory();
             }
         }
 
         // Handle Delete and Backspace keys for selected objects
         if ((e.key === 'Delete') && selectedObjectIds.length > 0) {
-            e.preventDefault(); 
+            e.preventDefault();
             deleteObjects([...selectedObjectIds]);
         }
 
@@ -4050,7 +4050,7 @@ document.addEventListener('DOMContentLoaded', function () {
      * Handles toolbar button clicks for alignment and matching actions.
      * @param {Event} e - The click event.
      */
-     function handleToolbarAction(e) {
+    function handleToolbarAction(e) {
         const button = e.target.closest('button');
         if (!button || button.disabled || !button.dataset.action) {
             return;
