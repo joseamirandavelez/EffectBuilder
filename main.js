@@ -388,8 +388,9 @@ class Shape {
         this.rotationHandleOffset = -30;
         this.rotationHandleRadius = 15;
         this.handles = [{ name: 'top-left', cursor: 'nwse-resize' }, { name: 'top', cursor: 'ns-resize' }, { name: 'top-right', cursor: 'nesw-resize' }, { name: 'left', cursor: 'ew-resize' }, { name: 'right', cursor: 'ew-resize' }, { name: 'bottom-left', cursor: 'nesw-resize' }, { name: 'bottom', cursor: 'ns-resize' }, { name: 'bottom-right', cursor: 'nwse-resize' }];
-        this.randomColorTimer = 0;
-        this.cellColors = [];
+
+        this.randomElementState = null;
+
         this.text = text || 'Hello';
         this.fontFamily = fontFamily || 'Arial';
         this.fontSize = fontSize || 60;
@@ -404,7 +405,7 @@ class Shape {
         this.typewriterWaitTimer = 0;
         this.showTime = showTime || false;
         this.showDate = showDate || false;
-        this.lineWidth = lineWidth || 2;
+        this.lineWidth = lineWidth || 1;
         this.waveType = waveType || 'sine';
         this.frequency = frequency || 5;
         this.pulseDepth = pulseDepth !== undefined ? pulseDepth : 50;
@@ -416,7 +417,6 @@ class Shape {
         this._pausedRotationSpeed = null;
         this.waveStyle = waveStyle || 'wavy';
         this.waveCount = waveCount || 5;
-        this.waveColors = [];
         this.tetrisBlockCount = tetrisBlockCount || 10;
         this.tetrisAnimation = tetrisAnimation || 'gravity';
         this.tetrisSpeed = tetrisSpeed || 5;
@@ -431,16 +431,17 @@ class Shape {
         this.starInnerRadius = starInnerRadius || 50;
         this.gradientSpeedMultiplier = gradientSpeedMultiplier;
         this.shapeAnimationSpeedMultiplier = shapeAnimationSpeedMultiplier;
-        this.seismicAnimationSpeedMultiplier = seismicAnimationSpeedMultiplier;
-        this.tetrisSpeedDivisor = tetrisSpeedDivisor;
+        this.seismicAnimationSpeedMultiplier = 0.015;
+        this.tetrisSpeedDivisor = 10.0;
         this.exportedGradientSpeedMultiplier = 0.0025;
         this.exportedShapeAnimationSpeedMultiplier = 0.05;
-        this.exportedSeismicAnimationSpeedMultiplier = 0.015;
+        this.exportedSeismicAnimationSpeedMultiplier = 0.00375;
         this.exportedTetrisSpeedDivisor = 40.0;
         this.fireParticles = [];
         this.fireHeight = fireHeight || 100;
         this.fireSpread = fireSpread || 100;
-        this.particleSpawnCounter = 0; // Add this line
+        this.particleSpawnCounter = 0;
+        this.nextParticleId = 0; // Add this line
     }
 
     getDisplayText() {
@@ -463,6 +464,38 @@ class Shape {
     getWrappedText() {
         const text = this.getDisplayText();
         return text;
+    }
+
+    _getRandomColorForElement(elementIndex) {
+        // FIX: Added this block to handle color cycling for random fills.
+        if (this.cycleColors) {
+            const hue = (this.hue1 + elementIndex * this.phaseOffset) % 360;
+            return `hsl(${hue}, 100%, 50%)`;
+        }
+
+        if (this.gradType !== 'random') {
+            return this.gradient.color1;
+        }
+        if (!this.randomElementState) {
+            this.randomElementState = {};
+        }
+
+        if (!this.randomElementState[elementIndex]) {
+            this.randomElementState[elementIndex] = {
+                color: Math.random() < 0.5 ? this.gradient.color1 : this.gradient.color2,
+                timer: Math.random() * 10 + 5
+            };
+        }
+
+        const state = this.randomElementState[elementIndex];
+        state.timer -= this.cycleSpeed;
+
+        if (state.timer <= 0) {
+            state.color = Math.random() < 0.5 ? this.gradient.color1 : this.gradient.color2;
+            state.timer = Math.random() * 10 + 5;
+        }
+
+        return state.color;
     }
 
     _updateTextMetrics() {
@@ -665,23 +698,47 @@ class Shape {
         if (this.strokeGradType === 'linear') {
             const halfW = this.width / 2;
             const halfH = this.height / 2;
-            const isVertical = this.strokeScrollDir === 'up' || this.strokeScrollDir === 'down';
-            const grad = isVertical
-                ? this.ctx.createLinearGradient(0, -halfH, 0, halfH)
-                : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
+            let grad;
+
+            switch (this.strokeScrollDir) {
+                case 'up':
+                    grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH);
+                    break;
+                case 'down':
+                    grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH);
+                    break;
+                case 'left':
+                    grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
+                    break;
+                case 'right':
+                default:
+                    grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
+                    break;
+            }
 
             if (this.animationMode.includes('bounce')) {
                 grad.addColorStop(0, getPatternColor(0 - p, c1, c2));
                 grad.addColorStop(0.5, getPatternColor(0.5 - p, c1, c2));
                 grad.addColorStop(1, getPatternColor(1 - p, c1, c2));
-            } else { // Loop mode - SINE WAVE METHOD
-                const numStops = 30;
-                for (let i = 0; i <= numStops; i++) {
-                    const stopPosition = i / numStops;
-                    const amount = (Math.sin((stopPosition - p) * 2 * Math.PI) + 1) / 2;
-                    const color = lerpColor(c1, c2, amount);
-                    grad.addColorStop(stopPosition, color);
+            } else { // Loop mode
+                const midPoint = 0.5;
+                const stops = [];
+                const getPatternColorAtTime = (time) => {
+                    const t = (time % 1.0 + 1.0) % 1.0;
+                    if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
+                    return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
+                };
+                stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
+                stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
+                for (let i = -2; i <= 2; i++) {
+                    const c1_pos = i + p;
+                    const c2_pos = i + midPoint + p;
+                    if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
+                    if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
                 }
+                const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
+                    .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
+                uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
             }
             return grad;
         }
@@ -691,27 +748,24 @@ class Shape {
             if (maxRadius <= 0) return 'black';
             const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
 
+            let wave;
             if (this.animationMode.includes('bounce')) {
-                const wave = 1 - Math.abs(2 * p - 1);
-                const midPoint = 0.5 * wave;
-                grad.addColorStop(0, c1);
-                grad.addColorStop(midPoint, c2);
-                grad.addColorStop(1, c1);
-            } else { // Loop mode - SINE WAVE METHOD
-                const numStops = 30;
-                for (let i = 0; i <= numStops; i++) {
-                    const stopPosition = i / numStops;
-                    const amount = (Math.sin((stopPosition - p) * 2 * Math.PI) + 1) / 2;
-                    const color = lerpColor(c1, c2, amount);
-                    grad.addColorStop(stopPosition, color);
-                }
+                wave = 1 - Math.abs(2 * p - 1);
+            } else {
+                wave = p;
             }
+
+            const midPoint = 0.5 * wave;
+            grad.addColorStop(0, c1);
+            grad.addColorStop(midPoint, c2);
+            grad.addColorStop(1, c1);
             return grad;
         }
 
         if (this.strokeGradType === 'rainbow' || this.strokeGradType === 'rainbow-radial') {
             const hueOffset = (this.strokeHue1 * 10) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
             let grad;
+
             if (this.strokeGradType === 'rainbow-radial') {
                 const maxRadius = Math.max(this.width, this.height) / 2;
                 if (maxRadius <= 0) return 'black';
@@ -719,9 +773,23 @@ class Shape {
             } else {
                 const halfW = this.width / 2;
                 const halfH = this.height / 2;
-                const isVertical = this.strokeScrollDir === 'up' || this.strokeScrollDir === 'down';
-                grad = isVertical ? this.ctx.createLinearGradient(0, -halfH, 0, halfH) : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
+                switch (this.strokeScrollDir) {
+                    case 'up':
+                        grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH);
+                        break;
+                    case 'down':
+                        grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH);
+                        break;
+                    case 'left':
+                        grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
+                        break;
+                    case 'right':
+                    default:
+                        grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
+                        break;
+                }
             }
+
             const numStops = 60;
             for (let i = 0; i <= numStops; i++) {
                 const hue = (i * (360 / numStops) + hueOffset) % 360;
@@ -729,7 +797,6 @@ class Shape {
             }
             return grad;
         }
-
         return c1 || 'black';
     }
 
@@ -760,10 +827,23 @@ class Shape {
         if (this.gradType === 'linear') {
             const halfW = this.width / 2;
             const halfH = this.height / 2;
-            const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
-            const grad = isVertical
-                ? this.ctx.createLinearGradient(0, -halfH, 0, halfH)
-                : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
+            let grad;
+
+            switch (this.scrollDirection) {
+                case 'up':
+                    grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH);
+                    break;
+                case 'down':
+                    grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH);
+                    break;
+                case 'left':
+                    grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
+                    break;
+                case 'right':
+                default:
+                    grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
+                    break;
+            }
 
             if (this.useSharpGradient) {
                 let p_bounce = p;
@@ -791,15 +871,26 @@ class Shape {
                     grad.addColorStop(0, getPatternColor(0 - p, c1, c2));
                     grad.addColorStop(0.5, getPatternColor(0.5 - p, c1, c2));
                     grad.addColorStop(1, getPatternColor(1 - p, c1, c2));
-                } else { // Loop mode - SINE WAVE METHOD
-                    const numStops = 30; // Use enough stops for smoothness
-                    for (let i = 0; i <= numStops; i++) {
-                        const stopPosition = i / numStops;
-                        // Calculate a smooth sine wave for interpolation, offset by progress 'p'
-                        const amount = (Math.sin((stopPosition - p) * 2 * Math.PI) + 1) / 2;
-                        const color = lerpColor(c1, c2, amount);
-                        grad.addColorStop(stopPosition, color);
+                } else { // Loop mode
+                    const midPoint = this.gradientStop / 100.0;
+                    const stops = [];
+                    const getPatternColorAtTime = (time) => {
+                        const t = (time % 1.0 + 1.0) % 1.0;
+                        if (midPoint <= 0) return c2; if (midPoint >= 1) return c1;
+                        if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
+                        return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
+                    };
+                    stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
+                    stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
+                    for (let i = -2; i <= 2; i++) {
+                        const c1_pos = i + p;
+                        const c2_pos = i + midPoint + p;
+                        if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
+                        if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
                     }
+                    const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
+                        .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
+                    uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
                 }
                 return grad;
             }
@@ -821,19 +912,10 @@ class Shape {
                 grad.addColorStop(Math.min(1, stopPoint + 0.001), c2); grad.addColorStop(1, c2);
             } else {
                 const midPoint = this.gradientStop / 100.0;
-                if (this.animationMode.includes('bounce')) {
-                    const animatedMidPoint = midPoint * wave;
-                    grad.addColorStop(0, c1); grad.addColorStop(animatedMidPoint, c2);
-                    grad.addColorStop(1, c1);
-                } else { // Radial Loop - SINE WAVE METHOD
-                    const numStops = 30;
-                    for (let i = 0; i <= numStops; i++) {
-                        const stopPosition = i / numStops;
-                        const amount = (Math.sin((stopPosition - p) * 2 * Math.PI) + 1) / 2;
-                        const color = lerpColor(c1, c2, amount);
-                        grad.addColorStop(stopPosition, color);
-                    }
-                }
+                const animatedMidPoint = midPoint * wave;
+                grad.addColorStop(0, c1);
+                grad.addColorStop(animatedMidPoint, c2);
+                grad.addColorStop(1, c1);
             }
             return grad;
         }
@@ -841,6 +923,7 @@ class Shape {
         if (this.gradType === 'rainbow' || this.gradType === 'rainbow-radial') {
             const hueOffset = (this.hue1 * 10) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
             let grad;
+
             if (this.gradType === 'rainbow-radial') {
                 const maxRadius = Math.max(this.width, this.height) / 2;
                 if (maxRadius <= 0) return 'black';
@@ -848,9 +931,23 @@ class Shape {
             } else {
                 const halfW = this.width / 2;
                 const halfH = this.height / 2;
-                const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
-                grad = isVertical ? this.ctx.createLinearGradient(0, -halfH, 0, halfH) : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
+                switch (this.scrollDirection) {
+                    case 'up':
+                        grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH);
+                        break;
+                    case 'down':
+                        grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH);
+                        break;
+                    case 'left':
+                        grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
+                        break;
+                    case 'right':
+                    default:
+                        grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
+                        break;
+                }
             }
+
             const numStops = 60;
             for (let i = 0; i <= numStops; i++) {
                 const hue = (i * (360 / numStops) + hueOffset) % 360;
@@ -968,13 +1065,8 @@ class Shape {
             }
         }
 
-        if (this.gradType === 'random') {
-            this.randomColorTimer -= 1;
-            if (this.randomColorTimer <= 0) {
-                this.cellColors = []; this.waveColors = [];
-                const rawSpeed = this.animationSpeed * 25;
-                this.randomColorTimer = Math.max(1, 200 / (rawSpeed || 25));
-            }
+        if (this.gradType !== 'random' && this.randomElementState) {
+            this.randomElementState = null;
         }
 
         this.hue1 += this.cycleSpeed;
@@ -1016,13 +1108,13 @@ class Shape {
 
         if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
             const increment = this.animationSpeed * this.gradientSpeedMultiplier;
-            const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
+            const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? -1 : 1;
             this.scrollOffset += increment * directionMultiplier;
         }
 
         if (this.strokeGradType !== 'solid' && this.strokeGradType !== 'alternating' && this.strokeGradType !== 'random') {
             const increment = this.strokeAnimationSpeed * this.gradientSpeedMultiplier;
-            const directionMultiplier = (this.strokeScrollDir === 'right' || this.strokeScrollDir === 'down') ? 1 : -1;
+            const directionMultiplier = (this.strokeScrollDir === 'right' || this.strokeScrollDir === 'down') ? -1 : 1;
             this.strokeScrollOffset += increment * directionMultiplier;
         }
 
@@ -1032,69 +1124,104 @@ class Shape {
 
         if (this.shape == 'oscilloscope' && this.oscDisplayMode == 'seismic') {
             animationIncrement = this.animationSpeed * this.seismicAnimationSpeedMultiplier;
+            const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
+            animationIncrement *= directionMultiplier;
         } else {
             animationIncrement = this.animationSpeed * this.shapeAnimationSpeedMultiplier;
         }
         this.animationAngle += animationIncrement;
 
-        if (this.gradType === 'fire') {
-            this.fireParticles.forEach(p => {
-                p.y -= p.speed;
-                p.age++;
-            });
-            this.fireParticles = this.fireParticles.filter(p => p.age < p.maxAge);
+        if (this.shape === 'fire' || this.shape === 'fireRadial') {
             this.particleSpawnCounter += this.animationSpeed / 4.0;
             const particlesToSpawn = Math.floor(this.particleSpawnCounter);
             this.particleSpawnCounter -= particlesToSpawn;
-            for (let i = 0; i < particlesToSpawn; i++) {
-                if (this.fireParticles.length < 300) {
-                    const halfH = this.height / 2;
-                    const heightMultiplier = this.fireHeight / 100.0;
-                    const maxAge = (Math.random() * 60 + 90);
-                    const speed = (this.height / maxAge) * (Math.random() * 0.75 + 1) * heightMultiplier;
-                    const startSize = (Math.random() * 0.5 + 0.5) * (this.width / 7);
-                    this.fireParticles.push({
-                        x: (Math.random() - 0.5) * this.width * 0.9,
-                        y: halfH,
-                        sizeX: startSize,
-                        sizeY: startSize * (Math.random() * 1.5 + 0.5),
-                        age: 0,
-                        maxAge: maxAge,
-                        speed: speed
-                    });
+
+            if (this.shape === 'fire') {
+                this.fireParticles.forEach(p => { p.y -= p.speed; p.age++; });
+                this.fireParticles = this.fireParticles.filter(p => p.age < p.maxAge);
+                for (let i = 0; i < particlesToSpawn; i++) {
+                    if (this.fireParticles.length < 300) {
+                        const halfH = this.height / 2;
+                        const maxAge = (Math.random() * 60 + 90);
+                        const speed = (this.height / maxAge) * (Math.random() * 0.2 + 0.8);
+                        const startSize = (Math.random() * 0.5 + 0.5) * (this.width / 7);
+
+                        const newParticle = {
+                            id: this.nextParticleId++,
+                            x: (Math.random() - 0.5) * this.width * 0.9, y: halfH,
+                            sizeX: startSize, sizeY: startSize * (Math.random() * 1.5 + 0.5),
+                            age: 0, maxAge: maxAge, speed: speed
+                        };
+
+                        let baseColor;
+                        const gradProgress = (newParticle.x + (this.width / 2)) / this.width;
+
+                        // FIX: This entire block is new. It correctly checks for all color modes.
+                        if (this.cycleColors) {
+                            const hue = (this.hue1 + newParticle.id * this.phaseOffset) % 360;
+                            baseColor = `hsl(${hue}, 100%, 50%)`;
+                        } else if (this.gradType === 'rainbow' || this.gradType === 'rainbow-radial') {
+                            const hue = (gradProgress * 360 + this.hue1) % 360;
+                            baseColor = `hsl(${hue}, 100%, 50%)`;
+                        } else if (this.gradType === 'random') {
+                            baseColor = Math.random() < 0.5 ? this.gradient.color1 : this.gradient.color2;
+                        } else if (this.gradType === 'alternating') {
+                            baseColor = newParticle.id % 2 === 0 ? this.gradient.color1 : this.gradient.color2;
+                        } else if (this.gradType === 'linear') {
+                            baseColor = lerpColor(this.gradient.color1, this.gradient.color2, gradProgress);
+                        } else { // Solid color is the default
+                            baseColor = this.gradient.color1;
+                        }
+                        newParticle.color = baseColor;
+                        this.fireParticles.push(newParticle);
+                    }
                 }
-            }
-        } else if (this.gradType === 'fire-radial') {
-            this.fireParticles.forEach(p => {
-                p.x += Math.cos(p.angle) * p.speed;
-                p.y += Math.sin(p.angle) * p.speed;
-                p.age++;
-            });
-            this.fireParticles = this.fireParticles.filter(p => p.age < p.maxAge);
+            } else { // 'fireRadial'
+                this.fireParticles.forEach(p => {
+                    p.x += Math.cos(p.angle) * p.speed;
+                    p.y += Math.sin(p.angle) * p.speed;
+                    p.age++;
+                });
+                this.fireParticles = this.fireParticles.filter(p => p.age < p.maxAge);
+                for (let i = 0; i < particlesToSpawn; i++) {
+                    if (this.fireParticles.length < 300) {
+                        const spreadMultiplier = this.fireSpread / 100.0;
+                        const maxRadius = Math.min(this.width, this.height) / 2;
+                        const maxAge = (Math.random() * 60 + 90);
+                        const speed = (maxRadius / maxAge) * spreadMultiplier;
+                        const startSize = (Math.random() * 0.5 + 0.5) * (Math.min(this.width, this.height) / 8);
+                        if (maxAge < 1) continue;
 
-            this.particleSpawnCounter += this.animationSpeed / 4.0;
-            const particlesToSpawn = Math.floor(this.particleSpawnCounter);
-            this.particleSpawnCounter -= particlesToSpawn;
+                        const newParticle = {
+                            id: this.nextParticleId++,
+                            x: 0, y: 0,
+                            sizeX: startSize, sizeY: startSize,
+                            age: 0, maxAge: maxAge,
+                            speed: speed, angle: Math.random() * 2 * Math.PI
+                        };
 
-            for (let i = 0; i < particlesToSpawn; i++) {
-                if (this.fireParticles.length < 300) {
-                    const spreadMultiplier = this.fireSpread / 100.0;
-                    const maxRadius = Math.min(this.width, this.height) / 2;
+                        let baseColor;
+                        const gradProgress = newParticle.angle / (2 * Math.PI);
 
-                    // Give particles a longer, more consistent lifetime
-                    const maxAge = (Math.random() * 60 + 90);
-
-                    // Calculate speed based on how far they need to go in that time
-                    const speed = (maxRadius / maxAge) * spreadMultiplier;
-
-                    const startSize = (Math.random() * 0.5 + 0.5) * (Math.min(this.width, this.height) / 8);
-
-                    this.fireParticles.push({
-                        x: 0, y: 0,
-                        sizeX: startSize, sizeY: startSize,
-                        age: 0, maxAge: maxAge,
-                        speed: speed, angle: Math.random() * 2 * Math.PI
-                    });
+                        // FIX: This entire block is new. It correctly checks for all color modes.
+                        if (this.cycleColors) {
+                            const hue = (this.hue1 + newParticle.id * this.phaseOffset) % 360;
+                            baseColor = `hsl(${hue}, 100%, 50%)`;
+                        } else if (this.gradType === 'rainbow' || this.gradType === 'rainbow-radial') {
+                            const hue = (gradProgress * 360 + this.hue1) % 360;
+                            baseColor = `hsl(${hue}, 100%, 50%)`;
+                        } else if (this.gradType === 'random') {
+                            baseColor = Math.random() < 0.5 ? this.gradient.color1 : this.gradient.color2;
+                        } else if (this.gradType === 'alternating') {
+                            baseColor = newParticle.id % 2 === 0 ? this.gradient.color1 : this.gradient.color2;
+                        } else if (this.gradType === 'radial' || this.gradType === 'linear') {
+                            baseColor = lerpColor(this.gradient.color1, this.gradient.color2, gradProgress);
+                        } else { // Solid color is the default
+                            baseColor = this.gradient.color1;
+                        }
+                        newParticle.color = baseColor;
+                        this.fireParticles.push(newParticle);
+                    }
                 }
             }
         } else {
@@ -1134,30 +1261,10 @@ class Shape {
             }
         };
 
-        if (this.gradType === 'fire' || this.gradType === 'fire-radial') {
+        if (this.shape === 'fire' || this.shape === 'fireRadial') {
             this.ctx.save();
             this.ctx.beginPath();
-            if (this.shape === 'circle') { this.ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, 2 * Math.PI); }
-            else if (this.shape === 'polygon') {
-                const rX = this.width / 2; const rY = this.height / 2; const sides = Math.max(3, this.sides);
-                for (let i = 0; i < sides; i++) {
-                    const a = (i / sides) * 2 * Math.PI - (Math.PI / 2);
-                    if (i === 0) this.ctx.moveTo(rX * Math.cos(a), rY * Math.sin(a));
-                    else this.ctx.lineTo(rX * Math.cos(a), rY * Math.sin(a));
-                }
-                this.ctx.closePath();
-            } else if (this.shape === 'star') {
-                const oRX = this.width / 2; const oRY = this.height / 2;
-                const iRX = oRX * (this.starInnerRadius / 100); const iRY = oRY * (this.starInnerRadius / 100);
-                const points = Math.max(3, this.points);
-                for (let i = 0; i < 2 * points; i++) {
-                    const rX = (i % 2 === 0) ? oRX : iRX; const rY = (i % 2 === 0) ? oRY : iRY;
-                    const a = (i / (2 * points)) * 2 * Math.PI - (Math.PI / 2);
-                    if (i === 0) this.ctx.moveTo(rX * Math.cos(a), rY * Math.sin(a));
-                    else this.ctx.lineTo(rX * Math.cos(a), rY * Math.sin(a));
-                }
-                this.ctx.closePath();
-            } else { this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height); }
+            this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
             this.ctx.clip();
 
             this.ctx.fillStyle = '#000000';
@@ -1166,35 +1273,20 @@ class Shape {
 
             this.fireParticles.forEach(p => {
                 const lifeRatio = 1.0 - (p.age / p.maxAge);
+
+                // FIX: This block now handles both HSL and HEX colors for the fade-out effect.
                 let particleColor;
-
-                if (this.cycleColors) {
-                    // When cycling, the hue shifts for the whole effect, and particles fade in brightness
-                    const hue = (this.hue1 + (p.x / this.width) * 45) % 360; // Base hue + positional variation
-                    const lightness = Math.sin(lifeRatio * Math.PI) * 50; // Fade in and out
-                    particleColor = `hsl(${hue}, 100%, ${lightness}%)`;
+                if (p.color.startsWith('hsl')) {
+                    // For HSL colors, we fade the lightness to create the ember effect.
+                    const baseHue = p.color.match(/hsl\((\d+\.?\d*)/)[1];
+                    const lightness = 50 * lifeRatio; // lifeRatio goes from 1.0 down to 0.0
+                    particleColor = `hsl(${baseHue}, 100%, ${lightness}%)`;
                 } else {
-                    // Use a 3-stage color progression to make Color 2 more visible
-                    const hotColor = this.gradient.color2;
-                    const coolColor = this.gradient.color1;
-                    const emberColor = '#000000';
-
-                    if (lifeRatio > 0.75) {
-                        // First 25% of life: Stay at the hot color
-                        particleColor = hotColor;
-                    } else if (lifeRatio > 0.25) {
-                        // Middle 50% of life: Fade from hot to cool
-                        const segmentRatio = (lifeRatio - 0.25) / 0.5;
-                        particleColor = lerpColor(coolColor, hotColor, segmentRatio);
-                    } else {
-                        // Last 25% of life: Fade from cool to ember
-                        const segmentRatio = lifeRatio / 0.25;
-                        particleColor = lerpColor(emberColor, coolColor, segmentRatio);
-                    }
+                    // For standard hex colors, we can use lerpColor to fade to black.
+                    particleColor = lerpColor('#000000', p.color, lifeRatio);
                 }
 
                 const opacity = Math.sin(lifeRatio * Math.PI);
-
                 this.ctx.beginPath();
                 this.ctx.fillStyle = particleColor;
                 this.ctx.globalAlpha = opacity;
@@ -1203,32 +1295,138 @@ class Shape {
             });
 
             this.ctx.restore();
-        } else if (this.shape === 'tetris' || this.shape === 'text' || this.shape === 'oscilloscope') {
-            if (this.shape === 'tetris') {
-                this.ctx.beginPath();
-                this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
-                this.ctx.clip();
-                this.tetrisBlocks.forEach((block, index) => {
+
+        } else if (this.shape === 'tetris') {
+            this.ctx.beginPath();
+            this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+            this.ctx.clip();
+            this.tetrisBlocks.forEach((block, index) => {
+                if (this.gradType === 'random') {
+                    this.ctx.fillStyle = this._getRandomColorForElement(index);
+                } else {
                     this.ctx.fillStyle = this._createLocalFillStyle(index);
-                    this.ctx.globalAlpha = block.life;
-                    const drawX = block.x - (this.width / 2);
-                    const drawY = block.y - (this.height / 2);
-                    const topY = Math.round(drawY);
-                    const bottomY = Math.round(drawY + block.h);
-                    this.ctx.fillRect(Math.round(drawX), topY, Math.ceil(block.w), bottomY - topY);
-                });
+                }
+                this.ctx.globalAlpha = block.life;
+                const drawX = block.x - (this.width / 2);
+                const drawY = block.y - (this.height / 2);
+                const topY = Math.round(drawY);
+                const bottomY = Math.round(drawY + block.h);
+                this.ctx.fillRect(Math.round(drawX), topY, Math.ceil(block.w), bottomY - topY);
+            });
+            this.ctx.globalAlpha = 1.0;
+
+        } else if (this.shape === 'text') {
+            this.ctx.translate(-centerX, -centerY);
+            this.ctx.fillStyle = this._createLocalFillStyle();
+            drawPixelText(this.ctx, this);
+
+        } else if (this.shape === 'oscilloscope') {
+            this.ctx.lineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
+            const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
+
+            if (this.oscDisplayMode === 'radial') {
+                const totalRadius = (Math.min(this.width, this.height) / 2) - (this.ctx.lineWidth / 2);
+                if (totalRadius > 0) {
+                    this.ctx.beginPath();
+                    const baseRadius = totalRadius * (0.5 + (this.pulseDepth || 0) / 100.0 * 0.5);
+                    const maxAmplitude = totalRadius - baseRadius;
+                    for (let i = 0; i <= 360; i++) {
+                        const angleRad = (i * Math.PI) / 180;
+                        const waveFuncAngle = 2 * Math.PI * this.frequency * (i / 360) + activeAnimationAngle * 2;
+                        let y_wave;
+                        switch (this.waveType) {
+                            case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
+                            case 'sawtooth': y_wave = (((waveFuncAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
+                            case 'triangle': y_wave = Math.asin(Math.sin(waveFuncAngle)) * (2 / Math.PI); break;
+                            case 'earthquake': y_wave = Math.sin(waveFuncAngle * 0.8) * 0.5 + Math.sin(waveFuncAngle * 2.2) * 0.3 + Math.sin(waveFuncAngle * 5.0) * 0.2; break;
+                            default: y_wave = Math.sin(waveFuncAngle); break;
+                        }
+                        const finalRadius = baseRadius + y_wave * maxAmplitude;
+                        if (i === 0) this.ctx.moveTo(finalRadius * Math.cos(angleRad), finalRadius * Math.sin(angleRad));
+                        else this.ctx.lineTo(finalRadius * Math.cos(angleRad), finalRadius * Math.sin(angleRad));
+                    }
+                    this.ctx.closePath();
+                    this.ctx.strokeStyle = this.enableStroke ? this._createLocalStrokeStyle() : this._createLocalFillStyle();
+                    this.ctx.stroke();
+                }
+            } else if (this.oscDisplayMode === 'seismic') {
+                const maxRadius = Math.min(this.width, this.height) / 2;
+                const waveCount = Math.max(1, this.waveCount);
+                const spacing = maxRadius / waveCount;
+                const totalCycle = maxRadius + spacing;
+                const progress = ((activeAnimationAngle * 10) % totalCycle + totalCycle) % totalCycle;
+                for (let i = waveCount - 1; i >= 0; i--) {
+                    let radius = (progress + i * spacing) % totalCycle;
+                    if (radius > maxRadius) continue;
+                    let alpha = 1.0 - (radius / maxRadius);
+                    const fadeInLimit = spacing;
+                    if (radius < fadeInLimit) alpha *= (radius / fadeInLimit);
+                    if (alpha <= 0) continue;
+
+                    this.ctx.globalAlpha = alpha;
+                    this.ctx.beginPath();
+                    if (this.waveStyle === 'wavy') {
+                        const points = Math.max(60, this.frequency * 20);
+                        const maxAmplitude = (this.pulseDepth / 100) * 20;
+                        const amplitude = maxAmplitude * (radius / maxRadius);
+                        const rotationalPhase = (activeAnimationAngle / 10.0) - (i * (this.phaseOffset / this.frequency) * (Math.PI / 2));
+                        for (let j = 0; j <= points; j++) {
+                            const angle = (j / points) * 2 * Math.PI;
+                            const freqAngle = angle * this.frequency;
+                            let y_wave;
+                            switch (this.waveType) {
+                                case 'square': y_wave = Math.sin(freqAngle) >= 0 ? 1 : -1; break;
+                                case 'sawtooth': y_wave = (((freqAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
+                                case 'triangle': y_wave = Math.asin(Math.sin(freqAngle)) * (2 / Math.PI); break;
+                                case 'earthquake': y_wave = Math.sin(freqAngle * 0.8) * 0.5 + Math.sin(freqAngle * 2.2) * 0.3 + Math.sin(freqAngle * 5.0) * 0.2; break;
+                                default: y_wave = Math.sin(freqAngle); break;
+                            }
+                            const r = radius + y_wave * amplitude;
+                            const finalAngle = angle + rotationalPhase;
+                            this.ctx[j === 0 ? 'moveTo' : 'lineTo'](Math.cos(finalAngle) * r, Math.sin(finalAngle) * r);
+                        }
+                    } else { this.ctx.arc(0, 0, radius, 0, 2 * Math.PI); }
+                    this.ctx.closePath();
+                    const style = this.gradType === 'random'
+                        ? this._getRandomColorForElement(i)
+                        : (this.enableStroke ? this._createLocalStrokeStyle(i) : this._createLocalFillStyle(i));
+                    this.ctx.strokeStyle = style;
+                    this.ctx.fillStyle = style;
+                    if (this.fillShape) { this.ctx.fill(); } else { this.ctx.stroke(); }
+                }
                 this.ctx.globalAlpha = 1.0;
-            } else if (this.shape === 'text') {
-                this.ctx.translate(-centerX, -centerY);
-                this.ctx.fillStyle = this._createLocalFillStyle();
-                drawPixelText(this.ctx, this);
-            } else { // Oscilloscope
-                this.ctx.translate(-centerX, -centerY);
-                this.ctx.lineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
+            } else { // Linear Mode
+                const halfW = this.width / 2;
+                const halfH = this.height / 2;
+                const amplitude = (this.height - this.ctx.lineWidth) / 2;
+
+                this.ctx.beginPath();
+                for (let i = 0; i <= this.width; i++) {
+                    const progress = i / this.width;
+                    const angle = 2 * Math.PI * this.frequency * progress + activeAnimationAngle;
+                    let y_wave;
+                    switch (this.waveType) {
+                        case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;
+                        case 'sawtooth': y_wave = (((angle / (Math.PI * 2)) % 1) * 2) - 1; break;
+                        case 'triangle': y_wave = Math.asin(Math.sin(angle)) * (2 / Math.PI); break;
+                        case 'earthquake': y_wave = Math.sin(angle * 0.8) * 0.5 + Math.sin(angle * 2.2) * 0.3 + Math.sin(angle * 5.0) * 0.2; break;
+                        default: y_wave = Math.sin(angle); break;
+                    }
+                    const px = -halfW + i;
+                    const py = -y_wave * amplitude;
+                    if (i === 0) this.ctx.moveTo(px, py); else this.ctx.lineTo(px, py);
+                }
+
+                if (this.fillShape) {
+                    this.ctx.lineTo(halfW, halfH);
+                    this.ctx.lineTo(-halfW, halfH);
+                    this.ctx.closePath();
+                    this.ctx.fillStyle = this._createLocalFillStyle();
+                    this.ctx.fill();
+                }
+
                 this.ctx.strokeStyle = this.enableStroke ? this._createLocalStrokeStyle() : this._createLocalFillStyle();
-                this.ctx.fillStyle = this._createLocalFillStyle();
-                // ... (Full oscilloscope drawing logic would be here) ...
-                this.ctx.stroke(); // Simplified representation of oscilloscope drawing
+                this.ctx.stroke();
             }
         } else {
             if (this.shape === 'ring') {
@@ -1243,7 +1441,7 @@ class Shape {
                         this.ctx.lineTo(Math.cos(endAngle) * iR, Math.sin(endAngle) * iR);
                         this.ctx.arc(0, 0, iR, endAngle, startAngle, true);
                         this.ctx.closePath();
-                        this.ctx.fillStyle = this._createLocalFillStyle(i);
+                        this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(i) : this._createLocalFillStyle(i);
                         this.ctx.fill();
                         applyStrokeInside();
                     }
@@ -1252,9 +1450,10 @@ class Shape {
                 const cellW = this.width / this.numberOfColumns; const cellH = this.height / this.numberOfRows;
                 for (let row = 0; row < this.numberOfRows; row++) {
                     for (let col = 0; col < this.numberOfColumns; col++) {
+                        const cellIndex = row * this.numberOfColumns + col;
                         this.ctx.beginPath();
                         this.ctx.rect(-this.width / 2 + col * cellW, -this.height / 2 + row * cellH, cellW, cellH);
-                        this.ctx.fillStyle = this._createLocalFillStyle(row * this.numberOfColumns + col);
+                        this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(cellIndex) : this._createLocalFillStyle(cellIndex);
                         this.ctx.fill();
                         applyStrokeInside();
                     }
@@ -1282,7 +1481,7 @@ class Shape {
                     }
                     this.ctx.closePath();
                 } else { this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height); }
-                this.ctx.fillStyle = this._createLocalFillStyle();
+                this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(0) : this._createLocalFillStyle();
                 this.ctx.fill();
                 applyStrokeInside();
             }
@@ -1364,6 +1563,17 @@ class ExportedShape extends Shape {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    if (!localStorage.getItem('termsAccepted')) {
+        var termsModal = new bootstrap.Modal(document.getElementById('accept-terms-modal'));
+        termsModal.show();
+    }
+    document.getElementById('accept-terms-btn').addEventListener('click', function () {
+        localStorage.setItem('termsAccepted', 'true');
+    });
+    document.getElementById('accept-terms2-btn').addEventListener('click', function () {
+        localStorage.setItem('termsAccepted', 'true');
+    });
+
     // --- DOM Element References ---
     const ADMIN_UID = 'zMj8mtfMjXeFMt072027JT7Jc7i1';
     const undoBtn = document.getElementById('undo-btn');
@@ -1385,58 +1595,34 @@ document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('controls-form');
     const outputScriptArea = document.getElementById('output-script');
     const copyBtn = document.getElementById('copy-btn');
-    // const copyToastEl = document.getElementById('copy-toast');
-    // const copyToast = new bootstrap.Toast(copyToastEl);
     const toolbar = document.getElementById('toolbar');
     const constrainBtn = document.getElementById('constrain-btn');
-    // const loadProjectModalEl = document.getElementById('load-project-modal');
-    // const loadProjectModal = new bootstrap.Modal(loadProjectModalEl);
-    // const loadProjectList = document.getElementById('load-project-list');
     const exportBtn = document.getElementById('export-btn');
-    // const saveProjectModalEl = document.getElementById('save-project-modal');
-    // const saveProjectModal = new bootstrap.Modal(saveProjectModalEl);
-    // const saveProjectNameInput = document.getElementById('save-project-name-input');
-    // const confirmSaveBtn = document.getElementById('confirm-save-btn');
-    // const existingProjectList = document.getElementById('save-project-existing-list');
-    // const notificationModalEl = document.getElementById('notification-modal');
-    // const notificationModal = new bootstrap.Modal(notificationModalEl);
-    // const notificationModalBody = document.getElementById('notification-modal-body');
-    // const confirmOverwriteModalEl = document.getElementById('confirm-overwrite-modal');
-    // const confirmOverwriteModal = new bootstrap.Modal(confirmOverwriteModalEl);
-    // const confirmOverwriteBtn = document.getElementById('confirm-overwrite-btn');
     const shareBtn = document.getElementById('share-btn');
     const addObjectBtn = document.getElementById('add-object-btn');
     const confirmImportBtn = document.getElementById('confirm-import-btn');
     const confirmBtn = document.getElementById('confirm-overwrite-btn');
-    // const confirmModalEl = document.getElementById('confirm-overwrite-modal');
     const coordsDisplay = document.getElementById('coords-display');
 
     // --- State Management ---
-    let isRestoring = false; // Prevents history recording during an undo/redo action
+    let isRestoring = false;
     let configStore = [];
     let objects = [];
     let selectedObjectIds = [];
     let oldSelection = [];
     let needsRedraw = false;
-    let isDragging = false;
-    let isResizing = false;
-    let isRotating = false;
-    let activeResizeHandle = null;
-    let dragStartX, dragStartY;
-    let initialDragState = [];
     let constrainToCanvas = true;
-    const projectPrefix = 'effectBuilderProject_';
     let verticalSplit, horizontalSplit;
     let lastHSizes, lastVSizes;
     let fps = 50;
     let fpsInterval;
     let then;
     let galleryListener = null;
-    let lastVisibleDoc = null; // For lazy loading pagination
-    let isLoadingMore = false; // To prevent multiple simultaneous loads
-    let currentGalleryQuery = null; // To store the query for lazy loading
-    let currentProjectDocId = null; // Tracks the current saved project ID
-    let confirmActionCallback = null; // For the confirmation modal
+    let lastVisibleDoc = null;
+    let isLoadingMore = false;
+    let currentGalleryQuery = null;
+    let currentProjectDocId = null;
+    let confirmActionCallback = null;
     let exportPayload = {};
     let propertyClipboard = null;
     let sourceObjectId = null;
@@ -1447,34 +1633,29 @@ document.addEventListener('DOMContentLoaded', function () {
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
-            'fireHeight', 'fireSpread'
         ],
         circle: [
             'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
-            'fireHeight', 'fireSpread'
         ],
         ring: [
             'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
-            'fireHeight', 'fireSpread'
         ],
         polygon: [
             'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'sides',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
-            'fireHeight', 'fireSpread'
         ],
         star: [
             'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'points', 'starInnerRadius',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
-            'fireHeight', 'fireSpread'
         ],
         text: [
             'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
@@ -1487,12 +1668,20 @@ document.addEventListener('DOMContentLoaded', function () {
             'lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape',
             'enableWaveAnimation', 'waveStyle', 'waveCount',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
-            'fireHeight', 'fireSpread'
         ],
         tetris: [
             'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed', 'phaseOffset',
             'tetrisAnimation', 'tetrisBlockCount', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce'
+        ],
+        fire: [
+            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'animationSpeed', 'cycleSpeed', 'scrollDir'
+        ],
+        // FIX: Standardized to 'fireRadial'.
+        'fireRadial': [
+            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread'
         ]
     };
 
@@ -2228,7 +2417,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const essentialProps = [
             'title', 'description', 'publisher', 'enableAnimation', 'gradType',
             'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed',
-            'text', 'fontSize', 'frequency', 'waveCount', 'pulseDepth', 'animationMode'
+            'text', 'fontSize', 'frequency', 'waveCount', 'pulseDepth', 'animationMode',
+            'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeAnimationSpeed', 'strokeCycleSpeed'
         ];
 
         const generalValues = getControlValues();
@@ -2278,27 +2468,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 const isEssential = essentialProps.includes(propName);
-                let liveValue = obj[propName];
+                let liveValue;
 
                 if (propName.startsWith('gradColor')) {
-                    const colorKey = propName.replace('gradColor', 'color');
-                    if (obj.gradient) liveValue = obj.gradient[colorKey];
+                    liveValue = obj.gradient[propName.replace('gradColor', 'color')];
+                } else if (propName.startsWith('strokeGradColor')) {
+                    liveValue = obj.strokeGradient[propName.replace('strokeGradColor', 'color')];
                 } else if (propName === 'scrollDir') {
                     liveValue = obj.scrollDirection;
+                } else if (propName === 'strokeScrollDir') {
+                    liveValue = obj.strokeScrollDir;
+                }
+                else {
+                    liveValue = obj[propName];
                 }
 
                 let exportValue = liveValue;
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth'];
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth'];
 
                 if (conf.type === 'number') {
                     const numValue = parseFloat(liveValue) || 0;
                     if (propsToScale.includes(propName) || propName === 'pulseDepth') {
                         exportValue = Math.round(numValue / 4);
                     } else if (propName === 'textAnimationSpeed') {
+                        // --- THE FIX IS HERE ---
+                        // The value is now correctly divided by 4 to match the canvas scaling.
                         exportValue = Math.round(numValue / 4);
-                    } else if (propName === 'animationSpeed') {
+                    } else if (propName === 'animationSpeed' || propName === 'strokeAnimationSpeed') {
                         exportValue = Math.round(numValue * 10);
-                    } else if (propName === 'cycleSpeed') {
+                    } else if (propName === 'cycleSpeed' || propName === 'strokeCycleSpeed') {
                         exportValue = Math.round(numValue * 50);
                     } else {
                         exportValue = Math.round(numValue);
@@ -2308,6 +2506,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (conf.type === 'textfield' && typeof liveValue === 'string') {
                     exportValue = liveValue.replace(/\n/g, '\\n');
                 }
+
+                if (exportValue === undefined) return;
 
                 allKeys.push(conf.property);
                 const isEditable = !minimize || isEssential;
@@ -2518,12 +2718,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         const showForGradient = obj.gradType === 'linear' || obj.gradType === 'radial';
                         if ((propName === 'useSharpGradient' || propName === 'gradientStop') && !showForGradient) return;
 
-                        // THIS IS THE CORRECTED LOGIC
                         if (propName === 'phaseOffset') {
                             const isGrid = obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1);
                             const isSeismic = obj.shape === 'oscilloscope' && obj.oscDisplayMode === 'seismic';
                             const isTetris = obj.shape === 'tetris';
-                            if (!isGrid && !isSeismic && !isTetris) return; // Now includes Tetris
+                            if (!isGrid && !isSeismic && !isTetris) return;
                         }
 
                         if (propName === 'animationSpeed' && currentShape === 'ring') return;
@@ -2535,7 +2734,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-
             const createSettingsGroup = (title, propList, displayCondition) => {
                 const group = document.createElement('div');
                 group.className = 'control-group card card-body bg-body mb-3';
@@ -2545,7 +2743,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 header.textContent = title;
                 group.appendChild(header);
                 objectConfigs.filter(c => propList.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => group.appendChild(createFormControl(c)));
-                if (group.children.length > 1) { // Only append if there are controls
+                if (group.children.length > 1) {
                     collapseWrapper.appendChild(group);
                 }
             };
@@ -2557,7 +2755,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const polygonSettings = ['sides'];
             const starSettings = ['points', 'starInnerRadius'];
             const strokeSettings = ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir'];
-            const fireSettings = ['fireHeight'];
             const radialFireSettings = ['fireSpread'];
             const textSubGroups = {
                 'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
@@ -2571,9 +2768,9 @@ document.addEventListener('DOMContentLoaded', function () {
             createSettingsGroup('Oscilloscope Settings', oscilloscopeSettings, currentShape === 'oscilloscope');
             createSettingsGroup('Grid Settings', gridSettings, currentShape === 'rectangle');
             createSettingsGroup('Tetris Animation Settings', tetrisSettings, currentShape === 'tetris');
-            createSettingsGroup('Stroke Settings', strokeSettings, obj.shape !== 'text' && obj.shape !== 'tetris');
-            createSettingsGroup('Fire Settings', fireSettings, obj.gradType === 'fire');
-            createSettingsGroup('Radial Fire Settings', radialFireSettings, obj.gradType === 'fire-radial');
+            createSettingsGroup('Stroke Settings', strokeSettings, obj.shape !== 'text' && obj.shape !== 'tetris' && obj.shape !== 'fire' && obj.shape !== 'fireRadial');
+            // FIX: Standardized to 'fireRadial' for the display condition.
+            createSettingsGroup('Radial Fire Settings', radialFireSettings, currentShape === 'fireRadial');
 
             const textGroup = document.createElement('div');
             textGroup.style.display = currentShape === 'text' ? 'block' : 'none';
@@ -3314,7 +3511,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function getDefaultObjectConfig(newId) {
         return [
             // Geometry & Transform
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris', description: 'The basic shape of the object.' },
+            // FIX: Standardized shape value to 'fireRadial' with a hyphen.
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fireRadial', description: 'The basic shape of the object.' },
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200' },
             { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320' },
@@ -3322,7 +3520,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360', description: 'The static rotation of the object in degrees.' },
 
             // Fill Style & Animation
-            { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,fire,fire-radial,alternating,random,rainbow,rainbow-radial', description: 'The type of color fill or gradient to use.' },
+            { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,alternating,random,rainbow,rainbow-radial', description: 'The type of color fill or gradient to use.' },
             { property: `obj${newId}_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false', description: 'If checked, creates a hard line between colors in Linear/Radial gradients instead of a smooth blend.' },
             { property: `obj${newId}_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100', description: 'For sharp gradients, this is the percentage width of the primary color band.' },
             { property: `obj${newId}_gradColor1`, label: `Object ${newId}: Color 1`, type: 'color', default: '#00ff00' },
@@ -3331,7 +3529,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop', description: 'Determines how the gradient animation behaves.' },
             { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '0', max: '100', description: 'Master speed for gradient scroll, random color flicker, and oscilloscope movement.' },
             { property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100', description: 'The continuous rotation speed of the object. Overrides static rotation.' },
-            { property: `obj${newId}_cycleSpeed`, label: `Object ${newId}: Color Cycle Speed`, type: 'number', default: '1', min: '0', max: '100', description: 'How fast the colors cycle when "Cycle Colors" is enabled.' },
+            { property: `obj${newId}_cycleSpeed`, label: `Object ${newId}: Color Animation Speed`, type: 'number', default: '1', min: '0', max: '100', description: 'How fast the colors cycle when "Cycle Colors" is enabled.' },
             { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down', description: 'The direction the gradient animation moves.' },
             { property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100', description: 'Offsets the gradient animation for each item in a grid, seismic wave, or Tetris block, creating a cascading effect.' },
 
@@ -3352,7 +3550,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_textAnimationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', min: '1', max: '100', default: '10' },
             { property: `obj${newId}_showTime`, label: `Object ${newId}: Show Current Time`, type: 'boolean', default: 'false', description: 'Overrides the text content to show the current time.' },
             { property: `obj${newId}_showDate`, label: `Object ${newId}: Show Current Date`, type: 'boolean', default: 'false', description: 'Overrides the text content to show the current date.' },
-            { property: `obj${newId}_lineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20' },
+            { property: `obj${newId}_lineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '1', min: '1', max: '20' },
             { property: `obj${newId}_waveType`, label: `Object ${newId}: Wave Type`, type: 'combobox', default: 'sine', values: 'sine,square,sawtooth,triangle,earthquake' },
             { property: `obj${newId}_frequency`, label: `Object ${newId}: Frequency / Wave Peaks`, type: 'number', default: '5', min: '1', max: '50' },
             { property: `obj${newId}_oscDisplayMode`, label: `Object ${newId}: Display Mode`, type: 'combobox', default: 'linear', values: 'linear,radial,seismic' },
@@ -3379,8 +3577,9 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_strokeAnimationSpeed`, label: `Object ${newId}: Stroke Animation Speed`, type: 'number', default: '2', min: '0', max: '100' },
             { property: `obj${newId}_strokeScrollDir`, label: `Object ${newId}: Stroke Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down' },
 
-            { property: `obj${newId}_fireHeight`, label: `Object ${newId}: Fire Height %`, type: 'number', default: '100', min: '1', max: '100', description: '(Fire) Controls the maximum height the flames will reach.' },
-            { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(Fire-Radial) Controls how far the flames spread from the center.' },
+            // --- FIRE PROPERTIES ---
+            // FIX: fireHeight property is removed completely.
+            { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fireRadial) Controls how far the flames spread from the center.' },
         ];
     }
 
