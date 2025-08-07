@@ -159,7 +159,7 @@ const FONT_DATA_5PX = {
  * @param {number} [wait=500] The number of milliseconds to delay.
  * @returns {function} Returns the new debounced function.
  */
-function debounce(func, wait = 500) {
+function debounce(func, wait = 100) {
     let timeout;
     return function (...args) {
         const context = this;
@@ -333,7 +333,7 @@ function getBoundingBox(obj) {
  * Manages its own state, including position, size, appearance, and animation properties.
  */
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, multipliers, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireHeight, fireSpread }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, multipliers, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireHeight, fireSpread, pixelArtData }) {
         this.id = id;
         this.name = name || `Object ${id}`;
         this.shape = shape;
@@ -748,17 +748,40 @@ class Shape {
             if (maxRadius <= 0) return 'black';
             const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
 
-            let wave;
+            // FIX: Replaced the flawed "jumping" animation logic with the continuous,
+            // looping algorithm used by the linear gradient. This creates a smooth pulse.
             if (this.animationMode.includes('bounce')) {
-                wave = 1 - Math.abs(2 * p - 1);
-            } else {
-                wave = p;
-            }
+                // Bounce logic remains a simple pulse from center to edge and back.
+                const wave = 1 - Math.abs(2 * p - 1);
+                const midPoint = 0.5 * wave;
+                grad.addColorStop(0, c1);
+                grad.addColorStop(midPoint, c2);
+                grad.addColorStop(1, c1);
+            } else { // Loop mode
+                const midPoint = 0.5; // Defines a 50/50 color split
+                const stops = [];
+                // This function defines the color at any point in the pattern
+                const getPatternColorAtTime = (time) => {
+                    const t = (time % 1.0 + 1.0) % 1.0; // Ensure time is always between 0.0 and 1.0
+                    if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
+                    return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
+                };
+                // Define the start and end colors based on the animation progress 'p'
+                stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
+                stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
 
-            const midPoint = 0.5 * wave;
-            grad.addColorStop(0, c1);
-            grad.addColorStop(midPoint, c2);
-            grad.addColorStop(1, c1);
+                // Add intermediate color stops to create a seamless repeating pattern
+                for (let i = -2; i <= 2; i++) {
+                    const c1_pos = i + p;
+                    const c2_pos = i + midPoint + p;
+                    if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
+                    if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
+                }
+                // Sort and apply the unique color stops to the gradient
+                const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
+                    .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
+                uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
+            }
             return grad;
         }
 
@@ -800,6 +823,7 @@ class Shape {
         return c1 || 'black';
     }
 
+    // In the Shape class, replace the entire _createLocalFillStyle function with this one.
     _createLocalFillStyle(phase = 0) {
         const c1 = this.cycleColors ? `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color1;
         const c2 = this.cycleColors ? `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color2;
@@ -815,12 +839,21 @@ class Shape {
             let lastCellIndex = 0;
             if (this.shape === 'tetris') {
                 lastCellIndex = Math.max(0, this.tetrisBlockCount - 1);
+            } else if (this.shape === 'pixel-art') {
+                try {
+                    const data = JSON.parse(this.pixelArtData);
+                    lastCellIndex = Math.max(0, (data.length * data[0].length) - 1);
+                } catch (e) {
+                    lastCellIndex = 0;
+                }
             } else {
                 lastCellIndex = Math.max(0, (this.numberOfRows * this.numberOfColumns) - 1);
             }
             phaseIndex = lastCellIndex - phase;
         }
 
+        // The animation progress 'p' is now the SOLE driver of animation.
+        // It becomes positive for right/down and negative for left/up.
         const effectiveScrollOffset = this.scrollOffset + phaseIndex * this.phaseOffset / 100.0;
         let p = (effectiveScrollOffset % 1.0 + 1.0) % 1.0;
 
@@ -829,28 +862,20 @@ class Shape {
             const halfH = this.height / 2;
             let grad;
 
-            switch (this.scrollDirection) {
-                case 'up':
-                    grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH);
-                    break;
-                case 'down':
-                    grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH);
-                    break;
-                case 'left':
-                    grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
-                    break;
-                case 'right':
-                default:
-                    grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
-                    break;
+            // FIX: The gradient vector is now defined consistently.
+            // The scroll direction is handled by the animation offset 'p'.
+            const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
+            if (isVertical) {
+                grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH); // Always top-to-bottom
+            } else {
+                grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0); // Always left-to-right
             }
 
             if (this.useSharpGradient) {
                 let p_bounce = p;
                 if (this.animationMode.includes('bounce')) {
                     const bounce_progress = (p < 0.5) ? (p * 2) : ((1 - p) * 2);
-                    const stopRatio = this.gradientStop / 100.0;
-                    p_bounce = bounce_progress * (1.0 - stopRatio);
+                    p_bounce = bounce_progress * (1.0 - (this.gradientStop / 100.0));
                 }
                 const stopRatio = this.gradientStop / 100.0;
                 const p1 = p_bounce;
@@ -899,52 +924,79 @@ class Shape {
         if (this.gradType === 'radial') {
             const maxRadius = Math.max(this.width, this.height) / 2;
             if (maxRadius <= 0) return 'black';
+
             const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
-            let wave;
+
             if (this.animationMode.includes('bounce')) {
-                wave = 1 - Math.abs(2 * p - 1);
-            } else {
-                wave = p;
-            }
-            if (this.useSharpGradient) {
-                const stopPoint = (this.gradientStop / 100) * wave;
-                grad.addColorStop(0, c1); grad.addColorStop(stopPoint, c1);
-                grad.addColorStop(Math.min(1, stopPoint + 0.001), c2); grad.addColorStop(1, c2);
-            } else {
-                const midPoint = this.gradientStop / 100.0;
-                const animatedMidPoint = midPoint * wave;
-                grad.addColorStop(0, c1);
-                grad.addColorStop(animatedMidPoint, c2);
-                grad.addColorStop(1, c1);
+                const wave = 1 - Math.abs(2 * p - 1);
+                if (this.useSharpGradient) {
+                    const stopPoint = (this.gradientStop / 100) * wave;
+                    grad.addColorStop(0, c1); grad.addColorStop(stopPoint, c1);
+                    grad.addColorStop(Math.min(1, stopPoint + 0.001), c2); grad.addColorStop(1, c2);
+                } else {
+                    const midPoint = this.gradientStop / 100.0;
+                    const animatedMidPoint = midPoint * wave;
+                    grad.addColorStop(0, c1);
+                    grad.addColorStop(animatedMidPoint, c2);
+                    grad.addColorStop(1, c1);
+                }
+            } else { // Loop mode
+                if (this.useSharpGradient) {
+                    const stopRatio = this.gradientStop / 100.0;
+                    const p1 = p;
+                    const p2 = p1 + stopRatio;
+                    if (p2 > 1.0) {
+                        const wrapped_p2 = p2 - 1.0;
+                        grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
+                        grad.addColorStop(wrapped_p2, c2); grad.addColorStop(p1, c2);
+                        grad.addColorStop(p1, c1); grad.addColorStop(1, c1);
+                    } else {
+                        grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
+                        grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
+                        grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
+                    }
+                } else { // Smooth looping logic
+                    const midPoint = this.gradientStop / 100.0;
+                    const stops = [];
+                    const getPatternColorAtTime = (time) => {
+                        const t = (time % 1.0 + 1.0) % 1.0;
+                        if (midPoint <= 0) return c2; if (midPoint >= 1) return c1;
+                        if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
+                        return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
+                    };
+                    stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
+                    stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
+                    for (let i = -2; i <= 2; i++) {
+                        const c1_pos = i + p;
+                        const c2_pos = i + midPoint + p;
+                        if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
+                        if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
+                    }
+                    const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
+                        .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
+                    uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
+                }
             }
             return grad;
         }
 
         if (this.gradType === 'rainbow' || this.gradType === 'rainbow-radial') {
-            const hueOffset = (this.hue1 * 10) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
+            const hueOffset = (this.scrollOffset * 360) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
             let grad;
 
+            // FIX: The gradient vector is now defined consistently, just like the linear gradient.
+            const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
             if (this.gradType === 'rainbow-radial') {
                 const maxRadius = Math.max(this.width, this.height) / 2;
                 if (maxRadius <= 0) return 'black';
                 grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
-            } else {
+            } else { // Linear Rainbow
                 const halfW = this.width / 2;
                 const halfH = this.height / 2;
-                switch (this.scrollDirection) {
-                    case 'up':
-                        grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH);
-                        break;
-                    case 'down':
-                        grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH);
-                        break;
-                    case 'left':
-                        grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
-                        break;
-                    case 'right':
-                    default:
-                        grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
-                        break;
+                if (isVertical) {
+                    grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH); // Always top-to-bottom
+                } else {
+                    grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0); // Always left-to-right
                 }
             }
 
@@ -958,6 +1010,7 @@ class Shape {
         return c1 || 'black';
     }
 
+    // In the Shape class, replace the entire updateAnimationState function with this one.
     updateAnimationState() {
         if (this.shape === 'tetris') {
             if (this.tetrisAnimation === 'fade-in-stack') {
@@ -1108,13 +1161,14 @@ class Shape {
 
         if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
             const increment = this.animationSpeed * this.gradientSpeedMultiplier;
-            const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? -1 : 1;
+            // FIX: This multiplier is now correct. Right/Down are positive, Left/Up are negative.
+            const directionMultiplier = (this.scrollDirection === 'left' || this.scrollDirection === 'up') ? -1 : 1;
             this.scrollOffset += increment * directionMultiplier;
         }
 
         if (this.strokeGradType !== 'solid' && this.strokeGradType !== 'alternating' && this.strokeGradType !== 'random') {
             const increment = this.strokeAnimationSpeed * this.gradientSpeedMultiplier;
-            const directionMultiplier = (this.strokeScrollDir === 'right' || this.strokeScrollDir === 'down') ? -1 : 1;
+            const directionMultiplier = (this.strokeScrollDir === 'left' || this.strokeScrollDir === 'up') ? -1 : 1;
             this.strokeScrollOffset += increment * directionMultiplier;
         }
 
@@ -1156,7 +1210,6 @@ class Shape {
                         let baseColor;
                         const gradProgress = (newParticle.x + (this.width / 2)) / this.width;
 
-                        // FIX: This entire block is new. It correctly checks for all color modes.
                         if (this.cycleColors) {
                             const hue = (this.hue1 + newParticle.id * this.phaseOffset) % 360;
                             baseColor = `hsl(${hue}, 100%, 50%)`;
@@ -1203,7 +1256,6 @@ class Shape {
                         let baseColor;
                         const gradProgress = newParticle.angle / (2 * Math.PI);
 
-                        // FIX: This entire block is new. It correctly checks for all color modes.
                         if (this.cycleColors) {
                             const hue = (this.hue1 + newParticle.id * this.phaseOffset) % 360;
                             baseColor = `hsl(${hue}, 100%, 50%)`;
@@ -1295,6 +1347,53 @@ class Shape {
             });
 
             this.ctx.restore();
+        } else if (this.shape === 'pixel-art') {
+            try {
+                const data = JSON.parse(this.pixelArtData);
+                if (!Array.isArray(data) || data.length === 0 || !Array.isArray(data[0])) {
+                    return; // Invalid data format
+                }
+
+                const rows = data.length;
+                const cols = data[0].length;
+                const cellWidth = this.width / cols;
+                const cellHeight = this.height / rows;
+
+                // For gradient-based fills, create the style once for the whole shape.
+                const isGradientFill = this.gradType === 'linear' || this.gradType === 'radial' || this.gradType.startsWith('rainbow');
+                if (isGradientFill) {
+                    this.ctx.fillStyle = this._createLocalFillStyle();
+                }
+
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const alphaValue = data[r] && data[r][c] ? data[r][c] : 0;
+
+                        if (alphaValue > 0) {
+                            // For non-gradient fills (like random or alternating), calculate the style for each cell.
+                            if (!isGradientFill) {
+                                const cellIndex = r * cols + c;
+                                this.ctx.fillStyle = this.gradType === 'random'
+                                    ? this._getRandomColorForElement(cellIndex)
+                                    : this._createLocalFillStyle(cellIndex);
+                            }
+
+                            this.ctx.globalAlpha = alphaValue;
+
+                            this.ctx.fillRect(
+                                -this.width / 2 + c * cellWidth,
+                                -this.height / 2 + r * cellHeight,
+                                cellWidth,
+                                cellHeight
+                            );
+                        }
+                    }
+                }
+                this.ctx.globalAlpha = 1.0;
+
+            } catch (e) {
+                // Silently fail if JSON is invalid.
+            }
 
         } else if (this.shape === 'tetris') {
             this.ctx.beginPath();
@@ -1682,6 +1781,11 @@ document.addEventListener('DOMContentLoaded', function () {
         'fireRadial': [
             'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread'
+        ],
+        'pixel-art': [
+            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+            'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
+            'cycleSpeed', 'scrollDir', 'phaseOffset', 'pixelArtData'
         ]
     };
 
@@ -1690,38 +1794,50 @@ document.addEventListener('DOMContentLoaded', function () {
     const galleryBody = galleryOffcanvasEl.querySelector('.offcanvas-body');
 
 
-    const history = {
+    const appHistory = {
         stack: [],
-        index: -1,
-        maxSize: 50, // Limit the number of undo steps
+        index: -1, // Start before the first state.
+        maxSize: 50,
 
         /**
-         * Pushes a new state to the history stack.
-         * @param {object} state - A snapshot of the current application state.
+         * Pushes a new state onto the history stack.
+         * If an undo has occurred, this will trim the "future" stack.
          */
         push(state) {
-            if (isRestoring) return; // Don't record history when restoring a state
+            if (isRestoring) return;
 
-            // If we've undone actions, new actions should clear the "redo" stack
+            // Don't push identical consecutive states
+            const currentState = this.stack[this.index];
+            if (currentState && JSON.stringify(state.objects) === JSON.stringify(currentState.objects)) {
+                return;
+            }
+
+            // If we've undone actions, we're now creating a new history branch,
+            // so we trim the "future" states.
             if (this.index < this.stack.length - 1) {
                 this.stack = this.stack.slice(0, this.index + 1);
             }
 
             this.stack.push(state);
 
-            // Trim the stack if it exceeds the maximum size
+            // Remove the oldest entry if the stack exceeds the max size
             if (this.stack.length > this.maxSize) {
                 this.stack.shift();
+            } else {
+                // Only increment the index if we didn't shift the array,
+                // otherwise the index would be off. If we did shift, the index
+                // is already at the correct final position.
+                this.index++;
             }
 
-            this.index = this.stack.length - 1;
             updateUndoRedoButtons();
         },
 
         /**
-         * Moves to the previous state in the history.
+         * Moves the history index back one step and restores that state.
          */
         undo() {
+            // Can only undo if we are not at the very first state
             if (this.index > 0) {
                 this.index--;
                 restoreState(this.stack[this.index]);
@@ -1729,17 +1845,82 @@ document.addEventListener('DOMContentLoaded', function () {
         },
 
         /**
-         * Moves to the next state in the history (redoes an undo).
+         * Moves the history index forward one step and restores that state.
          */
         redo() {
+            // Can only redo if we are not at the most recent state
             if (this.index < this.stack.length - 1) {
                 this.index++;
                 restoreState(this.stack[this.index]);
             }
-        },
+        }
     };
 
+    /**
+     * Updates the enabled/disabled state of the undo/redo buttons
+     * based on the current history index.
+     */
+    function updateUndoRedoButtons() {
+        // Disable undo if we're at the beginning of the stack
+        if (undoBtn) undoBtn.disabled = appHistory.index <= 0;
+        // Disable redo if we're at the end of the stack
+        if (redoBtn) redoBtn.disabled = appHistory.index >= appHistory.stack.length - 1;
+    }
+
+    /**
+     * Captures a serializable snapshot of the application's current state.
+     * @returns {object} The current state snapshot.
+     */
+    function getCurrentState() {
+        const plainObjects = JSON.parse(JSON.stringify(objects, (key, value) => {
+            if (key === 'ctx') return undefined;
+            return value;
+        }));
+        return {
+            objects: plainObjects,
+            selectedObjectIds: JSON.parse(JSON.stringify(selectedObjectIds)),
+        };
+    }
+
+    /**
+     * A wrapper function to simplify recording the current state to appHistory.
+     */
+    function recordHistory() {
+        appHistory.push(getCurrentState());
+    }
+
     const debouncedRecordHistory = debounce(recordHistory);
+
+    /**
+     * Restores the application to a given state snapshot.
+     * @param {object} state - The state object to restore.
+     */
+    function restoreState(state) {
+        isRestoring = true;
+        const generalValues = getControlValues();
+        objects = state.objects.map(data => new Shape({ ...data, ctx }));
+        selectedObjectIds = state.selectedObjectIds;
+        renderForm();
+        for (const key in generalValues) {
+            const el = form.elements[key];
+            if (el && !key.startsWith('obj')) {
+                if (el.type === 'checkbox') el.checked = generalValues[key];
+                else el.value = generalValues[key];
+            }
+        }
+        updateFormValuesFromObjects();
+        drawFrame();
+        updateToolbarState();
+        updateUndoRedoButtons();
+        isRestoring = false;
+    }
+
+    if (undoBtn) {
+        undoBtn.addEventListener('click', () => appHistory.undo());
+    }
+    if (redoBtn) {
+        redoBtn.addEventListener('click', () => appHistory.redo());
+    }
 
     async function toggleFeaturedStatus(buttonEl, docIdToToggle) {
         buttonEl.disabled = true;
@@ -1826,59 +2007,6 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.restore();
     }
 
-    /**
-     * Updates the enabled/disabled state of the undo/redo buttons.
-     */
-    function updateUndoRedoButtons() {
-        if (undoBtn) undoBtn.disabled = history.index <= 0;
-        if (redoBtn) redoBtn.disabled = history.index >= history.stack.length - 1;
-    }
-
-    /**
-     * Captures a serializable snapshot of the application's current state.
-     * @returns {object} The current state snapshot.
-     */
-    function getCurrentState() {
-        const plainObjects = JSON.parse(JSON.stringify(objects, (key, value) => {
-            if (key === 'ctx') return undefined;
-            return value;
-        }));
-        return {
-            objects: plainObjects,
-            selectedObjectIds: JSON.parse(JSON.stringify(selectedObjectIds)),
-        };
-    }
-
-    /**
-     * A wrapper function to simplify recording the current state to history.
-     */
-    function recordHistory() {
-        history.push(getCurrentState());
-    }
-
-    /**
-     * Restores the application to a given state snapshot.
-     * @param {object} state - The state object to restore.
-     */
-    function restoreState(state) {
-        isRestoring = true;
-        const generalValues = getControlValues();
-        objects = state.objects.map(data => new Shape({ ...data, ctx }));
-        selectedObjectIds = state.selectedObjectIds;
-        renderForm();
-        for (const key in generalValues) {
-            const el = form.elements[key];
-            if (el && !key.startsWith('obj')) {
-                if (el.type === 'checkbox') el.checked = generalValues[key];
-                else el.value = generalValues[key];
-            }
-        }
-        updateFormValuesFromObjects();
-        drawFrame();
-        updateToolbarState();
-        updateUndoRedoButtons();
-        isRestoring = false;
-    }
 
     /**
      * Clears all objects and resets the workspace to a blank state.
@@ -1889,9 +2017,9 @@ document.addEventListener('DOMContentLoaded', function () {
         configStore = configStore.filter(c => !(c.property || c.name).startsWith('obj'));
         selectedObjectIds = [];
 
-        // Reset the undo/redo history
-        history.stack = [];
-        history.index = -1;
+        // Reset the undo/redo appHistory
+        appHistory.stack = [];
+        appHistory.index = -1;
 
         // Reset the project title
         const titleInput = form.elements['title'];
@@ -1902,7 +2030,7 @@ document.addEventListener('DOMContentLoaded', function () {
         drawFrame();
         updateUndoRedoButtons();
 
-        // Record this new, blank state as the first history entry
+        // Record this new, blank state as the first appHistory entry
         recordHistory();
 
         // Clear any saved project ID from the session
@@ -2286,6 +2414,11 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {object} config - The configuration for the control.
      * @returns {HTMLDivElement} The generated form group element.
      */
+    /**
+ * Creates an HTML form control element based on a configuration object.
+ * @param {object} config - The configuration for the control.
+ * @returns {HTMLDivElement} The generated form group element.
+ */
     function createFormControl(config) {
         const {
             property, name, label, type, default: defaultValue,
@@ -2299,7 +2432,6 @@ document.addEventListener('DOMContentLoaded', function () {
         labelEl.className = 'form-label';
 
         if (label) {
-            // --- FIX: Use a clean label for both the text and the tooltip ---
             const cleanLabel = label.includes(':') ? label.substring(label.indexOf(':') + 1).trim() : label;
             labelEl.textContent = cleanLabel;
 
@@ -2382,9 +2514,21 @@ document.addEventListener('DOMContentLoaded', function () {
             textarea.id = controlId;
             textarea.className = 'form-control';
             textarea.name = controlId;
-            textarea.rows = 3;
+            textarea.rows = (type === 'textarea') ? 10 : 3; // Give more rows for pixel art data
             textarea.textContent = defaultValue.replace(/\\n/g, '\n');
             formGroup.appendChild(textarea);
+
+            // FIX: This block adds the link specifically for the pixelArtData control.
+            if (controlId.endsWith('_pixelArtData')) {
+                const toolLink = document.createElement('a');
+                toolLink.href = 'https://pixelart.nolliergb.com/';
+                toolLink.target = '_blank';
+                toolLink.rel = 'noopener noreferrer';
+                toolLink.className = 'form-text d-block mt-2';
+                toolLink.innerHTML = 'Open Pixel Art Data Generator <i class="bi bi-box-arrow-up-right"></i>';
+                formGroup.appendChild(toolLink);
+            }
+
         } else if (type === 'color') {
             const colorGroup = document.createElement('div');
             colorGroup.className = 'd-flex align-items-center';
@@ -2722,7 +2866,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             const isGrid = obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1);
                             const isSeismic = obj.shape === 'oscilloscope' && obj.oscDisplayMode === 'seismic';
                             const isTetris = obj.shape === 'tetris';
-                            if (!isGrid && !isSeismic && !isTetris) return;
+                            const isPixelArt = obj.shape === 'pixel-art';
+                            if (!isGrid && !isSeismic && !isTetris && !isPixelArt) return;
                         }
 
                         if (propName === 'animationSpeed' && currentShape === 'ring') return;
@@ -2756,11 +2901,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const starSettings = ['points', 'starInnerRadius'];
             const strokeSettings = ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir'];
             const radialFireSettings = ['fireSpread'];
+            const pixelArtSettings = ['pixelArtData'];
             const textSubGroups = {
                 'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
                 'Time & Date Display': ['showTime', 'showDate'],
                 'Text Animation': ['textAnimation', 'textAnimationSpeed']
             };
+
+
 
             createSettingsGroup('Ring Settings', ringSettings, currentShape === 'ring');
             createSettingsGroup('Polygon Settings', polygonSettings, currentShape === 'polygon');
@@ -2768,7 +2916,8 @@ document.addEventListener('DOMContentLoaded', function () {
             createSettingsGroup('Oscilloscope Settings', oscilloscopeSettings, currentShape === 'oscilloscope');
             createSettingsGroup('Grid Settings', gridSettings, currentShape === 'rectangle');
             createSettingsGroup('Tetris Animation Settings', tetrisSettings, currentShape === 'tetris');
-            createSettingsGroup('Stroke Settings', strokeSettings, obj.shape !== 'text' && obj.shape !== 'tetris' && obj.shape !== 'fire' && obj.shape !== 'fireRadial');
+            createSettingsGroup('Stroke Settings', strokeSettings, obj.shape !== 'text' && obj.shape !== 'tetris' && obj.shape !== 'fire' && obj.shape !== 'fireRadial' && obj.shape !== 'pixel-art');
+            createSettingsGroup('Pixel Art Settings', pixelArtSettings, currentShape === 'pixel-art');
             // FIX: Standardized to 'fireRadial' for the display condition.
             createSettingsGroup('Radial Fire Settings', radialFireSettings, currentShape === 'fireRadial');
 
@@ -3098,10 +3247,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const animationEnabled = getControlValues().enableAnimation;
 
-        // Draw all objects
-        objects.forEach(obj => {
+        // FIX: Replaced the forward forEach loop with a reverse for-loop.
+        // This draws the last object in the list first, so it appears at the back,
+        // perfectly matching the final rendering order in SignalRGB.
+        for (let i = objects.length - 1; i >= 0; i--) {
+            const obj = objects[i];
             if (obj instanceof Shape) {
-                // --- FIX: This now updates animation for ALL objects, not just unselected ones ---
                 if (animationEnabled) {
                     obj.updateAnimationState();
                 }
@@ -3109,9 +3260,9 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 console.error('Invalid object in objects array:', obj);
             }
-        });
+        }
 
-        // Draw selection UI for selected objects
+        // Draw selection UI for selected objects on top of everything.
         if (selectedObjectIds.length > 0) {
             selectedObjectIds.forEach(id => {
                 const obj = objects.find(o => o.id === id);
@@ -3182,7 +3333,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const values = {};
         const prefix = `obj${id}_`;
         const configs = configStore.filter(c => c.property && c.property.startsWith(prefix));
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+        // The complete list of properties that need to be scaled up by 4x.
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth'];
 
         configs.forEach(conf => {
             const key = conf.property.replace(prefix, '');
@@ -3197,10 +3349,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     value = el.value;
                 }
 
+                // Scale the appropriate properties from their UI value to the internal live value.
                 if (propsToScale.includes(key)) {
                     value *= 4;
                 }
 
+                // Correctly route properties to their nested objects.
                 if (key.startsWith('gradColor')) {
                     if (!values.gradient) values.gradient = {};
                     values.gradient[key.replace('grad', '').toLowerCase()] = value;
@@ -3217,14 +3371,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Apply correct scaling to all animation speeds
+        // Scale down the speed values for the live object.
         values.cycleSpeed = (values.cycleSpeed || 0) / 50.0;
         values.animationSpeed = (values.animationSpeed || 0) / 10.0;
         values.strokeCycleSpeed = (values.strokeCycleSpeed || 0) / 50.0;
         values.strokeAnimationSpeed = (values.strokeAnimationSpeed || 0) / 10.0;
+        // Note: textAnimationSpeed is a plain value and is not scaled.
 
-        // **THE FIX IS HERE:** The line that forced circles to have a 1:1 aspect ratio
-        // has been removed. We only enforce it for rings, which must be circular.
         if (values.shape === 'ring') {
             values.height = values.width;
         }
@@ -3253,12 +3406,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Reads all properties from the 'objects' array and updates the form inputs
-     * to match. This is used after an action on the canvas (drag/resize) or
-     * after undo/redo.
+     * Reads all properties from the 'objects' array and updates the form inputs to match.
      */
     function updateFormValuesFromObjects() {
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+        // The complete list of properties that need to be scaled down by 4x for the UI.
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth'];
 
         objects.forEach(obj => {
             const fieldset = form.querySelector(`fieldset[data-object-id="${obj.id}"]`);
@@ -3278,7 +3430,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             };
 
-            // This loop now correctly updates all form fields from the object's properties
             Object.keys(obj).forEach(key => {
                 if (key === 'rotationSpeed' && obj._pausedRotationSpeed !== null) {
                     return;
@@ -3291,16 +3442,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (key === 'strokeGradient') {
                     updateField('strokeGradColor1', obj.strokeGradient.color1);
                     updateField('strokeGradColor2', obj.strokeGradient.color2);
-                } else if (key === 'animationSpeed') {
+                } else if (key === 'animationSpeed' || key === 'strokeAnimationSpeed') {
+                    // FIX: textAnimationSpeed is no longer incorrectly scaled here.
                     updateField(key, obj[key] * 10);
-                } else if (key === 'cycleSpeed') {
-                    updateField(key, obj[key] * 50);
-                } else if (key === 'strokeAnimationSpeed') {
-                    updateField(key, obj[key] * 10);
-                } else if (key === 'strokeCycleSpeed') {
+                } else if (key === 'cycleSpeed' || key === 'strokeCycleSpeed') {
                     updateField(key, obj[key] * 50);
                 } else if (key === 'scrollDirection') {
                     updateField('scrollDir', obj.scrollDirection);
+                } else if (key === 'strokeScrollDir') {
+                    updateField('strokeScrollDir', obj.strokeScrollDir);
                 } else if (typeof obj[key] !== 'object' && typeof obj[key] !== 'function') {
                     updateField(key, obj[key]);
                 }
@@ -3512,7 +3662,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return [
             // Geometry & Transform
             // FIX: Standardized shape value to 'fireRadial' with a hyphen.
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fireRadial', description: 'The basic shape of the object.' },
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fireRadial,pixel-art', description: 'The basic shape of the object.' },
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200' },
             { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320' },
@@ -3580,6 +3730,9 @@ document.addEventListener('DOMContentLoaded', function () {
             // --- FIRE PROPERTIES ---
             // FIX: fireHeight property is removed completely.
             { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fireRadial) Controls how far the flames spread from the center.' },
+
+            // --- PIXEL ART PROPERTIES ---
+            { property: `obj${newId}_pixelArtData`, label: `Object ${newId}: Pixel Art Data`, type: 'textarea', default: '[[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],[0,0,0,0,0,0,0,0,0,0,0,1,0,0.5,0,1],[0,0,0,0,0,0,0,0,0,0,1,0,0.5,0,1,0],[0,0,0,0,0,0,0,0,0,1,0,0.5,0,1,0,0],[0,0,0,0,0,0,0,0,1,0,0.5,0,1,0,0,0],[0,0,1,1,0,0,0,1,0,0.5,0,1,0,0,0,0],[0,0,1,0.5,1,0,1,0,0.5,0,1,0,0,0,0,0],[0,0,0,1,0,1,0,0.5,0,1,0,0,0,0,0,0],[0,0,0,1,0,0,0.5,0,1,0,0,0,0,0,0,0],[0,0,0,0,1,0.5,0,1,0,0,0,0,0,0,0,0],[0,0,0,1,0.5,1,0,0,1,0,0,0,0,0,0,0],[0,0,1,0.5,1,0,1,1,0.5,1,0,0,0,0,0,0],[1,1,0.5,1,0,0,0,0,1,1,0,0,0,0,0,0],[1,0.5,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0]]', description: '(Pixel Art) A 2D array of alpha values (0 to 1) to draw.' },
         ];
     }
 
@@ -3610,8 +3763,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const bodyContent = '<body><canvas id="signalCanvas"></canvas></body>';
 
-            // Export both the base Shape and the overriding ExportedShape classes.
-            const shapeClasses = Shape.toString() + '\n\n' + ExportedShape.toString();
+            // This surgically replaces the hardcoded speed in the exported code only.
+            const shapeClassString = Shape.toString().replace(
+                'this.seismicAnimationSpeedMultiplier = 0.015;',
+                'this.seismicAnimationSpeedMultiplier = seismicAnimationSpeedMultiplier;'
+            );
+            const shapeClasses = shapeClassString + '\n\n' + ExportedShape.toString();
 
             const exportedScript = `
 document.addEventListener('DOMContentLoaded', function () {
@@ -3625,7 +3782,6 @@ document.addEventListener('DOMContentLoaded', function () {
     ${jsVars}
 
     // --- Speed Multipliers for SignalRGB Environment ---
-    // MODIFIED: These now use the global constants for easier management.
     let gradientSpeedMultiplier = ${EXPORT_GRADIENT_SPEED_MULTIPLIER};
     let shapeAnimationSpeedMultiplier = ${EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER};
     let seismicAnimationSpeedMultiplier = ${EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER};
@@ -3658,7 +3814,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }).filter(id => id !== null))];
         
         objects = uniqueIds.map(id => {
-            const config = { id: parseInt(id), ctx: ctx, gradient: {} };
+            const config = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
             const prefix = 'obj' + id + '_';
             
             allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
@@ -3670,8 +3826,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     if (propName.startsWith('gradColor')) {
                         config.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                    } else if (propName.startsWith('strokeGradColor')) {
+                        config.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
                     } else if (propName === 'scrollDir') {
                         config.scrollDirection = value;
+                    } else if (propName === 'strokeScrollDir') {
+                        config.strokeScrollDir = value;
                     } else {
                         config[propName] = value;
                     }
@@ -3680,7 +3840,9 @@ document.addEventListener('DOMContentLoaded', function () {
             
             config.animationSpeed = (config.animationSpeed || 0) / 10.0;
             config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
-            
+            config.strokeAnimationSpeed = (config.strokeAnimationSpeed || 0) / 10.0;
+            config.strokeCycleSpeed = (config.strokeCycleSpeed || 0) / 50.0;
+
             if (config.shape === 'ring' || config.shape === 'circle') {
                 config.height = config.width;
             }
@@ -3699,7 +3861,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         objects.forEach(obj => {
             const prefix = 'obj' + obj.id + '_';
-            const propsToUpdate = {};
+            const propsToUpdate = { gradient: {}, strokeGradient: {} };
 
             allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
                 const propName = key.substring(prefix.length);
@@ -3709,14 +3871,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (value === "false") value = false;
 
                     if (propName.startsWith('gradColor')) {
-                        if (!propsToUpdate.gradient) propsToUpdate.gradient = {};
                         propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                    } else if (propName.startsWith('strokeGradColor')) {
+                        propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
                     } else if (propName === 'scrollDir') {
                         propsToUpdate.scrollDirection = value;
+                    } else if (propName === 'strokeScrollDir') {
+                        propsToUpdate.strokeScrollDir = value;
                     } else if (propName === 'animationSpeed') {
                         propsToUpdate.animationSpeed = (value || 0) / 10.0;
                     } else if (propName === 'cycleSpeed') {
                         propsToUpdate.cycleSpeed = (value || 0) / 50.0;
+                    } else if (propName === 'strokeAnimationSpeed') {
+                        propsToUpdate.strokeAnimationSpeed = (value || 0) / 10.0;
+                    } else if (propName === 'strokeCycleSpeed') {
+                        propsToUpdate.strokeCycleSpeed = (value || 0) / 50.0;
                     } else {
                         propsToUpdate[propName] = value;
                     }
@@ -3931,13 +4100,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    if (undoBtn) {
-        undoBtn.addEventListener('click', () => history.undo());
-    }
-    if (redoBtn) {
-        redoBtn.addEventListener('click', () => history.redo());
-    }
-
     document.addEventListener('keydown', (e) => {
         const target = e.target;
 
@@ -4015,10 +4177,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.ctrlKey || e.metaKey) {
             if (e.key.toLowerCase() === 'z') {
                 e.preventDefault();
-                history.undo();
+                appHistory.undo();
             } else if (e.key.toLowerCase() === 'y') {
                 e.preventDefault();
-                history.redo();
+                appHistory.redo();
             }
         }
     });;
@@ -4079,24 +4241,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /**
      * Updates the global configStore with the current live state of all Shape objects.
-     * This ensures that when the project is saved, the most recent changes (including those
-     * made via direct canvas manipulation) are captured in the configuration blueprint.
      */
     function syncConfigStoreWithState() {
-        const currentValues = getControlValues(); // Get all current values from the form
+        const currentValues = getControlValues();
 
-        // Update all configs (general and object) with the latest values
         configStore.forEach(conf => {
             const key = conf.property || conf.name;
             const isObjectProp = key.startsWith('obj');
 
             if (!isObjectProp) {
-                // This is a general setting, like 'title' or 'description'
                 if (currentValues[key] !== undefined) {
                     conf.default = currentValues[key];
                 }
             } else {
-                // This is an object-specific setting
                 const match = key.match(/^obj(\d+)_/);
                 if (!match) return;
 
@@ -4108,32 +4265,40 @@ document.addEventListener('DOMContentLoaded', function () {
                 let liveValue;
 
                 if (propName.startsWith('gradColor')) {
-                    const colorKey = propName.replace('gradColor', 'color');
-                    liveValue = obj.gradient[colorKey];
+                    liveValue = obj.gradient[propName.replace('gradColor', 'color')];
+                } else if (propName.startsWith('strokeGradColor')) {
+                    liveValue = obj.strokeGradient[propName.replace('strokeGradColor', 'color')];
                 } else if (propName === 'scrollDir') {
                     liveValue = obj.scrollDirection;
+                } else if (propName === 'strokeScrollDir') {
+                    liveValue = obj.strokeScrollDir;
                 } else {
                     liveValue = obj[propName];
                 }
 
                 if (liveValue === undefined) return;
 
-                // Apply inverse scaling for UI values before saving
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
-                if (propsToScale.includes(propName)) {
-                    liveValue /= 4;
-                } else if (propName === 'animationSpeed') {
-                    liveValue *= 10;
-                } else if (propName === 'cycleSpeed') {
-                    liveValue *= 50;
+                const propsToScaleDown = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth'];
+                const animPropsToScaleUp = ['animationSpeed', 'strokeAnimationSpeed'];
+                const cyclePropsToScaleUp = ['cycleSpeed', 'strokeCycleSpeed'];
+
+                if (propsToScaleDown.includes(propName)) {
+                    liveValue /= 4.0;
+                } else if (animPropsToScaleUp.includes(propName)) {
+                    liveValue *= 10.0;
+                } else if (cyclePropsToScaleUp.includes(propName)) {
+                    liveValue *= 50.0;
                 }
+                // Note: textAnimationSpeed is correctly excluded from scaling here.
 
                 if (typeof liveValue === 'boolean') {
                     liveValue = String(liveValue);
-                }
-                if (typeof liveValue === 'number') {
+                } else if (typeof liveValue === 'number') {
                     liveValue = Math.round(liveValue);
+                } else if (propName === 'text' && typeof liveValue === 'string') {
+                    liveValue = liveValue.replace(/\n/g, '\\n');
                 }
+
                 conf.default = liveValue;
             }
         });
@@ -4416,395 +4581,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
     });
-
-
-    /**
-     * Handles mouse movement over the canvas for dragging, resizing, and cursor updates.
-     * @param {MouseEvent} e - The mousemove event object.
-     */
-    // canvasContainer.addEventListener('mousemove', e => {
-    //     if (coordsDisplay) {
-    //         const { x, y } = getCanvasCoordinates(e);
-    //         coordsDisplay.textContent = `${Math.round(x / 4)}, ${Math.round(y / 4)}: (${Math.round(x)}, ${Math.round(y)})`;
-    //     }
-
-    //     e.preventDefault();
-    //     const { x, y } = getCanvasCoordinates(e);
-
-    //     // --- FIX: Check for drag threshold before starting a drag ---
-    //     if (!isDragging && !isResizing && !isRotating && e.buttons === 1 && initialDragState.length > 0) {
-    //         const dx = x - dragStartX;
-    //         const dy = y - dragStartY;
-    //         if (Math.sqrt(dx * dx + dy * dy) > 5) { // Start dragging only after moving 5 pixels
-    //             isDragging = true;
-    //         }
-    //     }
-
-    //     if (isRotating) {
-    //         const initial = initialDragState[0];
-    //         const obj = objects.find(o => o.id === initial.id);
-    //         if (obj) {
-    //             const center = obj.getCenter();
-    //             const currentAngle = Math.atan2(y - center.y, x - center.x);
-    //             const angleDelta = currentAngle - initial.startAngle;
-    //             obj.rotation = (initial.initialObjectAngle + angleDelta) * 180 / Math.PI;
-    //             needsRedraw = true;
-    //         }
-    //     } else if (isResizing) {
-    //         // ... (resizing logic remains the same)
-    //         const SNAP_THRESHOLD = 10;
-    //         const initial = initialDragState[0];
-    //         let mouseX = x;
-    //         let mouseY = y;
-    //         snapLines = [];
-
-    //         if (!cachedSnapTargets) {
-    //             cachedSnapTargets = [];
-    //             const otherObjects = objects.filter(o => !selectedObjectIds.includes(o.id));
-    //             otherObjects.forEach(otherObj => cachedSnapTargets.push(...getWorldPoints(otherObj)));
-    //             cachedSnapTargets.push(
-    //                 { x: canvas.width / 2, y: canvas.height / 2, type: 'center' }, { x: canvas.width / 2, y: 0, type: 'edge' }, { x: canvas.width / 2, y: canvas.height, type: 'edge' }, { x: 0, y: canvas.height / 2, type: 'edge' }, { x: canvas.width, y: canvas.height / 2, type: 'edge' }
-    //             );
-    //         }
-
-    //         const unSnappedState = (() => {
-    //             const tempObj = new Shape({ ...objects.find(o => o.id === initial.id) });
-    //             const anchorPoint = initial.anchorPoint;
-    //             const resizeAngle = tempObj.getRenderAngle();
-    //             const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
-    //             if (isSideHandle) {
-    //                 const dragVecX = x - dragStartX;
-    //                 const dragVecY = y - dragStartY;
-    //                 const s = Math.sin(resizeAngle);
-    //                 const c = Math.cos(resizeAngle);
-    //                 let newWidth = initial.initialWidth;
-    //                 let newHeight = initial.initialHeight;
-    //                 let centerShiftX = 0, centerShiftY = 0;
-    //                 if (activeResizeHandle === 'right' || activeResizeHandle === 'left') {
-    //                     const change = dragVecX * c + dragVecY * s;
-    //                     newWidth += activeResizeHandle === 'left' ? -change : change;
-    //                     centerShiftX = (change / 2) * c;
-    //                     centerShiftY = (change / 2) * s;
-    //                 } else {
-    //                     const change = -dragVecX * s + dragVecY * c;
-    //                     newHeight += activeResizeHandle === 'top' ? -change : change;
-    //                     centerShiftX = (change / 2) * -s;
-    //                     centerShiftY = (change / 2) * c;
-    //                 }
-    //                 const initialCenter = { x: initial.initialX + initial.initialWidth / 2, y: initial.initialY + initial.initialHeight / 2 };
-    //                 const newCenterX = initialCenter.x + centerShiftX;
-    //                 const newCenterY = initialCenter.y + centerShiftY;
-    //                 tempObj.width = newWidth;
-    //                 tempObj.height = newHeight;
-    //                 tempObj.x = newCenterX - tempObj.width / 2;
-    //                 tempObj.y = newCenterY - tempObj.height / 2;
-    //             } else {
-    //                 const worldVecX = x - anchorPoint.x;
-    //                 const worldVecY = y - anchorPoint.y;
-    //                 const localVecX = worldVecX * Math.cos(-resizeAngle) - worldVecY * Math.sin(-resizeAngle);
-    //                 const localVecY = worldVecX * Math.sin(-resizeAngle) + worldVecY * Math.cos(-resizeAngle);
-    //                 const handleXSign = activeResizeHandle.includes('left') ? -1 : 1;
-    //                 const handleYSign = activeResizeHandle.includes('top') ? -1 : 1;
-    //                 tempObj.width = localVecX * handleXSign;
-    //                 tempObj.height = localVecY * handleYSign;
-    //                 const worldSizingVecX = (tempObj.width * handleXSign) * Math.cos(resizeAngle) - (tempObj.height * handleYSign) * Math.sin(resizeAngle);
-    //                 const worldSizingVecY = (tempObj.width * handleXSign) * Math.sin(resizeAngle) + (tempObj.height * handleYSign) * Math.cos(resizeAngle);
-    //                 const newCenterX = anchorPoint.x + worldSizingVecX / 2;
-    //                 const newCenterY = anchorPoint.y + worldSizingVecY / 2;
-    //                 tempObj.x = newCenterX - tempObj.width / 2;
-    //                 tempObj.y = newCenterY - tempObj.height / 2;
-    //             }
-    //             return tempObj;
-    //         })();
-
-    //         const ghostPoints = getWorldPoints(unSnappedState);
-
-    //         let pointsToSnap;
-    //         const isHorizontalOnly = activeResizeHandle === 'left' || activeResizeHandle === 'right';
-    //         const isVerticalOnly = activeResizeHandle === 'top' || activeResizeHandle === 'bottom';
-
-    //         if (isHorizontalOnly) {
-    //             pointsToSnap = ghostPoints.filter(p => p.handle && p.handle.includes(activeResizeHandle));
-    //         } else if (isVerticalOnly) {
-    //             pointsToSnap = ghostPoints.filter(p => p.handle && p.handle.includes(activeResizeHandle));
-    //         } else {
-    //             pointsToSnap = ghostPoints;
-    //         }
-
-    //         const hSnaps = [], vSnaps = [];
-
-    //         pointsToSnap.forEach(point => {
-    //             cachedSnapTargets.forEach(target => {
-    //                 if (point.type === target.type) {
-    //                     if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x });
-    //                     if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y });
-    //                 }
-    //             });
-    //         });
-
-    //         if (!isVerticalOnly && hSnaps.length > 0) {
-    //             hSnaps.sort((a, b) => a.dist - b.dist);
-    //             mouseX += hSnaps[0].adj;
-    //             snapLines.push({ type: 'vertical', x: hSnaps[0].line, duration: 2 });
-    //         }
-    //         if (!isHorizontalOnly && vSnaps.length > 0) {
-    //             vSnaps.sort((a, b) => a.dist - b.dist);
-    //             mouseY += vSnaps[0].adj;
-    //             snapLines.push({ type: 'horizontal', y: vSnaps[0].line, duration: 2 });
-    //         }
-
-    //         const obj = objects.find(o => o.id === initial.id);
-    //         if (obj) {
-    //             const finalState = (() => {
-    //                 const tempObj = new Shape({ ...objects.find(o => o.id === initial.id) });
-    //                 const anchorPoint = initial.anchorPoint;
-    //                 const resizeAngle = tempObj.getRenderAngle();
-    //                 const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
-    //                 if (isSideHandle) {
-    //                     const dragVecX = mouseX - dragStartX;
-    //                     const dragVecY = mouseY - dragStartY;
-    //                     const s = Math.sin(resizeAngle);
-    //                     const c = Math.cos(resizeAngle);
-    //                     let newWidth = initial.initialWidth;
-    //                     let newHeight = initial.initialHeight;
-    //                     let centerShiftX = 0, centerShiftY = 0;
-    //                     if (activeResizeHandle === 'right' || activeResizeHandle === 'left') {
-    //                         const change = dragVecX * c + dragVecY * s;
-    //                         newWidth += activeResizeHandle === 'left' ? -change : change;
-    //                         centerShiftX = (change / 2) * c;
-    //                         centerShiftY = (change / 2) * s;
-    //                     } else {
-    //                         const change = -dragVecX * s + dragVecY * c;
-    //                         newHeight += activeResizeHandle === 'top' ? -change : change;
-    //                         centerShiftX = (change / 2) * -s;
-    //                         centerShiftY = (change / 2) * c;
-    //                     }
-    //                     const initialCenter = { x: initial.initialX + initial.initialWidth / 2, y: initial.initialY + initial.initialHeight / 2 };
-    //                     const newCenterX = initialCenter.x + centerShiftX;
-    //                     const newCenterY = initialCenter.y + centerShiftY;
-    //                     tempObj.width = newWidth;
-    //                     tempObj.height = newHeight;
-    //                     tempObj.x = newCenterX - tempObj.width / 2;
-    //                     tempObj.y = newCenterY - tempObj.height / 2;
-    //                 } else {
-    //                     const worldVecX = mouseX - anchorPoint.x;
-    //                     const worldVecY = mouseY - anchorPoint.y;
-    //                     const localVecX = worldVecX * Math.cos(-resizeAngle) - worldVecY * Math.sin(-resizeAngle);
-    //                     const localVecY = worldVecX * Math.sin(-resizeAngle) + worldVecY * Math.cos(-resizeAngle);
-    //                     const handleXSign = activeResizeHandle.includes('left') ? -1 : 1;
-    //                     const handleYSign = activeResizeHandle.includes('top') ? -1 : 1;
-    //                     tempObj.width = localVecX * handleXSign;
-    //                     tempObj.height = localVecY * handleYSign;
-    //                     const worldSizingVecX = (tempObj.width * handleXSign) * Math.cos(resizeAngle) - (tempObj.height * handleYSign) * Math.sin(resizeAngle);
-    //                     const worldSizingVecY = (tempObj.width * handleXSign) * Math.sin(resizeAngle) + (tempObj.height * handleYSign) * Math.cos(resizeAngle);
-    //                     const newCenterX = anchorPoint.x + worldSizingVecX / 2;
-    //                     const newCenterY = anchorPoint.y + worldSizingVecY / 2;
-    //                     tempObj.x = newCenterX - tempObj.width / 2;
-    //                     tempObj.y = newCenterY - tempObj.height / 2;
-    //                 }
-    //                 return tempObj;
-    //             })();
-
-    //             obj.width = Math.round(Math.max(10, finalState.width));
-    //             obj.height = Math.round(Math.max(10, finalState.height));
-    //             obj.x = Math.round(finalState.x);
-    //             obj.y = Math.round(finalState.y);
-
-    //             // --- START: New Text Resizing Logic ---
-    //             if (obj.shape === 'text') {
-    //                 const isVerticalResize = activeResizeHandle.includes('top') || activeResizeHandle.includes('bottom');
-    //                 if (isVerticalResize) {
-    //                     obj._updateFontSizeFromHeight();
-    //                 }
-    //             }
-    //             // --- END: New Text Resizing Logic ---
-
-    //             if ((obj.shape === 'circle' || obj.shape === 'ring') && obj.width !== obj.height) {
-    //                 obj.width = obj.height = Math.max(obj.width, obj.height);
-    //             }
-    //             if (obj.shape === 'ring') {
-    //                 obj.innerDiameter = Math.round(obj.width * initial.diameterRatio);
-    //             }
-    //             needsRedraw = true;
-    //         }
-    //     } else if (isDragging) {
-    //         // ... (dragging logic remains the same)
-    //         snapLines = [];
-    //         const dx = x - dragStartX;
-    //         const dy = y - dragStartY;
-    //         const SNAP_THRESHOLD = 10;
-    //         let finalDx = dx;
-    //         let finalDy = dy;
-
-    //         if (!cachedSnapTargets) {
-    //             cachedSnapTargets = [];
-    //             const otherObjects = objects.filter(o => !selectedObjectIds.includes(o.id));
-    //             otherObjects.forEach(otherObj => {
-    //                 cachedSnapTargets.push(...getWorldPoints(otherObj));
-    //             });
-    //             cachedSnapTargets.push(
-    //                 { x: canvas.width / 2, y: canvas.height / 2, type: 'center' },
-    //                 { x: canvas.width / 2, y: 0, type: 'edge' }, { x: canvas.width / 2, y: canvas.height, type: 'edge' },
-    //                 { x: 0, y: canvas.height / 2, type: 'edge' }, { x: canvas.width, y: canvas.height / 2, type: 'edge' }
-    //             );
-    //         }
-
-    //         const hSnaps = [], vSnaps = [];
-
-    //         initialDragState.forEach(state => {
-    //             const obj = objects.find(o => o.id === state.id);
-    //             if (obj) {
-    //                 const originalX = obj.x;
-    //                 const originalY = obj.y;
-    //                 obj.x = state.x + dx;
-    //                 obj.y = state.y + dy;
-    //                 const selectedPoints = getWorldPoints(obj);
-    //                 selectedPoints.forEach(point => {
-    //                     cachedSnapTargets.forEach(target => {
-    //                         if (point.type === target.type) {
-    //                             if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x });
-    //                             if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y });
-    //                         }
-    //                     });
-    //                 });
-    //                 obj.x = originalX;
-    //                 obj.y = originalY;
-    //             }
-    //         });
-
-    //         if (hSnaps.length > 0) {
-    //             hSnaps.sort((a, b) => a.dist - b.dist);
-    //             finalDx += hSnaps[0].adj;
-    //             snapLines.push({ type: 'vertical', x: hSnaps[0].line, duration: 2 });
-    //         }
-    //         if (vSnaps.length > 0) {
-    //             vSnaps.sort((a, b) => a.dist - b.dist);
-    //             finalDy += vSnaps[0].adj;
-    //             snapLines.push({ type: 'horizontal', y: vSnaps[0].line, duration: 2 });
-    //         }
-
-    //         if (constrainToCanvas) {
-    //             let constrainedDx = finalDx;
-    //             let constrainedDy = finalDy;
-    //             initialDragState.forEach(state => {
-    //                 const obj = objects.find(o => o.id === state.id);
-    //                 if (obj) {
-    //                     const originalX = obj.x;
-    //                     const originalY = obj.y;
-    //                     obj.x = state.x + finalDx;
-    //                     obj.y = state.y + finalDy;
-    //                     const { minX, minY, maxX, maxY } = getBoundingBox(obj);
-    //                     obj.x = originalX;
-    //                     obj.y = originalY;
-    //                     if (minX < 0) constrainedDx = Math.max(constrainedDx, -minX + finalDx);
-    //                     if (maxX > canvas.width) constrainedDx = Math.min(constrainedDx, canvas.width - maxX + finalDx);
-    //                     if (minY < 0) constrainedDy = Math.max(constrainedDy, -minY + finalDy);
-    //                     if (maxY > canvas.height) constrainedDy = Math.min(constrainedDy, canvas.height - maxY + finalDy);
-    //                 }
-    //             });
-    //             finalDx = constrainedDx;
-    //             finalDy = constrainedDy;
-    //         }
-
-    //         initialDragState.forEach(state => {
-    //             const obj = objects.find(o => o.id === state.id);
-    //             if (obj) {
-    //                 obj.x = state.x + finalDx;
-    //                 obj.y = state.y + finalDy;
-    //             }
-    //         });
-    //         needsRedraw = true;
-    //     } else {
-    //         let cursor = 'default';
-    //         const topObject = [...objects].reverse().find(obj => obj.isPointInside(x, y));
-    //         if (topObject) {
-    //             cursor = 'pointer';
-    //             if (selectedObjectIds.includes(topObject.id)) {
-    //                 const handle = topObject.getHandleAtPoint(x, y);
-    //                 if (handle) {
-    //                     cursor = handle.cursor;
-    //                 } else if (!topObject.locked) {
-    //                     cursor = 'move';
-    //                 }
-    //             }
-    //         }
-    //         canvasContainer.style.cursor = cursor;
-    //     }
-    // });
-
-    /**
-     * Handles the mouseup event to finalize dragging or resizing operations.
-     * @param {MouseEvent} e - The mouseup event object.
-     */
-    // canvasContainer.addEventListener('mouseup', e => {
-    //     e.preventDefault();
-    //     const { x, y } = getCanvasCoordinates(e);
-
-    //     // This block now correctly handles selection logic for a "click" (no drag)
-    //     if (!isDragging && !isResizing && !isRotating) {
-    //         const hitObject = [...objects].reverse().find(obj => obj.isPointInside(x, y));
-
-    //         if (hitObject) {
-    //             const hitObjectId = hitObject.id;
-    //             const wasAlreadySelected = oldSelection.includes(hitObjectId);
-
-    //             if (e.shiftKey || e.ctrlKey || e.metaKey) {
-    //                 if (wasAlreadySelected) {
-    //                     // Deselect the clicked object
-    //                     selectedObjectIds = oldSelection.filter(id => id !== hitObjectId);
-    //                 } else {
-    //                     // Add the clicked object to the selection
-    //                     selectedObjectIds = [...oldSelection, hitObjectId];
-    //                 }
-    //             } else {
-    //                 // Standard single-click behavior
-    //                 selectedObjectIds = [hitObjectId];
-    //             }
-    //         } else {
-    //             // Clicked on empty space, deselect all
-    //             selectedObjectIds = [];
-    //         }
-    //     }
-
-    //     const wasManipulating = isDragging || isResizing || isRotating;
-
-    //     if (isRotating) {
-    //         const obj = objects.find(o => o.id === initialDragState[0].id);
-    //         if (obj) {
-    //             obj.rotation = Math.round(obj.rotation);
-    //         }
-    //     }
-
-    //     isDragging = false;
-    //     isResizing = false;
-    //     isRotating = false;
-    //     activeResizeHandle = null;
-    //     initialDragState = [];
-    //     snapLines = [];
-    //     cachedSnapTargets = null;
-
-    //     if (wasManipulating) {
-    //         selectedObjectIds.forEach(id => {
-    //             const obj = objects.find(o => o.id === id);
-    //             if (obj) {
-    //                 obj.x = Math.round(obj.x);
-    //                 obj.y = Math.round(obj.y);
-    //                 obj.width = Math.round(obj.width);
-    //                 obj.height = Math.round(obj.height);
-    //                 if (obj.innerDiameter) obj.innerDiameter = Math.round(obj.innerDiameter);
-    //                 if (obj.fontSize) obj.fontSize = Math.round(obj.fontSize);
-    //             }
-    //         });
-    //         updateFormValuesFromObjects();
-    //         recordHistory();
-    //     }
-
-    //     updateToolbarState();
-    //     syncPanelsWithSelection();
-    //     canvasContainer.style.cursor = 'default';
-    //     needsRedraw = true;
-    //     drawFrame();
-    // });
 
 
     /**
@@ -5130,27 +4906,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // This block handles the logic for a "click" action (when not dragging/resizing).
         if (!wasManipulating) {
-            const hitObject = [...objects].reverse().find(obj => obj.isPointInside(x, y));
+            const hitObject = objects.find(obj => obj.isPointInside(x, y));
 
             if (hitObject) {
                 const hitObjectId = hitObject.id;
                 const wasAlreadySelected = oldSelection.includes(hitObjectId);
 
                 if (e.shiftKey || e.ctrlKey || e.metaKey) {
-                    // Handle multi-selection with Shift or Ctrl/Cmd key.
                     if (wasAlreadySelected) {
-                        // If already selected, deselect it.
                         selectedObjectIds = oldSelection.filter(id => id !== hitObjectId);
                     } else {
-                        // If not selected, add it to the selection.
                         selectedObjectIds = [...oldSelection, hitObjectId];
                     }
                 } else {
-                    // Standard single-click behavior.
                     selectedObjectIds = [hitObjectId];
                 }
             } else {
-                // If you click on empty space, deselect all objects.
                 selectedObjectIds = [];
             }
         }
@@ -5172,7 +4943,7 @@ document.addEventListener('DOMContentLoaded', function () {
         cachedSnapTargets = null;
 
         if (wasManipulating) {
-            // Finalize object properties after manipulation and record history.
+            // Finalize object properties after manipulation.
             selectedObjectIds.forEach(id => {
                 const obj = objects.find(o => o.id === id);
                 if (obj) {
@@ -5185,6 +4956,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
             updateFormValuesFromObjects();
+
+            // FIX: Reverted to a direct, immediate call to recordHistory(). A mouse drag is a single
+            // action that should be saved instantly upon completion.
             recordHistory();
         }
 
