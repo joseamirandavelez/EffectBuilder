@@ -823,7 +823,12 @@ class Shape {
         return c1 || 'black';
     }
 
-    // In the Shape class, replace the entire _createLocalFillStyle function with this one.
+    /**
+     * Creates a fill style for the shape's context, delegating to specialized helper methods.
+     * This is the main dispatcher for creating gradients and fills.
+     * @param {number} [phase=0] - The phase offset for animations, used in grids/groups.
+     * @returns {CanvasGradient|string} The generated canvas style.
+     */
     _createLocalFillStyle(phase = 0) {
         const c1 = this.cycleColors ? `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color1;
         const c2 = this.cycleColors ? `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color2;
@@ -832,182 +837,183 @@ class Shape {
             return (phase % 2 === 0) ? c1 : c2;
         }
 
-        let phaseIndex = phase;
+        const phaseIndex = this._getPhaseIndex(phase);
+        const p = this._getAnimationProgress(phaseIndex);
+
+        switch (this.gradType) {
+            case 'linear':
+                return this._createLinearGradient(c1, c2, p);
+            case 'radial':
+                return this._createRadialGradient(c1, c2, p);
+            case 'rainbow':
+            case 'rainbow-radial':
+                const hueOffset = (this.scrollOffset * 360) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
+                return this._createRainbowGradient(hueOffset);
+            default: // solid
+                return c1 || 'black';
+        }
+    }
+
+    /**
+     * Determines the effective index for an animation phase, accounting for different animation modes.
+     * @param {number} phase - The base phase value.
+     * @returns {number} The calculated phase index.
+     * @private
+     */
+    _getPhaseIndex(phase) {
         if (this.animationMode === 'bounce-random') {
-            if (this.cellOrder && this.cellOrder.length > phase) { phaseIndex = this.cellOrder[phase]; }
-        } else if (this.animationMode === 'bounce-reversed' && this.isReversing) {
-            let lastCellIndex = 0;
+            return (this.cellOrder && this.cellOrder.length > phase) ? this.cellOrder[phase] : phase;
+        }
+        if (this.animationMode === 'bounce-reversed' && this.isReversing) {
+            let lastCellIndex = (this.numberOfRows * this.numberOfColumns) - 1;
             if (this.shape === 'tetris') {
                 lastCellIndex = Math.max(0, this.tetrisBlockCount - 1);
             } else if (this.shape === 'pixel-art') {
                 try {
                     const data = JSON.parse(this.pixelArtData);
                     lastCellIndex = Math.max(0, (data.length * data[0].length) - 1);
-                } catch (e) {
-                    lastCellIndex = 0;
-                }
-            } else {
-                lastCellIndex = Math.max(0, (this.numberOfRows * this.numberOfColumns) - 1);
+                } catch (e) { lastCellIndex = 0; }
             }
-            phaseIndex = lastCellIndex - phase;
+            return lastCellIndex - phase;
         }
+        return phase;
+    }
 
-        // The animation progress 'p' is now the SOLE driver of animation.
-        // It becomes positive for right/down and negative for left/up.
+    /**
+     * Calculates the animation progress value 'p' based on a phase index.
+     * @param {number} phaseIndex - The effective phase index.
+     * @returns {number} The animation progress value, always between 0.0 and 1.0.
+     * @private
+     */
+    _getAnimationProgress(phaseIndex) {
         const effectiveScrollOffset = this.scrollOffset + phaseIndex * this.phaseOffset / 100.0;
-        let p = (effectiveScrollOffset % 1.0 + 1.0) % 1.0;
+        return (effectiveScrollOffset % 1.0 + 1.0) % 1.0;
+    }
 
-        if (this.gradType === 'linear') {
-            const halfW = this.width / 2;
-            const halfH = this.height / 2;
-            let grad;
+    /**
+     * Creates a linear gradient style.
+     * @param {string} c1 - The first color.
+     * @param {string} c2 - The second color.
+     * @param {number} p - The animation progress (0.0 to 1.0).
+     * @returns {CanvasGradient} The generated linear gradient.
+     * @private
+     */
+    _createLinearGradient(c1, c2, p) {
+        const halfW = this.width / 2;
+        const halfH = this.height / 2;
+        const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
+        const grad = isVertical
+            ? this.ctx.createLinearGradient(0, -halfH, 0, halfH)
+            : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
 
-            // FIX: The gradient vector is now defined consistently.
-            // The scroll direction is handled by the animation offset 'p'.
-            const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
-            if (isVertical) {
-                grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH); // Always top-to-bottom
-            } else {
-                grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0); // Always left-to-right
+        if (this.useSharpGradient) {
+            let p_bounce = p;
+            if (this.animationMode.includes('bounce')) {
+                const bounce_progress = (p < 0.5) ? (p * 2) : ((1 - p) * 2);
+                p_bounce = bounce_progress * (1.0 - (this.gradientStop / 100.0));
             }
-
-            if (this.useSharpGradient) {
-                let p_bounce = p;
-                if (this.animationMode.includes('bounce')) {
-                    const bounce_progress = (p < 0.5) ? (p * 2) : ((1 - p) * 2);
-                    p_bounce = bounce_progress * (1.0 - (this.gradientStop / 100.0));
+            const stopRatio = this.gradientStop / 100.0;
+            const p1 = p_bounce;
+            const p2 = p1 + stopRatio;
+            if (p2 > 1.0) {
+                const wrapped_p2 = p2 - 1.0;
+                grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
+                grad.addColorStop(wrapped_p2, c2); grad.addColorStop(p1, c2);
+                grad.addColorStop(p1, c1); grad.addColorStop(1, c1);
+            } else {
+                grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
+                grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
+                grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
+            }
+        } else { // Smooth Linear Gradient
+            if (this.animationMode.includes('bounce')) {
+                grad.addColorStop(0, getPatternColor(0 - p, c1, c2));
+                grad.addColorStop(0.5, getPatternColor(0.5 - p, c1, c2));
+                grad.addColorStop(1, getPatternColor(1 - p, c1, c2));
+            } else { // Loop mode
+                const midPoint = this.gradientStop / 100.0;
+                const stops = [];
+                const getPatternColorAtTime = (time) => {
+                    const t = (time % 1.0 + 1.0) % 1.0;
+                    if (midPoint <= 0) return c2; if (midPoint >= 1) return c1;
+                    if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
+                    return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
+                };
+                stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
+                stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
+                for (let i = -2; i <= 2; i++) {
+                    const c1_pos = i + p;
+                    const c2_pos = i + midPoint + p;
+                    if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
+                    if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
                 }
-                const stopRatio = this.gradientStop / 100.0;
-                const p1 = p_bounce;
-                const p2 = p1 + stopRatio;
-                if (p2 > 1.0) {
-                    const wrapped_p2 = p2 - 1.0;
-                    grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
-                    grad.addColorStop(wrapped_p2, c2); grad.addColorStop(p1, c2);
-                    grad.addColorStop(p1, c1); grad.addColorStop(1, c1);
-                } else {
-                    grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
-                    grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
-                    grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
-                }
-                return grad;
-            } else { // Smooth Linear Gradient
-                if (this.animationMode.includes('bounce')) {
-                    grad.addColorStop(0, getPatternColor(0 - p, c1, c2));
-                    grad.addColorStop(0.5, getPatternColor(0.5 - p, c1, c2));
-                    grad.addColorStop(1, getPatternColor(1 - p, c1, c2));
-                } else { // Loop mode
-                    const midPoint = this.gradientStop / 100.0;
-                    const stops = [];
-                    const getPatternColorAtTime = (time) => {
-                        const t = (time % 1.0 + 1.0) % 1.0;
-                        if (midPoint <= 0) return c2; if (midPoint >= 1) return c1;
-                        if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
-                        return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
-                    };
-                    stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
-                    stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
-                    for (let i = -2; i <= 2; i++) {
-                        const c1_pos = i + p;
-                        const c2_pos = i + midPoint + p;
-                        if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
-                        if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
-                    }
-                    const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
-                        .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
-                    uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
-                }
-                return grad;
+                const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
+                    .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
+                uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
             }
         }
+        return grad;
+    }
 
-        if (this.gradType === 'radial') {
+    /**
+     * Creates a radial gradient style, resulting in a smooth pulse.
+     * @param {string} c1 - The first color.
+     * @param {string} c2 - The second color.
+     * @param {number} p - The animation progress (0.0 to 1.0).
+     * @returns {CanvasGradient} The generated radial gradient.
+     * @private
+     */
+    _createRadialGradient(c1, c2, p) {
+        const maxRadius = Math.max(this.width, this.height) / 2;
+        if (maxRadius <= 0) return 'black';
+
+        const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
+        const wave = 1 - Math.abs(2 * p - 1);
+
+        if (this.useSharpGradient) {
+            const stopPoint = (this.gradientStop / 100) * wave;
+            grad.addColorStop(0, c1);
+            grad.addColorStop(stopPoint, c1);
+            grad.addColorStop(Math.min(1, stopPoint + 0.001), c2);
+            grad.addColorStop(1, c2);
+        } else {
+            const midPoint = this.gradientStop / 100.0;
+            const animatedMidPoint = midPoint * wave;
+            grad.addColorStop(0, c1);
+            grad.addColorStop(animatedMidPoint, c2);
+            grad.addColorStop(1, c1);
+        }
+        return grad;
+    }
+
+    /**
+     * Creates a rainbow gradient style (linear or radial).
+     * @param {number} hueOffset - The starting hue for the rainbow animation.
+     * @returns {CanvasGradient} The generated rainbow gradient.
+     * @private
+     */
+    _createRainbowGradient(hueOffset) {
+        let grad;
+        const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
+
+        if (this.gradType === 'rainbow-radial') {
             const maxRadius = Math.max(this.width, this.height) / 2;
             if (maxRadius <= 0) return 'black';
-
-            const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
-
-            if (this.animationMode.includes('bounce')) {
-                const wave = 1 - Math.abs(2 * p - 1);
-                if (this.useSharpGradient) {
-                    const stopPoint = (this.gradientStop / 100) * wave;
-                    grad.addColorStop(0, c1); grad.addColorStop(stopPoint, c1);
-                    grad.addColorStop(Math.min(1, stopPoint + 0.001), c2); grad.addColorStop(1, c2);
-                } else {
-                    const midPoint = this.gradientStop / 100.0;
-                    const animatedMidPoint = midPoint * wave;
-                    grad.addColorStop(0, c1);
-                    grad.addColorStop(animatedMidPoint, c2);
-                    grad.addColorStop(1, c1);
-                }
-            } else { // Loop mode
-                if (this.useSharpGradient) {
-                    const stopRatio = this.gradientStop / 100.0;
-                    const p1 = p;
-                    const p2 = p1 + stopRatio;
-                    if (p2 > 1.0) {
-                        const wrapped_p2 = p2 - 1.0;
-                        grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
-                        grad.addColorStop(wrapped_p2, c2); grad.addColorStop(p1, c2);
-                        grad.addColorStop(p1, c1); grad.addColorStop(1, c1);
-                    } else {
-                        grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
-                        grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
-                        grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
-                    }
-                } else { // Smooth looping logic
-                    const midPoint = this.gradientStop / 100.0;
-                    const stops = [];
-                    const getPatternColorAtTime = (time) => {
-                        const t = (time % 1.0 + 1.0) % 1.0;
-                        if (midPoint <= 0) return c2; if (midPoint >= 1) return c1;
-                        if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
-                        return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
-                    };
-                    stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
-                    stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
-                    for (let i = -2; i <= 2; i++) {
-                        const c1_pos = i + p;
-                        const c2_pos = i + midPoint + p;
-                        if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
-                        if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
-                    }
-                    const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
-                        .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
-                    uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
-                }
-            }
-            return grad;
+            grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
+        } else {
+            const halfW = this.width / 2;
+            const halfH = this.height / 2;
+            grad = isVertical
+                ? this.ctx.createLinearGradient(0, halfH, 0, -halfH)
+                : this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
         }
 
-        if (this.gradType === 'rainbow' || this.gradType === 'rainbow-radial') {
-            const hueOffset = (this.scrollOffset * 360) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
-            let grad;
-
-            // FIX: The gradient vector is now defined consistently, just like the linear gradient.
-            const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
-            if (this.gradType === 'rainbow-radial') {
-                const maxRadius = Math.max(this.width, this.height) / 2;
-                if (maxRadius <= 0) return 'black';
-                grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
-            } else { // Linear Rainbow
-                const halfW = this.width / 2;
-                const halfH = this.height / 2;
-                if (isVertical) {
-                    grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH); // Always top-to-bottom
-                } else {
-                    grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0); // Always left-to-right
-                }
-            }
-
-            const numStops = 60;
-            for (let i = 0; i <= numStops; i++) {
-                const hue = (i * (360 / numStops) + hueOffset) % 360;
-                grad.addColorStop(i / numStops, `hsl(${hue}, 100%, 50%)`);
-            }
-            return grad;
+        const numStops = 60;
+        for (let i = 0; i <= numStops; i++) {
+            const hue = (i * (360 / numStops) + hueOffset) % 360;
+            grad.addColorStop(i / numStops, `hsl(${hue}, 100%, 50%)`);
         }
-        return c1 || 'black';
+        return grad;
     }
 
     // In the Shape class, replace the entire updateAnimationState function with this one.
@@ -1185,7 +1191,7 @@ class Shape {
         }
         this.animationAngle += animationIncrement;
 
-        if (this.shape === 'fire' || this.shape === 'fireRadial') {
+        if (this.shape === 'fire' || this.shape === 'fire-radial') {
             this.particleSpawnCounter += this.animationSpeed / 4.0;
             const particlesToSpawn = Math.floor(this.particleSpawnCounter);
             this.particleSpawnCounter -= particlesToSpawn;
@@ -1229,7 +1235,7 @@ class Shape {
                         this.fireParticles.push(newParticle);
                     }
                 }
-            } else { // 'fireRadial'
+            } else { // 'fire-radial'
                 this.fireParticles.forEach(p => {
                     p.x += Math.cos(p.angle) * p.speed;
                     p.y += Math.sin(p.angle) * p.speed;
@@ -1283,6 +1289,7 @@ class Shape {
         }
     }
 
+    // In main.js, replace the entire draw function in the Shape class
     draw(isSelected) {
         if (isSelected && this.rotationSpeed !== 0) {
             this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
@@ -1313,7 +1320,7 @@ class Shape {
             }
         };
 
-        if (this.shape === 'fire' || this.shape === 'fireRadial') {
+        if (this.shape === 'fire' || this.shape === 'fire-radial') {
             this.ctx.save();
             this.ctx.beginPath();
             this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
@@ -1326,15 +1333,12 @@ class Shape {
             this.fireParticles.forEach(p => {
                 const lifeRatio = 1.0 - (p.age / p.maxAge);
 
-                // FIX: This block now handles both HSL and HEX colors for the fade-out effect.
                 let particleColor;
                 if (p.color.startsWith('hsl')) {
-                    // For HSL colors, we fade the lightness to create the ember effect.
                     const baseHue = p.color.match(/hsl\((\d+\.?\d*)/)[1];
-                    const lightness = 50 * lifeRatio; // lifeRatio goes from 1.0 down to 0.0
+                    const lightness = 50 * lifeRatio;
                     particleColor = `hsl(${baseHue}, 100%, ${lightness}%)`;
                 } else {
-                    // For standard hex colors, we can use lerpColor to fade to black.
                     particleColor = lerpColor('#000000', p.color, lifeRatio);
                 }
 
@@ -1347,11 +1351,12 @@ class Shape {
             });
 
             this.ctx.restore();
+
         } else if (this.shape === 'pixel-art') {
             try {
                 const data = JSON.parse(this.pixelArtData);
                 if (!Array.isArray(data) || data.length === 0 || !Array.isArray(data[0])) {
-                    return; // Invalid data format
+                    return;
                 }
 
                 const rows = data.length;
@@ -1359,7 +1364,6 @@ class Shape {
                 const cellWidth = this.width / cols;
                 const cellHeight = this.height / rows;
 
-                // For gradient-based fills, create the style once for the whole shape.
                 const isGradientFill = this.gradType === 'linear' || this.gradType === 'radial' || this.gradType.startsWith('rainbow');
                 if (isGradientFill) {
                     this.ctx.fillStyle = this._createLocalFillStyle();
@@ -1368,9 +1372,7 @@ class Shape {
                 for (let r = 0; r < rows; r++) {
                     for (let c = 0; c < cols; c++) {
                         const alphaValue = data[r] && data[r][c] ? data[r][c] : 0;
-
                         if (alphaValue > 0) {
-                            // For non-gradient fills (like random or alternating), calculate the style for each cell.
                             if (!isGradientFill) {
                                 const cellIndex = r * cols + c;
                                 this.ctx.fillStyle = this.gradType === 'random'
@@ -1394,7 +1396,6 @@ class Shape {
             } catch (e) {
                 // Silently fail if JSON is invalid.
             }
-
         } else if (this.shape === 'tetris') {
             this.ctx.beginPath();
             this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
@@ -1420,10 +1421,10 @@ class Shape {
             drawPixelText(this.ctx, this);
 
         } else if (this.shape === 'oscilloscope') {
-            this.ctx.lineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
             const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
 
             if (this.oscDisplayMode === 'radial') {
+                this.ctx.lineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
                 const totalRadius = (Math.min(this.width, this.height) / 2) - (this.ctx.lineWidth / 2);
                 if (totalRadius > 0) {
                     this.ctx.beginPath();
@@ -1449,6 +1450,7 @@ class Shape {
                     this.ctx.stroke();
                 }
             } else if (this.oscDisplayMode === 'seismic') {
+                this.ctx.lineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
                 const maxRadius = Math.min(this.width, this.height) / 2;
                 const waveCount = Math.max(1, this.waveCount);
                 const spacing = maxRadius / waveCount;
@@ -1495,10 +1497,13 @@ class Shape {
                 }
                 this.ctx.globalAlpha = 1.0;
             } else { // Linear Mode
+                // FIX: This entire block is rewritten to separate fill and stroke operations.
                 const halfW = this.width / 2;
                 const halfH = this.height / 2;
-                const amplitude = (this.height - this.ctx.lineWidth) / 2;
+                const activeLineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
+                const amplitude = (this.height - activeLineWidth) / 2;
 
+                // 1. Create the path for the wave line.
                 this.ctx.beginPath();
                 for (let i = 0; i <= this.width; i++) {
                     const progress = i / this.width;
@@ -1516,15 +1521,26 @@ class Shape {
                     if (i === 0) this.ctx.moveTo(px, py); else this.ctx.lineTo(px, py);
                 }
 
+                // 2. If filling is enabled, create a new path for the fill and draw it.
                 if (this.fillShape) {
+                    this.ctx.save();
                     this.ctx.lineTo(halfW, halfH);
                     this.ctx.lineTo(-halfW, halfH);
                     this.ctx.closePath();
                     this.ctx.fillStyle = this._createLocalFillStyle();
                     this.ctx.fill();
+                    this.ctx.restore(); // Restore context, leaving original wave path intact.
                 }
 
-                this.ctx.strokeStyle = this.enableStroke ? this._createLocalStrokeStyle() : this._createLocalFillStyle();
+                // 3. Stroke the original wave path.
+                if (this.enableStroke) {
+                    this.ctx.strokeStyle = this._createLocalStrokeStyle();
+                    this.ctx.lineWidth = this.strokeWidth;
+                } else {
+                    // This handles the case where the shape is not filled but should still be visible.
+                    this.ctx.strokeStyle = this._createLocalFillStyle();
+                    this.ctx.lineWidth = this.lineWidth;
+                }
                 this.ctx.stroke();
             }
         } else {
@@ -1777,8 +1793,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir'
         ],
-        // FIX: Standardized to 'fireRadial'.
-        'fireRadial': [
+        // FIX: Standardized to 'fire-radial'.
+        'fire-radial': [
             'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread'
         ],
@@ -2916,10 +2932,9 @@ document.addEventListener('DOMContentLoaded', function () {
             createSettingsGroup('Oscilloscope Settings', oscilloscopeSettings, currentShape === 'oscilloscope');
             createSettingsGroup('Grid Settings', gridSettings, currentShape === 'rectangle');
             createSettingsGroup('Tetris Animation Settings', tetrisSettings, currentShape === 'tetris');
-            createSettingsGroup('Stroke Settings', strokeSettings, obj.shape !== 'text' && obj.shape !== 'tetris' && obj.shape !== 'fire' && obj.shape !== 'fireRadial' && obj.shape !== 'pixel-art');
+            createSettingsGroup('Stroke Settings', strokeSettings, obj.shape !== 'text' && obj.shape !== 'tetris' && obj.shape !== 'fire' && obj.shape !== 'fire-radial' && obj.shape !== 'pixel-art');
             createSettingsGroup('Pixel Art Settings', pixelArtSettings, currentShape === 'pixel-art');
-            // FIX: Standardized to 'fireRadial' for the display condition.
-            createSettingsGroup('Radial Fire Settings', radialFireSettings, currentShape === 'fireRadial');
+            createSettingsGroup('Radial Fire Settings', radialFireSettings, currentShape === 'fire-radial');
 
             const textGroup = document.createElement('div');
             textGroup.style.display = currentShape === 'text' ? 'block' : 'none';
@@ -2975,14 +2990,43 @@ document.addEventListener('DOMContentLoaded', function () {
             onEnd: function (evt) {
                 if (evt.oldIndex === evt.newIndex) return;
 
-                // Get the new order of object IDs from the DOM
+                // --- 1. Get the new visual order from the UI ---
                 const fieldsets = Array.from(form.querySelectorAll('fieldset[data-object-id]'));
                 const newOrderedIds = fieldsets.map(fieldset => parseInt(fieldset.dataset.objectId, 10));
 
-                // Reorder the main `objects` array to match the new visual order
+                // --- 2. Reorder the live `objects` array (this part was already correct) ---
                 objects.sort((a, b) => newOrderedIds.indexOf(a.id) - newOrderedIds.indexOf(b.id));
 
-                // The rendering loop respects the objects array order, so just redraw and save.
+                // --- 3. Reorder the `configStore` to match the new object order (THE FIX) ---
+                // Separate general configs from object-specific ones
+                const generalConfigs = configStore.filter(c => !(c.property || '').startsWith('obj'));
+                const objectConfigs = configStore.filter(c => (c.property || '').startsWith('obj'));
+
+                // Group all object configs by their ID
+                const configsById = {};
+                objectConfigs.forEach(conf => {
+                    const match = conf.property.match(/^obj(\d+)_/);
+                    if (match) {
+                        const id = parseInt(match[1], 10);
+                        if (!configsById[id]) {
+                            configsById[id] = [];
+                        }
+                        configsById[id].push(conf);
+                    }
+                });
+
+                // Rebuild the object configs list in the new order
+                const reorderedObjectConfigs = [];
+                newOrderedIds.forEach(id => {
+                    if (configsById[id]) {
+                        reorderedObjectConfigs.push(...configsById[id]);
+                    }
+                });
+
+                // Combine them back into the main configStore
+                configStore = [...generalConfigs, ...reorderedObjectConfigs];
+
+                // --- 4. Update the application state ---
                 updateObjectsFromForm();
                 drawFrame();
                 recordHistory();
@@ -3540,10 +3584,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Loads a workspace state from a provided object.
+     * Loads a workspace state from a provided object, ensuring all properties,
+     * including complex shapes and strokes, are correctly applied.
      * @param {object} workspace - The workspace object to load.
-     * @param {object[]} workspace.configs - The array of configuration objects.
-     * @param {object[]} workspace.objects - The array of saved object states (name, id, locked).
      */
     function loadWorkspace(workspace) {
         currentProjectMetadata = {
@@ -3552,18 +3595,12 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const loadedConfigs = workspace.configs;
-        let objectIds;
-
-        if (workspace.objects && workspace.objects.length > 0) {
-            objectIds = workspace.objects.map(obj => obj.id);
-        } else {
-            objectIds = [...new Set(
-                loadedConfigs
-                    .map(c => (c.property || '').match(/^obj(\d+)_/))
-                    .filter(match => match)
-                    .map(match => parseInt(match[1], 10))
-            )];
-        }
+        const objectIds = [...new Set(
+            loadedConfigs
+                .map(c => (c.property || '').match(/^obj(\d+)_/))
+                .filter(match => match)
+                .map(match => parseInt(match[1], 10))
+        )];
 
         const mergedConfigStore = loadedConfigs.filter(c => !(c.property || '').startsWith('obj'));
 
@@ -3572,12 +3609,24 @@ document.addEventListener('DOMContentLoaded', function () {
             const savedObjectConfigs = loadedConfigs.filter(c => c.property && c.property.startsWith(`obj${id}_`));
             const savedPropsMap = new Map(savedObjectConfigs.map(c => [c.property, c]));
 
+            // This is the updated merging logic
             const mergedObjectConfigs = fullDefaultConfig.map(defaultConf => {
                 if (savedPropsMap.has(defaultConf.property)) {
                     const savedConf = savedPropsMap.get(defaultConf.property);
-                    const updatedConf = { ...defaultConf };
-                    updatedConf.default = savedConf.default;
-                    return updatedConf;
+
+                    // Start with the up-to-date default configuration...
+                    const mergedConf = { ...defaultConf };
+
+                    // ...then override it with the user's saved data.
+                    // This preserves the user's selection and custom name...
+                    if (savedConf.hasOwnProperty('default')) {
+                        mergedConf.default = savedConf.default;
+                    }
+                    if (savedConf.hasOwnProperty('label')) {
+                        mergedConf.label = savedConf.label;
+                    }
+                    // ...while always using the latest 'values', 'min', 'max', etc. from the default.
+                    return mergedConf;
                 }
                 return defaultConf;
             });
@@ -3585,6 +3634,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         configStore = mergedConfigStore;
+
         createInitialObjects(objectIds);
 
         if (workspace.objects) {
@@ -3618,19 +3668,27 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }
-
-        // FIX: This block sets the author name in the "Developer Name" field.
         if (workspace.creatorName) {
             const publisherInput = form.elements['publisher'];
-            if (publisherInput) {
-                publisherInput.value = workspace.creatorName;
-            }
+            if (publisherInput) publisherInput.value = workspace.creatorName;
         }
+
+        objects.forEach(obj => {
+            const finalProps = getFormValuesForObject(obj.id);
+            delete finalProps.shape;
+            obj.update(finalProps);
+        });
 
         currentProjectDocId = workspace.docId || null;
         updateShareButtonState();
         generateOutputScript();
         drawFrame();
+
+        if (workspace.docId) {
+            const newUrl = `${window.location.pathname}?effectId=${workspace.docId}`;
+            const effectTitle = workspace.name || "SRGB Effect Builder";
+            window.history.pushState({ effectId: workspace.docId }, effectTitle, newUrl);
+        }
     }
 
     /**
@@ -3661,8 +3719,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function getDefaultObjectConfig(newId) {
         return [
             // Geometry & Transform
-            // FIX: Standardized shape value to 'fireRadial' with a hyphen.
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fireRadial,pixel-art', description: 'The basic shape of the object.' },
+            // FIX: Standardized shape value to 'fire-radial' with a hyphen.
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art', description: 'The basic shape of the object.' },
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200' },
             { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320' },
@@ -3729,7 +3787,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // --- FIRE PROPERTIES ---
             // FIX: fireHeight property is removed completely.
-            { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fireRadial) Controls how far the flames spread from the center.' },
+            { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fire-radial) Controls how far the flames spread from the center.' },
 
             // --- PIXEL ART PROPERTIES ---
             { property: `obj${newId}_pixelArtData`, label: `Object ${newId}: Pixel Art Data`, type: 'textarea', default: '[[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],[0,0,0,0,0,0,0,0,0,0,0,1,0,0.5,0,1],[0,0,0,0,0,0,0,0,0,0,1,0,0.5,0,1,0],[0,0,0,0,0,0,0,0,0,1,0,0.5,0,1,0,0],[0,0,0,0,0,0,0,0,1,0,0.5,0,1,0,0,0],[0,0,1,1,0,0,0,1,0,0.5,0,1,0,0,0,0],[0,0,1,0.5,1,0,1,0,0.5,0,1,0,0,0,0,0],[0,0,0,1,0,1,0,0.5,0,1,0,0,0,0,0,0],[0,0,0,1,0,0,0.5,0,1,0,0,0,0,0,0,0],[0,0,0,0,1,0.5,0,1,0,0,0,0,0,0,0,0],[0,0,0,1,0.5,1,0,0,1,0,0,0,0,0,0,0],[0,0,1,0.5,1,0,1,1,0.5,1,0,0,0,0,0,0],[1,1,0.5,1,0,0,0,0,1,1,0,0,0,0,0,0],[1,0.5,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0]]', description: '(Pixel Art) A 2D array of alpha values (0 to 1) to draw.' },
@@ -4535,7 +4593,7 @@ document.addEventListener('DOMContentLoaded', function () {
         dragStartY = y;
         oldSelection = [...selectedObjectIds]; // Store selection state at the start of the click
 
-        // Check for handle interaction on a single selected object
+        // Check for handle interaction on a single selected object first
         if (selectedObjectIds.length === 1) {
             const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
             if (selectedObject) {
@@ -4562,25 +4620,47 @@ document.addEventListener('DOMContentLoaded', function () {
                             diameterRatio: selectedObject.shape === 'ring' ? selectedObject.innerDiameter / selectedObject.width : 1
                         }];
                     }
-                    return;
+                    return; // Exit early since we're manipulating a handle
                 }
             }
         }
 
-        // Prepare for a potential drag
-        const hitObject = [...objects].reverse().find(obj => obj.isPointInside(x, y));
-        if (hitObject && !hitObject.locked) {
-            // If the clicked object is not already selected, the new selection will be just this object.
-            // Prepare the drag state based on this potential new selection.
-            const isSelected = selectedObjectIds.includes(hitObject.id);
-            const dragSelection = isSelected ? selectedObjectIds : [hitObject.id];
+        // --- THIS IS THE CRITICAL FIX ---
+        // If not interacting with a handle, determine the new selection state immediately.
+        // By reversing the objects array, we check from the top-most rendered object down.
+        const hitObject = [...objects].find(obj => obj.isPointInside(x, y));
 
-            initialDragState = dragSelection.map(id => {
+        if (hitObject && !hitObject.locked) {
+            const isSelected = selectedObjectIds.includes(hitObject.id);
+            // If the clicked object is not already selected, make it the new selection.
+            if (!isSelected) {
+                // For multi-select, check for Shift/Ctrl key, otherwise just select the single object.
+                if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                    selectedObjectIds.push(hitObject.id);
+                } else {
+                    selectedObjectIds = [hitObject.id];
+                }
+                // Update UI immediately to reflect the new selection
+                updateToolbarState();
+                syncPanelsWithSelection();
+                drawFrame();
+            }
+
+            // Now, prepare the drag state based on the *correct* selection.
+            isDragging = true; // Set isDragging to true to prepare for movement.
+            initialDragState = selectedObjectIds.map(id => {
                 const obj = objects.find(o => o.id === id);
                 return { id, x: obj.x, y: obj.y };
             });
+
+        } else if (!hitObject) {
+            // If clicking on an empty area, clear the selection.
+            selectedObjectIds = [];
+            updateToolbarState();
+            syncPanelsWithSelection();
+            drawFrame();
         }
-    });
+    });;
 
 
     /**
@@ -5321,11 +5401,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Generates a small data URL thumbnail from the main canvas.
+     * Generates a small data URL thumbnail from the main canvas, ensuring no selection UI is visible.
      * @param {HTMLCanvasElement} sourceCanvas - The main canvas to capture.
      * @returns {string} A dataURL string of the thumbnail.
      */
     function generateThumbnail(sourceCanvas, width = 200) {
+        // Temporarily store the current selection
+        const originalSelection = [...selectedObjectIds];
+
+        // Deselect all objects to hide the selection UI
+        selectedObjectIds = [];
+        drawFrame(); // Redraw the canvas without selection boxes
+
         const thumbnailCanvas = document.createElement('canvas');
         const thumbWidth = width;
         const thumbHeight = (sourceCanvas.height / sourceCanvas.width) * thumbWidth;
@@ -5333,11 +5420,15 @@ document.addEventListener('DOMContentLoaded', function () {
         thumbnailCanvas.height = thumbHeight;
         const thumbCtx = thumbnailCanvas.getContext('2d');
 
-        // Draw the main canvas onto the smaller thumbnail canvas
+        // Draw the clean main canvas onto the smaller thumbnail canvas
         thumbCtx.drawImage(sourceCanvas, 0, 0, thumbWidth, thumbHeight);
+        const dataUrl = thumbnailCanvas.toDataURL('image/jpeg', 0.7);
 
-        // Return the thumbnail as a JPEG data URL for smaller size in the database
-        return thumbnailCanvas.toDataURL('image/jpeg', 0.7);
+        // Restore the original selection and redraw the canvas for the user
+        selectedObjectIds = originalSelection;
+        drawFrame();
+
+        return dataUrl;
     }
 
     /**
@@ -5464,7 +5555,9 @@ document.addEventListener('DOMContentLoaded', function () {
         updateShareButtonState();
         const newId = objects.length > 0 ? (Math.max(...objects.map(o => o.id))) + 1 : 1;
         const newConfigs = getDefaultObjectConfig(newId);
-        configStore.push(...newConfigs);
+
+        // This is the corrected line:
+        configStore.unshift(...newConfigs);
 
         const state = {
             id: newId,
@@ -5499,13 +5592,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const newShape = new Shape({ ...state, ctx });
-        objects.push(newShape);
+        objects.unshift(newShape);
 
         renderForm();
         updateFormValuesFromObjects();
         drawFrame();
         recordHistory();
-    });;
+    });
 
     /**
      * CONFIRMATION MODAL: General listener for confirm button.

@@ -4,12 +4,25 @@ body {
     overflow: hidden;
 }
 
-/* Ensure the right-panel-top fills its space and uses flex column */
 #right-panel-top {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1; /* Ensure it grows vertically within #right-panel */
-    min-height: 0; /* Allow it to shrink */
+    overflow: hidden; /* Prevent scrollbars */
+    display: flex; /* Center the canvas */
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+    width: 100%; /* Fill available width from Split */
+    height: 100%; /* Fill available height from Split */
+    box-sizing: border-box; /* Ensure padding/borders don’t affect size */
+}
+
+#signalCanvas {
+    height: 100%; /* Match container’s height */
+    width: auto; /* Calculate width based on aspect ratio */
+    max-width: 100%; /* Constrain width to container */
+    max-height: 100%; /* Constrain height to container (safeguard) */
+    aspect-ratio: 320 / 200; /* Maintain 320/200 (8/5) aspect ratio */
+    display: block; /* Prevent inline spacing issues */
+    object-fit: contain; /* Ensure uniform scaling */
+    box-sizing: border-box; /* Ensure canvas respects its own borders/padding */
 }
 
 /* This is the div that contains #canvas-container */
@@ -34,17 +47,9 @@ body {
     max-height: 100%;
     width: auto; /* Allow width to be determined by content or max-width */
     height: auto; /* Allow height to be determined by content or max-height */
-    aspect-ratio: 1280 / 800; /* This maintains the aspect ratio */
+    aspect-ratio: 320 / 200; /* This maintains the aspect ratio */
 
     /* Removed display: flex; justify-content; align-items; from here, as its parent now centers it. */
-}
-
-#signalCanvas {
-    display: block; /* Prevent margin issues */
-    /* Removed fixed width and height from here as well */
-    width: 100%; /* Make canvas fill its container */
-    height: 100%; /* Make canvas fill its container */
-    /* Removed max-width and max-height as it's already 100% of its container */
 }
 
 .legend-button {
