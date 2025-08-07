@@ -8,6 +8,10 @@ let activeResizeHandle = null;
 let initialDragState = [];
 let dragStartX = 0;
 let dragStartY = 0;
+let audioContext;
+let analyser;
+let frequencyData;
+let isAudioSetup = false;
 
 let gradientSpeedMultiplier = 1 / 400;
 let shapeAnimationSpeedMultiplier = 0.05;
@@ -333,14 +337,15 @@ function getBoundingBox(obj) {
  * Manages its own state, including position, size, appearance, and animation properties.
  */
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, multipliers, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireHeight, fireSpread, pixelArtData }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing }) {
+        // --- ALL properties are assigned here first ---
         this.id = id;
         this.name = name || `Object ${id}`;
-        this.shape = shape;
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
+        this.shape = shape || 'rectangle';
+        this.x = x || 0;
+        this.y = y || 0;
+        this.width = width || 200;
+        this.height = height || 152;
         this.rotation = rotation || 0;
         this.gradType = gradType || 'solid';
         this.gradient = gradient || { color1: '#000000', color2: '#000000' };
@@ -353,8 +358,6 @@ class Shape {
         this.hue1 = 0;
         this.hue2 = 90;
         this.scrollOffset = 0;
-
-        // Stroke Properties
         this.enableStroke = enableStroke || false;
         this.strokeWidth = strokeWidth || 2;
         this.strokeGradType = strokeGradType || 'solid';
@@ -366,13 +369,12 @@ class Shape {
         this.strokeHue1 = 0;
         this.strokeHue2 = 90;
         this.strokeScrollOffset = 0;
-
         this.isReversing = false;
         this.animationState = 'scrolling';
         this.waitTimer = 0;
-        this.innerDiameter = innerDiameter;
-        this.angularWidth = angularWidth;
-        this.numberOfSegments = numberOfSegments;
+        this.innerDiameter = innerDiameter || 100;
+        this.angularWidth = angularWidth || 20;
+        this.numberOfSegments = numberOfSegments || 12;
         this.rotationSpeed = rotationSpeed || 0;
         this.rotationAngle = 0;
         this.animationAngle = Math.random() * 2 * Math.PI;
@@ -388,13 +390,9 @@ class Shape {
         this.rotationHandleOffset = -30;
         this.rotationHandleRadius = 15;
         this.handles = [{ name: 'top-left', cursor: 'nwse-resize' }, { name: 'top', cursor: 'ns-resize' }, { name: 'top-right', cursor: 'nesw-resize' }, { name: 'left', cursor: 'ew-resize' }, { name: 'right', cursor: 'ew-resize' }, { name: 'bottom-left', cursor: 'nesw-resize' }, { name: 'bottom', cursor: 'ns-resize' }, { name: 'bottom-right', cursor: 'nwse-resize' }];
-
         this.randomElementState = null;
-
         this.text = text || 'Hello';
-        this.fontFamily = fontFamily || 'Arial';
         this.fontSize = fontSize || 60;
-        this.fontWeight = fontWeight || 'bold';
         this.textAlign = textAlign || 'center';
         this.pixelFont = pixelFont || 'small';
         this.textAnimation = textAnimation || 'none';
@@ -412,9 +410,8 @@ class Shape {
         this.fillShape = fillShape || false;
         this.enableWaveAnimation = enableWaveAnimation !== undefined ? enableWaveAnimation : true;
         this.oscDisplayMode = oscDisplayMode || 'linear';
-        this.waveMinY = this.y;
-        this.waveMaxY = this.y + this.height;
         this._pausedRotationSpeed = null;
+        this._pausedAnimationSpeed = null; 
         this.waveStyle = waveStyle || 'wavy';
         this.waveCount = waveCount || 5;
         this.tetrisBlockCount = tetrisBlockCount || 10;
@@ -429,19 +426,83 @@ class Shape {
         this.sides = sides || 6;
         this.points = points || 5;
         this.starInnerRadius = starInnerRadius || 50;
-        this.gradientSpeedMultiplier = gradientSpeedMultiplier;
-        this.shapeAnimationSpeedMultiplier = shapeAnimationSpeedMultiplier;
-        this.seismicAnimationSpeedMultiplier = 0.015;
-        this.tetrisSpeedDivisor = 10.0;
-        this.exportedGradientSpeedMultiplier = 0.0025;
-        this.exportedShapeAnimationSpeedMultiplier = 0.05;
-        this.exportedSeismicAnimationSpeedMultiplier = 0.00375;
-        this.exportedTetrisSpeedDivisor = 40.0;
         this.fireParticles = [];
-        this.fireHeight = fireHeight || 100;
         this.fireSpread = fireSpread || 100;
         this.particleSpawnCounter = 0;
-        this.nextParticleId = 0; // Add this line
+        this.nextParticleId = 0;
+        this.pixelArtData = pixelArtData || '[[1]]';
+
+        // --- ADD THESE NEW PROPERTIES ---
+        // Sound Reactivity Properties
+        this.enableAudioReactivity = enableAudioReactivity || false;
+        this.audioTarget = audioTarget || 'size';
+        this.audioMetric = audioMetric || 'volume';
+        this.audioSensitivity = audioSensitivity || 50;
+        this.audioSmoothing = audioSmoothing || 50;
+        this.smoothedAudioValue = 0;
+
+        // Store base properties for non-destructive reactivity
+        this.baseWidth = this.width;
+        this.baseHeight = this.height;
+        this.baseRotation = this.rotation;
+        this.baseAnimationSpeed = this.animationSpeed;
+        this.baseStrokeWidth = this.strokeWidth;
+        this.baseGradient = { ...this.gradient };
+    }
+
+    _applyAudioReactivity(audioData) {
+        // Step 1: Always reset live properties to their base state at the start of each frame.
+        this.width = this.baseWidth;
+        this.height = this.baseHeight;
+        this.rotation = this.baseRotation;
+        this.animationSpeed = this.baseAnimationSpeed;
+        this.strokeWidth = this.baseStrokeWidth;
+        this.gradient = { ...this.baseGradient };
+
+        // Step 2: If reactivity is disabled for this object, or no audio data, we're done.
+        if (!this.enableAudioReactivity || !audioData) {
+            return;
+        }
+
+        // Step 3: Calculate the smoothed audio value.
+        const rawAudioValue = audioData[this.audioMetric] || 0;
+        const smoothingFactor = 1.0 - (this.audioSmoothing / 100.0);
+        if (typeof this.smoothedAudioValue !== 'number' || !isFinite(this.smoothedAudioValue)) {
+            this.smoothedAudioValue = 0;
+        }
+        this.smoothedAudioValue = this.smoothedAudioValue * smoothingFactor + rawAudioValue * (1.0 - smoothingFactor);
+
+        const sensitivity = this.audioSensitivity / 100.0;
+        const reactiveValue = this.smoothedAudioValue * sensitivity;
+
+        // Step 4: Apply the reactive value to the chosen live property.
+        switch (this.audioTarget) {
+            case 'size':
+                const scale = 1.0 + reactiveValue;
+                this.width = this.baseWidth * scale;
+                this.height = this.baseHeight * scale;
+                break;
+            case 'width':
+                this.width = this.baseWidth * (1.0 + reactiveValue);
+                break;
+            case 'height':
+                this.height = this.baseHeight * (1.0 + reactiveValue);
+                break;
+            case 'rotation':
+                this.rotation = this.baseRotation + (reactiveValue * 360);
+                break;
+            case 'animationSpeed':
+                this.animationSpeed = this.baseAnimationSpeed * (1.0 + reactiveValue * 5.0);
+                break;
+            case 'strokeWidth':
+                this.strokeWidth = this.baseStrokeWidth * (1.0 + reactiveValue);
+                break;
+            case 'brightness':
+                const bright_c1 = lerpColor("#000000", this.baseGradient.color1, reactiveValue);
+                const bright_c2 = lerpColor("#000000", this.baseGradient.color2, reactiveValue);
+                this.gradient = { color1: bright_c1, color2: bright_c2 };
+                break;
+        }
     }
 
     getDisplayText() {
@@ -626,43 +687,65 @@ class Shape {
     }
 
     update(props) {
+        // --- Store original state for calculations ---
+        const oldWidth = this.width;
+        const oldHeight = this.height;
+
+        // --- PRE-UPDATE LOGIC ---
         const textChanged = props.text !== undefined && props.text !== this.text;
         const animationChanged = props.textAnimation !== undefined && props.textAnimation !== this.textAnimation;
         if ((textChanged && this.textAnimation === 'typewriter') || (animationChanged && props.textAnimation === 'typewriter')) {
             this.visibleCharCount = 0;
             this.typewriterWaitTimer = 0;
         }
-
         const animationTypeChanged = props.tetrisAnimation !== undefined && props.tetrisAnimation !== this.tetrisAnimation;
         const gradTypeChangedToTetris = (props.gradType !== undefined && props.gradType.startsWith('tetris')) && !this.gradType.startsWith('tetris');
         const blockCountChanged = props.tetrisBlockCount !== undefined && props.tetrisBlockCount !== this.tetrisBlockCount;
-
         if (animationTypeChanged || gradTypeChangedToTetris || blockCountChanged) {
             this.tetrisBlocks = [];
             this.tetrisSpawnTimer = 0;
             this.tetrisActiveBlockIndex = 0;
             this.tetrisFadeState = 'in';
         }
-
         if ((textChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave')) || (animationChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave'))) {
             this.scrollOffsetX = 0;
             this.waveAngle = 0;
         }
         const oldRows = this.numberOfRows;
         const oldCols = this.numberOfColumns;
+
+        // --- UNIFIED UPDATE LOGIC ---
+        // 1. Directly update the object's live properties from the form input.
         for (const key in props) {
-            if (props[key] !== undefined) {
-                if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
-                    if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
-                    if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
-                } else if (key === 'strokeGradient' && typeof props[key] === 'object' && props[key] !== null) {
-                    if (props.strokeGradient.color1 !== undefined) this.strokeGradient.color1 = props.strokeGradient.color1;
-                    if (props.strokeGradient.color2 !== undefined) this.strokeGradient.color2 = props.strokeGradient.color2;
-                } else {
-                    this[key] = props[key];
-                }
+            if (props[key] === undefined) continue;
+            if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
+                if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
+                if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
+            } else if (key === 'strokeGradient' && typeof props[key] === 'object' && props[key] !== null) {
+                if (props.strokeGradient.color1 !== undefined) this.strokeGradient.color1 = props.strokeGradient.color1;
+                if (props.strokeGradient.color2 !== undefined) this.strokeGradient.color2 = props.strokeGradient.color2;
+            } else {
+                this[key] = props[key];
             }
         }
+
+        // --- NEW: Adjust position to keep the center stationary ---
+        if (props.width !== undefined || props.height !== undefined) {
+            const dWidth = oldWidth - this.width;
+            const dHeight = oldHeight - this.height;
+            this.x += dWidth / 2;
+            this.y += dHeight / 2;
+        }
+
+        // 2. AFTER updating, snapshot the new state into the 'base' properties.
+        this.baseWidth = this.width;
+        this.baseHeight = this.height;
+        this.baseRotation = this.rotation;
+        this.baseAnimationSpeed = this.animationSpeed;
+        this.baseStrokeWidth = this.strokeWidth;
+        this.baseGradient = { ...this.gradient };
+
+        // --- POST-UPDATE LOGIC ---
         if (this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols) {
             this._shuffleCellOrder();
         }
@@ -1017,7 +1100,9 @@ class Shape {
     }
 
     // In the Shape class, replace the entire updateAnimationState function with this one.
-    updateAnimationState() {
+    updateAnimationState(audioData) {
+        this._applyAudioReactivity(audioData); // <-- Add this line at the top
+
         if (this.shape === 'tetris') {
             if (this.tetrisAnimation === 'fade-in-stack') {
                 if (this.tetrisBlocks.length === 0) {
@@ -1291,14 +1376,28 @@ class Shape {
 
     // In main.js, replace the entire draw function in the Shape class
     draw(isSelected) {
-        if (isSelected && this.rotationSpeed !== 0) {
-            this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
-            this._pausedRotationSpeed = this.rotationSpeed;
-            this.rotationSpeed = 0;
-        } else if (!isSelected && this._pausedRotationSpeed !== null) {
-            const speedInput = document.querySelector(`[name="obj${this.id}_rotationSpeed"]`);
-            this.rotationSpeed = speedInput ? parseFloat(speedInput.value) : this._pausedRotationSpeed;
-            this._pausedRotationSpeed = null;
+        if (isSelected) {
+            if (this.rotationSpeed !== 0) {
+                this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
+                this._pausedRotationSpeed = this.rotationSpeed;
+                this.rotationSpeed = 0;
+            }
+            if (this.animationSpeed !== 0) {
+                this._pausedAnimationSpeed = this.animationSpeed;
+                this.animationSpeed = 0;
+            }
+        } else {
+            if (this._pausedRotationSpeed !== null) {
+                const speedInput = document.querySelector(`[name="obj${this.id}_rotationSpeed"]`);
+                this.rotationSpeed = speedInput ? parseFloat(speedInput.value) : this._pausedRotationSpeed;
+                this._pausedRotationSpeed = null;
+            }
+            if (this._pausedAnimationSpeed !== null) {
+                const speedInput = document.querySelector(`[name="obj${this.id}_animationSpeed"]`);
+                // Note: animationSpeed is scaled by 10 in the UI
+                this.animationSpeed = speedInput ? (parseFloat(speedInput.value) / 10.0) : this._pausedAnimationSpeed;
+                this._pausedAnimationSpeed = null;
+            }
         }
 
         const centerX = this.x + this.width / 2;
@@ -1678,6 +1777,8 @@ class ExportedShape extends Shape {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('startAudioBtn').addEventListener('click', setupAudio);
+
     if (!localStorage.getItem('termsAccepted')) {
         var termsModal = new bootstrap.Modal(document.getElementById('accept-terms-modal'));
         termsModal.show();
@@ -2860,7 +2961,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const groups = {
                 'Geometry': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed'],
-                'Color': ['gradType', 'gradColor1', 'gradColor2', 'useSharpGradient', 'gradientStop', 'phaseOffset', 'cycleColors', 'cycleSpeed', 'animationMode', 'animationSpeed', 'scrollDir']
+                'Color': ['gradType', 'gradColor1', 'gradColor2', 'useSharpGradient', 'gradientStop', 'phaseOffset', 'cycleColors', 'cycleSpeed', 'animationMode', 'animationSpeed', 'scrollDir'],
+                'Sound Reactivity': ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'audioSensitivity', 'audioSmoothing']
             };
             const currentShape = obj.shape;
 
@@ -3285,20 +3387,17 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.restore();
     }
 
-    function drawFrame() {
+    function drawFrame(audioData = {}) { // <-- Add audioData parameter
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const animationEnabled = getControlValues().enableAnimation;
 
-        // FIX: Replaced the forward forEach loop with a reverse for-loop.
-        // This draws the last object in the list first, so it appears at the back,
-        // perfectly matching the final rendering order in SignalRGB.
         for (let i = objects.length - 1; i >= 0; i--) {
             const obj = objects[i];
             if (obj instanceof Shape) {
                 if (animationEnabled) {
-                    obj.updateAnimationState();
+                    obj.updateAnimationState(audioData); // <-- Pass audioData here
                 }
                 obj.draw(selectedObjectIds.includes(obj.id));
             } else {
@@ -3306,7 +3405,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Draw selection UI for selected objects on top of everything.
         if (selectedObjectIds.length > 0) {
             selectedObjectIds.forEach(id => {
                 const obj = objects.find(o => o.id === id);
@@ -3328,8 +3426,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (elapsed > fpsInterval) {
             then = now - (elapsed % fpsInterval);
 
-            // Always draw a frame to keep the UI responsive
-            drawFrame();
+            let audioData = {};
+            if (isAudioSetup) {
+                // If audio is running, get real metrics
+                audioData = getAudioMetrics();
+            } else {
+                // Otherwise, use the mock data as a fallback
+                const time = now / 1000;
+                audioData = {
+                    bass: (Math.sin(time * 2) + 1) / 2,
+                    mids: (Math.sin(time * 1.5 + 1) + 1) / 2,
+                    highs: (Math.sin(time * 3 + 2) + 1) / 2,
+                    volume: (Math.sin(time) + 1) / 2
+                };
+            }
+
+            drawFrame(audioData); // Pass the data (real or mock) to the draw function
         }
     }
 
@@ -3791,6 +3903,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // --- PIXEL ART PROPERTIES ---
             { property: `obj${newId}_pixelArtData`, label: `Object ${newId}: Pixel Art Data`, type: 'textarea', default: '[[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],[0,0,0,0,0,0,0,0,0,0,0,1,0,0.5,0,1],[0,0,0,0,0,0,0,0,0,0,1,0,0.5,0,1,0],[0,0,0,0,0,0,0,0,0,1,0,0.5,0,1,0,0],[0,0,0,0,0,0,0,0,1,0,0.5,0,1,0,0,0],[0,0,1,1,0,0,0,1,0,0.5,0,1,0,0,0,0],[0,0,1,0.5,1,0,1,0,0.5,0,1,0,0,0,0,0],[0,0,0,1,0,1,0,0.5,0,1,0,0,0,0,0,0],[0,0,0,1,0,0,0.5,0,1,0,0,0,0,0,0,0],[0,0,0,0,1,0.5,0,1,0,0,0,0,0,0,0,0],[0,0,0,1,0.5,1,0,0,1,0,0,0,0,0,0,0],[0,0,1,0.5,1,0,1,1,0.5,1,0,0,0,0,0,0],[1,1,0.5,1,0,0,0,0,1,1,0,0,0,0,0,0],[1,0.5,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0]]', description: '(Pixel Art) A 2D array of alpha values (0 to 1) to draw.' },
+
+            // --- AUDIO REACTIVITY PROPERTIES ---
+            { property: `obj${newId}_enableAudioReactivity`, label: `Object ${newId}: Enable Sound Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sound.' },
+            { property: `obj${newId}_audioTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'size', values: 'size,width,height,rotation,animationSpeed,strokeWidth,brightness', description: 'Which property of the object will be affected by the sound.' },
+            { property: `obj${newId}_audioMetric`, label: `Object ${newId}: Audio Metric`, type: 'combobox', default: 'volume', values: 'volume,bass,mids,highs', description: 'Which part of the audio spectrum to react to.' },
+            { property: `obj${newId}_audioSensitivity`, label: `Object ${newId}: Sensitivity`, type: 'number', default: '50', min: '0', max: '200', description: 'How strongly the object reacts to the audio metric.' },
+            { property: `obj${newId}_audioSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '50', min: '0', max: '99', description: 'Smooths out the reaction to prevent flickering. Higher values are smoother.' },
+
         ];
     }
 
@@ -5720,6 +5840,106 @@ document.addEventListener('DOMContentLoaded', function () {
             recordHistory();
             showToast(`Properties pasted to ${destObjects.length} object(s).`, 'success');
         });
+    }
+
+    /**
+ * Analyzes the current audio frame and returns calculated metrics.
+ * @returns {object} An object with bass, mids, highs, and volume properties (0-1 range).
+ */
+    function getAudioMetrics() {
+        if (!analyser) {
+            return { bass: 0, mids: 0, highs: 0, volume: 0 };
+        }
+
+        // Get frequency data from the analyser
+        analyser.getByteFrequencyData(frequencyData);
+
+        const bassEndIndex = Math.floor(analyser.frequencyBinCount * 0.1); // 0-10% of spectrum
+        const midsEndIndex = Math.floor(analyser.frequencyBinCount * 0.4); // 10-40% of spectrum
+        // Highs are the rest
+
+        let bassTotal = 0;
+        let midsTotal = 0;
+        let highsTotal = 0;
+
+        for (let i = 0; i < bassEndIndex; i++) {
+            bassTotal += frequencyData[i];
+        }
+        for (let i = bassEndIndex; i < midsEndIndex; i++) {
+            midsTotal += frequencyData[i];
+        }
+        for (let i = midsEndIndex; i < analyser.frequencyBinCount; i++) {
+            highsTotal += frequencyData[i];
+        }
+
+        // Calculate averages and normalize to a 0-1 range (since data is 0-255)
+        const bass = (bassTotal / (bassEndIndex || 1)) / 255;
+        const mids = (midsTotal / ((midsEndIndex - bassEndIndex) || 1)) / 255;
+        const highs = (highsTotal / ((analyser.frequencyBinCount - midsEndIndex) || 1)) / 255;
+        const volume = bassTotal + midsTotal + highsTotal;
+        const totalPossible = analyser.frequencyBinCount * 255;
+        const normalizedVolume = Math.min(1, volume / (totalPossible * 0.2)); // Scale volume
+
+        return {
+            bass: bass,
+            mids: mids,
+            highs: highs,
+            volume: normalizedVolume
+        };
+    }
+
+    /**
+ * Sets up the Web Audio API to listen to a specific browser tab's audio.
+ */
+    async function setupAudio() {
+        if (isAudioSetup) return;
+
+        try {
+            // Step 1: Request permission to capture a tab. 
+            // We must request video:true to get the audio permission prompt.
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 44100
+                }
+            });
+
+            // Step 2: Check if the user actually shared audio.
+            if (stream.getAudioTracks().length === 0) {
+                // Stop the video track to remove the "sharing this screen" icon.
+                stream.getVideoTracks()[0].stop();
+                alert("Audio sharing was not enabled. Please try again and make sure to check the 'Share tab audio' box.");
+                return;
+            }
+
+            // Step 3: Create the audio context and connect the nodes (same as before).
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+
+            frequencyData = new Uint8Array(analyser.frequencyBinCount);
+            isAudioSetup = true;
+
+            // Stop the video track, as we only need the audio.
+            // This also removes the "sharing this screen" bar from the browser.
+            stream.getVideoTracks()[0].stop();
+
+            // Update the button UI
+            const startBtn = document.getElementById('startAudioBtn');
+            startBtn.textContent = 'Listening...';
+            startBtn.disabled = true;
+            showToast("Tab audio connected! Your visualizer is now live.", "success");
+
+        } catch (err) {
+            // This error happens if the user clicks "Cancel".
+            console.error('Error capturing tab:', err);
+            showToast("Tab capture was canceled or failed.", "error");
+        }
     }
 
     // Start the application.
