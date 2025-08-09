@@ -3112,79 +3112,140 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {MouseEvent} e - The mousedown event object.
      */
     canvasContainer.addEventListener('mousedown', e => {
+        e.preventDefault();
         const { x, y } = getCanvasCoordinates(e);
         dragStartX = x;
         dragStartY = y;
-        oldSelection = [...selectedObjectIds]; // Store selection state at the start of the click
 
-        // Check for handle interaction on a single selected object first
+        let activeObject = null;
         if (selectedObjectIds.length === 1) {
-            const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
-            if (selectedObject) {
-                const handle = selectedObject.getHandleAtPoint(x, y);
-                if (handle) {
-                    if (handle.type === 'rotation') {
-                        isRotating = true;
-                        const center = selectedObject.getCenter();
-                        const startAngle = Math.atan2(y - center.y, x - center.x);
-                        initialDragState = [{ id: selectedObject.id, startAngle: startAngle, initialObjectAngle: selectedObject.getRenderAngle() }];
-                    } else {
-                        isResizing = true;
-                        activeResizeHandle = handle.name;
-                        const oppositeHandleName = getOppositeHandle(handle.name);
-                        const anchorPoint = selectedObject.getWorldCoordsOfCorner(oppositeHandleName);
+            activeObject = objects.find(o => o.id === selectedObjectIds[0]);
+        }
 
-                        initialDragState = [{
-                            id: selectedObject.id,
-                            initialX: selectedObject.x,
-                            initialY: selectedObject.y,
-                            initialWidth: selectedObject.width,
-                            initialHeight: selectedObject.height,
-                            anchorPoint: anchorPoint,
-                            diameterRatio: selectedObject.shape === 'ring' ? selectedObject.innerDiameter / selectedObject.width : 1
-                        }];
+        if (activeObject && !activeObject.locked) {
+            const handle = activeObject.getHandleAtPoint(x, y);
+            if (handle) {
+                if (handle.type === 'rotation') {
+                    isRotating = true;
+                    activeObject.isBeingManuallyRotated = true;
+                    if (activeObject.rotationSpeed !== 0) {
+                        activeObject._pausedRotationSpeed = activeObject.rotationSpeed;
+                        activeObject.rotationSpeed = 0;
+                        activeObject.rotation = activeObject.rotationAngle * 180 / Math.PI;
                     }
-                    return; // Exit early since we're manipulating a handle
+                    const center = activeObject.getCenter();
+                    const startAngle = Math.atan2(y - center.y, x - center.x);
+                    initialDragState = [{
+                        id: activeObject.id,
+                        startAngle: startAngle,
+                        initialObjectAngle: activeObject.getRenderAngle()
+                    }];
+                } else {
+                    isResizing = true;
+                    activeResizeHandle = handle.name;
+                    const oppositeHandleName = getOppositeHandle(handle.name);
+                    const anchorPoint = activeObject.getWorldCoordsOfCorner(oppositeHandleName);
+                    initialDragState = [{
+                        id: activeObject.id, initialX: activeObject.x, initialY: activeObject.y,
+                        initialWidth: activeObject.width, initialHeight: activeObject.height,
+                        anchorPoint: anchorPoint,
+                        diameterRatio: activeObject.shape === 'ring' ? activeObject.innerDiameter / activeObject.width : 1
+                    }];
                 }
             }
         }
 
-        // --- THIS IS THE CRITICAL FIX ---
-        // If not interacting with a handle, determine the new selection state immediately.
-        // By reversing the objects array, we check from the top-most rendered object down.
-        const hitObject = [...objects].find(obj => obj.isPointInside(x, y));
-
-        if (hitObject && !hitObject.locked) {
-            const isSelected = selectedObjectIds.includes(hitObject.id);
-            // If the clicked object is not already selected, make it the new selection.
-            if (!isSelected) {
-                // For multi-select, check for Shift/Ctrl key, otherwise just select the single object.
-                if (e.shiftKey || e.ctrlKey || e.metaKey) {
-                    selectedObjectIds.push(hitObject.id);
-                } else {
-                    selectedObjectIds = [hitObject.id];
+        if (!isRotating && !isResizing) {
+            const hitObject = [...objects].reverse().find(obj => obj.isPointInside(x, y));
+            if (hitObject) {
+                if (!selectedObjectIds.includes(hitObject.id)) {
+                     if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                        selectedObjectIds.push(hitObject.id);
+                    } else {
+                        selectedObjectIds = [hitObject.id];
+                    }
                 }
-                // Update UI immediately to reflect the new selection
-                updateToolbarState();
-                syncPanelsWithSelection();
-                drawFrame();
+                if (!hitObject.locked) {
+                    isDragging = true;
+                    initialDragState = selectedObjectIds.map(id => {
+                        const obj = objects.find(o => o.id === id);
+                        return { id, x: obj.x, y: obj.y };
+                    });
+                }
+            } else {
+                selectedObjectIds = [];
             }
-
-            // Now, prepare the drag state based on the *correct* selection.
-            isDragging = true; // Set isDragging to true to prepare for movement.
-            initialDragState = selectedObjectIds.map(id => {
-                const obj = objects.find(o => o.id === id);
-                return { id, x: obj.x, y: obj.y };
-            });
-
-        } else if (!hitObject) {
-            // If clicking on an empty area, clear the selection.
-            selectedObjectIds = [];
             updateToolbarState();
             syncPanelsWithSelection();
             drawFrame();
         }
-    });;
+
+        const handleMouseMove = (moveEvent) => {
+            moveEvent.preventDefault();
+            const { x, y } = getCanvasCoordinates(moveEvent);
+            if (isRotating) {
+                const initial = initialDragState[0];
+                const obj = objects.find(o => o.id === initial.id);
+                if (obj) {
+                    const center = obj.getCenter();
+                    const currentAngle = Math.atan2(y - center.y, x - center.x);
+                    const angleDelta = currentAngle - initial.startAngle;
+                    obj.rotation = (initial.initialObjectAngle + angleDelta) * 180 / Math.PI;
+                    drawFrame();
+                }
+            }
+        };
+
+        const handleMouseUp = (upEvent) => {
+            upEvent.preventDefault();
+            window.removeEventListener('mousemove', handleMouseMove);
+            
+            const wasManipulating = isDragging || isResizing || isRotating;
+            if (isRotating) {
+                const obj = objects.find(o => o.id === initialDragState[0].id);
+                if (obj) {
+                    obj.isBeingManuallyRotated = false;
+                    if (obj._pausedRotationSpeed !== null) {
+                        obj.rotationSpeed = obj._pausedRotationSpeed;
+                        obj.rotationAngle = obj.rotation * Math.PI / 180;
+                        obj._pausedRotationSpeed = null;
+                    }
+                }
+            }
+
+            if (wasManipulating) {
+                objects.forEach(obj => {
+                    if (selectedObjectIds.includes(obj.id)) {
+                        obj.x = Math.round(obj.x);
+                        obj.y = Math.round(obj.y);
+                        obj.width = Math.round(obj.width);
+                        obj.height = Math.round(obj.height);
+                        if (obj.innerDiameter) obj.innerDiameter = Math.round(obj.innerDiameter);
+                        if (obj.fontSize) obj.fontSize = Math.round(obj.fontSize);
+                        obj.rotation = Math.round(obj.rotation);
+                        
+                        // --- START OF FIX ---
+                        // Call the object's update method to save its new rotation
+                        // as the "base" rotation for the audio reactivity system.
+                        obj.update({ rotation: obj.rotation });
+                        // --- END OF FIX ---
+                    }
+                });
+                updateFormValuesFromObjects();
+                recordHistory();
+            }
+
+            isDragging = isResizing = isRotating = false;
+            activeResizeHandle = null;
+            initialDragState = [];
+            snapLines = [];
+            cachedSnapTargets = null;
+            drawFrame();
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp, { once: true });
+    });
 
 
     /**
@@ -3480,77 +3541,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             canvasContainer.style.cursor = cursor;
         }
-    });;
-
-    /**
-     * Handles the mouseup event to finalize dragging or resizing operations.
-     * @param {MouseEvent} e - The mouseup event object.
-     */
-    canvasContainer.addEventListener('mouseup', e => {
-        e.preventDefault();
-        const { x, y } = getCanvasCoordinates(e);
-        const wasManipulating = isDragging || isResizing || isRotating;
-
-        // This block handles the logic for a "click" action (when not dragging/resizing).
-        if (!wasManipulating) {
-            const hitObject = objects.find(obj => obj.isPointInside(x, y));
-
-            if (hitObject) {
-                const hitObjectId = hitObject.id;
-                const wasAlreadySelected = oldSelection.includes(hitObjectId);
-
-                if (e.shiftKey || e.ctrlKey || e.metaKey) {
-                    if (wasAlreadySelected) {
-                        selectedObjectIds = oldSelection.filter(id => id !== hitObjectId);
-                    } else {
-                        selectedObjectIds = [...oldSelection, hitObjectId];
-                    }
-                } else {
-                    selectedObjectIds = [hitObjectId];
-                }
-            } else {
-                selectedObjectIds = [];
-            }
-        }
-
-        if (isRotating) {
-            const obj = objects.find(o => o.id === initialDragState[0].id);
-            if (obj) {
-                obj.rotation = Math.round(obj.rotation);
-            }
-        }
-
-        // Reset all manipulation states.
-        isDragging = false;
-        isResizing = false;
-        isRotating = false;
-        activeResizeHandle = null;
-        initialDragState = [];
-        snapLines = [];
-        cachedSnapTargets = null;
-
-        if (wasManipulating) {
-            // Finalize object properties after manipulation.
-            selectedObjectIds.forEach(id => {
-                const obj = objects.find(o => o.id === id);
-                if (obj) {
-                    obj.x = Math.round(obj.x);
-                    obj.y = Math.round(obj.y);
-                    obj.width = Math.round(obj.width);
-                    obj.height = Math.round(obj.height);
-                    if (obj.innerDiameter) obj.innerDiameter = Math.round(obj.innerDiameter);
-                    if (obj.fontSize) obj.fontSize = Math.round(obj.fontSize);
-                }
-            });
-            updateFormValuesFromObjects();
-            recordHistory();
-        }
-
-        // Update the UI to reflect the new selection state.
-        updateToolbarState();
-        syncPanelsWithSelection();
-        canvasContainer.style.cursor = 'default';
-        drawFrame();
     });
 
     exportBtn.addEventListener('click', exportFile);
@@ -3645,10 +3635,6 @@ document.addEventListener('DOMContentLoaded', function () {
             horizontalSplit.setSizes([newLeftPercentage, 100 - newLeftPercentage]);
         }
 
-        // Use a debounced handler for performance
-        const debouncedResizeHandler = debounce(fixLeftPanelWidth, 50);
-        window.addEventListener('resize', debouncedResizeHandler);
-
         // Set the initial pixel width shortly after page load
         setTimeout(() => {
             const leftPanel = document.getElementById('left-panel');
@@ -3656,10 +3642,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 leftPanelPixelWidth = leftPanel.offsetWidth;
             }
         }, 200);
-
-        initializeSortable();
-        recordHistory();
-        updateUndoRedoButtons();
 
         const generalCollapseWrapper = document.querySelector('#collapse-general .p-3');
         if (generalCollapseWrapper) {
@@ -3698,6 +3680,11 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             lastUpdatedSpan.textContent = `Current as of: ${formattedDate}, ${formattedTime}`;
         }
+
+        fixLeftPanelWidth
+        initializeSortable();
+        recordHistory();
+        updateUndoRedoButtons();
     }
 
     // --- SHARE BUTTON LOGIC ---
@@ -4534,6 +4521,42 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error("Error loading featured effect:", error);
             return false;
         }
+    }
+
+    // --- Canvas Scaling Logic ---
+    // const canvasContainer = document.getElementById('canvas-container');
+    const rightPanelTop = document.getElementById('right-panel-top');
+
+    // This observer watches the panel containing the canvas for size changes.
+    const canvasResizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+            // Get the available width and height from the panel.
+            const rect = entry.contentRect;
+            const containerWidth = rect.width;
+            const containerHeight = rect.height;
+
+            if (containerWidth === 0 || containerHeight === 0) return;
+
+            const aspectRatio = 1280 / 800;
+
+            // Calculate the largest size that fits within the panel while maintaining the aspect ratio.
+            let newWidth = containerWidth;
+            let newHeight = newWidth / aspectRatio;
+
+            if (newHeight > containerHeight) {
+                newHeight = containerHeight;
+                newWidth = newHeight * aspectRatio;
+            }
+
+            // Apply the new, calculated size directly to the canvas container's style.
+            canvasContainer.style.width = `${newWidth}px`;
+            canvasContainer.style.height = `${newHeight}px`;
+        }
+    });
+
+    // Start observing the panel.
+    if (rightPanelTop) {
+        canvasResizeObserver.observe(rightPanelTop);
     }
 
     // Start the application.

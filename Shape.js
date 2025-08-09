@@ -202,12 +202,13 @@ function getPatternColor(t, c1, c2) {
 }
 
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing, beatThreshold }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, beatThreshold }) {
         // --- ALL properties are assigned here first ---
         this.dirty = true;
         this.id = id;
         this.name = name || `Object ${id}`;
         this.shape = shape || 'rectangle';
+        this.isBeingManuallyRotated = false;
         this.x = x || 0;
         this.y = y || 0;
         this.width = width || 200;
@@ -328,6 +329,10 @@ class Shape {
     }
 
     _applyAudioReactivity(audioData) {
+        if (this.isBeingManuallyRotated) {
+            return;
+        }
+        
         // Reset properties at the start of each frame.
         this.rotation = this.baseRotation || 0;
         this.internalScale = 1.0;
@@ -500,35 +505,31 @@ class Shape {
 
         const center = this.getCenter();
         const staticAngle = this.rotation * Math.PI / 180;
-
-        this.ctx.save();
-        this.ctx.translate(center.x, center.y);
-        this.ctx.rotate(staticAngle);
-
         const halfW = this.width / 2;
         const halfH = this.height / 2;
 
+        // Transform the world mouse coordinates into the shape's local, unrotated space
         const localPoint = {
             x: (px - center.x) * Math.cos(-staticAngle) - (py - center.y) * Math.sin(-staticAngle),
             y: (px - center.x) * Math.sin(-staticAngle) + (py - center.y) * Math.cos(-staticAngle)
         };
 
         const h2 = this.handleSize / 2;
+
+        // Check for rotation handle first
+        const rotHandlePos = this.getRotationHandlePosition();
+        const dist = Math.sqrt(Math.pow(localPoint.x - rotHandlePos.x, 2) + Math.pow(localPoint.y - rotHandlePos.y, 2));
+
+        if (dist <= this.rotationHandleRadius + h2) {
+            return { name: 'rotate', cursor: 'crosshair', type: 'rotation' };
+        }
+
+        // Check for resize handles
         const handlePositions = {
             'top-left': { x: -halfW, y: -halfH }, 'top': { x: 0, y: -halfH }, 'top-right': { x: halfW, y: -halfH },
             'left': { x: -halfW, y: 0 }, 'right': { x: halfW, y: 0 },
             'bottom-left': { x: -halfW, y: halfH }, 'bottom': { x: 0, y: halfH }, 'bottom-right': { x: halfW, y: halfH }
         };
-
-        const rotHandleX = 0;
-        const rotHandleY = -halfH + this.rotationHandleOffset;
-        const dist = Math.sqrt(Math.pow(localPoint.x - rotHandleX, 2) + Math.pow(localPoint.y - rotHandleY, 2));
-
-        this.ctx.restore();
-
-        if (dist <= this.rotationHandleRadius + h2) {
-            return { name: 'rotate', cursor: 'crosshair', type: 'rotation' };
-        }
 
         for (const handle of this.handles) {
             const pos = handlePositions[handle.name];
@@ -538,6 +539,20 @@ class Shape {
         }
 
         return null;
+    }
+
+    getRotationHandlePosition() {
+        const halfH = this.height / 2;
+        const threshold = 50; // How close to the top edge (in pixels) to trigger the flip
+
+        // Check if the shape's top is near the canvas's top edge
+        if (this.y < threshold) {
+            // Place handle at the bottom
+            return { x: 0, y: halfH - this.rotationHandleOffset };
+        } else {
+            // Place handle at the top (default)
+            return { x: 0, y: -halfH + this.rotationHandleOffset };
+        }
     }
 
     isPointInside(px, py) {
@@ -1560,14 +1575,16 @@ class Shape {
                 this.ctx.fillRect(pos.x - h2, pos.y - h2, this.handleSize, this.handleSize);
             });
 
-            const rotHandleX = 0;
-            const rotHandleY = -halfH + this.rotationHandleOffset;
+            // Draw the rotation handle in its dynamic position
+            const rotHandlePos = this.getRotationHandlePosition();
+            const connectionY = (rotHandlePos.y > 0) ? halfH : -halfH;
+
             this.ctx.beginPath();
-            this.ctx.moveTo(0, -halfH);
-            this.ctx.lineTo(rotHandleX, rotHandleY);
+            this.ctx.moveTo(0, connectionY);
+            this.ctx.lineTo(rotHandlePos.x, rotHandlePos.y);
             this.ctx.stroke();
             this.ctx.beginPath();
-            this.ctx.arc(rotHandleX, rotHandleY, this.rotationHandleRadius, 0, 2 * Math.PI);
+            this.ctx.arc(rotHandlePos.x, rotHandlePos.y, this.rotationHandleRadius, 0, 2 * Math.PI);
             this.ctx.fill();
         }
 
@@ -1579,7 +1596,7 @@ class Shape {
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            this.ctx.fillText('白', center.x, center.y);
+            this.ctx.fillText('白', center.x, center.y); // Note: This character might not render for all users.
             this.ctx.restore();
         }
     }
