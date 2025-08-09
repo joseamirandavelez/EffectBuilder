@@ -131,3 +131,17 @@ body {
 [data-bs-toggle="collapse"] {
     user-select: none;
 }
+
+/* Make enabled toolbar buttons more evident */
+#toolbar .btn.btn-outline-secondary:not([disabled]) {
+    /* Use a slightly brighter gray for the border and icon color */
+    --bs-btn-border-color: var(--bs-gray-600);
+    --bs-btn-color: var(--bs-gray-400);
+}
+
+/* Make the hover effect stronger and more vibrant */
+#toolbar .btn.btn-outline-secondary:not([disabled]):hover {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: var(--bs-light);
+}
