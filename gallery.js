@@ -4,15 +4,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const logoutBtn = document.getElementById('logout-btn');
     const userSessionGroup = document.getElementById('user-session-group');
     const galleryList = document.getElementById('gallery-project-list');
-
-    // --- START: Edit Modal Element References ---
     const editProjectModalEl = document.getElementById('edit-project-modal');
     const editProjectForm = document.getElementById('edit-project-form');
     const editProjectIdInput = document.getElementById('edit-project-id');
     const editProjectNameInput = document.getElementById('edit-project-name');
     const editProjectDescriptionInput = document.getElementById('edit-project-description');
     const editProjectModal = new bootstrap.Modal(editProjectModalEl);
-    // --- END: Edit Modal Element References ---
+
+    // --- Pagination State Variables ---
+    const projectsPerPage = 8;
+    let allProjects = [];
+    let currentPage = 1;
+    const paginationNavTop = document.getElementById('pagination-nav-top');
+    const paginationNavBottom = document.getElementById('pagination-nav');
+    const paginationContainerTop = document.getElementById('pagination-container-top');
+    const paginationContainerBottom = document.getElementById('pagination-container-bottom');
+
 
     // --- Firebase Authentication Handling ---
     if (loginBtn) {
@@ -58,23 +65,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 500);
 
 
+    // --- Admin & Edit Functions ---
     async function toggleFeaturedStatus(buttonEl, docIdToToggle) {
         buttonEl.disabled = true;
         buttonEl.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-
         try {
             const projectsRef = window.collection(window.db, "projects");
             const docToToggleRef = window.doc(projectsRef, docIdToToggle);
             const q = window.query(projectsRef, window.where("featured", "==", true));
             const currentlyFeaturedSnapshot = await window.getDocs(q);
-
             await window.runTransaction(window.db, async (transaction) => {
                 const docToToggleSnap = await transaction.get(docToToggleRef);
                 if (!docToToggleSnap.exists()) throw new Error("Document does not exist!");
-
                 const isCurrentlyFeatured = docToToggleSnap.data().featured === true;
                 const newFeaturedState = !isCurrentlyFeatured;
-
                 if (newFeaturedState === true) {
                     currentlyFeaturedSnapshot.forEach((doc) => {
                         transaction.update(doc.ref, { featured: false });
@@ -82,7 +86,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 transaction.update(docToToggleRef, { featured: newFeaturedState });
             });
-
             document.querySelectorAll('.btn-feature').forEach(btn => {
                 const isNowFeatured = (btn.dataset.docId === docIdToToggle) && !buttonEl.classList.contains('btn-warning');
                 btn.className = `btn btn-sm btn-feature ${isNowFeatured ? 'btn-warning' : 'btn-outline-warning'}`;
@@ -90,14 +93,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 btn.title = isNowFeatured ? 'Unfeature this effect' : 'Feature this effect';
                 btn.disabled = false;
             });
-
         } catch (error) {
             console.error("Error updating featured status: ", error);
             buttonEl.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
         }
     }
 
-    // --- START: New Edit Logic ---
     function openEditModal(project) {
         editProjectIdInput.value = project.docId;
         editProjectNameInput.value = project.name;
@@ -111,16 +112,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const saveBtn = document.getElementById('save-edit-btn');
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
-
         const docId = editProjectIdInput.value;
         const newName = editProjectNameInput.value;
         const newDescription = editProjectDescriptionInput.value;
-
         try {
             const docRef = window.doc(window.db, "projects", docId);
             const docSnap = await window.getDoc(docRef);
             if (!docSnap.exists()) throw new Error("Document not found.");
-
             const updatedConfigs = docSnap.data().configs.map(conf => {
                 if (conf.name === 'description') {
                     return { ...conf, default: newDescription };
@@ -130,15 +128,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 return conf;
             });
-
             await window.updateDoc(docRef, {
                 name: newName,
                 configs: updatedConfigs
             });
-
             editProjectModal.hide();
-            loadPublicGallery(); // Refresh the gallery to show changes
-
+            loadPublicGallery();
         } catch (error) {
             console.error("Error updating project:", error);
             alert("Failed to save changes.");
@@ -147,10 +142,20 @@ document.addEventListener('DOMContentLoaded', function () {
             saveBtn.innerHTML = 'Save Changes';
         }
     });
-    // --- END: New Edit Logic ---
 
+    // --- Pagination Rendering Functions ---
+    function renderPage(pageNumber) {
+        currentPage = pageNumber;
+        const startIndex = (pageNumber - 1) * projectsPerPage;
+        const endIndex = startIndex + projectsPerPage;
+        const projectsForPage = allProjects.slice(startIndex, endIndex);
 
-    function populateGalleryPage(projects) {
+        renderProjects(projectsForPage);
+        renderPagination();
+        window.scrollTo(0, 0);
+    }
+
+    function renderProjects(projects) {
         galleryList.innerHTML = '';
         const currentUser = window.auth.currentUser;
 
@@ -161,57 +166,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
         projects.forEach(project => {
             const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.className = 'list-group-item d-flex justify-content-between align-items-center p-3';
             li.id = `gallery-item-${project.docId}`;
 
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'd-flex align-items-center flex-grow-1 me-2';
-
-            if (project.thumbnail) {
-                const img = document.createElement('img');
-                img.src = project.thumbnail;
-                img.style.width = '160px';
-                img.style.height = '100px';
-                img.style.objectFit = 'cover';
-                img.className = 'rounded border me-3';
-                contentDiv.appendChild(img);
-            }
-
-            const infoDiv = document.createElement('div');
-            infoDiv.className = project.thumbnail ? 'ms-3' : '';
-            infoDiv.style.minWidth = '0';
-
-            const nameEl = document.createElement('strong');
-            nameEl.textContent = project.name;
-            infoDiv.appendChild(nameEl);
-
-            const metaEl = document.createElement('small');
-            metaEl.className = 'd-block text-body-secondary';
-            const formattedDate = project.createdAt ? project.createdAt.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Unknown Date';
-            metaEl.textContent = `By ${project.creatorName || 'Anonymous'} on ${formattedDate}`;
-            infoDiv.appendChild(metaEl);
-
-            // FIX: Find and display the effect's description
+            let description = 'No description provided.';
             if (project.configs) {
                 const descriptionConf = project.configs.find(c => c.name === 'description');
                 if (descriptionConf && descriptionConf.default) {
-                    const descEl = document.createElement('p');
-                    descEl.className = 'mb-0 mt-1 small text-body-secondary';
-                    // Truncate long descriptions for display
-                    descEl.textContent = descriptionConf.default.length > 100 ?
-                        descriptionConf.default.substring(0, 100) + '...' :
-                        descriptionConf.default;
-                    descEl.title = descriptionConf.default;
-                    infoDiv.appendChild(descEl);
+                    description = descriptionConf.default;
                 }
             }
 
-            contentDiv.appendChild(infoDiv);
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'd-flex align-items-center flex-grow-1 me-2';
+            contentDiv.style.minWidth = '0';
+            contentDiv.innerHTML = `
+                ${project.thumbnail ? `<a href="./?effectId=${project.docId}"><img src="${project.thumbnail}" style="width: 160px; height: 100px; object-fit: cover;" class="rounded border me-4"></a>` : ''}
+                <div style="min-width: 0;">
+                    <strong class="d-block">${project.name}</strong>
+                    <small class="d-block text-body-secondary">By ${project.creatorName || 'Anonymous'}</small>
+                    <p class="mb-0 mt-1 small text-body-secondary" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${description}">
+                        ${description}
+                    </p>
+                </div>
+            `;
             li.appendChild(contentDiv);
 
             const controlsDiv = document.createElement('div');
-            controlsDiv.className = 'd-flex align-items-center gap-1';
-
+            controlsDiv.className = 'd-flex align-items-center gap-2';
+            
             const loadBtn = document.createElement('a');
             loadBtn.className = 'btn btn-primary';
             loadBtn.innerHTML = '<i class="bi bi-box-arrow-down me-2"></i>Load';
@@ -219,13 +202,16 @@ document.addEventListener('DOMContentLoaded', function () {
             loadBtn.href = `./?effectId=${project.docId}`;
             controlsDiv.appendChild(loadBtn);
 
+            const buttonsSubDiv = document.createElement('div');
+            buttonsSubDiv.className = 'd-flex flex-column gap-1';
+
             if (currentUser && (currentUser.uid === project.userId || currentUser.uid === ADMIN_UID)) {
                 const editBtn = document.createElement('button');
                 editBtn.className = 'btn btn-sm btn-outline-secondary';
                 editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
                 editBtn.title = "Edit Name/Description";
                 editBtn.onclick = () => openEditModal(project);
-                controlsDiv.appendChild(editBtn);
+                buttonsSubDiv.appendChild(editBtn);
             }
 
             if (currentUser && currentUser.uid === ADMIN_UID) {
@@ -236,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 featureBtn.title = isFeatured ? 'Unfeature this effect' : 'Feature this effect';
                 featureBtn.dataset.docId = project.docId;
                 featureBtn.onclick = function () { toggleFeaturedStatus(this, project.docId); };
-                controlsDiv.appendChild(featureBtn);
+                buttonsSubDiv.appendChild(featureBtn);
 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'btn btn-sm btn-outline-danger';
@@ -253,14 +239,68 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     }
                 };
-                controlsDiv.appendChild(deleteBtn);
+                buttonsSubDiv.appendChild(deleteBtn);
             }
 
+            if(buttonsSubDiv.hasChildNodes()){
+                 controlsDiv.appendChild(buttonsSubDiv);
+            }
+           
             li.appendChild(controlsDiv);
             galleryList.appendChild(li);
         });
     }
 
+    function renderPagination() {
+        const containers = [paginationContainerTop, paginationContainerBottom];
+        const navs = [paginationNavTop, paginationNavBottom];
+
+        containers.forEach(container => { if(container) container.innerHTML = '' });
+
+        const totalPages = Math.ceil(allProjects.length / projectsPerPage);
+        
+        if (totalPages <= 1) {
+            navs.forEach(nav => { if(nav) nav.style.display = 'none' });
+            return;
+        }
+        navs.forEach(nav => { if(nav) nav.style.display = 'flex' });
+
+        const createPageItem = (text, page, isDisabled = false, isActive = false) => {
+            const li = document.createElement('li');
+            li.className = `page-item ${isDisabled ? 'disabled' : ''} ${isActive ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" data-page="${page}">${text}</a>`;
+            return li;
+        };
+
+        const items = [];
+        items.push(createPageItem('Previous', currentPage - 1, currentPage === 1));
+        for (let i = 1; i <= totalPages; i++) {
+            items.push(createPageItem(i, i, false, i === currentPage));
+        }
+        items.push(createPageItem('Next', currentPage + 1, currentPage === totalPages));
+
+        containers.forEach(container => {
+            if(container) {
+                items.forEach(item => container.appendChild(item.cloneNode(true)));
+            }
+        });
+    }
+
+    function handlePaginationClick(e) {
+        e.preventDefault();
+        const target = e.target.closest('a');
+        if (target && target.dataset.page && !target.closest('.page-item.disabled')) {
+            const pageNumber = parseInt(target.dataset.page, 10);
+            if (pageNumber !== currentPage) {
+                renderPage(pageNumber);
+            }
+        }
+    }
+
+    if (paginationContainerTop) paginationContainerTop.addEventListener('click', handlePaginationClick);
+    if (paginationContainerBottom) paginationContainerBottom.addEventListener('click', handlePaginationClick);
+    
+    // --- Data Loading ---
     async function loadPublicGallery() {
         galleryList.innerHTML = `<li class="list-group-item text-center p-4"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></li>`;
         try {
@@ -270,17 +310,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.orderBy("createdAt", "desc")
             );
             const querySnapshot = await window.getDocs(q);
-
-            const projects = [];
+            
+            allProjects = []; // Clear previous results
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.createdAt && data.createdAt.toDate) {
                     data.createdAt = data.createdAt.toDate();
                 }
-                projects.push({ docId: doc.id, ...data });
+                allProjects.push({ docId: doc.id, ...data });
             });
 
-            populateGalleryPage(projects);
+            renderPage(1); // Render the first page of the new data
 
         } catch (error) {
             console.error("Error loading public gallery:", error);

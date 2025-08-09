@@ -214,7 +214,7 @@ class Shape {
         this.height = height || 152;
         this.rotation = rotation || 0;
         this.gradType = gradType || 'solid';
-        this.gradient = gradient || { color1: '#000000', color2: '#000000' };
+        this.gradient = gradient ? { ...gradient } : { color1: '#000000', color2: '#000000' };
         this.scrollDirection = scrollDirection || 'right';
         this.cycleColors = cycleColors || false;
         this.cycleSpeed = cycleSpeed || 0;
@@ -227,7 +227,7 @@ class Shape {
         this.enableStroke = enableStroke || false;
         this.strokeWidth = strokeWidth || 2;
         this.strokeGradType = strokeGradType || 'solid';
-        this.strokeGradient = strokeGradient || { color1: '#FFFFFF', color2: '#000000' };
+        this.strokeGradient = strokeGradient ? { ...strokeGradient } : { color1: '#FFFFFF', color2: '#000000' };
         this.strokeScrollDir = strokeScrollDir || 'right';
         this.strokeCycleColors = strokeCycleColors || false;
         this.strokeCycleSpeed = strokeCycleSpeed || 0;
@@ -1306,8 +1306,13 @@ class Shape {
             this.ctx.beginPath();
             this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
             this.ctx.clip();
-            this.ctx.fillStyle = '#000000';
-            this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+
+            // --- START OF FIX ---
+            // These two lines, which drew a black rectangle, have been removed.
+            // this.ctx.fillStyle = '#000000';
+            // this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+            // --- END OF FIX ---
+
             this.ctx.globalCompositeOperation = 'lighter';
             this.fireParticles.forEach(p => {
                 const lifeRatio = 1.0 - (p.age / p.maxAge);

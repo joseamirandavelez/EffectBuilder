@@ -1,3 +1,130 @@
+const INITIAL_CONFIG_TEMPLATE = `
+    <meta title="Text Test" />
+        <meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
+        <meta publisher="Jose Miranda" />
+        <meta property="enableAnimation" label="Enable Animation" type="boolean" default="true" />
+        <meta property="enableSound" label="Enable Sound" type="boolean" default="true" />
+
+        <meta property="obj1_shape" label="Small Clock: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
+        <meta property="obj1_x" label="Small Clock: X Position" type="number" min="0" max="320" default="0" />
+        <meta property="obj1_y" label="Small Clock: Y Position" type="number" min="0" max="200" default="35" />
+        <meta property="obj1_width" label="Small Clock: Width/Outer Diameter" type="number" min="2" max="320" default="130" />
+        <meta property="obj1_height" label="Small Clock: Height" type="number" min="2" max="200" default="17" />
+        <meta property="obj1_rotation" label="Small Clock: Rotation" type="number" min="-360" max="360" default="0" />
+        <meta property="obj1_innerDiameter" label="Small Clock: Inner Diameter" type="number" min="1" max="318" default="50" />
+        <meta property="obj1_numberOfSegments" label="Small Clock: Segments" type="number" min="1" max="50" default="8" />
+        <meta property="obj1_angularWidth" label="Small Clock: Segment Angle" type="number" min="1" max="360" default="20" />
+        <meta property="obj1_rotationSpeed" label="Small Clock: Rotation Speed" type="number" min="-100" max="100" default="0" />
+        <meta property="obj1_animationSpeed" label="Small Clock: Animation Speed" type="number" min="1" max="50" default="50" />
+        <meta property="obj1_animationMode" label="Small Clock: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
+        <meta property="obj1_scrollDir" label="Small Clock: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
+        <meta property="obj1_gradType" label="Small Clock: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
+        <meta property="obj1_useSharpGradient" label="Small Clock: Use Sharp Gradient" type="boolean" default="true" />
+        <meta property="obj1_gradientStop" label="Small Clock: Gradient Stop %" type="number" min="0" max="100" default="72" />
+        <meta property="obj1_gradColor1" label="Small Clock: Color 1" type="color" default="#00ff00" />
+        <meta property="obj1_gradColor2" label="Small Clock: Color 2" type="color" default="#d400ff" />
+        <meta property="obj1_cycleColors" label="Small Clock: Cycle Colors" type="boolean" default="false" />
+        <meta property="obj1_cycleSpeed" label="Small Clock: Color Cycle Speed" type="number" min="1" max="10" default="10" />
+        <meta property="obj1_numberOfRows" label="Small Clock: Number of Rows" type="number" min="1" max="100" default="2" />
+        <meta property="obj1_numberOfColumns" label="Small Clock: Number of Columns" type="number" min="1" max="100" default="1" />
+        <meta property="obj1_phaseOffset" label="Small Clock: Phase Offset" type="number" min="0" max="100" default="100" />
+        <meta property="obj1_text" label="Small Clock: Text" type="textfield" default="Jose Miranda" />
+        <meta property="obj1_fontSize" label="Small Clock: Font Size" type="number" min="2" max="100" default="42" />
+        <meta property="obj1_textAlign" label="Small Clock: Justification" type="combobox" values="left,center,right" default="center" />
+        <meta property="obj1_pixelFont" label="Small Clock: Pixel Font Style" type="combobox" values="small,large" default="small" />
+        <meta property="obj1_textAnimation" label="Small Clock: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
+        <meta property="obj1_textAnimationSpeed" label="Small Clock: Animation Speed" type="number" min="1" max="100" default="10" />
+        <meta property="obj1_showTime" label="Small Clock: Show Current Time" type="boolean" default="true" />
+        <meta property="obj1_showDate" label="Small Clock: Show Current Date" type="boolean" default="false" />
+        <meta property="obj1_autoWidth" label="Small Clock: Auto-Width" type="boolean" default="true" />
+        <meta property="obj1_enableAudioReactivity" label="Small Clock: Enable Sound Reactivity" type="boolean" default="true" />
+        <meta property="obj1_audioTarget" label="Small Clock: Reactive Property" values="none,Flash,Size,Rotation" type="combobox" default="Size" />
+        <meta property="obj1_audioMetric" label="Small Clock: Audio Metric" values="volume,bass,mids,highs" type="combobox" default="volume" />
+        <meta property="obj1_beatThreshold" label="Small Clock: Beat Threshold" min="1" max="100" type="number" default="30" />
+        <meta property="obj1_audioSensitivity" label="Small Clock: Sensitivity" min="0" max="200" type="number" default="50" />
+        <meta property="obj1_audioSmoothing" label="Small Clock: Smoothing" min="0" max="99" type="number" default="50" />
+
+        <meta property="obj2_shape" label="Large Text: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
+        <meta property="obj2_x" label="Large Text: X Position" type="number" min="0" max="320" default="-3" />
+        <meta property="obj2_y" label="Large Text: Y Position" type="number" min="0" max="200" default="0" />
+        <meta property="obj2_width" label="Large Text: Width/Outer Diameter" type="number" min="2" max="320" default="237" />
+        <meta property="obj2_height" label="Large Text: Height" type="number" min="2" max="200" default="30" />
+        <meta property="obj2_rotation" label="Large Text: Rotation" type="number" min="-360" max="360" default="0" />
+        <meta property="obj2_innerDiameter" label="Large Text: Inner Diameter" type="number" min="1" max="318" default="50" />
+        <meta property="obj2_numberOfSegments" label="Large Text: Segments" type="number" min="1" max="50" default="8" />
+        <meta property="obj2_angularWidth" label="Large Text: Segment Angle" type="number" min="1" max="360" default="20" />
+        <meta property="obj2_rotationSpeed" label="Large Text: Rotation Speed" type="number" min="-100" max="100" default="0" />
+        <meta property="obj2_animationSpeed" label="Large Text: Animation Speed" type="number" min="1" max="50" default="50" />
+        <meta property="obj2_animationMode" label="Large Text: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
+        <meta property="obj2_scrollDir" label="Large Text: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
+        <meta property="obj2_gradType" label="Large Text: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
+        <meta property="obj2_useSharpGradient" label="Large Text: Use Sharp Gradient" type="boolean" default="true" />
+        <meta property="obj2_gradientStop" label="Large Text: Gradient Stop %" type="number" min="0" max="100" default="72" />
+        <meta property="obj2_gradColor1" label="Large Text: Color 1" type="color" default="#00ff00" />
+        <meta property="obj2_gradColor2" label="Large Text: Color 2" type="color" default="#d400ff" />
+        <meta property="obj2_cycleColors" label="Large Text: Cycle Colors" type="boolean" default="false" />
+        <meta property="obj2_cycleSpeed" label="Large Text: Color Cycle Speed" type="number" min="1" max="10" default="10" />
+        <meta property="obj2_numberOfRows" label="Large Text: Number of Rows" type="number" min="1" max="100" default="2" />
+        <meta property="obj2_numberOfColumns" label="Large Text: Number of Columns" type="number" min="1" max="100" default="1" />
+        <meta property="obj2_phaseOffset" label="Large Text: Phase Offset" type="number" min="0" max="100" default="100" />
+        <meta property="obj2_text" label="Large Text: Text" type="textfield" default="Interactive Effect Builder" />
+        <meta property="obj2_fontSize" label="Large Text: Font Size" type="number" min="2" max="100" default="60" />
+        <meta property="obj2_textAlign" label="Large Text: Justification" type="combobox" values="left,center,right" default="left" />
+        <meta property="obj2_pixelFont" label="Large Text: Pixel Font Style" type="combobox" values="small,large" default="large" />
+        <meta property="obj2_textAnimation" label="Large Text: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="marquee" />
+        <meta property="obj2_textAnimationSpeed" label="Large Text: Animation Speed" type="number" min="1" max="100" default="29" />
+        <meta property="obj2_showTime" label="Large Text: Show Current Time" type="boolean" default="false" />
+        <meta property="obj2_showDate" label="Large Text: Show Current Date" type="boolean" default="false" />
+        <meta property="obj2_autoWidth" label="Large Text: Auto-Width" type="boolean" default="false" />
+        <meta property="obj1_enableAudioReactivity" label="Large Text: Enable Sound Reactivity" type="boolean" default="true" />
+        <meta property="obj2_audioTarget" label="Large Text: Reactive Property" values="none,Flash,Size,Rotation" type="combobox" default="Size" />
+        <meta property="obj2_audioMetric" label="Large Text: Audio Metric" values="volume,bass,mids,highs" type="combobox" default="volume" />
+        <meta property="obj2_beatThreshold" label="Large Text: Beat Threshold" min="1" max="100" type="number" default="30" />
+        <meta property="obj2_audioSensitivity" label="Large Text: Sensitivity" min="0" max="200" type="number" default="50" />
+        <meta property="obj2_audioSmoothing" label="Large Text: Smoothing" min="0" max="99" type="number" default="50" />
+
+        <meta property="obj3_shape" label="Matrix: Shape" type="combobox" values="rectangle,circle,ring,text" default="rectangle" />
+        <meta property="obj3_x" label="Matrix: X Position" type="number" min="0" max="320" default="0" />
+        <meta property="obj3_y" label="Matrix: Y Position" type="number" min="0" max="200" default="57" />
+        <meta property="obj3_width" label="Matrix: Width/Outer Diameter" type="number" min="2" max="320" default="181" />
+        <meta property="obj3_height" label="Matrix: Height" type="number" min="2" max="200" default="143" />
+        <meta property="obj3_rotation" label="Matrix: Rotation" type="number" min="-360" max="360" default="0" />
+        <meta property="obj3_innerDiameter" label="Matrix: Inner Diameter" type="number" min="1" max="318" default="50" />
+        <meta property="obj3_numberOfSegments" label="Matrix: Segments" type="number" min="1" max="50" default="12" />
+        <meta property="obj3_angularWidth" label="Matrix: Segment Angle" type="number" min="1" max="360" default="20" />
+        <meta property="obj3_rotationSpeed" label="Matrix: Rotation Speed" type="number" min="-100" max="100" default="0" />
+        <meta property="obj3_animationSpeed" label="Matrix: Animation Speed" type="number" min="1" max="50" default="10" />
+        <meta property="obj3_animationMode" label="Matrix: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop" />
+        <meta property="obj3_scrollDir" label="Matrix: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
+        <meta property="obj3_gradType" label="Matrix: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="random" />
+        <meta property="obj3_useSharpGradient" label="Matrix: Use Sharp Gradient" type="boolean" default="false" />
+        <meta property="obj3_gradientStop" label="Matrix: Gradient Stop %" type="number" min="0" max="100" default="50" />
+        <meta property="obj3_gradColor1" label="Matrix: Color 1" type="color" default="#00ff00" />
+        <meta property="obj3_gradColor2" label="Matrix: Color 2" type="color" default="#d400ff" />
+        <meta property="obj3_cycleColors" label="Matrix: Cycle Colors" type="boolean" default="false" />
+        <meta property="obj3_cycleSpeed" label="Matrix: Color Cycle Speed" type="number" min="1" max="10" default="10" />
+        <meta property="obj3_numberOfRows" label="Matrix: Number of Rows" type="number" min="1" max="100" default="16" />
+        <meta property="obj3_numberOfColumns" label="Matrix: Number of Columns" type="number" min="1" max="100" default="16" />
+        <meta property="obj3_phaseOffset" label="Matrix: Phase Offset" type="number" min="0" max="100" default="10" />
+        <meta property="obj3_text" label="Matrix: Text" type="textfield" default="" />
+        <meta property="obj3_fontSize" label="Matrix: Font Size" type="number" min="2" max="100" default="15" />
+        <meta property="obj3_textAlign" label="Matrix: Justification" type="combobox" values="left,center,right" default="center" />
+        <meta property="obj3_pixelFont" label="Matrix: Pixel Font Style" type="combobox" values="small,large" default="small" />
+        <meta property="obj3_textAnimation" label="Matrix: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
+        <meta property="obj3_textAnimationSpeed" label="Matrix: Animation Speed" type="number" min="1" max="100" default="10" />
+        <meta property="obj3_showTime" label="Matrix: Show Current Time" type="boolean" default="false" />
+        <meta property="obj3_showDate" label="Matrix: Show Current Date" type="boolean" default="false" />
+        <meta property="obj3_autoWidth" label="Matrix: Auto-Width" type="boolean" default="true" />
+        <meta property="obj1_enableAudioReactivity" label=Matrix: Enable Sound Reactivity" type="boolean" default="true" />
+        <meta property="obj3_audioTarget" label="Matrix: Reactive Property" values="none,Flash,Size,Rotation" type="combobox" default="Size" />
+        <meta property="obj3_audioMetric" label="Matrix: Audio Metric" values="volume,bass,mids,highs" type="combobox" default="volume" />
+        <meta property="obj3_beatThreshold" label="Matrix: Beat Threshold" min="1" max="100" type="number" default="30" />
+        <meta property="obj3_audioSensitivity" label="Matrix: Sensitivity" min="0" max="200" type="number" default="50" />
+        <meta property="obj3_audioSmoothing" label="Matrix: Smoothing" min="0" max="99" type="number" default="50" />
+`;
+
+// ... the rest of your main.js file
+
 // --- State Management ---
 let isRestoring = false;
 let configStore = [];
@@ -112,8 +239,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
     const form = document.getElementById('controls-form');
-    const outputScriptArea = document.getElementById('output-script');
-    const copyBtn = document.getElementById('copy-btn');
     const toolbar = document.getElementById('toolbar');
     const constrainBtn = document.getElementById('constrain-btn');
     const exportBtn = document.getElementById('export-btn');
@@ -955,7 +1080,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        outputScriptArea.value = scriptHTML.trim();
         return { metaTags: scriptHTML.trim(), jsVars: jsVars.trim(), allKeys: JSON.stringify(allKeys) };
     }
 
@@ -1404,8 +1528,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     const propName = conf.property.substring(conf.property.indexOf('_') + 1);
                     const isEssential = essentialProps.includes(propName);
                     const isShapeSpecific = validPropsForShape.includes(propName);
-                    const isAudioGroup = groupName === 'Audio';
-                    return groupProps.includes(propName) && (isEssential || isShapeSpecific || isAudioGroup);
+                    const isGeometryOrAudio = groupName === 'Geometry' || groupName === 'Audio';
+                    return groupProps.includes(propName) && (isEssential || isShapeSpecific || isGeometryOrAudio);
                 });
                 if (relevantProps.length > 0) {
                     const tabId = `tab-${id}-${groupName.replace(/\s/g, '-')}`;
@@ -1820,15 +1944,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const isAnimating = getControlValues().enableAnimation;
 
         objects.forEach(obj => {
-            const shouldDraw = obj.dirty || isAnimating;
-
-            if (shouldDraw) {
-                if (isAnimating) {
-                    obj.updateAnimationState(audioData);
-                }
-                obj.draw(selectedObjectIds.includes(obj.id));
-                obj.dirty = false;
+            if (isAnimating) {
+                obj.updateAnimationState(audioData);
             }
+            obj.draw(selectedObjectIds.includes(obj.id));
+            obj.dirty = false;
         });
 
         if (selectedObjectIds.length > 0) {
@@ -1843,33 +1963,6 @@ document.addEventListener('DOMContentLoaded', function () {
         drawSnapLines(snapLines);
     }
 
-    // function animate(timestamp) {
-    //     requestAnimationFrame(animate);
-
-    //     const now = timestamp;
-    //     const elapsed = now - then;
-
-    //     if (elapsed > fpsInterval) {
-    //         then = now - (elapsed % fpsInterval);
-
-    //         let audioData = {};
-    //         if (isAudioSetup) {
-    //             // If audio is running, get real metrics
-    //             audioData = getAudioMetrics();
-    //         } else {
-    //             // Otherwise, use the mock data as a fallback
-    //             const time = now / 1000;
-    //             audioData = {
-    //                 bass: (Math.sin(time * 2) + 1) / 2,
-    //                 mids: (Math.sin(time * 1.5 + 1) + 1) / 2,
-    //                 highs: (Math.sin(time * 3 + 2) + 1) / 2,
-    //                 volume: (Math.sin(time) + 1) / 2
-    //             };
-    //         }
-
-    //         drawFrame(audioData); // Pass the data (real or mock) to the draw function
-    //     }
-    // }
     function animate(timestamp) {
         requestAnimationFrame(animate);
 
@@ -1879,27 +1972,33 @@ document.addEventListener('DOMContentLoaded', function () {
         if (elapsed > fpsInterval) {
             then = now - (elapsed % fpsInterval);
 
-            // Get the current state of the 'Enable Sound' checkbox from the form.
             const generalValues = getControlValues();
             const soundEnabled = generalValues.enableSound;
 
             let audioData = {};
 
-            // Check if audio is enabled AND if the setup has been completed.
             if (soundEnabled && isAudioSetup) {
-                // Use real audio metrics from the Web Audio API.
                 audioData = getAudioMetrics();
             } else {
-                // Otherwise, use the mock data as a fallback.
                 const time = now / 1000;
+
+                // 1. Create a "rate" that changes smoothly and slowly over time.
+                // This will make the animation speed up and slow down unpredictably.
+                const randomRate = (Math.sin(time * 0.2) + 1.5); // Oscillates between 0.5 and 2.5
+
+                // 2. Use this new "randomRate" to control the speed of all the mock audio waves.
+                const mockVol = (Math.sin(time * 1.8 * randomRate) * 0.5 + Math.sin(time * 0.9 * randomRate) * 0.5) / 2 + 0.5;
+                const mockBass = (Math.sin(time * 2.2 * randomRate) * 0.6 + Math.sin(time * 4.7 * randomRate) * 0.4) / 2 + 0.5;
+                const mockMids = (Math.sin(time * 1.5 * randomRate) * 0.5 + Math.sin(time * 2.8 * randomRate) * 0.5) / 2 + 0.5;
+                const mockHighs = (Math.sin(time * 3.3 * randomRate) * 0.7 + Math.sin(time * 8.2 * randomRate) * 0.3) / 2 + 0.5;
+
                 audioData = {
-                    bass: (Math.sin(time * 2) + 1) / 2,
-                    mids: (Math.sin(time * 1.5 + 1) + 1) / 2,
-                    highs: (Math.sin(time * 3 + 2) + 1) / 2,
-                    volume: (Math.sin(time) + 1) / 2
+                    bass:   { avg: mockBass, peak: mockBass },
+                    mids:   { avg: mockMids, peak: mockMids },
+                    highs:  { avg: mockHighs, peak: mockHighs },
+                    volume: { avg: mockVol, peak: mockVol }
                 };
             }
-
             drawFrame(audioData);
         }
     }
@@ -2105,50 +2204,55 @@ document.addEventListener('DOMContentLoaded', function () {
     /**
      * Creates the initial set of Shape objects based on the `configStore`.
      */
-    function createInitialObjects(orderedIds = null) {
+    function createInitialObjects() {
         const grouped = groupConfigs(configStore);
         const initialStates = [];
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
 
-        // --- FIX: Use the provided order, or fall back to the default order ---
-        const idsToProcess = orderedIds || Object.keys(grouped.objects);
+        const idsToProcess = Object.keys(grouped.objects);
 
         idsToProcess.forEach(id => {
-            if (!grouped.objects[id]) return; // Ensure the config for this ID exists
+            const configForThisObject = { id: parseInt(id), gradient: {}, strokeGradient: {} };
+            const objectConfigs = grouped.objects[id];
 
-            const config = { id: parseInt(id), gradient: {} };
-            const representativeConfig = grouped.objects[id][0];
-            if (representativeConfig && representativeConfig.label.includes(':')) {
-                config.name = representativeConfig.label.split(':')[0];
-            }
+            const nameConfig = objectConfigs.find(c => c.property === `obj${id}_name`);
+            configForThisObject.name = nameConfig ? nameConfig.default : `Object ${id}`;
 
-            grouped.objects[id].forEach(conf => {
+            objectConfigs.forEach(conf => {
                 const key = conf.property.replace(`obj${id}_`, '');
                 let value = conf.default;
+
                 if (conf.type === 'number') value = parseFloat(value);
                 else if (conf.type === 'boolean') value = (value === 'true');
+                else if (conf.type === 'textfield' || conf.type === 'textarea') value = String(value).replace(/\\n/g, '\n');
+
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth'];
+                if (propsToScale.includes(key) && typeof value === 'number') {
+                    value *= 4;
+                }
 
                 if (key.startsWith('gradColor')) {
-                    config.gradient[key.replace('grad', '').toLowerCase()] = value;
+                    configForThisObject.gradient[key.replace('grad', '').toLowerCase()] = value;
+                } else if (key.startsWith('strokeGradColor')) {
+                    configForThisObject.strokeGradient[key.replace('strokeGradColor', 'color').toLowerCase()] = value;
                 } else if (key === 'scrollDir') {
-                    config.scrollDirection = value;
+                    configForThisObject.scrollDirection = value;
+                } else if (key === 'strokeScrollDir') {
+                    configForThisObject.strokeScrollDir = value;
                 } else {
-                    config[key] = value;
+                    configForThisObject[key] = value;
                 }
             });
 
-            propsToScale.forEach(prop => {
-                if (config[prop] !== undefined) {
-                    config[prop] *= 4;
-                }
-            });
+            configForThisObject.cycleSpeed = (configForThisObject.cycleSpeed || 0) / 50.0;
+            configForThisObject.animationSpeed = (configForThisObject.animationSpeed || 0) / 10.0;
+            configForThisObject.strokeCycleSpeed = (configForThisObject.strokeCycleSpeed || 0) / 50.0;
+            configForThisObject.strokeAnimationSpeed = (configForThisObject.strokeAnimationSpeed || 0) / 10.0;
 
-            config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
-            config.animationSpeed = (config.animationSpeed || 0) / 10.0;
-            if (config.shape === 'ring' || config.shape === 'circle') {
-                config.height = config.width;
+            if (configForThisObject.shape === 'ring' || configForThisObject.shape === 'circle') {
+                configForThisObject.height = configForThisObject.width;
             }
-            initialStates.push(config);
+
+            initialStates.push(configForThisObject);
         });
 
         objects = initialStates.map(state => new Shape({ ...state, ctx }));
@@ -2261,6 +2365,8 @@ document.addEventListener('DOMContentLoaded', function () {
     //         window.history.pushState({ effectId: workspace.docId }, effectTitle, newUrl);
     //     }
     // }
+    // main.js
+
     function loadWorkspace(workspace) {
         currentProjectMetadata = {
             creatorName: workspace.creatorName,
@@ -2268,6 +2374,40 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const loadedConfigs = workspace.configs;
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(INITIAL_CONFIG_TEMPLATE, 'text/html');
+        const masterConfigTemplates = Array.from(doc.querySelectorAll('meta')).map(parseMetaToConfig);
+
+        const masterGeneralConfigs = masterConfigTemplates.filter(c => !(c.property || c.name).startsWith('obj'));
+
+        const loadedGeneralConfigs = loadedConfigs.filter(c => !(c.property || c.name).startsWith('obj'));
+        const loadedGeneralConfigMap = new Map(loadedGeneralConfigs.map(c => [(c.property || c.name), c]));
+
+        const mergedGeneralConfigs = masterGeneralConfigs.map(masterConf => {
+            const key = masterConf.property || masterConf.name;
+            if (loadedGeneralConfigMap.has(key)) {
+                const savedConf = loadedGeneralConfigMap.get(key);
+                return { ...masterConf, default: savedConf.default };
+            }
+            return masterConf;
+        });
+
+        const enableAnimationConfig = mergedGeneralConfigs.find(conf => conf.property === 'enableAnimation');
+        if (enableAnimationConfig) {
+            enableAnimationConfig.default = 'true';
+        }
+
+        // --- START OF NEW CODE ---
+        // Force 'Enable Sound' to be true on every load.
+        const enableSoundConfig = mergedGeneralConfigs.find(
+            conf => conf.property === 'enableSound'
+        );
+        if (enableSoundConfig) {
+            enableSoundConfig.default = 'true';
+        }
+        // --- END OF NEW CODE ---
+
         const objectIds = [...new Set(
             loadedConfigs
                 .map(c => (c.property || '').match(/^obj(\d+)_/))
@@ -2275,47 +2415,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 .map(match => parseInt(match[1], 10))
         )];
 
-        // --- START OF FIX ---
-        // 1. Get the default general configs from the template.
-        const template = document.getElementById('initial-config');
-        const defaultMetaElements = Array.from(template.content.querySelectorAll('meta'));
-        const defaultConfigs = defaultMetaElements.map(parseMetaToConfig);
-        const defaultGeneralConfigs = defaultConfigs.filter(c => !(c.property || c.name).startsWith('obj'));
-        const defaultObjectConfigs = defaultConfigs.filter(c => (c.property || c.name).startsWith('obj'));
-
-        // 2. Separate loaded configs into general and object-specific.
-        const loadedGeneralConfigs = loadedConfigs.filter(c => !(c.property || c.name).startsWith('obj'));
-        const loadedObjectConfigs = loadedConfigs.filter(c => (c.property || c.name).startsWith('obj'));
-
-        // 3. Create a merged list for general configs, prioritizing loaded configs.
-        const mergedGeneralConfigs = defaultGeneralConfigs.map(defaultConf => {
-            const loadedConf = loadedGeneralConfigs.find(c => (c.property || c.name) === (defaultConf.property || defaultConf.name));
-            return loadedConf || defaultConf;
-        });
-
-        // 4. Create a map of default object properties for a full set of defaults.
-        const defaultObjectProps = {};
+        const finalMergedObjectConfigs = [];
         objectIds.forEach(id => {
-            const defaults = getDefaultObjectConfig(id);
-            defaults.forEach(c => defaultObjectProps[c.property] = c);
+            const fullDefaultConfigSet = getDefaultObjectConfig(id);
+            const savedObjectConfigsForId = loadedConfigs.filter(c => c.property && c.property.startsWith(`obj${id}_`));
+            const savedPropsMap = new Map(savedObjectConfigsForId.map(c => [c.property, c]));
+
+            const mergedConfigsForThisObject = fullDefaultConfigSet.map(defaultConf => {
+                if (savedPropsMap.has(defaultConf.property)) {
+                    const savedConf = savedPropsMap.get(defaultConf.property);
+                    return { ...defaultConf, default: savedConf.default, label: savedConf.label || defaultConf.label };
+                } else {
+                    return defaultConf;
+                }
+            });
+            finalMergedObjectConfigs.push(...mergedConfigsForThisObject);
         });
 
-        // 5. Merge the loaded object properties with the defaults.
-        const mergedObjectConfigs = loadedObjectConfigs.map(loadedConf => {
-            const defaultConf = defaultObjectProps[loadedConf.property];
-            if (defaultConf) {
-                return { ...defaultConf, default: loadedConf.default, label: loadedConf.label };
-            }
-            return loadedConf;
-        });
+        configStore = [...mergedGeneralConfigs, ...finalMergedObjectConfigs];
 
-        // 6. Combine all merged configs into the final configStore.
-        configStore = [...mergedGeneralConfigs, ...mergedObjectConfigs];
-        // --- END OF FIX ---
+        createInitialObjects();
 
-        createInitialObjects(objectIds);
-
-        if (workspace.objects) {
+        if (workspace.objects && workspace.objects.length > 0) {
             workspace.objects.forEach(savedObj => {
                 const obj = objects.find(o => o.id === savedObj.id);
                 if (obj) {
@@ -2326,36 +2447,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         renderForm();
-
-        for (const config of configStore) {
-            const key = config.property || config.name;
-            const el = form.elements[key];
-            if (el) {
-                if (el.type === 'checkbox') {
-                    el.checked = (config.default === true || config.default === 'true');
-                } else {
-                    el.value = config.default;
-                }
-                if (el.type === 'number') {
-                    const slider = document.getElementById(`${el.id}_slider`);
-                    if (slider) slider.value = el.value;
-                }
-                if (el.type === 'color') {
-                    const hexInput = document.getElementById(`${el.id}_hex`);
-                    if (hexInput) hexInput.value = el.value;
-                }
-            }
-        }
-        if (workspace.creatorName) {
-            const publisherInput = form.elements['publisher'];
-            if (publisherInput) publisherInput.value = workspace.creatorName;
-        }
-
-        objects.forEach(obj => {
-            const finalProps = getFormValuesForObject(obj.id);
-            delete finalProps.shape;
-            obj.update(finalProps);
-        });
+        updateFormValuesFromObjects();
 
         currentProjectDocId = workspace.docId || null;
         updateShareButtonState();
@@ -2364,7 +2456,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (workspace.docId) {
             const newUrl = `${window.location.pathname}?effectId=${workspace.docId}`;
-            const effectTitle = workspace.name || "SRGB Effect Builder";
+            const effectTitle = getControlValues()['title'] || "SRGB Effect Builder";
             window.history.pushState({ effectId: workspace.docId }, effectTitle, newUrl);
         }
     }
@@ -2967,12 +3059,6 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Zip creation failed:', error);
             showToast('Failed to create .zip file.', 'danger');
         }
-    });
-
-    copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(outputScriptArea.value).then(() => {
-            showNotification("Script header copied to clipboard!");
-        });
     });
 
     /**
@@ -3726,6 +3812,8 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     // In main.js, replace your entire init function with this:
 
+    // main.js
+
     async function init() {
         const constrainBtn = document.getElementById('constrain-btn');
         constrainBtn.classList.remove('btn-secondary', 'btn-outline-secondary');
@@ -3738,25 +3826,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const effectLoaded = await loadSharedEffect();
 
         if (!effectLoaded) {
-            const template = document.getElementById('initial-config');
-            const metaElements = Array.from(template.content.querySelectorAll('meta'));
-            configStore = metaElements.map(parseMetaToConfig);
-            createInitialObjects();
-            renderForm();
+            // Attempt to load a single featured effect if no shared effect was loaded.
+            const featuredEffectLoaded = await loadFeaturedEffect();
 
-            // Explicitly set form values from the default config
-            for (const config of configStore) {
-                const key = config.property || config.name;
-                const el = form.elements[key];
-                if (el) {
-                    if (el.type === 'checkbox') {
-                        el.checked = (config.default === true || config.default === 'true');
-                    } else {
-                        el.value = config.default;
-                    }
-                }
+            if (!featuredEffectLoaded) {
+                // Fall back to the default template if neither a shared nor a featured effect was found.
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(INITIAL_CONFIG_TEMPLATE, 'text/html');
+                const metaElements = Array.from(doc.querySelectorAll('meta'));
+
+                configStore = metaElements.map(parseMetaToConfig);
+                createInitialObjects();
+                renderForm();
+
+                // ... explicit setting of form values from default config ...
+
+                generateOutputScript(); // Generate script after setup
             }
-            generateOutputScript(); // Generate script after setup
         }
 
         updateObjectsFromForm();
@@ -3772,11 +3858,8 @@ document.addEventListener('DOMContentLoaded', function () {
         requestAnimationFrame(animate);
 
         const savedVSizes = getCookie('split-v-sizes');
-        const savedHSizes = getCookie('split-h-sizes');
         const initialVSizes = savedVSizes ? JSON.parse(savedVSizes) : [30, 70];
-        const initialHSizes = savedHSizes ? JSON.parse(savedHSizes) : [75, 25];
 
-        lastHSizes = initialHSizes;
         lastVSizes = initialVSizes;
 
         horizontalSplit = Split(['#left-panel', '#right-panel'], {
@@ -3794,25 +3877,6 @@ document.addEventListener('DOMContentLoaded', function () {
             onDragEnd: function (sizes) {
                 setCookie('split-v-sizes', JSON.stringify(sizes), 365);
                 lastVSizes = sizes;
-            }
-        });
-
-        verticalSplit = Split(['#right-panel-top', '#right-panel-bottom'], {
-            direction: 'vertical',
-            sizes: initialHSizes,
-            minSize: [200, 150],
-            gutterSize: 12,
-            gutter: (index, direction) => {
-                const gutter = document.createElement('div');
-                gutter.className = `gutter gutter-${direction}`;
-                const icon = document.createElement('i');
-                icon.className = 'bi bi-three-dots';
-                gutter.appendChild(icon);
-                return gutter;
-            },
-            onDragEnd: function (sizes) {
-                setCookie('split-h-sizes', JSON.stringify(sizes), 365);
-                lastHSizes = sizes;
             }
         });
 
@@ -3924,6 +3988,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- LOAD FROM SHARE LINK LOGIC ---
     // This function runs automatically when the page loads.
+    // main.js
+
+    // main.js
+
     async function loadSharedEffect() {
         const params = new URLSearchParams(window.location.search);
         const effectId = params.get('effectId');
@@ -3938,7 +4006,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (projectData.isPublic) {
                         loadWorkspace(projectData);
                         showToast("Shared effect loaded!", 'success');
-                        return true; // Report success
+                        return true;
                     } else {
                         showToast("This effect is not public.", 'danger');
                     }
@@ -3949,25 +4017,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error("Error loading shared effect:", error);
                 showToast("Could not load the shared effect.", 'danger');
             }
-            return false; // Report failure
         }
 
-        try {
-            const q = window.query(window.collection(window.db, "projects"), window.where("featured", "==", true), window.limit(1));
-            const querySnapshot = await window.getDocs(q);
-
-            if (!querySnapshot.empty) {
-                const featuredDoc = querySnapshot.docs[0];
-                const projectData = { docId: featuredDoc.id, ...featuredDoc.data() };
-                loadWorkspace(projectData);
-                showToast(`Featured effect "${projectData.name}" loaded!`, 'info');
-                return true; // Report success
-            }
-        } catch (error) {
-            console.error("Error loading featured effect:", error);
-        }
-
-        return false; // Report failure (no featured effect found)
+        // If no effectId was in the URL or the loading failed, return false.
+        // This removes the "featured effect" fallback and forces the app to use the default config.
+        return false;
     }
 
     // MY PROJECTS BUTTON
@@ -4129,6 +4183,8 @@ document.addEventListener('DOMContentLoaded', function () {
         confirmModalInstance.show();
     }
 
+    // main.js
+
     confirmImportBtn.addEventListener('click', () => {
         const importText = document.getElementById('import-textarea').value;
         if (!importText.trim()) {
@@ -4137,33 +4193,71 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         try {
-            // Create a temporary element to safely parse the HTML string
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = importText;
-
             const metaElements = Array.from(tempDiv.querySelectorAll('meta'));
-
             if (metaElements.length === 0) {
                 showToast("No valid <meta> tags were found.", 'danger');
                 return;
             }
 
-            // Use your existing parser to create a config array
-            const importedConfigs = metaElements.map(parseMetaToConfig);
+            // 1. Get the raw imported configuration data and map it for easy lookup.
+            const loadedConfigs = metaElements.map(parseMetaToConfig);
+            const loadedConfigMap = new Map(loadedConfigs.map(c => [(c.property || c.name), c]));
 
-            // Create a workspace object to pass to the existing load function
-            const workspace = {
-                configs: importedConfigs,
-                // We create objects from the configs, so this can be empty
-                objects: []
-            };
+            // 2. Determine which objects need to be created from the imported tags.
+            const objectIds = [...new Set(
+                loadedConfigs.map(c => (c.property || '').match(/^obj(\d+)_/))
+                    .filter(match => match)
+                    .map(match => parseInt(match[1], 10))
+            )].sort((a, b) => a - b);
 
-            loadWorkspace(workspace);
+            // 3. Build a new, clean configStore from the ground up.
+            const newConfigStore = [];
 
+            // Add general settings first by merging loaded data into the master template.
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(INITIAL_CONFIG_TEMPLATE, 'text/html');
+            const masterGeneralConfigs = Array.from(doc.querySelectorAll('meta'))
+                .map(parseMetaToConfig)
+                .filter(c => !(c.property || c.name).startsWith('obj'));
+
+            masterGeneralConfigs.forEach(masterConf => {
+                const key = masterConf.property || masterConf.name;
+                if (loadedConfigMap.has(key)) {
+                    masterConf.default = loadedConfigMap.get(key).default;
+                }
+                newConfigStore.push(masterConf);
+            });
+
+            // Add a complete set of properties for each object, merging in loaded values.
+            objectIds.forEach(id => {
+                const fullDefaultConfigSet = getDefaultObjectConfig(id);
+                fullDefaultConfigSet.forEach(defaultConf => {
+                    const key = defaultConf.property;
+                    if (loadedConfigMap.has(key)) {
+                        const savedConf = loadedConfigMap.get(key);
+                        defaultConf.default = savedConf.default;
+                        defaultConf.label = savedConf.label || defaultConf.label;
+                    }
+                    newConfigStore.push(defaultConf);
+                });
+            });
+
+            // 4. Reset and rebuild the application state from the new, correct configStore.
+            configStore = newConfigStore;
+            objects = [];
+            createInitialObjects();
+            renderForm();
+            updateFormValuesFromObjects();
+            drawFrame();
+            recordHistory();
+
+            // 5. Finalize UI.
             const importModal = bootstrap.Modal.getInstance(document.getElementById('import-meta-modal'));
             importModal.hide();
             showToast("Effect imported successfully!", 'success');
-            document.getElementById('import-textarea').value = ''; // Clear textarea for next time
+            document.getElementById('import-textarea').value = '';
 
         } catch (error) {
             console.error("Error importing meta tags:", error);
@@ -4639,6 +4733,35 @@ document.addEventListener('DOMContentLoaded', function () {
             const state = appHistory.redo();
             applyHistoryState(state);
         });
+    }
+
+    /**
+ * Loads the featured project from the database if no shared effect is specified.
+ * @returns {Promise<boolean>} A promise that resolves to true if a featured effect was loaded, false otherwise.
+ */
+    async function loadFeaturedEffect() {
+        try {
+            const projectsRef = window.collection(window.db, "projects");
+            const q = window.query(projectsRef, window.where("featured", "==", true), window.limit(1));
+            const querySnapshot = await window.getDocs(q);
+
+            if (!querySnapshot.empty) {
+                const doc = querySnapshot.docs[0];
+                const projectData = { docId: doc.id, ...doc.data() };
+                if (projectData.createdAt && projectData.createdAt.toDate) {
+                    projectData.createdAt = projectData.createdAt.toDate();
+                }
+                loadWorkspace(projectData);
+                showToast(`Featured effect "${projectData.name}" loaded!`, 'success');
+                return true;
+            } else {
+                console.log("No featured effect found in the database.");
+                return false;
+            }
+        } catch (error) {
+            console.error("Error loading featured effect:", error);
+            return false;
+        }
     }
 
     // Start the application.
