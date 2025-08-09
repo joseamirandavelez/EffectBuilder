@@ -402,7 +402,6 @@ class Shape {
     }
 
     _getRandomColorForElement(elementIndex) {
-        // FIX: Added this block to handle color cycling for random fills.
         if (this.cycleColors) {
             const hue = (this.hue1 + elementIndex * this.phaseOffset) % 360;
             return `hsl(${hue}, 100%, 50%)`;
@@ -716,8 +715,6 @@ class Shape {
             if (maxRadius <= 0) return 'black';
             const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
 
-            // FIX: Replaced the flawed "jumping" animation logic with the continuous,
-            // looping algorithm used by the linear gradient. This creates a smooth pulse.
             if (this.animationMode.includes('bounce')) {
                 // Bounce logic remains a simple pulse from center to edge and back.
                 const wave = 1 - Math.abs(2 * p - 1);
@@ -798,12 +795,10 @@ class Shape {
      * @returns {CanvasGradient|string} The generated canvas style.
      */
     _createLocalFillStyle(phase = 0) {
-        // --- START OF FIX ---
         // If the audio effect has set an override color, use it immediately.
         if (this.colorOverride) {
             return this.colorOverride;
         }
-        // --- END OF FIX ---
         let c1 = this.gradient.color1;
         let c2 = this.gradient.color2;
         if (this.cycleColors) {
@@ -1306,13 +1301,6 @@ class Shape {
             this.ctx.beginPath();
             this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
             this.ctx.clip();
-
-            // --- START OF FIX ---
-            // These two lines, which drew a black rectangle, have been removed.
-            // this.ctx.fillStyle = '#000000';
-            // this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-            // --- END OF FIX ---
-
             this.ctx.globalCompositeOperation = 'lighter';
             this.fireParticles.forEach(p => {
                 const lifeRatio = 1.0 - (p.age / p.maxAge);

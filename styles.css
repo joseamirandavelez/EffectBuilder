@@ -4,34 +4,53 @@ body {
 }
 
 #right-panel-top {
-    overflow: hidden; /* Prevent scrollbars */
-    display: flex; /* Center the canvas */
-    align-items: center; /* Center vertically */
-    justify-content: center; /* Center horizontally */
-    width: 100%; /* Fill available width from Split */
-    height: 100%; /* Fill available height from Split */
-    box-sizing: border-box; /* Ensure padding/borders don’t affect size */
+    overflow: hidden;
+    /* Prevent scrollbars */
+    display: flex;
+    /* Center the canvas */
+    align-items: center;
+    /* Center vertically */
+    justify-content: center;
+    /* Center horizontally */
+    width: 100%;
+    /* Fill available width from Split */
+    height: 100%;
+    /* Fill available height from Split */
+    box-sizing: border-box;
+    /* Ensure padding/borders don’t affect size */
 }
 
 #signalCanvas {
-    height: 100%; /* Match container’s height */
-    width: auto; /* Calculate width based on aspect ratio */
-    max-width: 100%; /* Constrain width to container */
-    max-height: 100%; /* Constrain height to container (safeguard) */
-    aspect-ratio: 320 / 200; /* Maintain 320/200 (8/5) aspect ratio */
-    display: block; /* Prevent inline spacing issues */
-    object-fit: contain; /* Ensure uniform scaling */
-    box-sizing: border-box; /* Ensure canvas respects its own borders/padding */
+    height: 100%;
+    /* Match container’s height */
+    width: auto;
+    /* Calculate width based on aspect ratio */
+    max-width: 100%;
+    /* Constrain width to container */
+    max-height: 100%;
+    /* Constrain height to container (safeguard) */
+    aspect-ratio: 320 / 200;
+    /* Maintain 320/200 (8/5) aspect ratio */
+    display: block;
+    /* Prevent inline spacing issues */
+    object-fit: contain;
+    /* Ensure uniform scaling */
+    box-sizing: border-box;
+    /* Ensure canvas respects its own borders/padding */
 }
 
 /* This is the div that contains #canvas-container */
 /* It needs to grow and center its content */
-#right-panel-top > .flex-grow-1 {
+#right-panel-top>.flex-grow-1 {
     display: flex;
-    justify-content: center; /* Center #canvas-container horizontally */
-    align-items: center;   /* Center #canvas-container vertically */
-    flex-grow: 1; /* Ensure it takes available space */
-    min-height: 0; /* Important for flex items to shrink */
+    justify-content: center;
+    /* Center #canvas-container horizontally */
+    align-items: center;
+    /* Center #canvas-container vertically */
+    flex-grow: 1;
+    /* Ensure it takes available space */
+    min-height: 0;
+    /* Important for flex items to shrink */
     /* Removed explicit height: 100%; to allow aspect-ratio to work without conflict */
 }
 
@@ -39,14 +58,18 @@ body {
 #canvas-container {
     position: relative;
     cursor: default;
-    border: 1px solid var(--bs-secondary); /* Keep border for visibility */
+    border: 1px solid var(--bs-secondary);
+    /* Keep border for visibility */
 
     /* Key changes: Use max-width and max-height to constrain within parent */
     max-width: 100%;
     max-height: 100%;
-    width: auto; /* Allow width to be determined by content or max-width */
-    height: auto; /* Allow height to be determined by content or max-height */
-    aspect-ratio: 320 / 200; /* This maintains the aspect ratio */
+    width: auto;
+    /* Allow width to be determined by content or max-width */
+    height: auto;
+    /* Allow height to be determined by content or max-height */
+    aspect-ratio: 320 / 200;
+    /* This maintains the aspect ratio */
 
     /* Removed display: flex; justify-content; align-items; from here, as its parent now centers it. */
 }
@@ -61,16 +84,17 @@ body {
     transition: color 0.2s ease;
 }
 
-.legend-button:not(.collapsed)::after {
-    transform: rotate(-180deg);
+
+/* This targets the <i> icon inside the clickable header */
+[data-bs-toggle="collapse"] .legend-button .bi {
+    transition: transform 0.2s ease-in-out;
+    display: inline-block;
 }
 
-.legend-button::after {
-    content: '\f282';
-    font-family: 'bootstrap-icons';
-    display: inline-block;
-    transition: transform 0.2s ease-in-out;
-    float: right;
+/* When the header is expanded by Bootstrap, it sets aria-expanded="true".
+   This rule targets the icon inside and rotates it to point down. */
+[data-bs-toggle="collapse"][aria-expanded="true"] .legend-button .bi {
+    transform: rotate(-180deg);
 }
 
 .object-name:focus {
@@ -137,3 +161,6 @@ body {
     background-color: var(--bs-border-color);
 }
 
+[data-bs-toggle="collapse"] {
+    user-select: none;
+}
