@@ -1740,28 +1740,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
             let audioData = {};
 
-            if (soundEnabled && isAudioSetup) {
-                audioData = getAudioMetrics();
+            if (soundEnabled) {
+                if (isAudioSetup) {
+                    // Use real audio metrics from the connected source
+                    audioData = getAudioMetrics();
+                } else {
+                    // Use mock data for a preview animation
+                    const time = now / 1000;
+                    const randomRate = (Math.sin(time * 0.2) + 1.5);
+                    const mockVol = (Math.sin(time * 1.8 * randomRate) * 0.5 + Math.sin(time * 0.9 * randomRate) * 0.5) / 2 + 0.5;
+                    const mockBass = (Math.sin(time * 2.2 * randomRate) * 0.6 + Math.sin(time * 4.7 * randomRate) * 0.4) / 2 + 0.5;
+                    const mockMids = (Math.sin(time * 1.5 * randomRate) * 0.5 + Math.sin(time * 2.8 * randomRate) * 0.5) / 2 + 0.5;
+                    const mockHighs = (Math.sin(time * 3.3 * randomRate) * 0.7 + Math.sin(time * 8.2 * randomRate) * 0.3) / 2 + 0.5;
+                    audioData = {
+                        bass: { avg: mockBass, peak: mockBass },
+                        mids: { avg: mockMids, peak: mockMids },
+                        highs: { avg: mockHighs, peak: mockHighs },
+                        volume: { avg: mockVol, peak: mockVol }
+                    };
+                }
             } else {
-                const time = now / 1000;
-
-                // 1. Create a "rate" that changes smoothly and slowly over time.
-                // This will make the animation speed up and slow down unpredictably.
-                const randomRate = (Math.sin(time * 0.2) + 1.5); // Oscillates between 0.5 and 2.5
-
-                // 2. Use this new "randomRate" to control the speed of all the mock audio waves.
-                const mockVol = (Math.sin(time * 1.8 * randomRate) * 0.5 + Math.sin(time * 0.9 * randomRate) * 0.5) / 2 + 0.5;
-                const mockBass = (Math.sin(time * 2.2 * randomRate) * 0.6 + Math.sin(time * 4.7 * randomRate) * 0.4) / 2 + 0.5;
-                const mockMids = (Math.sin(time * 1.5 * randomRate) * 0.5 + Math.sin(time * 2.8 * randomRate) * 0.5) / 2 + 0.5;
-                const mockHighs = (Math.sin(time * 3.3 * randomRate) * 0.7 + Math.sin(time * 8.2 * randomRate) * 0.3) / 2 + 0.5;
-
+                // If sound is disabled, send a "silent" object to stop reactivity.
                 audioData = {
-                    bass: { avg: mockBass, peak: mockBass },
-                    mids: { avg: mockMids, peak: mockMids },
-                    highs: { avg: mockHighs, peak: mockHighs },
-                    volume: { avg: mockVol, peak: mockVol }
+                    bass: { avg: 0, peak: 0 },
+                    mids: { avg: 0, peak: 0 },
+                    highs: { avg: 0, peak: 0 },
+                    volume: { avg: 0, peak: 0 }
                 };
             }
+
             drawFrame(audioData);
         }
     }
@@ -2691,25 +2698,45 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.addEventListener('keydown', (e) => {
-        const target = e.target;
+        // Handle Undo and Redo first, as these should work even when an input is focused.
+        if (e.ctrlKey || e.metaKey) {
+            if (e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                const state = appHistory.undo();
+                applyHistoryState(state);
+                return;
+            } else if (e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                const state = appHistory.redo();
+                applyHistoryState(state);
+                return;
+            }
+        }
 
-        // --- THE FIX IS HERE ---
-        // This check is now more comprehensive. It stops hotkeys from firing
-        // if the user is focused on ANY input, textarea, or editable element.
+        const target = e.target;
         const isInputFocused = target.tagName === 'INPUT' ||
             target.tagName === 'TEXTAREA' ||
             target.isContentEditable;
 
+        // Block other application-specific hotkeys if an input is focused.
         if (isInputFocused) {
-            // If the user is typing in any form field, do not trigger global hotkeys.
             return;
+        }
+
+        // Handle Escape key to deselect all objects.
+        if (e.key === 'Escape' && selectedObjectIds.length > 0) {
+            e.preventDefault();
+            selectedObjectIds = [];
+            updateToolbarState();
+            syncPanelsWithSelection();
+            drawFrame();
         }
 
         // Handle keyboard movement for selected objects
         if (selectedObjectIds.length > 0) {
-            let moveAmount = 1; // Default move by 1 pixel
+            let moveAmount = 4; // Corresponds to 1 UI pixel
             if (e.shiftKey) {
-                moveAmount = 10; // Move by 10 pixels if Shift is held
+                moveAmount = 40; // Corresponds to 10 UI pixels
             }
 
             let moved = false;
@@ -2753,27 +2780,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 e.preventDefault();
                 updateFormValuesFromObjects();
                 drawFrame();
-                debouncedRecordHistory();
+                recordHistory();
             }
         }
 
-        // Handle Delete and Backspace keys for selected objects
+        // Handle Delete key for selected objects
         if ((e.key === 'Delete') && selectedObjectIds.length > 0) {
             e.preventDefault();
             deleteObjects([...selectedObjectIds]);
         }
-
-        // Handle Undo and Redo
-        if (e.ctrlKey || e.metaKey) {
-            if (e.key.toLowerCase() === 'z') {
-                e.preventDefault();
-                appHistory.undo();
-            } else if (e.key.toLowerCase() === 'y') {
-                e.preventDefault();
-                appHistory.redo();
-            }
-        }
-    });;
+    });
 
 
     document.getElementById('export-copy-btn').addEventListener('click', () => {
@@ -3158,13 +3174,31 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!isRotating && !isResizing) {
             const hitObject = [...objects].reverse().find(obj => obj.isPointInside(x, y));
             if (hitObject) {
+                const isNewlySelected = !selectedObjectIds.includes(hitObject.id);
+
                 if (!selectedObjectIds.includes(hitObject.id)) {
-                     if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                    if (e.shiftKey || e.ctrlKey || e.metaKey) {
                         selectedObjectIds.push(hitObject.id);
                     } else {
                         selectedObjectIds = [hitObject.id];
                     }
                 }
+
+                updateToolbarState();
+                syncPanelsWithSelection();
+                drawFrame();
+
+                // If a single object was newly selected, scroll its panel into view.
+                if (isNewlySelected && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                    const fieldset = form.querySelector(`fieldset[data-object-id="${hitObject.id}"]`);
+                    if (fieldset) {
+                        // A short delay allows the collapse animation to start before scrolling.
+                        setTimeout(() => {
+                            fieldset.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }, 200);
+                    }
+                }
+
                 if (!hitObject.locked) {
                     isDragging = true;
                     initialDragState = selectedObjectIds.map(id => {
@@ -3174,10 +3208,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             } else {
                 selectedObjectIds = [];
+                updateToolbarState();
+                syncPanelsWithSelection();
+                drawFrame();
             }
-            updateToolbarState();
-            syncPanelsWithSelection();
-            drawFrame();
         }
 
         const handleMouseMove = (moveEvent) => {
@@ -3199,7 +3233,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const handleMouseUp = (upEvent) => {
             upEvent.preventDefault();
             window.removeEventListener('mousemove', handleMouseMove);
-            
+
             const wasManipulating = isDragging || isResizing || isRotating;
             if (isRotating) {
                 const obj = objects.find(o => o.id === initialDragState[0].id);
@@ -3223,7 +3257,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (obj.innerDiameter) obj.innerDiameter = Math.round(obj.innerDiameter);
                         if (obj.fontSize) obj.fontSize = Math.round(obj.fontSize);
                         obj.rotation = Math.round(obj.rotation);
-                        
+
                         // --- START OF FIX ---
                         // Call the object's update method to save its new rotation
                         // as the "base" rotation for the audio reactivity system.
