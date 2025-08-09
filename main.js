@@ -1,4 +1,26 @@
-// At the top of main.js
+// --- State Management ---
+let isRestoring = false;
+let configStore = [];
+let objects = [];
+let selectedObjectIds = [];
+let oldSelection = [];
+let needsRedraw = false;
+let constrainToCanvas = true;
+let verticalSplit, horizontalSplit;
+let lastHSizes, lastVSizes;
+let fps = 50;
+let fpsInterval;
+let then;
+let galleryListener = null;
+let lastVisibleDoc = null;
+let isLoadingMore = false;
+let currentGalleryQuery = null;
+let currentProjectDocId = null;
+let confirmActionCallback = null;
+let exportPayload = {};
+let propertyClipboard = null;
+let sourceObjectId = null;
+
 let cachedSnapTargets = null;
 let snapLines = [];
 let isDragging = false;
@@ -8,310 +30,21 @@ let activeResizeHandle = null;
 let initialDragState = [];
 let dragStartX = 0;
 let dragStartY = 0;
-
+let audioContext;
+let analyser;
+let frequencyData;
+let isAudioSetup = false;
 let gradientSpeedMultiplier = 1 / 400;
 let shapeAnimationSpeedMultiplier = 0.05;
 let seismicAnimationSpeedMultiplier = 0.015;
 let tetrisSpeedDivisor = 10.0;
 
-const EXPORT_GRADIENT_SPEED_MULTIPLIER = 1 / 400;
-const EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER = 0.05;
-const EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER = seismicAnimationSpeedMultiplier / 4;
+const EXPORT_GRADIENT_SPEED_MULTIPLIER = gradientSpeedMultiplier;
+const EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER = shapeAnimationSpeedMultiplier;
+const EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER = seismicAnimationSpeedMultiplier;
 const EXPORT_TETRIS_SPEED_DIVISOR = tetrisSpeedDivisor * 4;
 
-// Helper function to compute world-coordinate edges and center
-function getWorldPoints(obj) {
-    const center = obj.getCenter();
 
-    if (obj.shape === 'circle' || obj.shape === 'ring') {
-        const outerRadius = obj.width / 2;
-        let points = [
-            { x: center.x, y: center.y - outerRadius, type: 'edge', handle: 'top' },
-            { x: center.x, y: center.y + outerRadius, type: 'edge', handle: 'bottom' },
-            { x: center.x - outerRadius, y: center.y, type: 'edge', handle: 'left' },
-            { x: center.x + outerRadius, y: center.y, type: 'edge', handle: 'right' },
-            { x: center.x, y: center.y, type: 'center', handle: 'center' }
-        ];
-        if (obj.shape === 'ring' && obj.innerDiameter > 0) {
-            const innerRadius = obj.innerDiameter / 2;
-            points.push(
-                { x: center.x, y: center.y - innerRadius, type: 'edge', handle: 'top' },
-                { x: center.x, y: center.y + innerRadius, type: 'edge', handle: 'bottom' },
-                { x: center.x - innerRadius, y: center.y, type: 'edge', handle: 'left' },
-                { x: center.x + innerRadius, y: center.y, type: 'edge', handle: 'right' }
-            );
-        }
-        return points;
-    }
-
-    const angle = obj.getRenderAngle();
-    const cosA = Math.cos(angle);
-    const sinA = Math.sin(angle);
-    const halfWidth = obj.width / 2;
-    const halfHeight = obj.height / 2;
-    const localPoints = [
-        { x: -halfWidth, y: -halfHeight, type: 'edge', handle: 'top-left' },
-        { x: halfWidth, y: -halfHeight, type: 'edge', handle: 'top-right' },
-        { x: halfWidth, y: halfHeight, type: 'edge', handle: 'bottom-right' },
-        { x: -halfWidth, y: halfHeight, type: 'edge', handle: 'bottom-left' },
-        { x: 0, y: -halfHeight, type: 'center', handle: 'top' },
-        { x: 0, y: halfHeight, type: 'center', handle: 'bottom' },
-        { x: -halfWidth, y: 0, type: 'center', handle: 'left' },
-        { x: halfWidth, y: 0, type: 'center', handle: 'right' },
-        { x: 0, y: 0, type: 'center', handle: 'center' }
-    ];
-    return localPoints.map(point => ({
-        x: center.x + (point.x * cosA - point.y * sinA),
-        y: center.y + (point.x * sinA + point.y * cosA),
-        type: point.type,
-        handle: point.handle
-    }));
-}
-
-const FONT_DATA_4PX = {
-    name: 'small', charWidth: 3, charHeight: 4, charSpacing: 1, lineSpacing: 2,
-    map: {
-        'A': ['010', '101', '111', '101'], 'B': ['110', '101', '111', '110'], 'C': ['011', '100', '100', '011'],
-        'D': ['110', '101', '101', '110'], 'E': ['111', '100', '110', '111'], 'F': ['111', '100', '110', '100'],
-        'G': ['011', '100', '101', '011'], 'H': ['101', '101', '111', '101'], 'I': ['111', '010', '010', '111'],
-        'J': ['011', '001', '101', '010'], 'K': ['101', '110', '110', '101'], 'L': ['100', '100', '100', '111'],
-        'M': ['101', '111', '101', '101'], 'N': ['110', '101', '101', '101'], 'O': ['010', '101', '101', '010'],
-        'P': ['111', '101', '110', '100'], 'Q': ['010', '101', '111', '011'], 'R': ['110', '101', '110', '101'],
-        'S': ['011', '100', '010', '110'], 'T': ['111', '010', '010', '010'], 'U': ['101', '101', '101', '011'],
-        'V': ['101', '101', '010', '010'], 'W': ['101', '101', '111', '101'], 'X': ['101', '010', '010', '101'],
-        'Y': ['101', '010', '010', '010'], 'Z': ['111', '001', '010', '111'],
-        'a': ['000', '010', '111', '101'], 'b': ['100', '110', '101', '110'], 'c': ['000', '011', '100', '011'],
-        'd': ['001', '011', '101', '011'], 'e': ['000', '010', '111', '111'], 'f': ['010', '100', '110', '100'],
-        'g': ['011', '101', '011', '001'], 'h': ['100', '110', '101', '101'], 'i': ['010', '000', '010', '010'],
-        'j': ['001', '000', '001', '010'], 'k': ['100', '110', '110', '101'], 'l': ['010', '010', '010', '010'],
-        'm': ['000', '111', '111', '101'], 'n': ['000', '110', '101', '101'], 'o': ['000', '010', '101', '010'],
-        'p': ['110', '101', '110', '100'], 'q': ['011', '101', '011', '001'], 'r': ['000', '110', '100', '100'],
-        's': ['000', '111', '100', '011'], 't': ['100', '111', '100', '010'], 'u': ['000', '101', '101', '011'],
-        'v': ['000', '101', '101', '010'], 'w': ['000', '101', '111', '111'], 'x': ['000', '101', '010', '101'],
-        'y': ['101', '101', '011', '001'], 'z': ['000', '111', '010', '111'],
-        '0': ['010', '101', '101', '010'], '1': ['010', '110', '010', '010'], '2': ['110', '001', '010', '111'],
-        '3': ['111', '010', '101', '010'], '4': ['100', '101', '111', '001'], '5': ['111', '100', '011', '110'],
-        '6': ['011', '100', '111', '010'], '7': ['111', '001', '010', '010'], '8': ['010', '101', '010', '101'],
-        '9': ['010', '111', '001', '110'], '.': ['000', '000', '000', '010'], ',': ['000', '000', '010', '010'],
-        '!': ['010', '010', '000', '010'], '?': ['010', '101', '000', '010'], "'": ['010', '010', '000', '000'],
-        '"': ['101', '101', '000', '000'], ':': ['000', '010', '000', '010'], ';': ['000', '010', '010', '010'],
-        '(': ['010', '100', '100', '010'], ')': ['100', '010', '010', '100'], '-': ['000', '000', '111', '000'],
-        '+': ['000', '010', '111', '010'], '=': ['000', '111', '000', '111'], '*': ['101', '010', '101', '000'],
-        '/': ['001', '010', '100', '000'], '\\': ['100', '010', '001', '000'], '#': ['010', '111', '010', '111'],
-        '$': ['010', '111', '101', '111'], '%': ['101', '001', '010', '101'], '&': ['010', '101', '010', '101'],
-        ' ': ['000', '000', '000', '000']
-    }
-};
-
-// Large Font (5x5 pixels for better readability)
-const FONT_DATA_5PX = {
-    name: 'large', charWidth: 5, charHeight: 5, charSpacing: 1, lineSpacing: 1,
-    map: {
-        'A': ['01110', '10001', '11111', '10001', '10001'], 'B': ['11110', '10001', '11110', '10001', '11110'],
-        'C': ['01110', '10000', '10000', '10000', '01110'], 'D': ['11110', '10001', '10001', '10001', '11110'],
-        'E': ['11111', '10000', '11110', '10000', '11111'], 'F': ['11111', '10000', '11110', '10000', '10000'],
-        'G': ['01110', '10000', '10111', '10001', '01110'], 'H': ['10001', '10001', '11111', '10001', '10001'],
-        'I': ['11111', '00100', '00100', '00100', '11111'], 'J': ['00111', '00001', '00001', '10001', '01110'],
-        'K': ['10001', '10010', '11100', '10010', '10001'], 'L': ['10000', '10000', '10000', '10000', '11111'],
-        'M': ['10001', '11011', '10101', '10001', '10001'], 'N': ['10001', '11001', '10101', '10011', '10001'],
-        'O': ['01110', '10001', '10001', '10001', '01110'], 'P': ['11110', '10001', '11110', '10000', '10000'],
-        'Q': ['01110', '10001', '10101', '10010', '01101'], 'R': ['11110', '10001', '11110', '10010', '10001'],
-        'S': ['01110', '10000', '01110', '00001', '11110'], 'T': ['11111', '00100', '00100', '00100', '00100'],
-        'U': ['10001', '10001', '10001', '10001', '01110'], 'V': ['10001', '10001', '10001', '01010', '00100'],
-        'W': ['10001', '10001', '10101', '11011', '10001'], 'X': ['10001', '01010', '00100', '01010', '10001'],
-        'Y': ['10001', '01010', '00100', '00100', '00100'], 'Z': ['11111', '00010', '00100', '01000', '11111'],
-        'a': ['00000', '01110', '10001', '01111', '00000'], 'b': ['10000', '10000', '11110', '10001', '11110'],
-        'c': ['00000', '01110', '10000', '10000', '01110'], 'd': ['00001', '00001', '01111', '10001', '01111'],
-        'e': ['00000', '01110', '11111', '10000', '01110'], 'f': ['00110', '01001', '01000', '01000', '01000'],
-        'g': ['00000', '01111', '10001', '01111', '00001'], 'h': ['10000', '10000', '11110', '10001', '10001'],
-        'i': ['01110', '00000', '01100', '01000', '01110'], 'j': ['00110', '00000', '00110', '00100', '11000'],
-        'k': ['10000', '10010', '11100', '11100', '10010'], 'l': ['01000', '01000', '01000', '01000', '01110'],
-        'm': ['00000', '11010', '10101', '10101', '10001'], 'n': ['00000', '11110', '10001', '10001', '10001'],
-        'o': ['00000', '01110', '10001', '10001', '01110'], 'p': ['00000', '11110', '10001', '11110', '10000'],
-        'q': ['00000', '01111', '10001', '01111', '00001'], 'r': ['00000', '10110', '11000', '10000', '10000'],
-        's': ['00000', '01111', '01000', '10010', '11100'], 't': ['01000', '11110', '01000', '01000', '00110'],
-        'u': ['00000', '10001', '10001', '10001', '01111'], 'v': ['00000', '10001', '10001', '01010', '00100'],
-        'w': ['00000', '10101', '10101', '11111', '10101'], 'x': ['00000', '10001', '01110', '01110', '10001'],
-        'y': ['00000', '10001', '10001', '01111', '00001'], 'z': ['00000', '11111', '00110', '01100', '11111'],
-        '0': ['01110', '10011', '10101', '11001', '01110'], '1': ['00100', '01100', '00100', '00100', '01110'],
-        '2': ['01110', '10001', '00110', '01000', '11111'], '3': ['11111', '00010', '01100', '00001', '11110'],
-        '4': ['00110', '01010', '10010', '11111', '00010'], '5': ['11111', '10000', '11110', '00001', '11110'],
-        '6': ['01110', '10000', '11110', '10001', '01110'], '7': ['11111', '00001', '00010', '00100', '00100'],
-        '8': ['01110', '10001', '01110', '10001', '01110'], '9': ['01110', '10001', '01111', '00001', '01110'],
-        ' ': ['00000', '00000', '00000', '00000', '00000'], '.': ['00000', '00000', '00000', '01100', '01100'],
-        ',': ['00000', '00000', '00000', '01100', '01000'], '!': ['01100', '01100', '01100', '00000', '01100'],
-        '?': ['01110', '10001', '00110', '00000', '00100'], "'": ['00110', '00110', '00100', '00000', '00000'],
-        '"': ['11011', '11011', '00000', '00000', '00000'], ':': ['00000', '01100', '00000', '01100', '00000'],
-        ';': ['00000', '00000', '01100', '00000', '01000'], '(': ['00100', '01000', '01000', '01000', '00100'],
-        ')': ['10000', '01000', '01000', '01000', '10000'], '-': ['00000', '00000', '11111', '00000', '00000'],
-        '+': ['00000', '00100', '01110', '00100', '00000'], '=': ['00000', '11111', '00000', '11111', '00000'],
-        '*': ['01010', '01010', '11111', '01010', '01010'], '/': ['00001', '00010', '00100', '01000', '10000'],
-        '\\': ['10000', '01000', '00100', '00010', '00001'], '#': ['01010', '11111', '01010', '11111', '01010'],
-        '$': ['00100', '01110', '10101', '01110', '00100'], '%': ['11001', '01010', '00100', '01010', '10011'],
-        '&': ['01110', '10001', '01110', '10101', '01011']
-    }
-};
-
-/**
- * Creates a debounced function that delays invoking func until after wait milliseconds have elapsed
- * since the last time the debounced function was invoked.
- * @param {function} func The function to debounce.
- * @param {number} [wait=500] The number of milliseconds to delay.
- * @returns {function} Returns the new debounced function.
- */
-function debounce(func, wait = 100) {
-    let timeout;
-    return function (...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), wait);
-    };
-}
-
-function drawPixelText(ctx, shape) {
-    const { x, y, width, height, pixelFont, fontSize, textAlign,
-        textAnimation, scrollOffsetX, waveAngle, visibleCharCount } = shape;
-
-    const textToRender = shape.getDisplayText();
-    if (typeof textToRender !== 'string') return;
-
-    const fontData = pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
-    const { charWidth, charHeight, charSpacing, lineSpacing, map } = fontData;
-    const pixelSize = fontSize / 10; // This is our margin size
-
-    const animatedText = textToRender.toUpperCase().substring(0, Math.floor(visibleCharCount));
-    const lines = animatedText.split('\n');
-
-    ctx.save();
-    ctx.beginPath();
-
-    if (textAnimation === 'wave') {
-        const verticalPadding = 100; // Extra clipping space for wave animation
-        ctx.rect(x, y - verticalPadding, width, height + verticalPadding * 2);
-    } else {
-        ctx.rect(x, y, width, height);
-    }
-    ctx.clip();
-
-    lines.forEach((line, lineIndex) => {
-        const lineWidth = line.length * (charWidth + charSpacing) * pixelSize - (charSpacing * pixelSize);
-        let lineStartX = x;
-        if (textAlign === 'center') {
-            lineStartX = x + (width - lineWidth) / 2;
-        } else if (textAlign === 'right') {
-            lineStartX = x + width - lineWidth;
-        }
-
-        for (let i = 0; i < line.length; i++) {
-            const charData = map[line[i]] || map['?'];
-            if (!charData) continue;
-
-            let dx = lineStartX + i * (charWidth + charSpacing) * pixelSize + scrollOffsetX;
-            // Apply the top margin to the drawing's Y position
-            let dy = y + pixelSize + lineIndex * (charHeight + lineSpacing) * pixelSize;
-
-            if (textAnimation === 'wave') {
-                dy += Math.sin(waveAngle + i * 0.5) * (pixelSize * 2);
-            }
-
-            if (dx > x + width || dx < x - (charWidth * pixelSize)) {
-                continue;
-            }
-
-            for (let r = 0; r < charHeight; r++) {
-                for (let c = 0; c < charWidth; c++) {
-                    if (charData[r] && charData[r][c] === '1') {
-                        ctx.fillRect(dx + c * pixelSize, dy + r * pixelSize, pixelSize, pixelSize);
-                    }
-                }
-            }
-        }
-    });
-
-    ctx.restore();
-}
-
-/**
- * Sets a browser cookie with a given name, value, and expiration in days.
- * @param {string} name - The name of the cookie.
- * @param {string} value - The value to store in the cookie.
- * @param {number} days - The number of days until the cookie expires.
- */
-function setCookie(name, value, days) {
-    let expires = "";
-    if (days) {
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        expires = "; expires=" + date.toUTCString();
-    }
-    document.cookie = name + "=" + (value || "") + expires + "; path=/";
-}
-
-/**
- * Retrieves the value of a cookie by its name.
- * @param {string} name - The name of the cookie to retrieve.
- * @returns {string|null} The cookie's value, or null if not found.
- */
-function getCookie(name) {
-    const nameEQ = name + "=";
-    const ca = document.cookie.split(';');
-    for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
-        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
-    }
-    return null;
-}
-
-/**
- * Linearly interpolates between two hexadecimal colors.
- * @param {string} a - The starting color in hex format (e.g., "#RRGGBB").
- * @param {string} b - The ending color in hex format (e.g., "#RRGGBB").
- * @param {number} amount - The interpolation amount (0.0 to 1.0).
- * @returns {string} The interpolated color in hex format.
- */
-function lerpColor(a, b, amount) {
-    const amt = Math.max(0, Math.min(1, amount));
-    const ah = parseInt(a.slice(1), 16),
-        ar = ah >> 16,
-        ag = (ah >> 8) & 0xff,
-        ab = ah & 0xff,
-        bh = parseInt(b.slice(1), 16),
-        br = bh >> 16,
-        bg = (bh >> 8) & 0xff,
-        bb = bh & 0xff,
-        rr = Math.round(ar + amt * (br - ar)),
-        rg = Math.round(ag + amt * (bg - ag)),
-        rb = Math.round(ab + amt * (bb - ab));
-    return '#' + (rr << 16 | rg << 8 | rb).toString(16).padStart(6, '0');
-}
-
-/**
- * Generates a color from a two-color pattern based on a time value.
- * Supports both HSL and hex color formats.
- * @param {number} t - The time value (typically 0.0 to 1.0) for the pattern.
- * @param {string} c1 - The first color (hex or HSL).
- * @param {string} c2 - The second color (hex or HSL).
- * @returns {string} The calculated color string.
- */
-function getPatternColor(t, c1, c2) {
-    t = (t % 1.0 + 1.0) % 1.0;
-    const isHsl = c1.startsWith('hsl');
-    if (isHsl) {
-        const hue1 = parseFloat(c1.match(/hsl\((\d+\.?\d*)/)[1]);
-        const hue2 = parseFloat(c2.match(/hsl\((\d+\.?\d*)/)[1]);
-        let finalHue;
-        if (t < 0.5) {
-            finalHue = hue1 + (t / 0.5) * (hue2 - hue1);
-        } else {
-            finalHue = hue2 + ((t - 0.5) / 0.5) * (hue1 - hue2);
-        }
-        return `hsl(${finalHue % 360}, 100%, 50%)`;
-    } else {
-        if (t < 0.5) return lerpColor(c1, c2, t / 0.5);
-        else return lerpColor(c2, c1, (t - 0.5) / 0.5);
-    }
-}
 
 function getBoundingBox(obj) {
     const corners = [
@@ -326,1337 +59,6 @@ function getBoundingBox(obj) {
         maxX: Math.max(...corners.map(c => c.x)),
         maxY: Math.max(...corners.map(c => c.y)),
     };
-}
-
-/**
- * Represents a drawable, interactive shape on the canvas.
- * Manages its own state, including position, size, appearance, and animation properties.
- */
-class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, multipliers, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireHeight, fireSpread, pixelArtData }) {
-        this.id = id;
-        this.name = name || `Object ${id}`;
-        this.shape = shape;
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-        this.rotation = rotation || 0;
-        this.gradType = gradType || 'solid';
-        this.gradient = gradient || { color1: '#000000', color2: '#000000' };
-        this.scrollDirection = scrollDirection || 'right';
-        this.cycleColors = cycleColors || false;
-        this.cycleSpeed = cycleSpeed || 0;
-        this.animationSpeed = animationSpeed || 0;
-        this.animationMode = animationMode || 'loop';
-        this.ctx = ctx;
-        this.hue1 = 0;
-        this.hue2 = 90;
-        this.scrollOffset = 0;
-
-        // Stroke Properties
-        this.enableStroke = enableStroke || false;
-        this.strokeWidth = strokeWidth || 2;
-        this.strokeGradType = strokeGradType || 'solid';
-        this.strokeGradient = strokeGradient || { color1: '#FFFFFF', color2: '#000000' };
-        this.strokeScrollDir = strokeScrollDir || 'right';
-        this.strokeCycleColors = strokeCycleColors || false;
-        this.strokeCycleSpeed = strokeCycleSpeed || 0;
-        this.strokeAnimationSpeed = strokeAnimationSpeed || 0;
-        this.strokeHue1 = 0;
-        this.strokeHue2 = 90;
-        this.strokeScrollOffset = 0;
-
-        this.isReversing = false;
-        this.animationState = 'scrolling';
-        this.waitTimer = 0;
-        this.innerDiameter = innerDiameter;
-        this.angularWidth = angularWidth;
-        this.numberOfSegments = numberOfSegments;
-        this.rotationSpeed = rotationSpeed || 0;
-        this.rotationAngle = 0;
-        this.animationAngle = Math.random() * 2 * Math.PI;
-        this.useSharpGradient = useSharpGradient !== undefined ? useSharpGradient : false;
-        this.gradientStop = gradientStop !== undefined ? parseFloat(gradientStop) : 50;
-        this.locked = locked || false;
-        this.numberOfRows = numberOfRows || 1;
-        this.numberOfColumns = numberOfColumns || 1;
-        this.phaseOffset = phaseOffset || 10;
-        this.cellOrder = [];
-        this._shuffleCellOrder();
-        this.handleSize = 15;
-        this.rotationHandleOffset = -30;
-        this.rotationHandleRadius = 15;
-        this.handles = [{ name: 'top-left', cursor: 'nwse-resize' }, { name: 'top', cursor: 'ns-resize' }, { name: 'top-right', cursor: 'nesw-resize' }, { name: 'left', cursor: 'ew-resize' }, { name: 'right', cursor: 'ew-resize' }, { name: 'bottom-left', cursor: 'nesw-resize' }, { name: 'bottom', cursor: 'ns-resize' }, { name: 'bottom-right', cursor: 'nwse-resize' }];
-
-        this.randomElementState = null;
-
-        this.text = text || 'Hello';
-        this.fontFamily = fontFamily || 'Arial';
-        this.fontSize = fontSize || 60;
-        this.fontWeight = fontWeight || 'bold';
-        this.textAlign = textAlign || 'center';
-        this.pixelFont = pixelFont || 'small';
-        this.textAnimation = textAnimation || 'none';
-        this.textAnimationSpeed = textAnimationSpeed || 10;
-        this.scrollOffsetX = 0;
-        this.visibleCharCount = 0;
-        this.waveAngle = 0;
-        this.typewriterWaitTimer = 0;
-        this.showTime = showTime || false;
-        this.showDate = showDate || false;
-        this.lineWidth = lineWidth || 1;
-        this.waveType = waveType || 'sine';
-        this.frequency = frequency || 5;
-        this.pulseDepth = pulseDepth !== undefined ? pulseDepth : 50;
-        this.fillShape = fillShape || false;
-        this.enableWaveAnimation = enableWaveAnimation !== undefined ? enableWaveAnimation : true;
-        this.oscDisplayMode = oscDisplayMode || 'linear';
-        this.waveMinY = this.y;
-        this.waveMaxY = this.y + this.height;
-        this._pausedRotationSpeed = null;
-        this.waveStyle = waveStyle || 'wavy';
-        this.waveCount = waveCount || 5;
-        this.tetrisBlockCount = tetrisBlockCount || 10;
-        this.tetrisAnimation = tetrisAnimation || 'gravity';
-        this.tetrisSpeed = tetrisSpeed || 5;
-        this.tetrisBounce = tetrisBounce || 50;
-        this.tetrisBlocks = [];
-        this.tetrisSpawnTimer = 0;
-        this.tetrisStackHeight = 0;
-        this.tetrisActiveBlockIndex = 0;
-        this.tetrisFadeState = 'in';
-        this.sides = sides || 6;
-        this.points = points || 5;
-        this.starInnerRadius = starInnerRadius || 50;
-        this.gradientSpeedMultiplier = gradientSpeedMultiplier;
-        this.shapeAnimationSpeedMultiplier = shapeAnimationSpeedMultiplier;
-        this.seismicAnimationSpeedMultiplier = 0.015;
-        this.tetrisSpeedDivisor = 10.0;
-        this.exportedGradientSpeedMultiplier = 0.0025;
-        this.exportedShapeAnimationSpeedMultiplier = 0.05;
-        this.exportedSeismicAnimationSpeedMultiplier = 0.00375;
-        this.exportedTetrisSpeedDivisor = 40.0;
-        this.fireParticles = [];
-        this.fireHeight = fireHeight || 100;
-        this.fireSpread = fireSpread || 100;
-        this.particleSpawnCounter = 0;
-        this.nextParticleId = 0; // Add this line
-    }
-
-    getDisplayText() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const year = now.getFullYear();
-        const dateString = `${month}/${day}/${year}`;
-        if (this.showDate && this.showTime) {
-            return `${dateString} ${timeString}`;
-        } else if (this.showTime) {
-            return timeString;
-        } else if (this.showDate) {
-            return dateString;
-        }
-        return this.text || '';
-    }
-
-    getWrappedText() {
-        const text = this.getDisplayText();
-        return text;
-    }
-
-    _getRandomColorForElement(elementIndex) {
-        // FIX: Added this block to handle color cycling for random fills.
-        if (this.cycleColors) {
-            const hue = (this.hue1 + elementIndex * this.phaseOffset) % 360;
-            return `hsl(${hue}, 100%, 50%)`;
-        }
-
-        if (this.gradType !== 'random') {
-            return this.gradient.color1;
-        }
-        if (!this.randomElementState) {
-            this.randomElementState = {};
-        }
-
-        if (!this.randomElementState[elementIndex]) {
-            this.randomElementState[elementIndex] = {
-                color: Math.random() < 0.5 ? this.gradient.color1 : this.gradient.color2,
-                timer: Math.random() * 10 + 5
-            };
-        }
-
-        const state = this.randomElementState[elementIndex];
-        state.timer -= this.cycleSpeed;
-
-        if (state.timer <= 0) {
-            state.color = Math.random() < 0.5 ? this.gradient.color1 : this.gradient.color2;
-            state.timer = Math.random() * 10 + 5;
-        }
-
-        return state.color;
-    }
-
-    _updateTextMetrics() {
-        if (this.shape !== 'text' || !this.ctx) return;
-        const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
-        const { charWidth, charHeight, charSpacing, lineSpacing } = fontData;
-        const textToMeasure = this.getWrappedText() || ' ';
-        const lines = textToMeasure.split('\n');
-        const pixelSize = this.fontSize / 10;
-        const textBlockHeight = lines.length * (charHeight + lineSpacing) * pixelSize - (lineSpacing * pixelSize);
-        this.height = textBlockHeight + (2 * pixelSize);
-    }
-
-    _updateFontSizeFromHeight() {
-        if (this.shape !== 'text') return;
-
-        const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
-        const { charHeight, lineSpacing } = fontData;
-        const textToMeasure = this.getWrappedText() || ' ';
-        const lines = textToMeasure.split('\n');
-
-        const denominator = (lines.length * (charHeight + lineSpacing) - lineSpacing + 2);
-        if (denominator <= 0) return;
-
-        const newPixelSize = this.height / denominator;
-        this.fontSize = Math.max(20, Math.round(newPixelSize * 10));
-    }
-
-    _shuffleCellOrder() {
-        const totalCells = this.numberOfRows * this.numberOfColumns;
-        this.cellOrder = Array.from({ length: totalCells }, (_, i) => i);
-        for (let i = this.cellOrder.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [this.cellOrder[i], this.cellOrder[j]] = [this.cellOrder[j], this.cellOrder[i]];
-        }
-    }
-
-    getCenter() {
-        return { x: this.x + this.width / 2, y: this.y + this.height / 2 };
-    }
-
-    getRenderAngle() {
-        return (this.rotationSpeed !== 0) ? this.rotationAngle : (this.rotation * Math.PI / 180);
-    }
-
-    getWorldCoordsOfCorner(handleName) {
-        const center = this.getCenter();
-        const halfW = this.width / 2;
-        const halfH = this.height / 2;
-
-        let localCorner = { x: 0, y: 0 };
-        if (handleName.includes('left')) localCorner.x = -halfW;
-        if (handleName.includes('right')) localCorner.x = halfW;
-        if (handleName.includes('top')) localCorner.y = -halfH;
-        if (handleName.includes('bottom')) localCorner.y = halfH;
-
-        const angle = this.getRenderAngle();
-        const s = Math.sin(angle);
-        const c = Math.cos(angle);
-        const rotatedX = localCorner.x * c - localCorner.y * s;
-        const rotatedY = localCorner.x * s + localCorner.y * c;
-
-        return { x: center.x + rotatedX, y: center.y + rotatedY };
-    }
-
-    getHandleAtPoint(px, py) {
-        if (this.locked) return null;
-
-        const center = this.getCenter();
-        const staticAngle = this.rotation * Math.PI / 180;
-
-        this.ctx.save();
-        this.ctx.translate(center.x, center.y);
-        this.ctx.rotate(staticAngle);
-
-        const halfW = this.width / 2;
-        const halfH = this.height / 2;
-
-        const localPoint = {
-            x: (px - center.x) * Math.cos(-staticAngle) - (py - center.y) * Math.sin(-staticAngle),
-            y: (px - center.x) * Math.sin(-staticAngle) + (py - center.y) * Math.cos(-staticAngle)
-        };
-
-        const h2 = this.handleSize / 2;
-        const handlePositions = {
-            'top-left': { x: -halfW, y: -halfH }, 'top': { x: 0, y: -halfH }, 'top-right': { x: halfW, y: -halfH },
-            'left': { x: -halfW, y: 0 }, 'right': { x: halfW, y: 0 },
-            'bottom-left': { x: -halfW, y: halfH }, 'bottom': { x: 0, y: halfH }, 'bottom-right': { x: halfW, y: halfH }
-        };
-
-        const rotHandleX = 0;
-        const rotHandleY = -halfH + this.rotationHandleOffset;
-        const dist = Math.sqrt(Math.pow(localPoint.x - rotHandleX, 2) + Math.pow(localPoint.y - rotHandleY, 2));
-
-        this.ctx.restore();
-
-        if (dist <= this.rotationHandleRadius + h2) {
-            return { name: 'rotate', cursor: 'crosshair', type: 'rotation' };
-        }
-
-        for (const handle of this.handles) {
-            const pos = handlePositions[handle.name];
-            if (localPoint.x >= pos.x - h2 && localPoint.x <= pos.x + h2 && localPoint.y >= pos.y - h2 && localPoint.y <= pos.y + h2) {
-                return handle;
-            }
-        }
-
-        return null;
-    }
-
-    isPointInside(px, py) {
-        const center = this.getCenter();
-        const angle = -this.getRenderAngle();
-        const s = Math.sin(angle);
-        const c = Math.cos(angle);
-
-        const dx = px - center.x;
-        const dy = py - center.y;
-
-        const localX = dx * c - dy * s;
-        const localY = dx * s + dy * c;
-
-        const halfWidth = this.width / 2;
-        const halfHeight = this.height / 2;
-
-        return (localX >= -halfWidth && localX <= halfWidth &&
-            localY >= -halfHeight && localY <= halfHeight);
-    }
-
-    update(props) {
-        const textChanged = props.text !== undefined && props.text !== this.text;
-        const animationChanged = props.textAnimation !== undefined && props.textAnimation !== this.textAnimation;
-        if ((textChanged && this.textAnimation === 'typewriter') || (animationChanged && props.textAnimation === 'typewriter')) {
-            this.visibleCharCount = 0;
-            this.typewriterWaitTimer = 0;
-        }
-
-        const animationTypeChanged = props.tetrisAnimation !== undefined && props.tetrisAnimation !== this.tetrisAnimation;
-        const gradTypeChangedToTetris = (props.gradType !== undefined && props.gradType.startsWith('tetris')) && !this.gradType.startsWith('tetris');
-        const blockCountChanged = props.tetrisBlockCount !== undefined && props.tetrisBlockCount !== this.tetrisBlockCount;
-
-        if (animationTypeChanged || gradTypeChangedToTetris || blockCountChanged) {
-            this.tetrisBlocks = [];
-            this.tetrisSpawnTimer = 0;
-            this.tetrisActiveBlockIndex = 0;
-            this.tetrisFadeState = 'in';
-        }
-
-        if ((textChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave')) || (animationChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave'))) {
-            this.scrollOffsetX = 0;
-            this.waveAngle = 0;
-        }
-        const oldRows = this.numberOfRows;
-        const oldCols = this.numberOfColumns;
-        for (const key in props) {
-            if (props[key] !== undefined) {
-                if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
-                    if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
-                    if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
-                } else if (key === 'strokeGradient' && typeof props[key] === 'object' && props[key] !== null) {
-                    if (props.strokeGradient.color1 !== undefined) this.strokeGradient.color1 = props.strokeGradient.color1;
-                    if (props.strokeGradient.color2 !== undefined) this.strokeGradient.color2 = props.strokeGradient.color2;
-                } else {
-                    this[key] = props[key];
-                }
-            }
-        }
-        if (this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols) {
-            this._shuffleCellOrder();
-        }
-        if (this.shape === 'text') {
-            this._updateTextMetrics();
-        }
-    }
-
-    _createLocalStrokeStyle(phase = 0) {
-        const c1 = this.strokeCycleColors ? `hsl(${this.strokeHue1 % 360}, 100%, 50%)` : this.strokeGradient.color1;
-        const c2 = this.strokeCycleColors ? `hsl(${this.strokeHue2 % 360}, 100%, 50%)` : this.strokeGradient.color2;
-
-        if (this.strokeGradType === 'alternating') {
-            return (phase % 2 === 0) ? c1 : c2;
-        }
-
-        let phaseIndex = phase;
-        if (this.animationMode === 'bounce-random') {
-            if (this.cellOrder && this.cellOrder.length > phase) { phaseIndex = this.cellOrder[phase]; }
-        } else if (this.animationMode === 'bounce-reversed' && this.isReversing) {
-            let lastCellIndex = 0;
-            if (this.shape === 'tetris') {
-                lastCellIndex = Math.max(0, this.tetrisBlockCount - 1);
-            } else {
-                lastCellIndex = Math.max(0, (this.numberOfRows * this.numberOfColumns) - 1);
-            }
-            phaseIndex = lastCellIndex - phase;
-        }
-
-        const effectiveScrollOffset = this.strokeScrollOffset + phaseIndex * this.phaseOffset / 100.0;
-        let p = (effectiveScrollOffset % 1.0 + 1.0) % 1.0;
-
-        if (this.strokeGradType === 'linear') {
-            const halfW = this.width / 2;
-            const halfH = this.height / 2;
-            let grad;
-
-            switch (this.strokeScrollDir) {
-                case 'up':
-                    grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH);
-                    break;
-                case 'down':
-                    grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH);
-                    break;
-                case 'left':
-                    grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
-                    break;
-                case 'right':
-                default:
-                    grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
-                    break;
-            }
-
-            if (this.animationMode.includes('bounce')) {
-                grad.addColorStop(0, getPatternColor(0 - p, c1, c2));
-                grad.addColorStop(0.5, getPatternColor(0.5 - p, c1, c2));
-                grad.addColorStop(1, getPatternColor(1 - p, c1, c2));
-            } else { // Loop mode
-                const midPoint = 0.5;
-                const stops = [];
-                const getPatternColorAtTime = (time) => {
-                    const t = (time % 1.0 + 1.0) % 1.0;
-                    if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
-                    return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
-                };
-                stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
-                stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
-                for (let i = -2; i <= 2; i++) {
-                    const c1_pos = i + p;
-                    const c2_pos = i + midPoint + p;
-                    if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
-                    if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
-                }
-                const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
-                    .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
-                uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
-            }
-            return grad;
-        }
-
-        if (this.strokeGradType === 'radial') {
-            const maxRadius = Math.max(this.width, this.height) / 2;
-            if (maxRadius <= 0) return 'black';
-            const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
-
-            // FIX: Replaced the flawed "jumping" animation logic with the continuous,
-            // looping algorithm used by the linear gradient. This creates a smooth pulse.
-            if (this.animationMode.includes('bounce')) {
-                // Bounce logic remains a simple pulse from center to edge and back.
-                const wave = 1 - Math.abs(2 * p - 1);
-                const midPoint = 0.5 * wave;
-                grad.addColorStop(0, c1);
-                grad.addColorStop(midPoint, c2);
-                grad.addColorStop(1, c1);
-            } else { // Loop mode
-                const midPoint = 0.5; // Defines a 50/50 color split
-                const stops = [];
-                // This function defines the color at any point in the pattern
-                const getPatternColorAtTime = (time) => {
-                    const t = (time % 1.0 + 1.0) % 1.0; // Ensure time is always between 0.0 and 1.0
-                    if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
-                    return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
-                };
-                // Define the start and end colors based on the animation progress 'p'
-                stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
-                stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
-
-                // Add intermediate color stops to create a seamless repeating pattern
-                for (let i = -2; i <= 2; i++) {
-                    const c1_pos = i + p;
-                    const c2_pos = i + midPoint + p;
-                    if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
-                    if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
-                }
-                // Sort and apply the unique color stops to the gradient
-                const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
-                    .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
-                uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
-            }
-            return grad;
-        }
-
-        if (this.strokeGradType === 'rainbow' || this.strokeGradType === 'rainbow-radial') {
-            const hueOffset = (this.strokeHue1 * 10) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
-            let grad;
-
-            if (this.strokeGradType === 'rainbow-radial') {
-                const maxRadius = Math.max(this.width, this.height) / 2;
-                if (maxRadius <= 0) return 'black';
-                grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
-            } else {
-                const halfW = this.width / 2;
-                const halfH = this.height / 2;
-                switch (this.strokeScrollDir) {
-                    case 'up':
-                        grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH);
-                        break;
-                    case 'down':
-                        grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH);
-                        break;
-                    case 'left':
-                        grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
-                        break;
-                    case 'right':
-                    default:
-                        grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
-                        break;
-                }
-            }
-
-            const numStops = 60;
-            for (let i = 0; i <= numStops; i++) {
-                const hue = (i * (360 / numStops) + hueOffset) % 360;
-                grad.addColorStop(i / numStops, `hsl(${hue}, 100%, 50%)`);
-            }
-            return grad;
-        }
-        return c1 || 'black';
-    }
-
-    /**
-     * Creates a fill style for the shape's context, delegating to specialized helper methods.
-     * This is the main dispatcher for creating gradients and fills.
-     * @param {number} [phase=0] - The phase offset for animations, used in grids/groups.
-     * @returns {CanvasGradient|string} The generated canvas style.
-     */
-    _createLocalFillStyle(phase = 0) {
-        const c1 = this.cycleColors ? `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color1;
-        const c2 = this.cycleColors ? `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color2;
-
-        if (this.gradType === 'alternating') {
-            return (phase % 2 === 0) ? c1 : c2;
-        }
-
-        const phaseIndex = this._getPhaseIndex(phase);
-        const p = this._getAnimationProgress(phaseIndex);
-
-        switch (this.gradType) {
-            case 'linear':
-                return this._createLinearGradient(c1, c2, p);
-            case 'radial':
-                return this._createRadialGradient(c1, c2, p);
-            case 'rainbow':
-            case 'rainbow-radial':
-                const hueOffset = (this.scrollOffset * 360) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
-                return this._createRainbowGradient(hueOffset);
-            default: // solid
-                return c1 || 'black';
-        }
-    }
-
-    /**
-     * Determines the effective index for an animation phase, accounting for different animation modes.
-     * @param {number} phase - The base phase value.
-     * @returns {number} The calculated phase index.
-     * @private
-     */
-    _getPhaseIndex(phase) {
-        if (this.animationMode === 'bounce-random') {
-            return (this.cellOrder && this.cellOrder.length > phase) ? this.cellOrder[phase] : phase;
-        }
-        if (this.animationMode === 'bounce-reversed' && this.isReversing) {
-            let lastCellIndex = (this.numberOfRows * this.numberOfColumns) - 1;
-            if (this.shape === 'tetris') {
-                lastCellIndex = Math.max(0, this.tetrisBlockCount - 1);
-            } else if (this.shape === 'pixel-art') {
-                try {
-                    const data = JSON.parse(this.pixelArtData);
-                    lastCellIndex = Math.max(0, (data.length * data[0].length) - 1);
-                } catch (e) { lastCellIndex = 0; }
-            }
-            return lastCellIndex - phase;
-        }
-        return phase;
-    }
-
-    /**
-     * Calculates the animation progress value 'p' based on a phase index.
-     * @param {number} phaseIndex - The effective phase index.
-     * @returns {number} The animation progress value, always between 0.0 and 1.0.
-     * @private
-     */
-    _getAnimationProgress(phaseIndex) {
-        const effectiveScrollOffset = this.scrollOffset + phaseIndex * this.phaseOffset / 100.0;
-        return (effectiveScrollOffset % 1.0 + 1.0) % 1.0;
-    }
-
-    /**
-     * Creates a linear gradient style.
-     * @param {string} c1 - The first color.
-     * @param {string} c2 - The second color.
-     * @param {number} p - The animation progress (0.0 to 1.0).
-     * @returns {CanvasGradient} The generated linear gradient.
-     * @private
-     */
-    _createLinearGradient(c1, c2, p) {
-        const halfW = this.width / 2;
-        const halfH = this.height / 2;
-        const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
-        const grad = isVertical
-            ? this.ctx.createLinearGradient(0, -halfH, 0, halfH)
-            : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
-
-        if (this.useSharpGradient) {
-            let p_bounce = p;
-            if (this.animationMode.includes('bounce')) {
-                const bounce_progress = (p < 0.5) ? (p * 2) : ((1 - p) * 2);
-                p_bounce = bounce_progress * (1.0 - (this.gradientStop / 100.0));
-            }
-            const stopRatio = this.gradientStop / 100.0;
-            const p1 = p_bounce;
-            const p2 = p1 + stopRatio;
-            if (p2 > 1.0) {
-                const wrapped_p2 = p2 - 1.0;
-                grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
-                grad.addColorStop(wrapped_p2, c2); grad.addColorStop(p1, c2);
-                grad.addColorStop(p1, c1); grad.addColorStop(1, c1);
-            } else {
-                grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
-                grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
-                grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
-            }
-        } else { // Smooth Linear Gradient
-            if (this.animationMode.includes('bounce')) {
-                grad.addColorStop(0, getPatternColor(0 - p, c1, c2));
-                grad.addColorStop(0.5, getPatternColor(0.5 - p, c1, c2));
-                grad.addColorStop(1, getPatternColor(1 - p, c1, c2));
-            } else { // Loop mode
-                const midPoint = this.gradientStop / 100.0;
-                const stops = [];
-                const getPatternColorAtTime = (time) => {
-                    const t = (time % 1.0 + 1.0) % 1.0;
-                    if (midPoint <= 0) return c2; if (midPoint >= 1) return c1;
-                    if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
-                    return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
-                };
-                stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
-                stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
-                for (let i = -2; i <= 2; i++) {
-                    const c1_pos = i + p;
-                    const c2_pos = i + midPoint + p;
-                    if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
-                    if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
-                }
-                const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
-                    .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
-                uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
-            }
-        }
-        return grad;
-    }
-
-    /**
-     * Creates a radial gradient style, resulting in a smooth pulse.
-     * @param {string} c1 - The first color.
-     * @param {string} c2 - The second color.
-     * @param {number} p - The animation progress (0.0 to 1.0).
-     * @returns {CanvasGradient} The generated radial gradient.
-     * @private
-     */
-    _createRadialGradient(c1, c2, p) {
-        const maxRadius = Math.max(this.width, this.height) / 2;
-        if (maxRadius <= 0) return 'black';
-
-        const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
-        const wave = 1 - Math.abs(2 * p - 1);
-
-        if (this.useSharpGradient) {
-            const stopPoint = (this.gradientStop / 100) * wave;
-            grad.addColorStop(0, c1);
-            grad.addColorStop(stopPoint, c1);
-            grad.addColorStop(Math.min(1, stopPoint + 0.001), c2);
-            grad.addColorStop(1, c2);
-        } else {
-            const midPoint = this.gradientStop / 100.0;
-            const animatedMidPoint = midPoint * wave;
-            grad.addColorStop(0, c1);
-            grad.addColorStop(animatedMidPoint, c2);
-            grad.addColorStop(1, c1);
-        }
-        return grad;
-    }
-
-    /**
-     * Creates a rainbow gradient style (linear or radial).
-     * @param {number} hueOffset - The starting hue for the rainbow animation.
-     * @returns {CanvasGradient} The generated rainbow gradient.
-     * @private
-     */
-    _createRainbowGradient(hueOffset) {
-        let grad;
-        const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
-
-        if (this.gradType === 'rainbow-radial') {
-            const maxRadius = Math.max(this.width, this.height) / 2;
-            if (maxRadius <= 0) return 'black';
-            grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
-        } else {
-            const halfW = this.width / 2;
-            const halfH = this.height / 2;
-            grad = isVertical
-                ? this.ctx.createLinearGradient(0, halfH, 0, -halfH)
-                : this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
-        }
-
-        const numStops = 60;
-        for (let i = 0; i <= numStops; i++) {
-            const hue = (i * (360 / numStops) + hueOffset) % 360;
-            grad.addColorStop(i / numStops, `hsl(${hue}, 100%, 50%)`);
-        }
-        return grad;
-    }
-
-    // In the Shape class, replace the entire updateAnimationState function with this one.
-    updateAnimationState() {
-        if (this.shape === 'tetris') {
-            if (this.tetrisAnimation === 'fade-in-stack') {
-                if (this.tetrisBlocks.length === 0) {
-                    const blockHeight = this.height / this.tetrisBlockCount;
-                    for (let i = 0; i < this.tetrisBlockCount; i++) {
-                        this.tetrisBlocks.push({
-                            w: this.width, h: blockHeight, x: 0,
-                            y: this.height - (i + 1) * blockHeight,
-                            life: 0, settled: true
-                        });
-                    }
-                    this.tetrisActiveBlockIndex = 0;
-                    this.tetrisFadeState = 'in';
-                }
-                const fadeSpeed = this.tetrisSpeed / 100.0;
-                if (this.tetrisFadeState === 'in') {
-                    if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
-                        const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
-                        activeBlock.life += fadeSpeed;
-                        if (activeBlock.life >= 1.0) {
-                            activeBlock.life = 1.0;
-                            this.tetrisActiveBlockIndex++;
-                        }
-                    } else {
-                        this.tetrisFadeState = 'out';
-                    }
-                } else { // Fade-out phase
-                    let allFadedOut = true;
-                    this.tetrisBlocks.forEach(block => {
-                        block.life -= fadeSpeed;
-                        if (block.life > 0) { allFadedOut = false; } else { block.life = 0; }
-                    });
-                    if (allFadedOut) { this.tetrisBlocks = []; }
-                }
-            } else {
-                this.tetrisSpawnTimer--;
-                if (this.tetrisBlocks.length === 0 && this.tetrisSpawnTimer < 0) {
-                    this.tetrisSpawnTimer = 0;
-                    this.tetrisActiveBlockIndex = 0;
-                }
-                if (this.tetrisSpawnTimer <= 0 && this.tetrisBlocks.length < this.tetrisBlockCount) {
-                    let newBlock = { vy: 0, vx: 0, life: 1.0, settled: false, fading: false };
-                    const blockHeight = this.height / this.tetrisBlockCount;
-                    newBlock.w = this.width; newBlock.h = blockHeight;
-                    newBlock.x = 0; newBlock.y = -newBlock.h;
-                    this.tetrisBlocks.push(newBlock);
-                    if (this.tetrisAnimation === 'gravity' || this.tetrisAnimation === 'gravity-fade') {
-                        this.tetrisSpawnTimer = 10;
-                    }
-                }
-                if (this.tetrisAnimation === 'gravity' || this.tetrisAnimation === 'gravity-fade') {
-                    this.tetrisBlocks.forEach((block, index) => {
-                        if (block.settled) return;
-                        const gravity = 0.5;
-                        const bounceFactor = this.tetrisBounce / 100.0;
-                        let bounceBoundaryTop = this.height;
-                        this.tetrisBlocks.forEach((other, i) => {
-                            if (i !== index && other.y > block.y) {
-                                bounceBoundaryTop = Math.min(bounceBoundaryTop, other.y);
-                            }
-                        });
-                        block.vy += gravity;
-                        block.y += block.vy;
-                        if (block.y + block.h >= bounceBoundaryTop) {
-                            block.y = bounceBoundaryTop - block.h;
-                            block.vy *= -bounceFactor;
-                            let stableBoundaryTop = this.height;
-                            this.tetrisBlocks.forEach((other, i) => {
-                                if (i !== index && other.settled) {
-                                    stableBoundaryTop = Math.min(stableBoundaryTop, other.y);
-                                }
-                            });
-                            if (block.y + block.h >= stableBoundaryTop - 1 && Math.abs(block.vy) < 1) {
-                                block.settled = true;
-                            }
-                        }
-                    });
-                } else { // Linear Animation
-                    if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
-                        const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
-                        if (!activeBlock.settled) {
-                            const speed = this.tetrisSpeed / this.tetrisSpeedDivisor;
-                            let boundary = (this.tetrisActiveBlockIndex > 0) ? this.tetrisBlocks[this.tetrisActiveBlockIndex - 1].y : this.height;
-                            activeBlock.y += speed;
-                            if (activeBlock.y + activeBlock.h >= boundary) {
-                                activeBlock.y = boundary - activeBlock.h;
-                                activeBlock.settled = true;
-                                this.tetrisActiveBlockIndex++;
-                            }
-                        }
-                    }
-                }
-                if (this.tetrisAnimation === 'gravity-fade') {
-                    this.tetrisBlocks.forEach(block => { if (block.settled) block.fading = true; });
-                } else {
-                    const allSpawned = this.tetrisBlocks.length === this.tetrisBlockCount;
-                    const allSettled = this.tetrisBlocks.every(b => b.settled);
-                    if (allSpawned && allSettled) {
-                        this.tetrisBlocks.forEach(b => b.fading = true);
-                    }
-                }
-                this.tetrisBlocks.forEach(block => { if (block.fading) block.life -= 0.05; });
-                this.tetrisBlocks = this.tetrisBlocks.filter(b => b.life > 0);
-            }
-        }
-
-        if (this.gradType !== 'random' && this.randomElementState) {
-            this.randomElementState = null;
-        }
-
-        this.hue1 += this.cycleSpeed;
-        this.hue2 += this.cycleSpeed;
-        this.strokeHue1 += this.strokeCycleSpeed;
-        this.strokeHue2 += this.strokeCycleSpeed;
-
-        const currentText = this.getDisplayText();
-        const textSpeed = this.textAnimationSpeed / 100;
-        switch (this.textAnimation) {
-            case 'marquee':
-            case 'wave':
-                const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
-                const pixelSize = this.fontSize / 10;
-                const textWidth = currentText.length * (fontData.charWidth + fontData.charSpacing) * pixelSize;
-                this.scrollOffsetX -= textSpeed * 20;
-                if (this.scrollOffsetX < -textWidth) { this.scrollOffsetX = this.width; }
-                if (this.textAnimation === 'wave') { this.waveAngle += textSpeed; }
-                this.visibleCharCount = currentText.length;
-                break;
-            case 'typewriter':
-                if (this.typewriterWaitTimer > 0) {
-                    this.typewriterWaitTimer--;
-                    if (this.typewriterWaitTimer <= 0) { this.visibleCharCount = 0; }
-                } else {
-                    this.visibleCharCount += textSpeed;
-                    if (this.visibleCharCount >= currentText.length) {
-                        this.visibleCharCount = currentText.length;
-                        this.typewriterWaitTimer = 50;
-                    }
-                }
-                this.scrollOffsetX = 0;
-                break;
-            default:
-                this.scrollOffsetX = 0;
-                this.visibleCharCount = currentText.length;
-                break;
-        }
-
-        if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
-            const increment = this.animationSpeed * this.gradientSpeedMultiplier;
-            // FIX: This multiplier is now correct. Right/Down are positive, Left/Up are negative.
-            const directionMultiplier = (this.scrollDirection === 'left' || this.scrollDirection === 'up') ? -1 : 1;
-            this.scrollOffset += increment * directionMultiplier;
-        }
-
-        if (this.strokeGradType !== 'solid' && this.strokeGradType !== 'alternating' && this.strokeGradType !== 'random') {
-            const increment = this.strokeAnimationSpeed * this.gradientSpeedMultiplier;
-            const directionMultiplier = (this.strokeScrollDir === 'left' || this.strokeScrollDir === 'up') ? -1 : 1;
-            this.strokeScrollOffset += increment * directionMultiplier;
-        }
-
-        const rotationIncrement = (this.rotationSpeed || 0) / 1000;
-        this.rotationAngle += rotationIncrement;
-        let animationIncrement;
-
-        if (this.shape == 'oscilloscope' && this.oscDisplayMode == 'seismic') {
-            animationIncrement = this.animationSpeed * this.seismicAnimationSpeedMultiplier;
-            const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
-            animationIncrement *= directionMultiplier;
-        } else {
-            animationIncrement = this.animationSpeed * this.shapeAnimationSpeedMultiplier;
-        }
-        this.animationAngle += animationIncrement;
-
-        if (this.shape === 'fire' || this.shape === 'fire-radial') {
-            this.particleSpawnCounter += this.animationSpeed / 4.0;
-            const particlesToSpawn = Math.floor(this.particleSpawnCounter);
-            this.particleSpawnCounter -= particlesToSpawn;
-
-            if (this.shape === 'fire') {
-                this.fireParticles.forEach(p => { p.y -= p.speed; p.age++; });
-                this.fireParticles = this.fireParticles.filter(p => p.age < p.maxAge);
-                for (let i = 0; i < particlesToSpawn; i++) {
-                    if (this.fireParticles.length < 300) {
-                        const halfH = this.height / 2;
-                        const maxAge = (Math.random() * 60 + 90);
-                        const speed = (this.height / maxAge) * (Math.random() * 0.2 + 0.8);
-                        const startSize = (Math.random() * 0.5 + 0.5) * (this.width / 7);
-
-                        const newParticle = {
-                            id: this.nextParticleId++,
-                            x: (Math.random() - 0.5) * this.width * 0.9, y: halfH,
-                            sizeX: startSize, sizeY: startSize * (Math.random() * 1.5 + 0.5),
-                            age: 0, maxAge: maxAge, speed: speed
-                        };
-
-                        let baseColor;
-                        const gradProgress = (newParticle.x + (this.width / 2)) / this.width;
-
-                        if (this.cycleColors) {
-                            const hue = (this.hue1 + newParticle.id * this.phaseOffset) % 360;
-                            baseColor = `hsl(${hue}, 100%, 50%)`;
-                        } else if (this.gradType === 'rainbow' || this.gradType === 'rainbow-radial') {
-                            const hue = (gradProgress * 360 + this.hue1) % 360;
-                            baseColor = `hsl(${hue}, 100%, 50%)`;
-                        } else if (this.gradType === 'random') {
-                            baseColor = Math.random() < 0.5 ? this.gradient.color1 : this.gradient.color2;
-                        } else if (this.gradType === 'alternating') {
-                            baseColor = newParticle.id % 2 === 0 ? this.gradient.color1 : this.gradient.color2;
-                        } else if (this.gradType === 'linear') {
-                            baseColor = lerpColor(this.gradient.color1, this.gradient.color2, gradProgress);
-                        } else { // Solid color is the default
-                            baseColor = this.gradient.color1;
-                        }
-                        newParticle.color = baseColor;
-                        this.fireParticles.push(newParticle);
-                    }
-                }
-            } else { // 'fire-radial'
-                this.fireParticles.forEach(p => {
-                    p.x += Math.cos(p.angle) * p.speed;
-                    p.y += Math.sin(p.angle) * p.speed;
-                    p.age++;
-                });
-                this.fireParticles = this.fireParticles.filter(p => p.age < p.maxAge);
-                for (let i = 0; i < particlesToSpawn; i++) {
-                    if (this.fireParticles.length < 300) {
-                        const spreadMultiplier = this.fireSpread / 100.0;
-                        const maxRadius = Math.min(this.width, this.height) / 2;
-                        const maxAge = (Math.random() * 60 + 90);
-                        const speed = (maxRadius / maxAge) * spreadMultiplier;
-                        const startSize = (Math.random() * 0.5 + 0.5) * (Math.min(this.width, this.height) / 8);
-                        if (maxAge < 1) continue;
-
-                        const newParticle = {
-                            id: this.nextParticleId++,
-                            x: 0, y: 0,
-                            sizeX: startSize, sizeY: startSize,
-                            age: 0, maxAge: maxAge,
-                            speed: speed, angle: Math.random() * 2 * Math.PI
-                        };
-
-                        let baseColor;
-                        const gradProgress = newParticle.angle / (2 * Math.PI);
-
-                        if (this.cycleColors) {
-                            const hue = (this.hue1 + newParticle.id * this.phaseOffset) % 360;
-                            baseColor = `hsl(${hue}, 100%, 50%)`;
-                        } else if (this.gradType === 'rainbow' || this.gradType === 'rainbow-radial') {
-                            const hue = (gradProgress * 360 + this.hue1) % 360;
-                            baseColor = `hsl(${hue}, 100%, 50%)`;
-                        } else if (this.gradType === 'random') {
-                            baseColor = Math.random() < 0.5 ? this.gradient.color1 : this.gradient.color2;
-                        } else if (this.gradType === 'alternating') {
-                            baseColor = newParticle.id % 2 === 0 ? this.gradient.color1 : this.gradient.color2;
-                        } else if (this.gradType === 'radial' || this.gradType === 'linear') {
-                            baseColor = lerpColor(this.gradient.color1, this.gradient.color2, gradProgress);
-                        } else { // Solid color is the default
-                            baseColor = this.gradient.color1;
-                        }
-                        newParticle.color = baseColor;
-                        this.fireParticles.push(newParticle);
-                    }
-                }
-            }
-        } else {
-            if (this.fireParticles.length > 0) {
-                this.fireParticles = [];
-            }
-        }
-    }
-
-    // In main.js, replace the entire draw function in the Shape class
-    draw(isSelected) {
-        if (isSelected && this.rotationSpeed !== 0) {
-            this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
-            this._pausedRotationSpeed = this.rotationSpeed;
-            this.rotationSpeed = 0;
-        } else if (!isSelected && this._pausedRotationSpeed !== null) {
-            const speedInput = document.querySelector(`[name="obj${this.id}_rotationSpeed"]`);
-            this.rotationSpeed = speedInput ? parseFloat(speedInput.value) : this._pausedRotationSpeed;
-            this._pausedRotationSpeed = null;
-        }
-
-        const centerX = this.x + this.width / 2;
-        const centerY = this.y + this.height / 2;
-        const angleToUse = this.getRenderAngle();
-
-        this.ctx.save();
-        this.ctx.translate(centerX, centerY);
-        this.ctx.rotate(angleToUse);
-
-        const applyStrokeInside = () => {
-            if (this.enableStroke && this.strokeWidth > 0) {
-                this.ctx.save();
-                this.ctx.clip();
-                this.ctx.strokeStyle = this._createLocalStrokeStyle();
-                this.ctx.lineWidth = this.strokeWidth * 2;
-                this.ctx.stroke();
-                this.ctx.restore();
-            }
-        };
-
-        if (this.shape === 'fire' || this.shape === 'fire-radial') {
-            this.ctx.save();
-            this.ctx.beginPath();
-            this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
-            this.ctx.clip();
-
-            this.ctx.fillStyle = '#000000';
-            this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-            this.ctx.globalCompositeOperation = 'lighter';
-
-            this.fireParticles.forEach(p => {
-                const lifeRatio = 1.0 - (p.age / p.maxAge);
-
-                let particleColor;
-                if (p.color.startsWith('hsl')) {
-                    const baseHue = p.color.match(/hsl\((\d+\.?\d*)/)[1];
-                    const lightness = 50 * lifeRatio;
-                    particleColor = `hsl(${baseHue}, 100%, ${lightness}%)`;
-                } else {
-                    particleColor = lerpColor('#000000', p.color, lifeRatio);
-                }
-
-                const opacity = Math.sin(lifeRatio * Math.PI);
-                this.ctx.beginPath();
-                this.ctx.fillStyle = particleColor;
-                this.ctx.globalAlpha = opacity;
-                this.ctx.ellipse(p.x, p.y, p.sizeX * lifeRatio, p.sizeY * lifeRatio, 0, 0, 2 * Math.PI);
-                this.ctx.fill();
-            });
-
-            this.ctx.restore();
-
-        } else if (this.shape === 'pixel-art') {
-            try {
-                const data = JSON.parse(this.pixelArtData);
-                if (!Array.isArray(data) || data.length === 0 || !Array.isArray(data[0])) {
-                    return;
-                }
-
-                const rows = data.length;
-                const cols = data[0].length;
-                const cellWidth = this.width / cols;
-                const cellHeight = this.height / rows;
-
-                const isGradientFill = this.gradType === 'linear' || this.gradType === 'radial' || this.gradType.startsWith('rainbow');
-                if (isGradientFill) {
-                    this.ctx.fillStyle = this._createLocalFillStyle();
-                }
-
-                for (let r = 0; r < rows; r++) {
-                    for (let c = 0; c < cols; c++) {
-                        const alphaValue = data[r] && data[r][c] ? data[r][c] : 0;
-                        if (alphaValue > 0) {
-                            if (!isGradientFill) {
-                                const cellIndex = r * cols + c;
-                                this.ctx.fillStyle = this.gradType === 'random'
-                                    ? this._getRandomColorForElement(cellIndex)
-                                    : this._createLocalFillStyle(cellIndex);
-                            }
-
-                            this.ctx.globalAlpha = alphaValue;
-
-                            this.ctx.fillRect(
-                                -this.width / 2 + c * cellWidth,
-                                -this.height / 2 + r * cellHeight,
-                                cellWidth,
-                                cellHeight
-                            );
-                        }
-                    }
-                }
-                this.ctx.globalAlpha = 1.0;
-
-            } catch (e) {
-                // Silently fail if JSON is invalid.
-            }
-        } else if (this.shape === 'tetris') {
-            this.ctx.beginPath();
-            this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
-            this.ctx.clip();
-            this.tetrisBlocks.forEach((block, index) => {
-                if (this.gradType === 'random') {
-                    this.ctx.fillStyle = this._getRandomColorForElement(index);
-                } else {
-                    this.ctx.fillStyle = this._createLocalFillStyle(index);
-                }
-                this.ctx.globalAlpha = block.life;
-                const drawX = block.x - (this.width / 2);
-                const drawY = block.y - (this.height / 2);
-                const topY = Math.round(drawY);
-                const bottomY = Math.round(drawY + block.h);
-                this.ctx.fillRect(Math.round(drawX), topY, Math.ceil(block.w), bottomY - topY);
-            });
-            this.ctx.globalAlpha = 1.0;
-
-        } else if (this.shape === 'text') {
-            this.ctx.translate(-centerX, -centerY);
-            this.ctx.fillStyle = this._createLocalFillStyle();
-            drawPixelText(this.ctx, this);
-
-        } else if (this.shape === 'oscilloscope') {
-            const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
-
-            if (this.oscDisplayMode === 'radial') {
-                this.ctx.lineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
-                const totalRadius = (Math.min(this.width, this.height) / 2) - (this.ctx.lineWidth / 2);
-                if (totalRadius > 0) {
-                    this.ctx.beginPath();
-                    const baseRadius = totalRadius * (0.5 + (this.pulseDepth || 0) / 100.0 * 0.5);
-                    const maxAmplitude = totalRadius - baseRadius;
-                    for (let i = 0; i <= 360; i++) {
-                        const angleRad = (i * Math.PI) / 180;
-                        const waveFuncAngle = 2 * Math.PI * this.frequency * (i / 360) + activeAnimationAngle * 2;
-                        let y_wave;
-                        switch (this.waveType) {
-                            case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
-                            case 'sawtooth': y_wave = (((waveFuncAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
-                            case 'triangle': y_wave = Math.asin(Math.sin(waveFuncAngle)) * (2 / Math.PI); break;
-                            case 'earthquake': y_wave = Math.sin(waveFuncAngle * 0.8) * 0.5 + Math.sin(waveFuncAngle * 2.2) * 0.3 + Math.sin(waveFuncAngle * 5.0) * 0.2; break;
-                            default: y_wave = Math.sin(waveFuncAngle); break;
-                        }
-                        const finalRadius = baseRadius + y_wave * maxAmplitude;
-                        if (i === 0) this.ctx.moveTo(finalRadius * Math.cos(angleRad), finalRadius * Math.sin(angleRad));
-                        else this.ctx.lineTo(finalRadius * Math.cos(angleRad), finalRadius * Math.sin(angleRad));
-                    }
-                    this.ctx.closePath();
-                    this.ctx.strokeStyle = this.enableStroke ? this._createLocalStrokeStyle() : this._createLocalFillStyle();
-                    this.ctx.stroke();
-                }
-            } else if (this.oscDisplayMode === 'seismic') {
-                this.ctx.lineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
-                const maxRadius = Math.min(this.width, this.height) / 2;
-                const waveCount = Math.max(1, this.waveCount);
-                const spacing = maxRadius / waveCount;
-                const totalCycle = maxRadius + spacing;
-                const progress = ((activeAnimationAngle * 10) % totalCycle + totalCycle) % totalCycle;
-                for (let i = waveCount - 1; i >= 0; i--) {
-                    let radius = (progress + i * spacing) % totalCycle;
-                    if (radius > maxRadius) continue;
-                    let alpha = 1.0 - (radius / maxRadius);
-                    const fadeInLimit = spacing;
-                    if (radius < fadeInLimit) alpha *= (radius / fadeInLimit);
-                    if (alpha <= 0) continue;
-
-                    this.ctx.globalAlpha = alpha;
-                    this.ctx.beginPath();
-                    if (this.waveStyle === 'wavy') {
-                        const points = Math.max(60, this.frequency * 20);
-                        const maxAmplitude = (this.pulseDepth / 100) * 20;
-                        const amplitude = maxAmplitude * (radius / maxRadius);
-                        const rotationalPhase = (activeAnimationAngle / 10.0) - (i * (this.phaseOffset / this.frequency) * (Math.PI / 2));
-                        for (let j = 0; j <= points; j++) {
-                            const angle = (j / points) * 2 * Math.PI;
-                            const freqAngle = angle * this.frequency;
-                            let y_wave;
-                            switch (this.waveType) {
-                                case 'square': y_wave = Math.sin(freqAngle) >= 0 ? 1 : -1; break;
-                                case 'sawtooth': y_wave = (((freqAngle / (2 * Math.PI)) % 1) * 2) - 1; break;
-                                case 'triangle': y_wave = Math.asin(Math.sin(freqAngle)) * (2 / Math.PI); break;
-                                case 'earthquake': y_wave = Math.sin(freqAngle * 0.8) * 0.5 + Math.sin(freqAngle * 2.2) * 0.3 + Math.sin(freqAngle * 5.0) * 0.2; break;
-                                default: y_wave = Math.sin(freqAngle); break;
-                            }
-                            const r = radius + y_wave * amplitude;
-                            const finalAngle = angle + rotationalPhase;
-                            this.ctx[j === 0 ? 'moveTo' : 'lineTo'](Math.cos(finalAngle) * r, Math.sin(finalAngle) * r);
-                        }
-                    } else { this.ctx.arc(0, 0, radius, 0, 2 * Math.PI); }
-                    this.ctx.closePath();
-                    const style = this.gradType === 'random'
-                        ? this._getRandomColorForElement(i)
-                        : (this.enableStroke ? this._createLocalStrokeStyle(i) : this._createLocalFillStyle(i));
-                    this.ctx.strokeStyle = style;
-                    this.ctx.fillStyle = style;
-                    if (this.fillShape) { this.ctx.fill(); } else { this.ctx.stroke(); }
-                }
-                this.ctx.globalAlpha = 1.0;
-            } else { // Linear Mode
-                // FIX: This entire block is rewritten to separate fill and stroke operations.
-                const halfW = this.width / 2;
-                const halfH = this.height / 2;
-                const activeLineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
-                const amplitude = (this.height - activeLineWidth) / 2;
-
-                // 1. Create the path for the wave line.
-                this.ctx.beginPath();
-                for (let i = 0; i <= this.width; i++) {
-                    const progress = i / this.width;
-                    const angle = 2 * Math.PI * this.frequency * progress + activeAnimationAngle;
-                    let y_wave;
-                    switch (this.waveType) {
-                        case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;
-                        case 'sawtooth': y_wave = (((angle / (Math.PI * 2)) % 1) * 2) - 1; break;
-                        case 'triangle': y_wave = Math.asin(Math.sin(angle)) * (2 / Math.PI); break;
-                        case 'earthquake': y_wave = Math.sin(angle * 0.8) * 0.5 + Math.sin(angle * 2.2) * 0.3 + Math.sin(angle * 5.0) * 0.2; break;
-                        default: y_wave = Math.sin(angle); break;
-                    }
-                    const px = -halfW + i;
-                    const py = -y_wave * amplitude;
-                    if (i === 0) this.ctx.moveTo(px, py); else this.ctx.lineTo(px, py);
-                }
-
-                // 2. If filling is enabled, create a new path for the fill and draw it.
-                if (this.fillShape) {
-                    this.ctx.save();
-                    this.ctx.lineTo(halfW, halfH);
-                    this.ctx.lineTo(-halfW, halfH);
-                    this.ctx.closePath();
-                    this.ctx.fillStyle = this._createLocalFillStyle();
-                    this.ctx.fill();
-                    this.ctx.restore(); // Restore context, leaving original wave path intact.
-                }
-
-                // 3. Stroke the original wave path.
-                if (this.enableStroke) {
-                    this.ctx.strokeStyle = this._createLocalStrokeStyle();
-                    this.ctx.lineWidth = this.strokeWidth;
-                } else {
-                    // This handles the case where the shape is not filled but should still be visible.
-                    this.ctx.strokeStyle = this._createLocalFillStyle();
-                    this.ctx.lineWidth = this.lineWidth;
-                }
-                this.ctx.stroke();
-            }
-        } else {
-            if (this.shape === 'ring') {
-                const oR = this.width / 2; const iR = this.innerDiameter / 2;
-                if (iR >= 0 && iR < oR && this.numberOfSegments > 0) {
-                    const aStep = (2 * Math.PI) / this.numberOfSegments; const segAngle = (this.angularWidth * Math.PI) / 180;
-                    for (let i = 0; i < this.numberOfSegments; i++) {
-                        this.ctx.beginPath();
-                        const startAngle = i * aStep + this.animationAngle; const endAngle = startAngle + segAngle;
-                        this.ctx.moveTo(Math.cos(startAngle) * oR, Math.sin(startAngle) * oR);
-                        this.ctx.arc(0, 0, oR, startAngle, endAngle, false);
-                        this.ctx.lineTo(Math.cos(endAngle) * iR, Math.sin(endAngle) * iR);
-                        this.ctx.arc(0, 0, iR, endAngle, startAngle, true);
-                        this.ctx.closePath();
-                        this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(i) : this._createLocalFillStyle(i);
-                        this.ctx.fill();
-                        applyStrokeInside();
-                    }
-                }
-            } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
-                const cellW = this.width / this.numberOfColumns; const cellH = this.height / this.numberOfRows;
-                for (let row = 0; row < this.numberOfRows; row++) {
-                    for (let col = 0; col < this.numberOfColumns; col++) {
-                        const cellIndex = row * this.numberOfColumns + col;
-                        this.ctx.beginPath();
-                        this.ctx.rect(-this.width / 2 + col * cellW, -this.height / 2 + row * cellH, cellW, cellH);
-                        this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(cellIndex) : this._createLocalFillStyle(cellIndex);
-                        this.ctx.fill();
-                        applyStrokeInside();
-                    }
-                }
-            } else {
-                this.ctx.beginPath();
-                if (this.shape === 'circle') { this.ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, 2 * Math.PI); }
-                else if (this.shape === 'polygon') {
-                    const rX = this.width / 2; const rY = this.height / 2; const sides = Math.max(3, this.sides);
-                    for (let i = 0; i < sides; i++) {
-                        const a = (i / sides) * 2 * Math.PI - (Math.PI / 2);
-                        if (i === 0) this.ctx.moveTo(rX * Math.cos(a), rY * Math.sin(a));
-                        else this.ctx.lineTo(rX * Math.cos(a), rY * Math.sin(a));
-                    }
-                    this.ctx.closePath();
-                } else if (this.shape === 'star') {
-                    const oRX = this.width / 2; const oRY = this.height / 2;
-                    const iRX = oRX * (this.starInnerRadius / 100); const iRY = oRY * (this.starInnerRadius / 100);
-                    const points = Math.max(3, this.points);
-                    for (let i = 0; i < 2 * points; i++) {
-                        const rX = (i % 2 === 0) ? oRX : iRX; const rY = (i % 2 === 0) ? oRY : iRY;
-                        const a = (i / (2 * points)) * 2 * Math.PI - (Math.PI / 2);
-                        if (i === 0) this.ctx.moveTo(rX * Math.cos(a), rY * Math.sin(a));
-                        else this.ctx.lineTo(rX * Math.cos(a), rY * Math.sin(a));
-                    }
-                    this.ctx.closePath();
-                } else { this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height); }
-                this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(0) : this._createLocalFillStyle();
-                this.ctx.fill();
-                applyStrokeInside();
-            }
-        }
-        this.ctx.restore();
-    }
-
-    drawSelectionUI() {
-        const selectionColor = this.locked ? 'orange' : '#00f6ff';
-        const center = this.getCenter();
-        const staticAngle = this.rotation * Math.PI / 180;
-
-        this.ctx.save();
-        this.ctx.translate(center.x, center.y);
-        this.ctx.rotate(staticAngle);
-
-        const halfW = this.width / 2;
-        const halfH = this.height / 2;
-
-        this.ctx.strokeStyle = selectionColor;
-        this.ctx.lineWidth = 2;
-        this.ctx.setLineDash([6, 4]);
-        this.ctx.strokeRect(-halfW, -halfH, this.width, this.height);
-        this.ctx.setLineDash([]);
-
-        if (!this.locked) {
-            this.ctx.fillStyle = selectionColor;
-            const h2 = this.handleSize / 2;
-            const handlePositions = [
-                { x: -halfW, y: -halfH }, { x: 0, y: -halfH }, { x: halfW, y: -halfH },
-                { x: -halfW, y: 0 }, { x: halfW, y: 0 },
-                { x: -halfW, y: halfH }, { x: 0, y: halfH }, { x: halfW, y: halfH }
-            ];
-            handlePositions.forEach(pos => {
-                this.ctx.fillRect(pos.x - h2, pos.y - h2, this.handleSize, this.handleSize);
-            });
-
-            const rotHandleX = 0;
-            const rotHandleY = -halfH + this.rotationHandleOffset;
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, -halfH);
-            this.ctx.lineTo(rotHandleX, rotHandleY);
-            this.ctx.stroke();
-            this.ctx.beginPath();
-            this.ctx.arc(rotHandleX, rotHandleY, this.rotationHandleRadius, 0, 2 * Math.PI);
-            this.ctx.fill();
-        }
-
-        this.ctx.restore();
-
-        if (this.locked) {
-            this.ctx.save();
-            this.ctx.font = '30px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            this.ctx.fillText('白', center.x, center.y);
-            this.ctx.restore();
-        }
-    }
 }
 
 class ExportedShape extends Shape {
@@ -1678,6 +80,8 @@ class ExportedShape extends Shape {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('startAudioBtn').addEventListener('click', setupAudio);
+
     if (!localStorage.getItem('termsAccepted')) {
         var termsModal = new bootstrap.Modal(document.getElementById('accept-terms-modal'));
         termsModal.show();
@@ -1718,29 +122,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirmImportBtn = document.getElementById('confirm-import-btn');
     const confirmBtn = document.getElementById('confirm-overwrite-btn');
     const coordsDisplay = document.getElementById('coords-display');
-
-    // --- State Management ---
-    let isRestoring = false;
-    let configStore = [];
-    let objects = [];
-    let selectedObjectIds = [];
-    let oldSelection = [];
-    let needsRedraw = false;
-    let constrainToCanvas = true;
-    let verticalSplit, horizontalSplit;
-    let lastHSizes, lastVSizes;
-    let fps = 50;
-    let fpsInterval;
-    let then;
-    let galleryListener = null;
-    let lastVisibleDoc = null;
-    let isLoadingMore = false;
-    let currentGalleryQuery = null;
-    let currentProjectDocId = null;
-    let confirmActionCallback = null;
-    let exportPayload = {};
-    let propertyClipboard = null;
-    let sourceObjectId = null;
 
     const shapePropertyMap = {
         rectangle: [
@@ -1810,133 +191,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const galleryBody = galleryOffcanvasEl.querySelector('.offcanvas-body');
 
 
-    const appHistory = {
-        stack: [],
-        index: -1, // Start before the first state.
-        maxSize: 50,
 
-        /**
-         * Pushes a new state onto the history stack.
-         * If an undo has occurred, this will trim the "future" stack.
-         */
-        push(state) {
-            if (isRestoring) return;
-
-            // Don't push identical consecutive states
-            const currentState = this.stack[this.index];
-            if (currentState && JSON.stringify(state.objects) === JSON.stringify(currentState.objects)) {
-                return;
-            }
-
-            // If we've undone actions, we're now creating a new history branch,
-            // so we trim the "future" states.
-            if (this.index < this.stack.length - 1) {
-                this.stack = this.stack.slice(0, this.index + 1);
-            }
-
-            this.stack.push(state);
-
-            // Remove the oldest entry if the stack exceeds the max size
-            if (this.stack.length > this.maxSize) {
-                this.stack.shift();
-            } else {
-                // Only increment the index if we didn't shift the array,
-                // otherwise the index would be off. If we did shift, the index
-                // is already at the correct final position.
-                this.index++;
-            }
-
-            updateUndoRedoButtons();
-        },
-
-        /**
-         * Moves the history index back one step and restores that state.
-         */
-        undo() {
-            // Can only undo if we are not at the very first state
-            if (this.index > 0) {
-                this.index--;
-                restoreState(this.stack[this.index]);
-            }
-        },
-
-        /**
-         * Moves the history index forward one step and restores that state.
-         */
-        redo() {
-            // Can only redo if we are not at the most recent state
-            if (this.index < this.stack.length - 1) {
-                this.index++;
-                restoreState(this.stack[this.index]);
-            }
-        }
-    };
-
-    /**
-     * Updates the enabled/disabled state of the undo/redo buttons
-     * based on the current history index.
-     */
-    function updateUndoRedoButtons() {
-        // Disable undo if we're at the beginning of the stack
-        if (undoBtn) undoBtn.disabled = appHistory.index <= 0;
-        // Disable redo if we're at the end of the stack
-        if (redoBtn) redoBtn.disabled = appHistory.index >= appHistory.stack.length - 1;
-    }
-
-    /**
-     * Captures a serializable snapshot of the application's current state.
-     * @returns {object} The current state snapshot.
-     */
-    function getCurrentState() {
-        const plainObjects = JSON.parse(JSON.stringify(objects, (key, value) => {
-            if (key === 'ctx') return undefined;
-            return value;
-        }));
-        return {
-            objects: plainObjects,
-            selectedObjectIds: JSON.parse(JSON.stringify(selectedObjectIds)),
-        };
-    }
-
-    /**
-     * A wrapper function to simplify recording the current state to appHistory.
-     */
-    function recordHistory() {
-        appHistory.push(getCurrentState());
-    }
-
-    const debouncedRecordHistory = debounce(recordHistory);
-
-    /**
-     * Restores the application to a given state snapshot.
-     * @param {object} state - The state object to restore.
-     */
-    function restoreState(state) {
-        isRestoring = true;
-        const generalValues = getControlValues();
-        objects = state.objects.map(data => new Shape({ ...data, ctx }));
-        selectedObjectIds = state.selectedObjectIds;
-        renderForm();
-        for (const key in generalValues) {
-            const el = form.elements[key];
-            if (el && !key.startsWith('obj')) {
-                if (el.type === 'checkbox') el.checked = generalValues[key];
-                else el.value = generalValues[key];
-            }
-        }
-        updateFormValuesFromObjects();
-        drawFrame();
-        updateToolbarState();
-        updateUndoRedoButtons();
-        isRestoring = false;
-    }
-
-    if (undoBtn) {
-        undoBtn.addEventListener('click', () => appHistory.undo());
-    }
-    if (redoBtn) {
-        redoBtn.addEventListener('click', () => appHistory.redo());
-    }
 
     async function toggleFeaturedStatus(buttonEl, docIdToToggle) {
         buttonEl.disabled = true;
@@ -2430,11 +685,6 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {object} config - The configuration for the control.
      * @returns {HTMLDivElement} The generated form group element.
      */
-    /**
- * Creates an HTML form control element based on a configuration object.
- * @param {object} config - The configuration for the control.
- * @returns {HTMLDivElement} The generated form group element.
- */
     function createFormControl(config) {
         const {
             property, name, label, type, default: defaultValue,
@@ -2572,13 +822,21 @@ document.addEventListener('DOMContentLoaded', function () {
         let scriptHTML = '';
         let jsVars = '';
         let allKeys = [];
-        const minimize = document.getElementById('minimize-props-export')?.checked ?? false;
+        // const minimize = document.getElementById('minimize-props-export')?.checked ?? false;
+        const minimize = true;
+
+        // const essentialProps = [
+        //     'title', 'description', 'publisher', 'enableAnimation', 'gradType',
+        //     'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed',
+        //     'text', 'fontSize', 'frequency', 'waveCount', 'pulseDepth', 'animationMode',
+        //     'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeAnimationSpeed', 'strokeCycleSpeed',
+        //     'audioMetric', 'beatThreshold', 'audioSensitivity'
+        // ];
 
         const essentialProps = [
-            'title', 'description', 'publisher', 'enableAnimation', 'gradType',
-            'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed',
-            'text', 'fontSize', 'frequency', 'waveCount', 'pulseDepth', 'animationMode',
-            'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeAnimationSpeed', 'strokeCycleSpeed'
+            'gradType', 'gradColor1', 'gradColor2', 'animationSpeed', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeAnimationSpeed',
+            'title', 'description', 'publisher', 'enableAnimation', 'enableSound',
+            'enableAudioReactivity', 'audioMetric', 'beatThreshold', 'audioSensitivity'
         ];
 
         const generalValues = getControlValues();
@@ -2588,7 +846,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return key && !key.startsWith('obj');
         }).forEach(conf => {
             const key = conf.property || conf.name;
-            const isEssential = essentialProps.includes(key);
+            // const isEssential = essentialProps.includes(key);
+            const isEssential = true;
             if (generalValues[key] !== undefined) {
                 allKeys.push(key);
                 let exportValue = generalValues[key];
@@ -2622,12 +881,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
             objectConfigs.forEach(conf => {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-
-                if (propName !== 'shape' && !validPropsForShape.includes(propName)) {
-                    return;
-                }
-
                 const isEssential = essentialProps.includes(propName);
+
+                // if (propName !== 'shape' && !validPropsForShape.includes(propName)) {
+                //     return;
+                // }
+
+                // if (!isEssential) {
+                //     return;
+                // }
+
                 let liveValue;
 
                 if (propName.startsWith('gradColor')) {
@@ -2702,6 +965,284 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     // In main.js, replace the entire renderForm function.
 
+    // function renderForm() {
+    //     const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    //     existingTooltips.forEach(el => {
+    //         const tooltip = bootstrap.Tooltip.getInstance(el);
+    //         if (tooltip) tooltip.dispose();
+    //     });
+
+    //     const generalSettingsValues = {};
+    //     const generalConfigs = configStore.filter(c => !(c.property || c.name).startsWith('obj'));
+    //     generalConfigs.forEach(conf => {
+    //         const key = conf.property || conf.name;
+    //         const el = form.elements[key];
+    //         if (el) {
+    //             generalSettingsValues[key] = (el.type === 'checkbox') ? el.checked : el.value;
+    //         }
+    //     });
+
+    //     const collapseStates = {};
+    //     const generalCollapseEl = form.querySelector('#collapse-general');
+    //     collapseStates.general = generalCollapseEl ? generalCollapseEl.classList.contains('show') : true;
+
+    //     const allObjectCollapses = form.querySelectorAll('.collapse[id^="collapse-obj-"]');
+    //     allObjectCollapses.forEach(el => {
+    //         const fieldset = el.closest('fieldset');
+    //         if (fieldset) {
+    //             const id = parseInt(fieldset.dataset.objectId, 10);
+    //             collapseStates[id] = el.classList.contains('show');
+    //         }
+    //     });
+
+    //     form.innerHTML = '';
+    //     const grouped = groupConfigs(configStore);
+
+    //     const generalFieldset = document.createElement('fieldset');
+    //     generalFieldset.className = 'border p-2 mb-3 rounded bg-body-secondary';
+    //     const generalHeaderBar = document.createElement('div');
+    //     generalHeaderBar.className = 'd-flex justify-content-between align-items-center w-100 px-2';
+    //     const generalHeaderText = document.createElement('span');
+    //     generalHeaderText.className = 'fs-5 fw-semibold';
+    //     generalHeaderText.textContent = 'General Settings';
+    //     generalHeaderBar.appendChild(generalHeaderText);
+    //     const generalCollapseId = 'collapse-general';
+    //     const generalCollapseButton = document.createElement('button');
+    //     const showGeneral = collapseStates.general;
+    //     generalCollapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showGeneral ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
+    //     generalCollapseButton.style.width = '28px';
+    //     generalCollapseButton.style.height = '28px';
+    //     generalCollapseButton.type = 'button';
+    //     generalCollapseButton.dataset.bsToggle = 'collapse';
+    //     generalCollapseButton.dataset.bsTarget = `#${generalCollapseId}`;
+    //     generalCollapseButton.setAttribute('aria-expanded', showGeneral);
+    //     generalHeaderBar.appendChild(generalCollapseButton);
+    //     const generalCollapseWrapper = document.createElement('div');
+    //     generalCollapseWrapper.id = generalCollapseId;
+    //     generalCollapseWrapper.className = `collapse p-3 ${showGeneral ? 'show' : ''}`;
+    //     const generalSeparator = document.createElement('hr');
+    //     generalSeparator.className = 'mt-2 mb-3';
+    //     generalCollapseWrapper.appendChild(generalSeparator);
+
+    //     if (currentProjectMetadata.creatorName) {
+    //         const infoContainer = document.createElement('div');
+    //         infoContainer.className = 'mb-3 small text-body-secondary';
+    //         const authorEl = document.createElement('div');
+    //         authorEl.innerHTML = `<strong>Author:</strong> ${currentProjectMetadata.creatorName}`;
+    //         infoContainer.appendChild(authorEl);
+    //         if (currentProjectMetadata.createdAt) {
+    //             const dateEl = document.createElement('div');
+    //             const formattedDate = currentProjectMetadata.createdAt.toLocaleDateString(undefined, {
+    //                 year: 'numeric', month: 'long', day: 'numeric'
+    //             });
+    //             dateEl.innerHTML = `<strong>Created:</strong> ${formattedDate}`;
+    //             infoContainer.appendChild(dateEl);
+    //         }
+    //         generalCollapseWrapper.appendChild(infoContainer);
+    //     }
+
+    //     grouped.general.forEach(conf => generalCollapseWrapper.appendChild(createFormControl(conf)));
+    //     generalFieldset.appendChild(generalHeaderBar);
+    //     generalFieldset.appendChild(generalCollapseWrapper);
+    //     form.appendChild(generalFieldset);
+
+    //     objects.forEach(obj => {
+    //         const id = obj.id;
+    //         const objectConfigs = grouped.objects[id];
+    //         if (!objectConfigs) return;
+
+    //         const objectName = obj.name || `Object ${id}`;
+    //         const fieldset = document.createElement('fieldset');
+    //         fieldset.className = 'border p-2 mb-3 rounded bg-body-secondary';
+    //         fieldset.dataset.objectId = id;
+
+    //         const headerBar = document.createElement('div');
+    //         headerBar.className = 'd-flex align-items-center w-100 px-2';
+    //         const dragHandle = document.createElement('div');
+    //         dragHandle.className = 'drag-handle me-2 text-body-secondary';
+    //         dragHandle.style.cursor = 'grab';
+    //         dragHandle.innerHTML = '<i class="bi bi-grip-vertical"></i>';
+    //         headerBar.appendChild(dragHandle);
+    //         const editableArea = document.createElement('div');
+    //         editableArea.className = 'editable-name-area d-flex align-items-center';
+    //         const nameSpan = document.createElement('span');
+    //         nameSpan.className = 'object-name fs-5 fw-semibold';
+    //         nameSpan.style.minWidth = '0';
+    //         nameSpan.contentEditable = true;
+    //         nameSpan.dataset.id = id;
+    //         nameSpan.textContent = objectName;
+    //         editableArea.appendChild(nameSpan);
+    //         const pencilIcon = document.createElement('i');
+    //         pencilIcon.className = 'bi bi-pencil-fill ms-2';
+    //         pencilIcon.addEventListener('click', (e) => {
+    //             e.stopPropagation();
+    //             nameSpan.focus();
+    //             const range = document.createRange();
+    //             const selection = window.getSelection();
+    //             range.selectNodeContents(nameSpan);
+    //             range.collapse(false);
+    //             selection.removeAllRanges();
+    //             selection.addRange(range);
+    //         });
+    //         editableArea.appendChild(pencilIcon);
+    //         headerBar.appendChild(editableArea);
+    //         const controlsGroup = document.createElement('div');
+    //         controlsGroup.className = 'd-flex align-items-center flex-shrink-0 ms-auto';
+    //         const lockButton = document.createElement('button');
+    //         const isLocked = obj.locked || false;
+    //         lockButton.className = `btn btn-sm btn-lock ${isLocked ? 'btn-warning' : 'btn-outline-secondary'} d-flex align-items-center justify-content-center p-0 ms-2`;
+    //         lockButton.style.width = '28px';
+    //         lockButton.style.height = '28px';
+    //         lockButton.type = 'button';
+    //         lockButton.dataset.id = id;
+    //         lockButton.dataset.bsToggle = 'tooltip';
+    //         lockButton.title = isLocked ? 'Unlock Object' : 'Lock Object';
+    //         lockButton.innerHTML = `<i class="bi ${isLocked ? 'bi-lock-fill' : 'bi-unlock-fill'}"></i>`;
+    //         controlsGroup.appendChild(lockButton);
+    //         const dropdown = document.createElement('div');
+    //         dropdown.className = 'dropdown';
+    //         dropdown.innerHTML = `<button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center p-0" style="width: 28px; height: 28px;" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-list fs-5"></i></button><ul class="dropdown-menu dropdown-menu-dark"><li><a class="dropdown-item btn-duplicate" href="#" data-id="${id}"><i class="bi bi-copy me-2"></i>Duplicate</a></li><li><a class="dropdown-item btn-delete text-danger" href="#" data-id="${id}"><i class="bi bi-trash me-2"></i>Delete</a></li></ul>`;
+    //         controlsGroup.appendChild(dropdown);
+    //         const collapseId = `collapse-obj-${id}`;
+    //         const collapseButton = document.createElement('button');
+    //         const showObject = collapseStates[id] === true || selectedObjectIds.includes(id);
+    //         collapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showObject ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
+    //         collapseButton.style.width = '28px';
+    //         collapseButton.style.height = '28px';
+    //         collapseButton.type = 'button';
+    //         collapseButton.dataset.bsToggle = 'collapse';
+    //         collapseButton.dataset.bsTarget = `#${collapseId}`;
+    //         collapseButton.setAttribute('aria-expanded', showObject);
+    //         controlsGroup.appendChild(collapseButton);
+    //         headerBar.appendChild(controlsGroup);
+
+    //         const collapseWrapper = document.createElement('div');
+    //         collapseWrapper.id = collapseId;
+    //         collapseWrapper.className = `collapse p-3 ${showObject ? 'show' : ''}`;
+    //         collapseWrapper.appendChild(document.createElement('hr'));
+
+    //         // --- START OF FIX 1: UNIFY SPEED CONTROLS ---
+    //         const groups = {
+    //             'Geometry': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed'],
+    //             'Color & Animation': ['gradType', 'gradColor1', 'gradColor2', 'useSharpGradient', 'gradientStop', 'phaseOffset', 'cycleColors', 'animationMode', 'animationSpeed', 'scrollDir'],
+    //             'Sound Reactivity': ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity']
+    //         };
+    //         // --- END OF FIX 1 ---
+    //         const currentShape = obj.shape;
+
+    //         for (const groupName in groups) {
+    //             const groupContainer = document.createElement('div');
+    //             groupContainer.className = 'control-group card card-body bg-body mb-3';
+    //             const groupHeader = document.createElement('h6');
+    //             groupHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
+    //             groupHeader.textContent = groupName;
+    //             groupContainer.appendChild(groupHeader);
+    //             const propsInGroup = groups[groupName];
+    //             propsInGroup.forEach(propName => {
+    //                 const conf = objectConfigs.find(c => c.property.endsWith(`_${propName}`));
+    //                 if (conf) {
+    //                     const showForGradient = obj.gradType === 'linear' || obj.gradType === 'radial';
+    //                     if ((propName === 'useSharpGradient' || propName === 'gradientStop') && !showForGradient) return;
+
+    //                     if (propName === 'phaseOffset') {
+    //                         const isGrid = obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1);
+    //                         const isSeismic = obj.shape === 'oscilloscope' && obj.oscDisplayMode === 'seismic';
+    //                         const isTetris = obj.shape === 'tetris';
+    //                         const isPixelArt = obj.shape === 'pixel-art';
+    //                         if (!isGrid && !isSeismic && !isTetris && !isPixelArt) return;
+    //                     }
+
+    //                     if (propName === 'animationSpeed' && currentShape === 'ring') return;
+    //                     groupContainer.appendChild(createFormControl(conf));
+    //                 }
+    //             });
+    //             if (groupContainer.children.length > 1) {
+    //                 collapseWrapper.appendChild(groupContainer);
+    //             }
+    //         }
+
+    //         const createSettingsGroup = (title, propList, displayCondition) => {
+    //             if (!displayCondition) return;
+    //             const group = document.createElement('div');
+    //             group.className = 'control-group card card-body bg-body mb-3';
+    //             const header = document.createElement('h6');
+    //             header.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
+    //             header.textContent = title;
+    //             group.appendChild(header);
+    //             objectConfigs.filter(c => propList.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => group.appendChild(createFormControl(c)));
+    //             if (group.children.length > 1) {
+    //                 collapseWrapper.appendChild(group);
+    //             }
+    //         };
+
+    //         // --- START OF FIX 2: SIMPLIFY OSCILLOSCOPE STROKE ---
+    //         const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
+    //         const gridSettings = ['numberOfRows', 'numberOfColumns'];
+    //         const oscilloscopeSettings = ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'waveStyle', 'waveCount'];
+    //         const tetrisSettings = ['tetrisBlockCount', 'tetrisAnimation', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce'];
+    //         const polygonSettings = ['sides'];
+    //         const starSettings = ['points', 'starInnerRadius'];
+    //         const strokeSettings = ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeScrollDir'];
+    //         const radialFireSettings = ['fireSpread'];
+    //         const pixelArtSettings = ['pixelArtData'];
+    //         const textSubGroups = {
+    //             'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
+    //             'Time & Date Display': ['showTime', 'showDate'],
+    //             'Text Animation': ['textAnimation', 'textAnimationSpeed']
+    //         };
+
+    //         createSettingsGroup('Ring Settings', ringSettings, currentShape === 'ring');
+    //         createSettingsGroup('Polygon Settings', polygonSettings, currentShape === 'polygon');
+    //         createSettingsGroup('Star Settings', starSettings, currentShape === 'star');
+    //         createSettingsGroup('Oscilloscope Settings', oscilloscopeSettings, currentShape === 'oscilloscope');
+    //         createSettingsGroup('Grid Settings', gridSettings, currentShape === 'rectangle');
+    //         createSettingsGroup('Tetris Animation Settings', tetrisSettings, currentShape === 'tetris');
+    //         // This condition now hides the Stroke panel for oscilloscopes.
+    //         createSettingsGroup('Stroke Settings', strokeSettings, currentShape !== 'text' && currentShape !== 'tetris' && currentShape !== 'fire' && currentShape !== 'fire-radial' && currentShape !== 'pixel-art' && currentShape !== 'oscilloscope');
+    //         createSettingsGroup('Pixel Art Settings', pixelArtSettings, currentShape === 'pixel-art');
+    //         createSettingsGroup('Radial Fire Settings', radialFireSettings, currentShape === 'fire-radial');
+    //         // --- END OF FIX 2 ---
+
+    //         const textGroup = document.createElement('div');
+    //         textGroup.style.display = currentShape === 'text' ? 'block' : 'none';
+    //         for (const subGroupName in textSubGroups) {
+    //             const subGroupContainer = document.createElement('div');
+    //             subGroupContainer.className = 'card card-body bg-body mb-2';
+    //             const subGroupHeader = document.createElement('h6');
+    //             subGroupHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
+    //             subGroupHeader.textContent = subGroupName;
+    //             subGroupContainer.appendChild(subGroupHeader);
+    //             const propsInSubGroup = textSubGroups[subGroupName];
+    //             objectConfigs.filter(c => propsInSubGroup.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => subGroupContainer.appendChild(createFormControl(c)));
+    //             if (subGroupContainer.children.length > 1) {
+    //                 textGroup.appendChild(subGroupContainer);
+    //             }
+    //         }
+    //         collapseWrapper.appendChild(textGroup);
+
+    //         fieldset.appendChild(headerBar);
+    //         fieldset.appendChild(collapseWrapper);
+    //         form.appendChild(fieldset);
+    //     });
+
+    //     for (const key in generalSettingsValues) {
+    //         const el = form.elements[key];
+    //         if (el) {
+    //             if (el.type === 'checkbox') {
+    //                 el.checked = generalSettingsValues[key];
+    //             } else {
+    //                 el.value = generalSettingsValues[key];
+    //             }
+    //         }
+    //     }
+
+    //     updateFormValuesFromObjects();
+    //     new bootstrap.Tooltip(document.body, {
+    //         selector: "[data-bs-toggle='tooltip']",
+    //         trigger: 'hover'
+    //     });
+    // }
+
     function renderForm() {
         const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         existingTooltips.forEach(el => {
@@ -2719,22 +1260,23 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const collapseStates = {};
         const generalCollapseEl = form.querySelector('#collapse-general');
-        collapseStates.general = generalCollapseEl ? generalCollapseEl.classList.contains('show') : true;
+        const generalCollapseState = generalCollapseEl ? generalCollapseEl.classList.contains('show') : true;
 
+        const activeCollapseStates = {};
         const allObjectCollapses = form.querySelectorAll('.collapse[id^="collapse-obj-"]');
         allObjectCollapses.forEach(el => {
             const fieldset = el.closest('fieldset');
             if (fieldset) {
                 const id = parseInt(fieldset.dataset.objectId, 10);
-                collapseStates[id] = el.classList.contains('show');
+                activeCollapseStates[id] = el.classList.contains('show');
             }
         });
 
+        const activeTab = form.querySelector('.tab-pane.show.active');
+        const activeTabId = activeTab ? activeTab.id : null;
         form.innerHTML = '';
         const grouped = groupConfigs(configStore);
-
         const generalFieldset = document.createElement('fieldset');
         generalFieldset.className = 'border p-2 mb-3 rounded bg-body-secondary';
         const generalHeaderBar = document.createElement('div');
@@ -2745,7 +1287,7 @@ document.addEventListener('DOMContentLoaded', function () {
         generalHeaderBar.appendChild(generalHeaderText);
         const generalCollapseId = 'collapse-general';
         const generalCollapseButton = document.createElement('button');
-        const showGeneral = collapseStates.general;
+        const showGeneral = generalCollapseState;
         generalCollapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showGeneral ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
         generalCollapseButton.style.width = '28px';
         generalCollapseButton.style.height = '28px';
@@ -2760,39 +1302,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const generalSeparator = document.createElement('hr');
         generalSeparator.className = 'mt-2 mb-3';
         generalCollapseWrapper.appendChild(generalSeparator);
-
-        if (currentProjectMetadata.creatorName) {
-            const infoContainer = document.createElement('div');
-            infoContainer.className = 'mb-3 small text-body-secondary';
-            const authorEl = document.createElement('div');
-            authorEl.innerHTML = `<strong>Author:</strong> ${currentProjectMetadata.creatorName}`;
-            infoContainer.appendChild(authorEl);
-            if (currentProjectMetadata.createdAt) {
-                const dateEl = document.createElement('div');
-                const formattedDate = currentProjectMetadata.createdAt.toLocaleDateString(undefined, {
-                    year: 'numeric', month: 'long', day: 'numeric'
-                });
-                dateEl.innerHTML = `<strong>Created:</strong> ${formattedDate}`;
-                infoContainer.appendChild(dateEl);
-            }
-            generalCollapseWrapper.appendChild(infoContainer);
-        }
-
         grouped.general.forEach(conf => generalCollapseWrapper.appendChild(createFormControl(conf)));
         generalFieldset.appendChild(generalHeaderBar);
         generalFieldset.appendChild(generalCollapseWrapper);
         form.appendChild(generalFieldset);
-
-        objects.forEach(obj => {
+        objects.forEach((obj, objectIndex) => {
             const id = obj.id;
-            const objectConfigs = grouped.objects[id];
+            const objectConfigs = grouped.objects[id] || [];
             if (!objectConfigs) return;
-
             const objectName = obj.name || `Object ${id}`;
             const fieldset = document.createElement('fieldset');
             fieldset.className = 'border p-2 mb-3 rounded bg-body-secondary';
             fieldset.dataset.objectId = id;
-
             const headerBar = document.createElement('div');
             headerBar.className = 'd-flex align-items-center w-100 px-2';
             const dragHandle = document.createElement('div');
@@ -2842,7 +1363,7 @@ document.addEventListener('DOMContentLoaded', function () {
             controlsGroup.appendChild(dropdown);
             const collapseId = `collapse-obj-${id}`;
             const collapseButton = document.createElement('button');
-            const showObject = collapseStates[id] === true || selectedObjectIds.includes(id);
+            const showObject = activeCollapseStates[id] === true || selectedObjectIds.includes(id);
             collapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showObject ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
             collapseButton.style.width = '28px';
             collapseButton.style.height = '28px';
@@ -2852,112 +1373,89 @@ document.addEventListener('DOMContentLoaded', function () {
             collapseButton.setAttribute('aria-expanded', showObject);
             controlsGroup.appendChild(collapseButton);
             headerBar.appendChild(controlsGroup);
-
             const collapseWrapper = document.createElement('div');
             collapseWrapper.id = collapseId;
             collapseWrapper.className = `collapse p-3 ${showObject ? 'show' : ''}`;
             collapseWrapper.appendChild(document.createElement('hr'));
-
-            const groups = {
-                'Geometry': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed'],
-                'Color': ['gradType', 'gradColor1', 'gradColor2', 'useSharpGradient', 'gradientStop', 'phaseOffset', 'cycleColors', 'cycleSpeed', 'animationMode', 'animationSpeed', 'scrollDir']
+            const tabNav = document.createElement('ul');
+            tabNav.className = 'nav nav-tabs';
+            tabNav.id = `object-tabs-${id}`;
+            tabNav.setAttribute('role', 'tablist');
+            const tabContent = document.createElement('div');
+            tabContent.className = 'tab-content';
+            tabContent.id = `object-tab-content-${id}`;
+            const controlGroupMap = {
+                'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
+                'Fill & Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'useSharpGradient', 'gradientStop', 'animationMode', 'animationSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'textAnimationSpeed'], icon: 'bi-palette-fill' },
+                'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir'], icon: 'bi-brush-fill' },
+                'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'showTime', 'showDate'], icon: 'bi-fonts' },
+                'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
+                'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'], icon: 'bi-grid-3x3-gap-fill' },
+                'Fire': { props: ['fireSpread'], icon: 'bi-fire' },
+                'Pixel Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
+                'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
             };
-            const currentShape = obj.shape;
-
-            for (const groupName in groups) {
-                const groupContainer = document.createElement('div');
-                groupContainer.className = 'control-group card card-body bg-body mb-3';
-                const groupHeader = document.createElement('h6');
-                groupHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
-                groupHeader.textContent = groupName;
-                groupContainer.appendChild(groupHeader);
-                const propsInGroup = groups[groupName];
-                propsInGroup.forEach(propName => {
-                    const conf = objectConfigs.find(c => c.property.endsWith(`_${propName}`));
-                    if (conf) {
-                        const showForGradient = obj.gradType === 'linear' || obj.gradType === 'radial';
-                        if ((propName === 'useSharpGradient' || propName === 'gradientStop') && !showForGradient) return;
-
-                        if (propName === 'phaseOffset') {
-                            const isGrid = obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1);
-                            const isSeismic = obj.shape === 'oscilloscope' && obj.oscDisplayMode === 'seismic';
-                            const isTetris = obj.shape === 'tetris';
-                            const isPixelArt = obj.shape === 'pixel-art';
-                            if (!isGrid && !isSeismic && !isTetris && !isPixelArt) return;
-                        }
-
-                        if (propName === 'animationSpeed' && currentShape === 'ring') return;
-                        groupContainer.appendChild(createFormControl(conf));
-                    }
+            const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
+            const essentialProps = grouped.general.map(c => c.property || c.name);
+            let isFirstTab = true;
+            for (const groupName in controlGroupMap) {
+                const groupProps = controlGroupMap[groupName].props;
+                const relevantProps = objectConfigs.filter(conf => {
+                    const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+                    const isEssential = essentialProps.includes(propName);
+                    const isShapeSpecific = validPropsForShape.includes(propName);
+                    const isAudioGroup = groupName === 'Audio';
+                    return groupProps.includes(propName) && (isEssential || isShapeSpecific || isAudioGroup);
                 });
-                if (groupContainer.children.length > 1) {
-                    collapseWrapper.appendChild(groupContainer);
+                if (relevantProps.length > 0) {
+                    const tabId = `tab-${id}-${groupName.replace(/\s/g, '-')}`;
+                    const paneId = `pane-${id}-${groupName.replace(/\s/g, '-')}`;
+                    const tabItem = document.createElement('li');
+                    tabItem.className = 'nav-item';
+                    tabItem.setAttribute('role', 'presentation');
+                    const tabButton = document.createElement('button');
+                    tabButton.className = `nav-link ${isFirstTab ? 'active' : ''}`;
+                    tabButton.id = tabId;
+                    tabButton.dataset.bsToggle = 'tab';
+                    tabButton.dataset.bsTarget = `#${paneId}`;
+                    tabButton.type = 'button';
+                    tabButton.setAttribute('role', 'tab');
+                    tabButton.setAttribute('aria-controls', paneId);
+                    tabButton.setAttribute('aria-selected', isFirstTab);
+                    const icon = document.createElement('i');
+                    icon.className = `bi ${controlGroupMap[groupName].icon} me-2`;
+                    tabButton.appendChild(icon);
+                    tabButton.appendChild(document.createTextNode(groupName));
+                    tabItem.appendChild(tabButton);
+                    tabNav.appendChild(tabItem);
+                    const pane = document.createElement('div');
+                    pane.className = `tab-pane fade ${isFirstTab ? 'show active' : ''}`;
+                    pane.id = paneId;
+                    pane.setAttribute('role', 'tabpanel');
+                    pane.setAttribute('aria-labelledby', tabId);
+                    const groupCard = document.createElement('div');
+                    groupCard.className = 'card card-body bg-body mb-3';
+                    const groupHeader = document.createElement('h6');
+                    groupHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
+                    groupHeader.textContent = groupName;
+                    groupCard.appendChild(groupHeader);
+                    relevantProps.forEach(conf => {
+                        const newControl = createFormControl(conf);
+                        if (newControl) {
+                            groupCard.appendChild(newControl);
+                        }
+                    });
+                    pane.appendChild(groupCard);
+                    tabContent.appendChild(pane);
+                    isFirstTab = false;
                 }
             }
-
-            const createSettingsGroup = (title, propList, displayCondition) => {
-                const group = document.createElement('div');
-                group.className = 'control-group card card-body bg-body mb-3';
-                group.style.display = displayCondition ? 'block' : 'none';
-                const header = document.createElement('h6');
-                header.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
-                header.textContent = title;
-                group.appendChild(header);
-                objectConfigs.filter(c => propList.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => group.appendChild(createFormControl(c)));
-                if (group.children.length > 1) {
-                    collapseWrapper.appendChild(group);
-                }
-            };
-
-            const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
-            const gridSettings = ['numberOfRows', 'numberOfColumns'];
-            const oscilloscopeSettings = ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'waveStyle', 'waveCount'];
-            const tetrisSettings = ['tetrisBlockCount', 'tetrisAnimation', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce'];
-            const polygonSettings = ['sides'];
-            const starSettings = ['points', 'starInnerRadius'];
-            const strokeSettings = ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir'];
-            const radialFireSettings = ['fireSpread'];
-            const pixelArtSettings = ['pixelArtData'];
-            const textSubGroups = {
-                'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
-                'Time & Date Display': ['showTime', 'showDate'],
-                'Text Animation': ['textAnimation', 'textAnimationSpeed']
-            };
-
-
-
-            createSettingsGroup('Ring Settings', ringSettings, currentShape === 'ring');
-            createSettingsGroup('Polygon Settings', polygonSettings, currentShape === 'polygon');
-            createSettingsGroup('Star Settings', starSettings, currentShape === 'star');
-            createSettingsGroup('Oscilloscope Settings', oscilloscopeSettings, currentShape === 'oscilloscope');
-            createSettingsGroup('Grid Settings', gridSettings, currentShape === 'rectangle');
-            createSettingsGroup('Tetris Animation Settings', tetrisSettings, currentShape === 'tetris');
-            createSettingsGroup('Stroke Settings', strokeSettings, obj.shape !== 'text' && obj.shape !== 'tetris' && obj.shape !== 'fire' && obj.shape !== 'fire-radial' && obj.shape !== 'pixel-art');
-            createSettingsGroup('Pixel Art Settings', pixelArtSettings, currentShape === 'pixel-art');
-            createSettingsGroup('Radial Fire Settings', radialFireSettings, currentShape === 'fire-radial');
-
-            const textGroup = document.createElement('div');
-            textGroup.style.display = currentShape === 'text' ? 'block' : 'none';
-            for (const subGroupName in textSubGroups) {
-                const subGroupContainer = document.createElement('div');
-                subGroupContainer.className = 'card card-body bg-body mb-2';
-                const subGroupHeader = document.createElement('h6');
-                subGroupHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
-                subGroupHeader.textContent = subGroupName;
-                subGroupContainer.appendChild(subGroupHeader);
-                const propsInSubGroup = textSubGroups[subGroupName];
-                objectConfigs.filter(c => propsInSubGroup.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => subGroupContainer.appendChild(createFormControl(c)));
-                if (subGroupContainer.children.length > 1) {
-                    textGroup.appendChild(subGroupContainer);
-                }
-            }
-            collapseWrapper.appendChild(textGroup);
-
+            collapseWrapper.appendChild(tabNav);
+            collapseWrapper.appendChild(tabContent);
             fieldset.appendChild(headerBar);
             fieldset.appendChild(collapseWrapper);
             form.appendChild(fieldset);
         });
-
         for (const key in generalSettingsValues) {
             const el = form.elements[key];
             if (el) {
@@ -2968,14 +1466,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }
-
         updateFormValuesFromObjects();
         new bootstrap.Tooltip(document.body, {
             selector: "[data-bs-toggle='tooltip']",
             trigger: 'hover'
         });
     }
-
 
     /**
      * Initializes the Sortable.js library on the controls form to allow
@@ -3044,8 +1540,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const key = conf.property || conf.name;
             const el = form.elements[key];
             if (el) {
-                // FIXED: This now correctly reads the 'checked' property for all booleans,
-                // including the 'enableAnimation' checkbox.
                 if (el.type === 'checkbox') {
                     data[key] = el.checked;
                 } else if (el.type === 'number') {
@@ -3285,28 +1779,58 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.restore();
     }
 
-    function drawFrame() {
-        ctx.fillStyle = 'black';
+    // function drawFrame(audioData = {}) { // <-- Add audioData parameter
+    //     ctx.fillStyle = 'black';
+    //     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    //     const animationEnabled = getControlValues().enableAnimation;
+    //     const soundEnabled = getControlValues().enableSound
+
+    //     for (let i = objects.length - 1; i >= 0; i--) {
+    //         const obj = objects[i];
+    //         if (obj instanceof Shape) {
+    //             if (animationEnabled) {
+    //                 obj.updateAnimationState(audioData); // <-- Pass audioData here
+    //             }
+    //             obj.draw(selectedObjectIds.includes(obj.id));
+    //         } else {
+    //             console.error('Invalid object in objects array:', obj);
+    //         }
+    //     }
+
+    //     if (selectedObjectIds.length > 0) {
+    //         selectedObjectIds.forEach(id => {
+    //             const obj = objects.find(o => o.id === id);
+    //             if (obj && obj instanceof Shape) {
+    //                 obj.drawSelectionUI();
+    //             }
+    //         });
+    //     }
+
+    //     drawSnapLines(snapLines);
+    // }
+
+    function drawFrame(audioData = {}) {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        const animationEnabled = getControlValues().enableAnimation;
+        const isAnimating = getControlValues().enableAnimation;
 
-        // FIX: Replaced the forward forEach loop with a reverse for-loop.
-        // This draws the last object in the list first, so it appears at the back,
-        // perfectly matching the final rendering order in SignalRGB.
-        for (let i = objects.length - 1; i >= 0; i--) {
-            const obj = objects[i];
-            if (obj instanceof Shape) {
-                if (animationEnabled) {
-                    obj.updateAnimationState();
+        objects.forEach(obj => {
+            const shouldDraw = obj.dirty || isAnimating;
+
+            if (shouldDraw) {
+                if (isAnimating) {
+                    obj.updateAnimationState(audioData);
                 }
                 obj.draw(selectedObjectIds.includes(obj.id));
-            } else {
-                console.error('Invalid object in objects array:', obj);
+                obj.dirty = false;
             }
-        }
+        });
 
-        // Draw selection UI for selected objects on top of everything.
         if (selectedObjectIds.length > 0) {
             selectedObjectIds.forEach(id => {
                 const obj = objects.find(o => o.id === id);
@@ -3319,6 +1843,33 @@ document.addEventListener('DOMContentLoaded', function () {
         drawSnapLines(snapLines);
     }
 
+    // function animate(timestamp) {
+    //     requestAnimationFrame(animate);
+
+    //     const now = timestamp;
+    //     const elapsed = now - then;
+
+    //     if (elapsed > fpsInterval) {
+    //         then = now - (elapsed % fpsInterval);
+
+    //         let audioData = {};
+    //         if (isAudioSetup) {
+    //             // If audio is running, get real metrics
+    //             audioData = getAudioMetrics();
+    //         } else {
+    //             // Otherwise, use the mock data as a fallback
+    //             const time = now / 1000;
+    //             audioData = {
+    //                 bass: (Math.sin(time * 2) + 1) / 2,
+    //                 mids: (Math.sin(time * 1.5 + 1) + 1) / 2,
+    //                 highs: (Math.sin(time * 3 + 2) + 1) / 2,
+    //                 volume: (Math.sin(time) + 1) / 2
+    //             };
+    //         }
+
+    //         drawFrame(audioData); // Pass the data (real or mock) to the draw function
+    //     }
+    // }
     function animate(timestamp) {
         requestAnimationFrame(animate);
 
@@ -3328,8 +1879,28 @@ document.addEventListener('DOMContentLoaded', function () {
         if (elapsed > fpsInterval) {
             then = now - (elapsed % fpsInterval);
 
-            // Always draw a frame to keep the UI responsive
-            drawFrame();
+            // Get the current state of the 'Enable Sound' checkbox from the form.
+            const generalValues = getControlValues();
+            const soundEnabled = generalValues.enableSound;
+
+            let audioData = {};
+
+            // Check if audio is enabled AND if the setup has been completed.
+            if (soundEnabled && isAudioSetup) {
+                // Use real audio metrics from the Web Audio API.
+                audioData = getAudioMetrics();
+            } else {
+                // Otherwise, use the mock data as a fallback.
+                const time = now / 1000;
+                audioData = {
+                    bass: (Math.sin(time * 2) + 1) / 2,
+                    mids: (Math.sin(time * 1.5 + 1) + 1) / 2,
+                    highs: (Math.sin(time * 3 + 2) + 1) / 2,
+                    volume: (Math.sin(time) + 1) / 2
+                };
+            }
+
+            drawFrame(audioData);
         }
     }
 
@@ -3588,6 +2159,108 @@ document.addEventListener('DOMContentLoaded', function () {
      * including complex shapes and strokes, are correctly applied.
      * @param {object} workspace - The workspace object to load.
      */
+    // function loadWorkspace(workspace) {
+    //     currentProjectMetadata = {
+    //         creatorName: workspace.creatorName,
+    //         createdAt: (workspace.createdAt && workspace.createdAt.toDate) ? workspace.createdAt.toDate() : workspace.createdAt
+    //     };
+
+    //     const loadedConfigs = workspace.configs;
+    //     const objectIds = [...new Set(
+    //         loadedConfigs
+    //             .map(c => (c.property || '').match(/^obj(\d+)_/))
+    //             .filter(match => match)
+    //             .map(match => parseInt(match[1], 10))
+    //     )];
+
+    //     const mergedConfigStore = loadedConfigs.filter(c => !(c.property || '').startsWith('obj'));
+
+    //     objectIds.forEach(id => {
+    //         const fullDefaultConfig = getDefaultObjectConfig(id);
+    //         const savedObjectConfigs = loadedConfigs.filter(c => c.property && c.property.startsWith(`obj${id}_`));
+    //         const savedPropsMap = new Map(savedObjectConfigs.map(c => [c.property, c]));
+
+    //         // This is the updated merging logic
+    //         const mergedObjectConfigs = fullDefaultConfig.map(defaultConf => {
+    //             if (savedPropsMap.has(defaultConf.property)) {
+    //                 const savedConf = savedPropsMap.get(defaultConf.property);
+
+    //                 // Start with the up-to-date default configuration...
+    //                 const mergedConf = { ...defaultConf };
+
+    //                 // ...then override it with the user's saved data.
+    //                 // This preserves the user's selection and custom name...
+    //                 if (savedConf.hasOwnProperty('default')) {
+    //                     mergedConf.default = savedConf.default;
+    //                 }
+    //                 if (savedConf.hasOwnProperty('label')) {
+    //                     mergedConf.label = savedConf.label;
+    //                 }
+    //                 // ...while always using the latest 'values', 'min', 'max', etc. from the default.
+    //                 return mergedConf;
+    //             }
+    //             return defaultConf;
+    //         });
+    //         mergedConfigStore.push(...mergedObjectConfigs);
+    //     });
+
+    //     configStore = mergedConfigStore;
+
+    //     createInitialObjects(objectIds);
+
+    //     if (workspace.objects) {
+    //         workspace.objects.forEach(savedObj => {
+    //             const obj = objects.find(o => o.id === savedObj.id);
+    //             if (obj) {
+    //                 obj.name = savedObj.name;
+    //                 obj.locked = savedObj.locked || false;
+    //             }
+    //         });
+    //     }
+
+    //     renderForm();
+
+    //     for (const config of configStore) {
+    //         const key = config.property || config.name;
+    //         const el = form.elements[key];
+    //         if (el) {
+    //             if (el.type === 'checkbox') {
+    //                 el.checked = (config.default === true || config.default === 'true');
+    //             } else {
+    //                 el.value = config.default;
+    //             }
+    //             if (el.type === 'number') {
+    //                 const slider = document.getElementById(`${el.id}_slider`);
+    //                 if (slider) slider.value = el.value;
+    //             }
+    //             if (el.type === 'color') {
+    //                 const hexInput = document.getElementById(`${el.id}_hex`);
+    //                 if (hexInput) hexInput.value = el.value;
+    //             }
+    //         }
+    //     }
+    //     if (workspace.creatorName) {
+    //         const publisherInput = form.elements['publisher'];
+    //         if (publisherInput) publisherInput.value = workspace.creatorName;
+    //     }
+
+    //     objects.forEach(obj => {
+    //         const finalProps = getFormValuesForObject(obj.id);
+    //         delete finalProps.shape;
+    //         obj.update(finalProps);
+    //     });
+
+    //     currentProjectDocId = workspace.docId || null;
+    //     updateShareButtonState();
+    //     generateOutputScript();
+    //     drawFrame();
+
+    //     if (workspace.docId) {
+    //         const newUrl = `${window.location.pathname}?effectId=${workspace.docId}`;
+    //         const effectTitle = workspace.name || "SRGB Effect Builder";
+    //         window.history.pushState({ effectId: workspace.docId }, effectTitle, newUrl);
+    //     }
+    // }
     function loadWorkspace(workspace) {
         currentProjectMetadata = {
             creatorName: workspace.creatorName,
@@ -3602,38 +2275,43 @@ document.addEventListener('DOMContentLoaded', function () {
                 .map(match => parseInt(match[1], 10))
         )];
 
-        const mergedConfigStore = loadedConfigs.filter(c => !(c.property || '').startsWith('obj'));
+        // --- START OF FIX ---
+        // 1. Get the default general configs from the template.
+        const template = document.getElementById('initial-config');
+        const defaultMetaElements = Array.from(template.content.querySelectorAll('meta'));
+        const defaultConfigs = defaultMetaElements.map(parseMetaToConfig);
+        const defaultGeneralConfigs = defaultConfigs.filter(c => !(c.property || c.name).startsWith('obj'));
+        const defaultObjectConfigs = defaultConfigs.filter(c => (c.property || c.name).startsWith('obj'));
 
-        objectIds.forEach(id => {
-            const fullDefaultConfig = getDefaultObjectConfig(id);
-            const savedObjectConfigs = loadedConfigs.filter(c => c.property && c.property.startsWith(`obj${id}_`));
-            const savedPropsMap = new Map(savedObjectConfigs.map(c => [c.property, c]));
+        // 2. Separate loaded configs into general and object-specific.
+        const loadedGeneralConfigs = loadedConfigs.filter(c => !(c.property || c.name).startsWith('obj'));
+        const loadedObjectConfigs = loadedConfigs.filter(c => (c.property || c.name).startsWith('obj'));
 
-            // This is the updated merging logic
-            const mergedObjectConfigs = fullDefaultConfig.map(defaultConf => {
-                if (savedPropsMap.has(defaultConf.property)) {
-                    const savedConf = savedPropsMap.get(defaultConf.property);
-
-                    // Start with the up-to-date default configuration...
-                    const mergedConf = { ...defaultConf };
-
-                    // ...then override it with the user's saved data.
-                    // This preserves the user's selection and custom name...
-                    if (savedConf.hasOwnProperty('default')) {
-                        mergedConf.default = savedConf.default;
-                    }
-                    if (savedConf.hasOwnProperty('label')) {
-                        mergedConf.label = savedConf.label;
-                    }
-                    // ...while always using the latest 'values', 'min', 'max', etc. from the default.
-                    return mergedConf;
-                }
-                return defaultConf;
-            });
-            mergedConfigStore.push(...mergedObjectConfigs);
+        // 3. Create a merged list for general configs, prioritizing loaded configs.
+        const mergedGeneralConfigs = defaultGeneralConfigs.map(defaultConf => {
+            const loadedConf = loadedGeneralConfigs.find(c => (c.property || c.name) === (defaultConf.property || defaultConf.name));
+            return loadedConf || defaultConf;
         });
 
-        configStore = mergedConfigStore;
+        // 4. Create a map of default object properties for a full set of defaults.
+        const defaultObjectProps = {};
+        objectIds.forEach(id => {
+            const defaults = getDefaultObjectConfig(id);
+            defaults.forEach(c => defaultObjectProps[c.property] = c);
+        });
+
+        // 5. Merge the loaded object properties with the defaults.
+        const mergedObjectConfigs = loadedObjectConfigs.map(loadedConf => {
+            const defaultConf = defaultObjectProps[loadedConf.property];
+            if (defaultConf) {
+                return { ...defaultConf, default: loadedConf.default, label: loadedConf.label };
+            }
+            return loadedConf;
+        });
+
+        // 6. Combine all merged configs into the final configStore.
+        configStore = [...mergedGeneralConfigs, ...mergedObjectConfigs];
+        // --- END OF FIX ---
 
         createInitialObjects(objectIds);
 
@@ -3719,7 +2397,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function getDefaultObjectConfig(newId) {
         return [
             // Geometry & Transform
-            // FIX: Standardized shape value to 'fire-radial' with a hyphen.
             { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art', description: 'The basic shape of the object.' },
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200' },
@@ -3737,8 +2414,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop', description: 'Determines how the gradient animation behaves.' },
             { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '0', max: '100', description: 'Master speed for gradient scroll, random color flicker, and oscilloscope movement.' },
             { property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100', description: 'The continuous rotation speed of the object. Overrides static rotation.' },
-            { property: `obj${newId}_cycleSpeed`, label: `Object ${newId}: Color Animation Speed`, type: 'number', default: '1', min: '0', max: '100', description: 'How fast the colors cycle when "Cycle Colors" is enabled.' },
-            { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down', description: 'The direction the gradient animation moves.' },
+            { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', values: 'right,left,up,down', default: 'right', description: 'The direction the gradient animation moves.' },
             { property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100', description: 'Offsets the gradient animation for each item in a grid, seismic wave, or Tetris block, creating a cascading effect.' },
 
             // Shape-Specific Properties
@@ -3767,30 +2443,25 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_enableWaveAnimation`, label: `Object ${newId}: Enable Wave Animation`, type: 'boolean', default: 'true', description: 'Toggles the movement of the oscilloscope wave.' },
             { property: `obj${newId}_waveStyle`, label: `Object ${newId}: Seismic Wave Style`, type: 'combobox', default: 'wavy', values: 'wavy,round' },
             { property: `obj${newId}_waveCount`, label: `Object ${newId}: Seismic Wave Count`, type: 'number', default: '5', min: '1', max: '20' },
-
-            // Tetris- Specific Properties
             { property: `obj${newId}_tetrisBlockCount`, label: `Object ${newId}: Block Count`, type: 'number', default: '10', min: '1', max: '50', description: '(Tetris) The number of blocks in the animation cycle.' },
             { property: `obj${newId}_tetrisAnimation`, label: `Object ${newId}: Drop Physics`, type: 'combobox', values: 'gravity,linear,gravity-fade,fade-in-stack', default: 'gravity', description: '(Tetris) The physics governing how the blocks fall. Gravity-fade removes blocks as they settle.' },
             { property: `obj${newId}_tetrisSpeed`, label: `Object ${newId}: Drop Speed`, type: 'number', default: '5', min: '1', max: '100', description: '(Tetris) The speed of the drop animation.' },
             { property: `obj${newId}_tetrisBounce`, label: `Object ${newId}: Bounce Factor`, type: 'number', default: '50', min: '0', max: '90', description: '(Tetris) How much the blocks bounce on impact. 0 is no bounce.' },
-
-            // --- STROKE PROPERTIES ---
+            { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fire-radial) Controls how far the flames spread from the center.' },
             { property: `obj${newId}_enableStroke`, label: `Object ${newId}: Enable Stroke`, type: 'boolean', default: 'false' },
             { property: `obj${newId}_strokeWidth`, label: `Object ${newId}: Stroke Width`, type: 'number', default: '2', min: '1', max: '50' },
             { property: `obj${newId}_strokeGradType`, label: `Object ${newId}: Stroke Type`, type: 'combobox', default: 'solid', values: 'solid,linear,radial,rainbow,rainbow-radial' },
             { property: `obj${newId}_strokeGradColor1`, label: `Object ${newId}: Stroke Color 1`, type: 'color', default: '#FFFFFF' },
             { property: `obj${newId}_strokeGradColor2`, label: `Object ${newId}: Stroke Color 2`, type: 'color', default: '#000000' },
             { property: `obj${newId}_strokeCycleColors`, label: `Object ${newId}: Cycle Stroke Colors`, type: 'boolean', default: 'false' },
-            { property: `obj${newId}_strokeCycleSpeed`, label: `Object ${newId}: Stroke Color Cycle Speed`, type: 'number', default: '1', min: '0', max: '100' },
-            { property: `obj${newId}_strokeAnimationSpeed`, label: `Object ${newId}: Stroke Animation Speed`, type: 'number', default: '2', min: '0', max: '100' },
             { property: `obj${newId}_strokeScrollDir`, label: `Object ${newId}: Stroke Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down' },
-
-            // --- FIRE PROPERTIES ---
-            // FIX: fireHeight property is removed completely.
-            { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fire-radial) Controls how far the flames spread from the center.' },
-
-            // --- PIXEL ART PROPERTIES ---
-            { property: `obj${newId}_pixelArtData`, label: `Object ${newId}: Pixel Art Data`, type: 'textarea', default: '[[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],[0,0,0,0,0,0,0,0,0,0,0,1,0,0.5,0,1],[0,0,0,0,0,0,0,0,0,0,1,0,0.5,0,1,0],[0,0,0,0,0,0,0,0,0,1,0,0.5,0,1,0,0],[0,0,0,0,0,0,0,0,1,0,0.5,0,1,0,0,0],[0,0,1,1,0,0,0,1,0,0.5,0,1,0,0,0,0],[0,0,1,0.5,1,0,1,0,0.5,0,1,0,0,0,0,0],[0,0,0,1,0,1,0,0.5,0,1,0,0,0,0,0,0],[0,0,0,1,0,0,0.5,0,1,0,0,0,0,0,0,0],[0,0,0,0,1,0.5,0,1,0,0,0,0,0,0,0,0],[0,0,0,1,0.5,1,0,0,1,0,0,0,0,0,0,0],[0,0,1,0.5,1,0,1,1,0.5,1,0,0,0,0,0,0],[1,1,0.5,1,0,0,0,0,1,1,0,0,0,0,0,0],[1,0.5,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0]]', description: '(Pixel Art) A 2D array of alpha values (0 to 1) to draw.' },
+            { property: `obj${newId}_enableAudioReactivity`, label: `Object ${newId}: Enable Sound Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sound.' },
+            { property: `obj${newId}_audioTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Flash', values: 'none,Flash,Size,Rotation', description: 'Which property of the object will be affected by the sound.' },
+            { property: `obj${newId}_audioMetric`, label: `Object ${newId}: Audio Metric`, type: 'combobox', default: 'volume', values: 'volume,bass,mids,highs', description: 'Which part of the audio spectrum to react to.' },
+            { property: `obj${newId}_beatThreshold`, label: `Object ${newId}: Beat Threshold`, type: 'number', default: '30', min: '1', max: '100', description: 'Sensitivity for beat detection. Higher values are MORE sensitive. Default is 30.' },
+            { property: `obj${newId}_audioSensitivity`, label: `Object ${newId}: Sensitivity`, type: 'number', default: '50', min: '0', max: '200', description: 'How strongly the object reacts to the audio metric.' },
+            { property: `obj${newId}_audioSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '50', min: '0', max: '99', description: 'Smooths out the reaction to prevent flickering. Higher values are smoother.' },
+            { property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'false', description: 'For text objects, automatically sets the object\'s width to the width of the text.' },
         ];
     }
 
@@ -3821,167 +2492,174 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const bodyContent = '<body><canvas id="signalCanvas"></canvas></body>';
 
-            // This surgically replaces the hardcoded speed in the exported code only.
-            const shapeClassString = Shape.toString().replace(
-                'this.seismicAnimationSpeedMultiplier = 0.015;',
-                'this.seismicAnimationSpeedMultiplier = seismicAnimationSpeedMultiplier;'
-            );
-            const shapeClasses = shapeClassString + '\n\n' + ExportedShape.toString();
+            // --- START OF DEFINITIVE FIX ---
+            // This new logic cleanly converts all necessary code to strings without manipulation.
+            const shapeClasses = [
+                Shape.toString(),
+                `
+    class ExportedShape extends Shape {
+        constructor(config) {
+            const scaledConfig = { ...config };
+            // We no longer need to scale props here as it's handled during object creation.
+            super(scaledConfig);
+        }
+        _applyAudioReactivity(audioData) {
+            // This directly calls the SignalRGB-specific logic.
+            (${srgb_applyAudioReactivity.toString()}).call(this, audioData);
+        }
+    }
+                `
+            ].join('\n\n');
+            // --- END OF DEFINITIVE FIX ---
 
             const exportedScript = `
-document.addEventListener('DOMContentLoaded', function () {
-    const canvas = document.getElementById('signalCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = 320;
-    canvas.height = 200;
-    let objects = [];
-    
-    ${jsVars}
-
-    // --- Speed Multipliers for SignalRGB Environment ---
-    let gradientSpeedMultiplier = ${EXPORT_GRADIENT_SPEED_MULTIPLIER};
-    let shapeAnimationSpeedMultiplier = ${EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER};
-    let seismicAnimationSpeedMultiplier = ${EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER};
-    let tetrisSpeedDivisor = ${EXPORT_TETRIS_SPEED_DIVISOR};
-
-    const FONT_DATA_4PX = ${JSON.stringify(FONT_DATA_4PX)};
-    const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};
-    const drawPixelText = ${drawPixelText.toString()};
-    const lerpColor = ${lerpColor.toString()};
-    const getPatternColor = ${getPatternColor.toString()};
-    
-    ${shapeClasses}
-
-    let fps = 50;
-    let fpsInterval;
-    let then;
-
-    const allPropKeys = ${allKeys};
-
-    function createInitialObjects() {
-        if (allPropKeys.length === 0) return;
+    document.addEventListener('DOMContentLoaded', function () {
+        const canvas = document.getElementById('signalCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = 320; // Use full resolution for export
+        canvas.height = 200;
+        let objects = [];
         
-        const uniqueIds = [...new Set(allPropKeys.map(p => {
-            if (!p.startsWith('obj')) return null;
-            const end = p.indexOf('_');
-            if (end <= 3) return null;
-            const idString = p.substring(3, end);
-            const id = parseInt(idString, 10);
-            return isNaN(id) ? null : String(id);
-        }).filter(id => id !== null))];
+        ${jsVars}
+
+        let gradientSpeedMultiplier = ${EXPORT_GRADIENT_SPEED_MULTIPLIER};
+        let shapeAnimationSpeedMultiplier = ${EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER};
+        let seismicAnimationSpeedMultiplier = ${EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER};
+        let tetrisSpeedDivisor = ${EXPORT_TETRIS_SPEED_DIVISOR};
+
+        const hexToHsl = ${hexToHsl.toString()};
+        const hslToHex = ${hslToHex.toString()};
+        const getSignalRGBAudioMetrics = ${getSignalRGBAudioMetrics.toString()};
+        const srgb_applyAudioReactivity = ${srgb_applyAudioReactivity.toString()};
         
-        objects = uniqueIds.map(id => {
-            const config = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
-            const prefix = 'obj' + id + '_';
+        const FONT_DATA_4PX = ${JSON.stringify(FONT_DATA_4PX)};
+        const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};
+        const drawPixelText = ${drawPixelText.toString()};
+        const lerpColor = ${lerpColor.toString()};
+        const getPatternColor = ${getPatternColor.toString()};
+        
+        ${shapeClasses}
+
+        let fps = 50;
+        let fpsInterval;
+        let then;
+
+        const allPropKeys = ${JSON.parse(JSON.stringify(allKeys))};
+
+        function createInitialObjects() {
+            if (allPropKeys.length === 0) return;
             
-            allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
-                const propName = key.substring(prefix.length);
-                try {
-                    let value = eval(key);
-                    if (value === "true") value = true;
-                    if (value === "false") value = false;
-
-                    if (propName.startsWith('gradColor')) {
-                        config.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                    } else if (propName.startsWith('strokeGradColor')) {
-                        config.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
-                    } else if (propName === 'scrollDir') {
-                        config.scrollDirection = value;
-                    } else if (propName === 'strokeScrollDir') {
-                        config.strokeScrollDir = value;
-                    } else {
-                        config[propName] = value;
-                    }
-                } catch (e) {}
-            });
+            const uniqueIds = [...new Set(allPropKeys.map(p => {
+                if (!p.startsWith('obj')) return null;
+                const end = p.indexOf('_');
+                if (end <= 3) return null;
+                const idString = p.substring(3, end);
+                const id = parseInt(idString, 10);
+                return isNaN(id) ? null : String(id);
+            }).filter(id => id !== null))];
             
-            config.animationSpeed = (config.animationSpeed || 0) / 10.0;
-            config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
-            config.strokeAnimationSpeed = (config.strokeAnimationSpeed || 0) / 10.0;
-            config.strokeCycleSpeed = (config.strokeCycleSpeed || 0) / 50.0;
+            objects = uniqueIds.map(id => {
+                const config = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
+                const prefix = 'obj' + id + '_';
+                
+                allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+                    const propName = key.substring(prefix.length);
+                    try {
+                        let value = eval(key);
+                        if (value === "true") value = true;
+                        if (value === "false") value = false;
 
-            if (config.shape === 'ring' || config.shape === 'circle') {
-                config.height = config.width;
-            }
-            return new ExportedShape(config);
-        });
-    }
+                        if (propName.startsWith('gradColor')) {
+                            config.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                        } else if (propName.startsWith('strokeGradColor')) {
+                            config.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                        } else if (propName === 'scrollDir') {
+                            config.scrollDirection = value;
+                        } else if (propName === 'strokeScrollDir') {
+                            config.strokeScrollDir = value;
+                        } else {
+                            config[propName] = value;
+                        }
+                    } catch (e) {}
+                });
+                
+                config.animationSpeed = (config.animationSpeed / 4 || 0) / 10.0;
+                
+                return new ExportedShape(config);
+            });
+        }
 
-    function drawFrame() {
-        if (!ctx) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        let shouldAnimate = false;
-        try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
+        function drawFrame() {
+            if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            let shouldAnimate = false;
+            try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
+            
+            const audioData = getSignalRGBAudioMetrics();
 
-        objects.forEach(obj => {
-            const prefix = 'obj' + obj.id + '_';
-            const propsToUpdate = { gradient: {}, strokeGradient: {} };
+            objects.forEach(obj => {
+                const prefix = 'obj' + obj.id + '_';
+                const propsToUpdate = { gradient: {}, strokeGradient: {} };
 
-            allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
-                const propName = key.substring(prefix.length);
-                try {
-                    let value = eval(key);
-                    if (value === "true") value = true;
-                    if (value === "false") value = false;
+                allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+                    const propName = key.substring(prefix.length);
+                    try {
+                        let value = eval(key);
+                        if (value === "true") value = true;
+                        if (value === "false") value = false;
 
-                    if (propName.startsWith('gradColor')) {
-                        propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                    } else if (propName.startsWith('strokeGradColor')) {
-                        propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
-                    } else if (propName === 'scrollDir') {
-                        propsToUpdate.scrollDirection = value;
-                    } else if (propName === 'strokeScrollDir') {
-                        propsToUpdate.strokeScrollDir = value;
-                    } else if (propName === 'animationSpeed') {
-                        propsToUpdate.animationSpeed = (value || 0) / 10.0;
-                    } else if (propName === 'cycleSpeed') {
-                        propsToUpdate.cycleSpeed = (value || 0) / 50.0;
-                    } else if (propName === 'strokeAnimationSpeed') {
-                        propsToUpdate.strokeAnimationSpeed = (value || 0) / 10.0;
-                    } else if (propName === 'strokeCycleSpeed') {
-                        propsToUpdate.strokeCycleSpeed = (value || 0) / 50.0;
-                    } else {
-                        propsToUpdate[propName] = value;
-                    }
-                } catch (e) {}
+                        if (propName.startsWith('gradColor')) {
+                            propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                        } else if (propName.startsWith('strokeGradColor')) {
+                            propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                        } else if (propName === 'scrollDir') {
+                            propsToUpdate.scrollDirection = value;
+                        } else if (propName === 'strokeScrollDir') {
+                            propsToUpdate.strokeScrollDir = value;
+                        } else if (propName === 'animationSpeed') {
+                            propsToUpdate.animationSpeed = (value || 0) / 10.0;
+                        } else {
+                            propsToUpdate[propName] = value;
+                        }
+                    } catch (e) {}
+                });
+
+                obj.update(propsToUpdate);
+
+                if (shouldAnimate) {
+                    obj.updateAnimationState(audioData);
+                }
             });
 
-            obj.update(propsToUpdate);
-
-            if (shouldAnimate) {
-                obj.updateAnimationState();
+            for (let i = objects.length - 1; i >= 0; i--) {
+                objects[i].draw(false);
             }
-        });
-
-        for (let i = objects.length - 1; i >= 0; i--) {
-            objects[i].draw(false);
         }
-    }
 
-    function animate(timestamp) {
-        requestAnimationFrame(animate);
-        const now = timestamp;
-        const elapsed = now - then;
+        function animate(timestamp) {
+            requestAnimationFrame(animate);
+            const now = timestamp;
+            const elapsed = now - then;
 
-        if (elapsed > fpsInterval) {
-            then = now - (elapsed % fpsInterval);
-            drawFrame();
+            if (elapsed > fpsInterval) {
+                then = now - (elapsed % fpsInterval);
+                drawFrame();
+            }
         }
-    }
 
-    function init() {
-        createInitialObjects();
-        fpsInterval = 1000 / fps;
-        then = window.performance.now();
-        animate(then);
-    }
+        function init() {
+            createInitialObjects();
+            fpsInterval = 1000 / fps;
+            then = window.performance.now();
+            animate(then);
+        }
 
-    init();
-});`;
+        init();
+    });`;
 
             const finalHtml = [
                 '<!DOCTYPE html>',
@@ -4322,10 +3000,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 let liveValue;
 
-                if (propName.startsWith('gradColor')) {
-                    liveValue = obj.gradient[propName.replace('gradColor', 'color')];
+                // --- START OF FIX ---
+                // This logic ensures we save the permanent base colors, not the temporary flash colors.
+                if (propName === 'gradColor1') {
+                    liveValue = obj.baseGradient.color1;
+                } else if (propName === 'gradColor2') {
+                    liveValue = obj.baseGradient.color2;
                 } else if (propName.startsWith('strokeGradColor')) {
                     liveValue = obj.strokeGradient[propName.replace('strokeGradColor', 'color')];
+                    // --- END OF FIX ---
                 } else if (propName === 'scrollDir') {
                     liveValue = obj.scrollDirection;
                 } else if (propName === 'strokeScrollDir') {
@@ -4338,16 +3021,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const propsToScaleDown = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth'];
                 const animPropsToScaleUp = ['animationSpeed', 'strokeAnimationSpeed'];
-                const cyclePropsToScaleUp = ['cycleSpeed', 'strokeCycleSpeed'];
 
                 if (propsToScaleDown.includes(propName)) {
                     liveValue /= 4.0;
                 } else if (animPropsToScaleUp.includes(propName)) {
                     liveValue *= 10.0;
-                } else if (cyclePropsToScaleUp.includes(propName)) {
-                    liveValue *= 50.0;
                 }
-                // Note: textAnimationSpeed is correctly excluded from scaling here.
 
                 if (typeof liveValue === 'boolean') {
                     liveValue = String(liveValue);
@@ -4676,14 +3355,11 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         const { x, y } = getCanvasCoordinates(e);
 
-        // FIX: This block detects if a drag has started after moving a small threshold.
         if (!isDragging && !isResizing && !isRotating && e.buttons === 1 && initialDragState.length > 0) {
             const dx = x - dragStartX;
             const dy = y - dragStartY;
-            if (Math.sqrt(dx * dx + dy * dy) > 5) { // Drag starts after moving 5 pixels
+            if (Math.sqrt(dx * dx + dy * dy) > 5) {
                 isDragging = true;
-
-                // When a drag starts, ensure the correct object is selected.
                 const hitObject = [...objects].reverse().find(obj => obj.isPointInside(dragStartX, dragStartY));
                 if (hitObject && !selectedObjectIds.includes(hitObject.id)) {
                     if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
@@ -4694,7 +3370,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }
-
 
         if (isRotating) {
             const initial = initialDragState[0];
@@ -4725,7 +3400,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const unSnappedState = (() => {
                 const tempObj = new Shape({ ...objects.find(o => o.id === initial.id) });
                 const anchorPoint = initial.anchorPoint;
-                const resizeAngle = tempObj.getRenderAngle();
+                const resizeAngle = tempObj.rotation * Math.PI / 180; // Use static rotation for box shape
                 const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
                 if (isSideHandle) {
                     const dragVecX = x - dragStartX;
@@ -4812,7 +3487,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const finalState = (() => {
                     const tempObj = new Shape({ ...objects.find(o => o.id === initial.id) });
                     const anchorPoint = initial.anchorPoint;
-                    const resizeAngle = tempObj.getRenderAngle();
+                    const resizeAngle = tempObj.rotation * Math.PI / 180; // Use static rotation for box shape
                     const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
                     if (isSideHandle) {
                         const dragVecX = mouseX - dragStartX;
@@ -4905,8 +3580,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     selectedPoints.forEach(point => {
                         cachedSnapTargets.forEach(target => {
                             if (point.type === target.type) {
-                                if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x });
-                                if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y });
+                                if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x, snapType: point.type });
+                                if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y, snapType: point.type });
                             }
                         });
                     });
@@ -4918,42 +3593,29 @@ document.addEventListener('DOMContentLoaded', function () {
             if (hSnaps.length > 0) {
                 hSnaps.sort((a, b) => a.dist - b.dist);
                 finalDx += hSnaps[0].adj;
-                snapLines.push({ type: 'vertical', x: hSnaps[0].line, duration: 2 });
+                snapLines.push({ type: 'vertical', x: hSnaps[0].line, duration: 2, snapType: hSnaps[0].snapType });
             }
             if (vSnaps.length > 0) {
                 vSnaps.sort((a, b) => a.dist - b.dist);
                 finalDy += vSnaps[0].adj;
-                snapLines.push({ type: 'horizontal', y: vSnaps[0].line, duration: 2 });
-            }
-
-            if (constrainToCanvas) {
-                let constrainedDx = finalDx;
-                let constrainedDy = finalDy;
-                initialDragState.forEach(state => {
-                    const obj = objects.find(o => o.id === state.id);
-                    if (obj) {
-                        const originalX = obj.x;
-                        const originalY = obj.y;
-                        obj.x = state.x + finalDx;
-                        obj.y = state.y + finalDy;
-                        const { minX, minY, maxX, maxY } = getBoundingBox(obj);
-                        obj.x = originalX;
-                        obj.y = originalY;
-                        if (minX < 0) constrainedDx = Math.max(constrainedDx, -minX + finalDx);
-                        if (maxX > canvas.width) constrainedDx = Math.min(constrainedDx, canvas.width - maxX + finalDx);
-                        if (minY < 0) constrainedDy = Math.max(constrainedDy, -minY + finalDy);
-                        if (maxY > canvas.height) constrainedDy = Math.min(constrainedDy, canvas.height - maxY + finalDy);
-                    }
-                });
-                finalDx = constrainedDx;
-                finalDy = constrainedDy;
+                snapLines.push({ type: 'horizontal', y: vSnaps[0].line, duration: 2, snapType: vSnaps[0].snapType });
             }
 
             initialDragState.forEach(state => {
                 const obj = objects.find(o => o.id === state.id);
                 if (obj) {
-                    obj.x = state.x + finalDx;
-                    obj.y = state.y + finalDy;
+                    let newX = state.x + finalDx;
+                    let newY = state.y + finalDy;
+                    if (constrainToCanvas) {
+                        const tempObj = new Shape({ ...obj, x: newX, y: newY });
+                        const { minX, minY, maxX, maxY } = getBoundingBox(tempObj);
+                        if (minX < 0) newX -= minX;
+                        if (maxX > canvas.width) newX -= (maxX - canvas.width);
+                        if (minY < 0) newY -= minY;
+                        if (maxY > canvas.height) newY -= (maxY - canvas.height);
+                    }
+                    obj.x = newX;
+                    obj.y = newY;
                 }
             });
             needsRedraw = true;
@@ -4973,7 +3635,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             canvasContainer.style.cursor = cursor;
         }
-    });
+    });;
 
     /**
      * Handles the mouseup event to finalize dragging or resizing operations.
@@ -5158,7 +3820,6 @@ document.addEventListener('DOMContentLoaded', function () {
         recordHistory();
         updateUndoRedoButtons();
 
-        // --- START: Add "Minimize Properties" Checkbox ---
         const generalCollapseWrapper = document.querySelector('#collapse-general .p-3');
         if (generalCollapseWrapper) {
             const minimizeFormGroup = document.createElement('div');
@@ -5184,7 +3845,6 @@ document.addEventListener('DOMContentLoaded', function () {
             minimizeFormGroup.appendChild(helpText);
             generalCollapseWrapper.appendChild(minimizeFormGroup);
         }
-        // --- END: Add "Minimize Properties" Checkbox ---
 
         const lastUpdatedSpan = document.getElementById('last-updated-span');
         if (lastUpdatedSpan) {
@@ -5627,7 +4287,7 @@ document.addEventListener('DOMContentLoaded', function () {
             updateFormValuesFromObjects(); // Sync state again after re-rendering to ensure consistency
         }
 
-        recordHistory();
+        debouncedRecordHistory();
     });
 
     // --- FINAL: Robust Copy/Paste Properties Logic ---
@@ -5722,7 +4382,265 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * Analyzes the current audio frame and returns calculated metrics, including average and peak values.
+     * @returns {object} An object with bass, mids, highs, and volume properties.
+     */
+    /**
+ * Analyzes the current audio frame and returns calculated metrics, including average and peak values.
+ * @returns {object} An object with bass, mids, highs, and volume properties.
+ */
+    function getAudioMetrics() {
+        if (!analyser) {
+            return {
+                bass: { avg: 0, peak: 0 },
+                mids: { avg: 0, peak: 0 },
+                highs: { avg: 0, peak: 0 },
+                volume: { avg: 0, peak: 0 }
+            };
+        }
+
+        analyser.getByteFrequencyData(frequencyData);
+
+        const bassEndIndex = Math.floor(analyser.frequencyBinCount * 0.1);
+        const midsEndIndex = Math.floor(analyser.frequencyBinCount * 0.4);
+
+        let bassTotal = 0, midsTotal = 0, highsTotal = 0;
+        let bassPeak = 0, midsPeak = 0, highsPeak = 0;
+        let volumeTotal = 0;
+
+        for (let i = 0; i < analyser.frequencyBinCount; i++) {
+            const value = frequencyData[i];
+            volumeTotal += value; // Add every frequency value to the total volume
+
+            if (i < bassEndIndex) {
+                bassTotal += value;
+                if (value > bassPeak) bassPeak = value;
+            } else if (i < midsEndIndex) {
+                midsTotal += value;
+                if (value > midsPeak) midsPeak = value;
+            } else {
+                highsTotal += value;
+                if (value > highsPeak) highsPeak = value;
+            }
+        }
+
+        // --- START OF FIX ---
+        // This provides a single, reliable 'avg' property for the volume metric.
+        const volumeAvg = (volumeTotal / analyser.frequencyBinCount) / 255;
+        // --- END OF FIX ---
+
+        return {
+            bass: {
+                avg: (bassTotal / (bassEndIndex || 1)) / 255,
+                peak: bassPeak / 255
+            },
+            mids: {
+                avg: (midsTotal / ((midsEndIndex - bassEndIndex) || 1)) / 255,
+                peak: midsPeak / 255
+            },
+            highs: {
+                avg: (highsTotal / ((analyser.frequencyBinCount - midsEndIndex) || 1)) / 255,
+                peak: highsPeak / 255
+            },
+            // We now provide the calculated average volume.
+            volume: {
+                avg: volumeAvg,
+                peak: volumeAvg // For volume, peak and avg can be the same for simplicity.
+            }
+        };
+    }
+
+    /**
+ * Sets up the Web Audio API to listen to a specific browser tab's audio.
+ */
+    async function setupAudio() {
+        if (isAudioSetup) return;
+
+        try {
+            // Step 1: Request permission to capture a tab. 
+            // We must request video:true to get the audio permission prompt.
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 44100
+                }
+            });
+
+            // Step 2: Check if the user actually shared audio.
+            if (stream.getAudioTracks().length === 0) {
+                // Stop the video track to remove the "sharing this screen" icon.
+                stream.getVideoTracks()[0].stop();
+                alert("Audio sharing was not enabled. Please try again and make sure to check the 'Share tab audio' box.");
+                return;
+            }
+
+            // Step 3: Create the audio context and connect the nodes (same as before).
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+
+            frequencyData = new Uint8Array(analyser.frequencyBinCount);
+            isAudioSetup = true;
+
+            // Stop the video track, as we only need the audio.
+            // This also removes the "sharing this screen" bar from the browser.
+            stream.getVideoTracks()[0].stop();
+
+            // Update the button UI
+            const startBtn = document.getElementById('startAudioBtn');
+            startBtn.textContent = 'Listening...';
+            startBtn.disabled = true;
+            showToast("Tab audio connected! Your visualizer is now live.", "success");
+
+        } catch (err) {
+            // This error happens if the user clicks "Cancel".
+            console.error('Error capturing tab:', err);
+            showToast("Tab capture was canceled or failed.", "error");
+        }
+    }
+
+    /**
+ * [SignalRGB Export] Analyzes SignalRGB's audio engine data and returns calculated metrics.
+ * @returns {object} An object with bass, mids, highs, and volume properties (0-1 range).
+ */
+    function getSignalRGBAudioMetrics() {
+        // Use a try/catch block in case the 'engine' object is not available.
+        if (enableSound) {
+            const freqArray = engine.audio.freq || new Array(200).fill(0);
+            const level = engine.audio.level || -100;
+
+            // The frequency array from SignalRGB has 200 elements.
+            const bassEndIndex = 20;   // ~0-10% of spectrum
+            const midsEndIndex = 80;   // ~10-40% of spectrum
+
+            let bassTotal = 0, midsTotal = 0, highsTotal = 0;
+
+            for (let i = 0; i < bassEndIndex; i++) {
+                bassTotal += freqArray[i];
+            }
+            for (let i = bassEndIndex; i < midsEndIndex; i++) {
+                midsTotal += freqArray[i];
+            }
+            for (let i = midsEndIndex; i < freqArray.length; i++) {
+                highsTotal += freqArray[i];
+            }
+
+            // Normalize the frequency bands to a 0-1 range.
+            const bass = (bassTotal / (bassEndIndex || 1));
+            const mids = (midsTotal / ((midsEndIndex - bassEndIndex) || 1));
+            const highs = (highsTotal / ((freqArray.length - midsEndIndex) || 1));
+
+            // Convert SignalRGB's -100 to 0 level to our 0 to 1 volume scale.
+            const volume = (level + 100) / 100.0;
+
+            return {
+                bass: { avg: bass, peak: bass },
+                mids: { avg: mids, peak: mids },
+                highs: { avg: highs, peak: highs },
+                volume: { avg: volume, peak: volume }
+            };
+
+        } else {
+            // If engine data is not available, return silent values.
+            return {
+                bass: { avg: 0, peak: 0 },
+                mids: { avg: 0, peak: 0 },
+                highs: { avg: 0, peak: 0 },
+                volume: { avg: 0, peak: 0 }
+            };
+        }
+    }
+
+    /**
+     * [SignalRGB Export] A version of _applyAudioReactivity that works within SignalRGB.
+     * This function is converted to a method of the Shape class during export.
+     */
+    function srgb_applyAudioReactivity(audioData) {
+        this.rotation = this.baseRotation || 0;
+        this.internalScale = 1.0;
+        this.colorOverride = null;
+        this.gradient = { ...(this.baseGradient || { color1: '#000000', color2: '#000000' }) };
+        if (this.flashDecay > 0) { this.flashDecay -= 0.18; }
+        this.flashDecay = Math.max(0, this.flashDecay);
+
+        if (!this.enableAudioReactivity || !audioData || !audioData[this.audioMetric] || this.audioTarget === 'none') {
+            return;
+        }
+
+        const rawAudioValue = audioData[this.audioMetric].avg || 0;
+        this.audioHistory.push(rawAudioValue);
+        this.audioHistory.shift();
+
+        const n = this.audioHistory.length;
+        const mean = this.audioHistory.reduce((a, b) => a + b, 0) / n;
+        const stdDev = Math.sqrt(this.audioHistory.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / n);
+        const thresholdMultiplier = 0.5 + ((this.beatThreshold || 30) / 100.0) * 2.0;
+        const threshold = mean + thresholdMultiplier * stdDev;
+
+        if (rawAudioValue > threshold) {
+            const sensitivity = (this.audioSensitivity / 100.0) * 1.5;
+            this.flashDecay = Math.min(1.5, sensitivity);
+        }
+
+        const reactiveValue = this.flashDecay;
+
+        switch (this.audioTarget) {
+            case 'Flash':
+                if (reactiveValue > 0) {
+                    this.colorOverride = '#FFFFFF';
+                    this.flashOpacity = Math.min(1.0, reactiveValue);
+                } else { this.flashOpacity = 0; }
+                break;
+            case 'Size':
+                this.internalScale = 1.0 + reactiveValue;
+                break;
+            case 'Rotation':
+                const randomSign = Math.random() < 0.5 ? -1 : 1;
+                this.rotation = this.baseRotation + (randomSign * reactiveValue * 180);
+                break;
+        }
+    }
+
+    function applyHistoryState(state) {
+        if (!state) return;
+        isRestoring = true;
+        const generalValues = getControlValues();
+        objects = state.objects.map(data => new Shape({ ...data, ctx }));
+        selectedObjectIds = state.selectedObjectIds;
+        renderForm();
+        for (const key in generalValues) {
+            const el = form.elements[key];
+            if (el && !key.startsWith('obj')) {
+                if (el.type === 'checkbox') el.checked = generalValues[key];
+                else el.value = generalValues[key];
+            }
+        }
+        updateFormValuesFromObjects();
+        drawFrame();
+        updateToolbarState();
+        updateUndoRedoButtons();
+        isRestoring = false;
+    }
+
+    if (undoBtn) {
+        undoBtn.addEventListener('click', () => {
+            const state = appHistory.undo();
+            applyHistoryState(state);
+        });
+    }
+    if (redoBtn) {
+        redoBtn.addEventListener('click', () => {
+            const state = appHistory.redo();
+            applyHistoryState(state);
+        });
+    }
+
     // Start the application.
     init();
-
 });
