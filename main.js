@@ -123,9 +123,8 @@ const INITIAL_CONFIG_TEMPLATE = `
         <meta property="obj3_audioSmoothing" label="Matrix: Smoothing" min="0" max="99" type="number" default="50" />
 `;
 
-// ... the rest of your main.js file
-
 // --- State Management ---
+let leftPanelPixelWidth = 0;
 let isRestoring = false;
 let configStore = [];
 let objects = [];
@@ -299,7 +298,6 @@ document.addEventListener('DOMContentLoaded', function () {
             'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir'
         ],
-        // FIX: Standardized to 'fire-radial'.
         'fire-radial': [
             'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread'
@@ -326,7 +324,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const projectsRef = window.collection(window.db, "projects");
             const docToToggleRef = window.doc(projectsRef, docIdToToggle);
 
-            // --- THE FIX IS HERE ---
             // Step 1: Perform all READS before the transaction begins.
             // Find any effect that is currently featured.
             const q = window.query(projectsRef, window.where("featured", "==", true));
@@ -354,7 +351,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 transaction.update(docToToggleRef, { featured: newFeaturedState });
             });
 
-            // --- UI update logic (unchanged) ---
+            // --- UI update logic ---
             const allFeatureButtons = document.querySelectorAll('.btn-feature');
             allFeatureButtons.forEach(btn => {
                 if (btn.dataset.docId === docIdToToggle) {
@@ -376,7 +373,6 @@ document.addEventListener('DOMContentLoaded', function () {
             showToast("Failed to update featured status.", 'danger');
         } finally {
             buttonEl.disabled = false;
-            // The UI update above will replace the spinner, so no need to restore innerHTML here.
         }
     }
 
@@ -493,7 +489,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             infoDiv.appendChild(nameEl);
 
-            // FIX: This line adds the author and date information to the display.
+            // This line adds the author and date information to the display.
             infoDiv.appendChild(metaEl);
 
             if (project.configs) {
@@ -909,7 +905,7 @@ document.addEventListener('DOMContentLoaded', function () {
             textarea.textContent = defaultValue.replace(/\\n/g, '\n');
             formGroup.appendChild(textarea);
 
-            // FIX: This block adds the link specifically for the pixelArtData control.
+            // This block adds the link specifically for the pixelArtData control.
             if (controlId.endsWith('_pixelArtData')) {
                 const toolLink = document.createElement('a');
                 toolLink.href = 'https://pixelart.nolliergb.com/';
@@ -1008,14 +1004,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
                 const isEssential = essentialProps.includes(propName);
 
-                // if (propName !== 'shape' && !validPropsForShape.includes(propName)) {
-                //     return;
-                // }
-
-                // if (!isEssential) {
-                //     return;
-                // }
-
                 let liveValue;
 
                 if (propName.startsWith('gradColor')) {
@@ -1085,295 +1073,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /**
      * Renders the entire controls form based on the current `configStore` and `objects` state.
-     * Preserves the collapsed state of panels during re-rendering.
+     * This function is responsible for dynamically building all the UI in the left panel.
      */
-    // In main.js, replace the entire renderForm function.
-
-    // function renderForm() {
-    //     const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    //     existingTooltips.forEach(el => {
-    //         const tooltip = bootstrap.Tooltip.getInstance(el);
-    //         if (tooltip) tooltip.dispose();
-    //     });
-
-    //     const generalSettingsValues = {};
-    //     const generalConfigs = configStore.filter(c => !(c.property || c.name).startsWith('obj'));
-    //     generalConfigs.forEach(conf => {
-    //         const key = conf.property || conf.name;
-    //         const el = form.elements[key];
-    //         if (el) {
-    //             generalSettingsValues[key] = (el.type === 'checkbox') ? el.checked : el.value;
-    //         }
-    //     });
-
-    //     const collapseStates = {};
-    //     const generalCollapseEl = form.querySelector('#collapse-general');
-    //     collapseStates.general = generalCollapseEl ? generalCollapseEl.classList.contains('show') : true;
-
-    //     const allObjectCollapses = form.querySelectorAll('.collapse[id^="collapse-obj-"]');
-    //     allObjectCollapses.forEach(el => {
-    //         const fieldset = el.closest('fieldset');
-    //         if (fieldset) {
-    //             const id = parseInt(fieldset.dataset.objectId, 10);
-    //             collapseStates[id] = el.classList.contains('show');
-    //         }
-    //     });
-
-    //     form.innerHTML = '';
-    //     const grouped = groupConfigs(configStore);
-
-    //     const generalFieldset = document.createElement('fieldset');
-    //     generalFieldset.className = 'border p-2 mb-3 rounded bg-body-secondary';
-    //     const generalHeaderBar = document.createElement('div');
-    //     generalHeaderBar.className = 'd-flex justify-content-between align-items-center w-100 px-2';
-    //     const generalHeaderText = document.createElement('span');
-    //     generalHeaderText.className = 'fs-5 fw-semibold';
-    //     generalHeaderText.textContent = 'General Settings';
-    //     generalHeaderBar.appendChild(generalHeaderText);
-    //     const generalCollapseId = 'collapse-general';
-    //     const generalCollapseButton = document.createElement('button');
-    //     const showGeneral = collapseStates.general;
-    //     generalCollapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showGeneral ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
-    //     generalCollapseButton.style.width = '28px';
-    //     generalCollapseButton.style.height = '28px';
-    //     generalCollapseButton.type = 'button';
-    //     generalCollapseButton.dataset.bsToggle = 'collapse';
-    //     generalCollapseButton.dataset.bsTarget = `#${generalCollapseId}`;
-    //     generalCollapseButton.setAttribute('aria-expanded', showGeneral);
-    //     generalHeaderBar.appendChild(generalCollapseButton);
-    //     const generalCollapseWrapper = document.createElement('div');
-    //     generalCollapseWrapper.id = generalCollapseId;
-    //     generalCollapseWrapper.className = `collapse p-3 ${showGeneral ? 'show' : ''}`;
-    //     const generalSeparator = document.createElement('hr');
-    //     generalSeparator.className = 'mt-2 mb-3';
-    //     generalCollapseWrapper.appendChild(generalSeparator);
-
-    //     if (currentProjectMetadata.creatorName) {
-    //         const infoContainer = document.createElement('div');
-    //         infoContainer.className = 'mb-3 small text-body-secondary';
-    //         const authorEl = document.createElement('div');
-    //         authorEl.innerHTML = `<strong>Author:</strong> ${currentProjectMetadata.creatorName}`;
-    //         infoContainer.appendChild(authorEl);
-    //         if (currentProjectMetadata.createdAt) {
-    //             const dateEl = document.createElement('div');
-    //             const formattedDate = currentProjectMetadata.createdAt.toLocaleDateString(undefined, {
-    //                 year: 'numeric', month: 'long', day: 'numeric'
-    //             });
-    //             dateEl.innerHTML = `<strong>Created:</strong> ${formattedDate}`;
-    //             infoContainer.appendChild(dateEl);
-    //         }
-    //         generalCollapseWrapper.appendChild(infoContainer);
-    //     }
-
-    //     grouped.general.forEach(conf => generalCollapseWrapper.appendChild(createFormControl(conf)));
-    //     generalFieldset.appendChild(generalHeaderBar);
-    //     generalFieldset.appendChild(generalCollapseWrapper);
-    //     form.appendChild(generalFieldset);
-
-    //     objects.forEach(obj => {
-    //         const id = obj.id;
-    //         const objectConfigs = grouped.objects[id];
-    //         if (!objectConfigs) return;
-
-    //         const objectName = obj.name || `Object ${id}`;
-    //         const fieldset = document.createElement('fieldset');
-    //         fieldset.className = 'border p-2 mb-3 rounded bg-body-secondary';
-    //         fieldset.dataset.objectId = id;
-
-    //         const headerBar = document.createElement('div');
-    //         headerBar.className = 'd-flex align-items-center w-100 px-2';
-    //         const dragHandle = document.createElement('div');
-    //         dragHandle.className = 'drag-handle me-2 text-body-secondary';
-    //         dragHandle.style.cursor = 'grab';
-    //         dragHandle.innerHTML = '<i class="bi bi-grip-vertical"></i>';
-    //         headerBar.appendChild(dragHandle);
-    //         const editableArea = document.createElement('div');
-    //         editableArea.className = 'editable-name-area d-flex align-items-center';
-    //         const nameSpan = document.createElement('span');
-    //         nameSpan.className = 'object-name fs-5 fw-semibold';
-    //         nameSpan.style.minWidth = '0';
-    //         nameSpan.contentEditable = true;
-    //         nameSpan.dataset.id = id;
-    //         nameSpan.textContent = objectName;
-    //         editableArea.appendChild(nameSpan);
-    //         const pencilIcon = document.createElement('i');
-    //         pencilIcon.className = 'bi bi-pencil-fill ms-2';
-    //         pencilIcon.addEventListener('click', (e) => {
-    //             e.stopPropagation();
-    //             nameSpan.focus();
-    //             const range = document.createRange();
-    //             const selection = window.getSelection();
-    //             range.selectNodeContents(nameSpan);
-    //             range.collapse(false);
-    //             selection.removeAllRanges();
-    //             selection.addRange(range);
-    //         });
-    //         editableArea.appendChild(pencilIcon);
-    //         headerBar.appendChild(editableArea);
-    //         const controlsGroup = document.createElement('div');
-    //         controlsGroup.className = 'd-flex align-items-center flex-shrink-0 ms-auto';
-    //         const lockButton = document.createElement('button');
-    //         const isLocked = obj.locked || false;
-    //         lockButton.className = `btn btn-sm btn-lock ${isLocked ? 'btn-warning' : 'btn-outline-secondary'} d-flex align-items-center justify-content-center p-0 ms-2`;
-    //         lockButton.style.width = '28px';
-    //         lockButton.style.height = '28px';
-    //         lockButton.type = 'button';
-    //         lockButton.dataset.id = id;
-    //         lockButton.dataset.bsToggle = 'tooltip';
-    //         lockButton.title = isLocked ? 'Unlock Object' : 'Lock Object';
-    //         lockButton.innerHTML = `<i class="bi ${isLocked ? 'bi-lock-fill' : 'bi-unlock-fill'}"></i>`;
-    //         controlsGroup.appendChild(lockButton);
-    //         const dropdown = document.createElement('div');
-    //         dropdown.className = 'dropdown';
-    //         dropdown.innerHTML = `<button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center p-0" style="width: 28px; height: 28px;" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-list fs-5"></i></button><ul class="dropdown-menu dropdown-menu-dark"><li><a class="dropdown-item btn-duplicate" href="#" data-id="${id}"><i class="bi bi-copy me-2"></i>Duplicate</a></li><li><a class="dropdown-item btn-delete text-danger" href="#" data-id="${id}"><i class="bi bi-trash me-2"></i>Delete</a></li></ul>`;
-    //         controlsGroup.appendChild(dropdown);
-    //         const collapseId = `collapse-obj-${id}`;
-    //         const collapseButton = document.createElement('button');
-    //         const showObject = collapseStates[id] === true || selectedObjectIds.includes(id);
-    //         collapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showObject ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
-    //         collapseButton.style.width = '28px';
-    //         collapseButton.style.height = '28px';
-    //         collapseButton.type = 'button';
-    //         collapseButton.dataset.bsToggle = 'collapse';
-    //         collapseButton.dataset.bsTarget = `#${collapseId}`;
-    //         collapseButton.setAttribute('aria-expanded', showObject);
-    //         controlsGroup.appendChild(collapseButton);
-    //         headerBar.appendChild(controlsGroup);
-
-    //         const collapseWrapper = document.createElement('div');
-    //         collapseWrapper.id = collapseId;
-    //         collapseWrapper.className = `collapse p-3 ${showObject ? 'show' : ''}`;
-    //         collapseWrapper.appendChild(document.createElement('hr'));
-
-    //         // --- START OF FIX 1: UNIFY SPEED CONTROLS ---
-    //         const groups = {
-    //             'Geometry': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed'],
-    //             'Color & Animation': ['gradType', 'gradColor1', 'gradColor2', 'useSharpGradient', 'gradientStop', 'phaseOffset', 'cycleColors', 'animationMode', 'animationSpeed', 'scrollDir'],
-    //             'Sound Reactivity': ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity']
-    //         };
-    //         // --- END OF FIX 1 ---
-    //         const currentShape = obj.shape;
-
-    //         for (const groupName in groups) {
-    //             const groupContainer = document.createElement('div');
-    //             groupContainer.className = 'control-group card card-body bg-body mb-3';
-    //             const groupHeader = document.createElement('h6');
-    //             groupHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
-    //             groupHeader.textContent = groupName;
-    //             groupContainer.appendChild(groupHeader);
-    //             const propsInGroup = groups[groupName];
-    //             propsInGroup.forEach(propName => {
-    //                 const conf = objectConfigs.find(c => c.property.endsWith(`_${propName}`));
-    //                 if (conf) {
-    //                     const showForGradient = obj.gradType === 'linear' || obj.gradType === 'radial';
-    //                     if ((propName === 'useSharpGradient' || propName === 'gradientStop') && !showForGradient) return;
-
-    //                     if (propName === 'phaseOffset') {
-    //                         const isGrid = obj.shape === 'rectangle' && (obj.numberOfRows > 1 || obj.numberOfColumns > 1);
-    //                         const isSeismic = obj.shape === 'oscilloscope' && obj.oscDisplayMode === 'seismic';
-    //                         const isTetris = obj.shape === 'tetris';
-    //                         const isPixelArt = obj.shape === 'pixel-art';
-    //                         if (!isGrid && !isSeismic && !isTetris && !isPixelArt) return;
-    //                     }
-
-    //                     if (propName === 'animationSpeed' && currentShape === 'ring') return;
-    //                     groupContainer.appendChild(createFormControl(conf));
-    //                 }
-    //             });
-    //             if (groupContainer.children.length > 1) {
-    //                 collapseWrapper.appendChild(groupContainer);
-    //             }
-    //         }
-
-    //         const createSettingsGroup = (title, propList, displayCondition) => {
-    //             if (!displayCondition) return;
-    //             const group = document.createElement('div');
-    //             group.className = 'control-group card card-body bg-body mb-3';
-    //             const header = document.createElement('h6');
-    //             header.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
-    //             header.textContent = title;
-    //             group.appendChild(header);
-    //             objectConfigs.filter(c => propList.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => group.appendChild(createFormControl(c)));
-    //             if (group.children.length > 1) {
-    //                 collapseWrapper.appendChild(group);
-    //             }
-    //         };
-
-    //         // --- START OF FIX 2: SIMPLIFY OSCILLOSCOPE STROKE ---
-    //         const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
-    //         const gridSettings = ['numberOfRows', 'numberOfColumns'];
-    //         const oscilloscopeSettings = ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'waveStyle', 'waveCount'];
-    //         const tetrisSettings = ['tetrisBlockCount', 'tetrisAnimation', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce'];
-    //         const polygonSettings = ['sides'];
-    //         const starSettings = ['points', 'starInnerRadius'];
-    //         const strokeSettings = ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeScrollDir'];
-    //         const radialFireSettings = ['fireSpread'];
-    //         const pixelArtSettings = ['pixelArtData'];
-    //         const textSubGroups = {
-    //             'Text Content': ['text', 'pixelFont', 'fontSize', 'textAlign'],
-    //             'Time & Date Display': ['showTime', 'showDate'],
-    //             'Text Animation': ['textAnimation', 'textAnimationSpeed']
-    //         };
-
-    //         createSettingsGroup('Ring Settings', ringSettings, currentShape === 'ring');
-    //         createSettingsGroup('Polygon Settings', polygonSettings, currentShape === 'polygon');
-    //         createSettingsGroup('Star Settings', starSettings, currentShape === 'star');
-    //         createSettingsGroup('Oscilloscope Settings', oscilloscopeSettings, currentShape === 'oscilloscope');
-    //         createSettingsGroup('Grid Settings', gridSettings, currentShape === 'rectangle');
-    //         createSettingsGroup('Tetris Animation Settings', tetrisSettings, currentShape === 'tetris');
-    //         // This condition now hides the Stroke panel for oscilloscopes.
-    //         createSettingsGroup('Stroke Settings', strokeSettings, currentShape !== 'text' && currentShape !== 'tetris' && currentShape !== 'fire' && currentShape !== 'fire-radial' && currentShape !== 'pixel-art' && currentShape !== 'oscilloscope');
-    //         createSettingsGroup('Pixel Art Settings', pixelArtSettings, currentShape === 'pixel-art');
-    //         createSettingsGroup('Radial Fire Settings', radialFireSettings, currentShape === 'fire-radial');
-    //         // --- END OF FIX 2 ---
-
-    //         const textGroup = document.createElement('div');
-    //         textGroup.style.display = currentShape === 'text' ? 'block' : 'none';
-    //         for (const subGroupName in textSubGroups) {
-    //             const subGroupContainer = document.createElement('div');
-    //             subGroupContainer.className = 'card card-body bg-body mb-2';
-    //             const subGroupHeader = document.createElement('h6');
-    //             subGroupHeader.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
-    //             subGroupHeader.textContent = subGroupName;
-    //             subGroupContainer.appendChild(subGroupHeader);
-    //             const propsInSubGroup = textSubGroups[subGroupName];
-    //             objectConfigs.filter(c => propsInSubGroup.includes(c.property.substring(c.property.indexOf('_') + 1))).forEach(c => subGroupContainer.appendChild(createFormControl(c)));
-    //             if (subGroupContainer.children.length > 1) {
-    //                 textGroup.appendChild(subGroupContainer);
-    //             }
-    //         }
-    //         collapseWrapper.appendChild(textGroup);
-
-    //         fieldset.appendChild(headerBar);
-    //         fieldset.appendChild(collapseWrapper);
-    //         form.appendChild(fieldset);
-    //     });
-
-    //     for (const key in generalSettingsValues) {
-    //         const el = form.elements[key];
-    //         if (el) {
-    //             if (el.type === 'checkbox') {
-    //                 el.checked = generalSettingsValues[key];
-    //             } else {
-    //                 el.value = generalSettingsValues[key];
-    //             }
-    //         }
-    //     }
-
-    //     updateFormValuesFromObjects();
-    //     new bootstrap.Tooltip(document.body, {
-    //         selector: "[data-bs-toggle='tooltip']",
-    //         trigger: 'hover'
-    //     });
-    // }
-
     function renderForm() {
+        // --- 1. PREPARATION & STATE PRESERVATION ---
+
+        // Dispose of any existing Bootstrap tooltips to prevent memory leaks or visual glitches.
         const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         existingTooltips.forEach(el => {
             const tooltip = bootstrap.Tooltip.getInstance(el);
             if (tooltip) tooltip.dispose();
         });
 
+        // Before wiping the form, save the current values of the general settings.
+        // This ensures they persist through the re-render.
         const generalSettingsValues = {};
         const generalConfigs = configStore.filter(c => !(c.property || c.name).startsWith('obj'));
         generalConfigs.forEach(conf => {
@@ -1384,6 +1097,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        // Save the open/closed (collapsed) state of all existing panels.
         const generalCollapseEl = form.querySelector('#collapse-general');
         const generalCollapseState = generalCollapseEl ? generalCollapseEl.classList.contains('show') : true;
 
@@ -1397,54 +1111,97 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const activeTab = form.querySelector('.tab-pane.show.active');
-        const activeTabId = activeTab ? activeTab.id : null;
+        // Clear the entire form to rebuild it from scratch.
         form.innerHTML = '';
+        // Group all configurations by object ID for easier processing.
         const grouped = groupConfigs(configStore);
+
+
+        // --- 2. GENERAL SETTINGS PANEL CREATION ---
+
         const generalFieldset = document.createElement('fieldset');
-        generalFieldset.className = 'border p-2 mb-3 rounded bg-body-secondary';
+        generalFieldset.className = 'border p-2 mb-3 rounded bg-body-tertiary';
+
+        // Create the header bar, which will act as the collapse toggle.
         const generalHeaderBar = document.createElement('div');
-        generalHeaderBar.className = 'd-flex justify-content-between align-items-center w-100 px-2';
+        generalHeaderBar.className = 'd-flex justify-content-between align-items-center w-100 px-2 py-1';
+        const generalCollapseId = 'collapse-general';
+        const showGeneral = generalCollapseState;
+        generalHeaderBar.style.cursor = 'pointer';
+        generalHeaderBar.dataset.bsToggle = 'collapse';
+        generalHeaderBar.dataset.bsTarget = `#${generalCollapseId}`;
+        generalHeaderBar.setAttribute('aria-expanded', showGeneral);
+        generalHeaderBar.setAttribute('aria-controls', generalCollapseId);
+
+        // Create the left side of the header (the title).
+        const generalLeftGroup = document.createElement('div');
+        generalLeftGroup.className = 'd-flex align-items-center';
         const generalHeaderText = document.createElement('span');
         generalHeaderText.className = 'fs-5 fw-semibold';
         generalHeaderText.textContent = 'General Settings';
-        generalHeaderBar.appendChild(generalHeaderText);
-        const generalCollapseId = 'collapse-general';
-        const generalCollapseButton = document.createElement('button');
-        const showGeneral = generalCollapseState;
-        generalCollapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showGeneral ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
-        generalCollapseButton.style.width = '28px';
-        generalCollapseButton.style.height = '28px';
-        generalCollapseButton.type = 'button';
-        generalCollapseButton.dataset.bsToggle = 'collapse';
-        generalCollapseButton.dataset.bsTarget = `#${generalCollapseId}`;
-        generalCollapseButton.setAttribute('aria-expanded', showGeneral);
-        generalHeaderBar.appendChild(generalCollapseButton);
+        generalLeftGroup.appendChild(generalHeaderText);
+        generalHeaderBar.appendChild(generalLeftGroup);
+
+        // Create the right side of the header (the chevron icon).
+        const generalRightGroup = document.createElement('div');
+        generalRightGroup.className = 'd-flex align-items-center';
+        const generalCollapseIcon = document.createElement('span');
+        generalCollapseIcon.className = `legend-button ${showGeneral ? '' : 'collapsed'}`;
+        generalCollapseIcon.innerHTML = `<i class="bi bi-chevron-up"></i>`;
+        generalRightGroup.appendChild(generalCollapseIcon);
+        generalHeaderBar.appendChild(generalRightGroup);
+
+        // Create the collapsible area for the controls.
         const generalCollapseWrapper = document.createElement('div');
         generalCollapseWrapper.id = generalCollapseId;
         generalCollapseWrapper.className = `collapse p-3 ${showGeneral ? 'show' : ''}`;
-        const generalSeparator = document.createElement('hr');
-        generalSeparator.className = 'mt-2 mb-3';
-        generalCollapseWrapper.appendChild(generalSeparator);
+        generalCollapseWrapper.innerHTML = '<hr class="mt-2 mb-3">';
         grouped.general.forEach(conf => generalCollapseWrapper.appendChild(createFormControl(conf)));
+
         generalFieldset.appendChild(generalHeaderBar);
         generalFieldset.appendChild(generalCollapseWrapper);
         form.appendChild(generalFieldset);
-        objects.forEach((obj, objectIndex) => {
+
+
+        // --- 3. OBJECT PANELS CREATION (Main Loop) ---
+
+        // Loop through each object in the project to create its UI panel.
+        objects.forEach(obj => {
             const id = obj.id;
             const objectConfigs = grouped.objects[id] || [];
             if (!objectConfigs) return;
             const objectName = obj.name || `Object ${id}`;
             const fieldset = document.createElement('fieldset');
-            fieldset.className = 'border p-2 mb-3 rounded bg-body-secondary';
+            fieldset.className = 'border p-2 mb-3 rounded bg-body-tertiary';
             fieldset.dataset.objectId = id;
+
+            // Create the main header bar for the object panel.
             const headerBar = document.createElement('div');
-            headerBar.className = 'd-flex align-items-center w-100 px-2';
+            headerBar.className = 'd-flex justify-content-between align-items-center w-100 px-2 py-1';
+            const collapseId = `collapse-obj-${id}`;
+            const showObject = activeCollapseStates[id] === true || selectedObjectIds.includes(id);
+
+            // Make the entire header bar clickable to toggle the panel.
+            headerBar.style.cursor = 'pointer';
+            headerBar.dataset.bsToggle = 'collapse';
+            headerBar.dataset.bsTarget = `#${collapseId}`;
+            headerBar.setAttribute('aria-expanded', showObject);
+            headerBar.setAttribute('aria-controls', collapseId);
+
+            // Clicks on specific controls shouldn't toggle the panel, so we stop the event from bubbling up.
+            const stopPropagation = (e) => e.stopPropagation();
+
+            // Create the left group (drag handle, editable name).
+            const leftGroup = document.createElement('div');
+            leftGroup.className = 'd-flex align-items-center';
+            leftGroup.addEventListener('click', stopPropagation);
+
             const dragHandle = document.createElement('div');
             dragHandle.className = 'drag-handle me-2 text-body-secondary';
             dragHandle.style.cursor = 'grab';
             dragHandle.innerHTML = '<i class="bi bi-grip-vertical"></i>';
-            headerBar.appendChild(dragHandle);
+            leftGroup.appendChild(dragHandle);
+
             const editableArea = document.createElement('div');
             editableArea.className = 'editable-name-area d-flex align-items-center';
             const nameSpan = document.createElement('span');
@@ -1457,7 +1214,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const pencilIcon = document.createElement('i');
             pencilIcon.className = 'bi bi-pencil-fill ms-2';
             pencilIcon.addEventListener('click', (e) => {
-                e.stopPropagation();
                 nameSpan.focus();
                 const range = document.createRange();
                 const selection = window.getSelection();
@@ -1467,40 +1223,43 @@ document.addEventListener('DOMContentLoaded', function () {
                 selection.addRange(range);
             });
             editableArea.appendChild(pencilIcon);
-            headerBar.appendChild(editableArea);
+            leftGroup.appendChild(editableArea);
+            headerBar.appendChild(leftGroup);
+
+            // Create the right group (lock, duplicate/delete, chevron icon).
             const controlsGroup = document.createElement('div');
-            controlsGroup.className = 'd-flex align-items-center flex-shrink-0 ms-auto';
+            controlsGroup.className = 'd-flex align-items-center flex-shrink-0';
+            controlsGroup.addEventListener('click', stopPropagation);
+
             const lockButton = document.createElement('button');
             const isLocked = obj.locked || false;
             lockButton.className = `btn btn-sm btn-lock ${isLocked ? 'btn-warning' : 'btn-outline-secondary'} d-flex align-items-center justify-content-center p-0 ms-2`;
-            lockButton.style.width = '28px';
-            lockButton.style.height = '28px';
+            lockButton.style.width = '28px'; lockButton.style.height = '28px';
             lockButton.type = 'button';
             lockButton.dataset.id = id;
             lockButton.dataset.bsToggle = 'tooltip';
             lockButton.title = isLocked ? 'Unlock Object' : 'Lock Object';
             lockButton.innerHTML = `<i class="bi ${isLocked ? 'bi-lock-fill' : 'bi-unlock-fill'}"></i>`;
             controlsGroup.appendChild(lockButton);
+
             const dropdown = document.createElement('div');
             dropdown.className = 'dropdown';
-            dropdown.innerHTML = `<button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center p-0" style="width: 28px; height: 28px;" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-list fs-5"></i></button><ul class="dropdown-menu dropdown-menu-dark"><li><a class="dropdown-item btn-duplicate" href="#" data-id="${id}"><i class="bi bi-copy me-2"></i>Duplicate</a></li><li><a class="dropdown-item btn-delete text-danger" href="#" data-id="${id}"><i class="bi bi-trash me-2"></i>Delete</a></li></ul>`;
+            dropdown.innerHTML = `<button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center p-0 ms-2" style="width: 28px; height: 28px;" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-list fs-5"></i></button><ul class="dropdown-menu dropdown-menu-dark"><li><a class="dropdown-item btn-duplicate" href="#" data-id="${id}"><i class="bi bi-copy me-2"></i>Duplicate</a></li><li><a class="dropdown-item btn-delete text-danger" href="#" data-id="${id}"><i class="bi bi-trash me-2"></i>Delete</a></li></ul>`;
             controlsGroup.appendChild(dropdown);
-            const collapseId = `collapse-obj-${id}`;
-            const collapseButton = document.createElement('button');
-            const showObject = activeCollapseStates[id] === true || selectedObjectIds.includes(id);
-            collapseButton.className = `btn btn-sm btn-outline-secondary ms-2 legend-button ${showObject ? '' : 'collapsed'} d-flex align-items-center justify-content-center p-0`;
-            collapseButton.style.width = '28px';
-            collapseButton.style.height = '28px';
-            collapseButton.type = 'button';
-            collapseButton.dataset.bsToggle = 'collapse';
-            collapseButton.dataset.bsTarget = `#${collapseId}`;
-            collapseButton.setAttribute('aria-expanded', showObject);
-            controlsGroup.appendChild(collapseButton);
+
+            const collapseIcon = document.createElement('span');
+            collapseIcon.className = `legend-button ${showObject ? '' : 'collapsed'} ms-2`;
+            collapseIcon.innerHTML = `<i class="bi bi-chevron-up"></i>`;
+            controlsGroup.appendChild(collapseIcon);
             headerBar.appendChild(controlsGroup);
+
+            // Create the collapsible area for this object's controls.
             const collapseWrapper = document.createElement('div');
             collapseWrapper.id = collapseId;
             collapseWrapper.className = `collapse p-3 ${showObject ? 'show' : ''}`;
             collapseWrapper.appendChild(document.createElement('hr'));
+
+            // --- Tabbed Interface Creation ---
             const tabNav = document.createElement('ul');
             tabNav.className = 'nav nav-tabs';
             tabNav.id = `object-tabs-${id}`;
@@ -1508,6 +1267,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const tabContent = document.createElement('div');
             tabContent.className = 'tab-content';
             tabContent.id = `object-tab-content-${id}`;
+
             const controlGroupMap = {
                 'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
                 'Fill & Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'useSharpGradient', 'gradientStop', 'animationMode', 'animationSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'textAnimationSpeed'], icon: 'bi-palette-fill' },
@@ -1520,17 +1280,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
             };
             const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
-            const essentialProps = grouped.general.map(c => c.property || c.name);
+
+            // Loop through the control groups to build the tabs and their content panes.
             let isFirstTab = true;
             for (const groupName in controlGroupMap) {
                 const groupProps = controlGroupMap[groupName].props;
                 const relevantProps = objectConfigs.filter(conf => {
                     const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                    const isEssential = essentialProps.includes(propName);
-                    const isShapeSpecific = validPropsForShape.includes(propName);
-                    const isGeometryOrAudio = groupName === 'Geometry' || groupName === 'Audio';
-                    return groupProps.includes(propName) && (isEssential || isShapeSpecific || isGeometryOrAudio);
+                    return groupProps.includes(propName) && validPropsForShape.includes(propName);
                 });
+
                 if (relevantProps.length > 0) {
                     const tabId = `tab-${id}-${groupName.replace(/\s/g, '-')}`;
                     const paneId = `pane-${id}-${groupName.replace(/\s/g, '-')}`;
@@ -1564,10 +1323,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     groupHeader.textContent = groupName;
                     groupCard.appendChild(groupHeader);
                     relevantProps.forEach(conf => {
-                        const newControl = createFormControl(conf);
-                        if (newControl) {
-                            groupCard.appendChild(newControl);
-                        }
+                        groupCard.appendChild(createFormControl(conf));
                     });
                     pane.appendChild(groupCard);
                     tabContent.appendChild(pane);
@@ -1580,6 +1336,10 @@ document.addEventListener('DOMContentLoaded', function () {
             fieldset.appendChild(collapseWrapper);
             form.appendChild(fieldset);
         });
+
+        // --- 4. FINALIZATION ---
+
+        // Restore the saved general settings values to the newly created controls.
         for (const key in generalSettingsValues) {
             const el = form.elements[key];
             if (el) {
@@ -1590,7 +1350,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }
+
+        // Sync the form controls with the live object properties.
         updateFormValuesFromObjects();
+        // Re-initialize all Bootstrap tooltips.
         new bootstrap.Tooltip(document.body, {
             selector: "[data-bs-toggle='tooltip']",
             trigger: 'hover'
@@ -1993,9 +1756,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const mockHighs = (Math.sin(time * 3.3 * randomRate) * 0.7 + Math.sin(time * 8.2 * randomRate) * 0.3) / 2 + 0.5;
 
                 audioData = {
-                    bass:   { avg: mockBass, peak: mockBass },
-                    mids:   { avg: mockMids, peak: mockMids },
-                    highs:  { avg: mockHighs, peak: mockHighs },
+                    bass: { avg: mockBass, peak: mockBass },
+                    mids: { avg: mockMids, peak: mockMids },
+                    highs: { avg: mockHighs, peak: mockHighs },
                     volume: { avg: mockVol, peak: mockVol }
                 };
             }
@@ -2157,7 +1920,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateField('strokeGradColor1', obj.strokeGradient.color1);
                     updateField('strokeGradColor2', obj.strokeGradient.color2);
                 } else if (key === 'animationSpeed' || key === 'strokeAnimationSpeed') {
-                    // FIX: textAnimationSpeed is no longer incorrectly scaled here.
                     updateField(key, obj[key] * 10);
                 } else if (key === 'cycleSpeed' || key === 'strokeCycleSpeed') {
                     updateField(key, obj[key] * 50);
@@ -3033,18 +2795,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const zip = new JSZip();
-            // FIXED: Removed the invalid backslash `\` before the backtick
             zip.file(`${safeFilename}.html`, finalHtml, { date: exportDate });
 
             const imageResponse = await fetch(thumbnailDataUrl);
             const imageBlob = await imageResponse.blob();
-            // FIXED: Removed the invalid backslash `\` before the backtick
             zip.file(`${safeFilename}.${imageExtension}`, imageBlob, { date: exportDate });
 
             const zipBlob = await zip.generateAsync({ type: "blob" });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(zipBlob);
-            // FIXED: Removed the invalid backslash `\` before the backtick
             link.download = `${safeFilename}.zip`;
             document.body.appendChild(link);
             link.click();
@@ -3784,9 +3543,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
             updateFormValuesFromObjects();
-
-            // FIX: Reverted to a direct, immediate call to recordHistory(). A mouse drag is a single
-            // action that should be saved instantly upon completion.
             recordHistory();
         }
 
@@ -3797,12 +3553,6 @@ document.addEventListener('DOMContentLoaded', function () {
         drawFrame();
     });
 
-    canvasContainer.addEventListener('mouseleave', e => {
-        // isDragging = false;
-        // isResizing = false;
-    });
-
-
     exportBtn.addEventListener('click', exportFile);
 
     /**
@@ -3810,10 +3560,6 @@ document.addEventListener('DOMContentLoaded', function () {
      * It sets up the initial configuration, creates objects, renders the form,
      * initializes tooltips, starts the animation loop, and sets up the resizable panels.
      */
-    // In main.js, replace your entire init function with this:
-
-    // main.js
-
     async function init() {
         const constrainBtn = document.getElementById('constrain-btn');
         constrainBtn.classList.remove('btn-secondary', 'btn-outline-secondary');
@@ -3877,8 +3623,39 @@ document.addEventListener('DOMContentLoaded', function () {
             onDragEnd: function (sizes) {
                 setCookie('split-v-sizes', JSON.stringify(sizes), 365);
                 lastVSizes = sizes;
+                // On manual resize, update the target pixel width
+                const leftPanel = document.getElementById('left-panel');
+                if (leftPanel) {
+                    leftPanelPixelWidth = leftPanel.offsetWidth;
+                }
             }
         });
+
+        const mainSplitEl = document.getElementById('main-split');
+
+        // This new function handles the logic for fixing the panel width
+        function fixLeftPanelWidth() {
+            if (!horizontalSplit || leftPanelPixelWidth <= 0 || !mainSplitEl) return;
+
+            const totalWidth = mainSplitEl.offsetWidth;
+            if (totalWidth === 0) return;
+
+            // Calculate the percentage the left panel *should* be to maintain its pixel width
+            const newLeftPercentage = (leftPanelPixelWidth / totalWidth) * 100;
+            horizontalSplit.setSizes([newLeftPercentage, 100 - newLeftPercentage]);
+        }
+
+        // Use a debounced handler for performance
+        const debouncedResizeHandler = debounce(fixLeftPanelWidth, 50);
+        window.addEventListener('resize', debouncedResizeHandler);
+
+        // Set the initial pixel width shortly after page load
+        setTimeout(() => {
+            const leftPanel = document.getElementById('left-panel');
+            if (leftPanel) {
+                leftPanelPixelWidth = leftPanel.offsetWidth;
+            }
+        }, 200);
 
         initializeSortable();
         recordHistory();
@@ -3988,10 +3765,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- LOAD FROM SHARE LINK LOGIC ---
     // This function runs automatically when the page loads.
-    // main.js
-
-    // main.js
-
     async function loadSharedEffect() {
         const params = new URLSearchParams(window.location.search);
         const effectId = params.get('effectId');
@@ -4152,7 +3925,6 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {string} buttonText - The text for the confirmation button (e.g., "Delete").
      * @param {function} onConfirm - The function to execute when the confirm button is clicked.
      */
-    // In main.js, replace the entire showConfirmModal function with this one:
     function showConfirmModal(title, body, buttonText, onConfirm) {
         const confirmModalEl = document.getElementById('confirm-overwrite-modal');
         const confirmModalInstance = bootstrap.Modal.getInstance(confirmModalEl) || new bootstrap.Modal(confirmModalEl);

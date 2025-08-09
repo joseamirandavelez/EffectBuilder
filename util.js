@@ -205,4 +205,3 @@ function restoreState(state) {
     updateUndoRedoButtons();
     isRestoring = false;
 }
-
