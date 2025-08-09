@@ -1,7 +1,6 @@
 html,
 body {
     height: 100%;
-    overflow: hidden;
 }
 
 #right-panel-top {
@@ -105,10 +104,6 @@ body {
     cursor: ew-resize;
 }
 
-.gutter.gutter-vertical {
-    cursor: ns-resize;
-}
-
 #main-split {
     display: flex;
     flex-direction: row;
@@ -141,3 +136,4 @@ body {
 .form-range::-moz-range-track {
     background-color: var(--bs-border-color);
 }
+

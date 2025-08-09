@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="dark">
 
@@ -17,113 +18,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script type="module" src="firebase.js"></script>
     <link rel="stylesheet" href="styles.css">
-
-    <template id="initial-config">
-        <meta title="Text Test" />
-        <meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
-        <meta publisher="Jose Miranda" />
-        <meta property="enableAnimation" label="Enable Animation" type="boolean" default="true" />
-        <meta property="enableSound" label="Enable Sound" type="boolean" default="true" />
-
-        <meta property="obj1_shape" label="Small Clock: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
-        <meta property="obj1_x" label="Small Clock: X Position" type="number" min="0" max="320" default="0" />
-        <meta property="obj1_y" label="Small Clock: Y Position" type="number" min="0" max="200" default="35" />
-        <meta property="obj1_width" label="Small Clock: Width/Outer Diameter" type="number" min="2" max="320" default="130" />
-        <meta property="obj1_height" label="Small Clock: Height" type="number" min="2" max="200" default="17" />
-        <meta property="obj1_rotation" label="Small Clock: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj1_innerDiameter" label="Small Clock: Inner Diameter" type="number" min="1" max="318" default="50" />
-        <meta property="obj1_numberOfSegments" label="Small Clock: Segments" type="number" min="1" max="50" default="8" />
-        <meta property="obj1_angularWidth" label="Small Clock: Segment Angle" type="number" min="1" max="360" default="20" />
-        <meta property="obj1_rotationSpeed" label="Small Clock: Rotation Speed" type="number" min="-100" max="100" default="0" />
-        <meta property="obj1_animationSpeed" label="Small Clock: Animation Speed" type="number" min="1" max="50" default="50" />
-        <meta property="obj1_animationMode" label="Small Clock: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
-        <meta property="obj1_scrollDir" label="Small Clock: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
-        <meta property="obj1_gradType" label="Small Clock: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
-        <meta property="obj1_useSharpGradient" label="Small Clock: Use Sharp Gradient" type="boolean" default="true" />
-        <meta property="obj1_gradientStop" label="Small Clock: Gradient Stop %" type="number" min="0" max="100" default="72" />
-        <meta property="obj1_gradColor1" label="Small Clock: Color 1" type="color" default="#00ff00" />
-        <meta property="obj1_gradColor2" label="Small Clock: Color 2" type="color" default="#d400ff" />
-        <meta property="obj1_cycleColors" label="Small Clock: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj1_cycleSpeed" label="Small Clock: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj1_numberOfRows" label="Small Clock: Number of Rows" type="number" min="1" max="100" default="2" />
-        <meta property="obj1_numberOfColumns" label="Small Clock: Number of Columns" type="number" min="1" max="100" default="1" />
-        <meta property="obj1_phaseOffset" label="Small Clock: Phase Offset" type="number" min="0" max="100" default="100" />
-        <meta property="obj1_text" label="Small Clock: Text" type="textfield" default="Jose Miranda" />
-        <meta property="obj1_fontSize" label="Small Clock: Font Size" type="number" min="2" max="100" default="42" />
-        <meta property="obj1_textAlign" label="Small Clock: Justification" type="combobox" values="left,center,right" default="center" />
-        <meta property="obj1_pixelFont" label="Small Clock: Pixel Font Style" type="combobox" values="small,large" default="small" />
-        <meta property="obj1_textAnimation" label="Small Clock: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-        <meta property="obj1_textAnimationSpeed" label="Small Clock: Animation Speed" type="number" min="1" max="100" default="10" />
-        <meta property="obj1_showTime" label="Small Clock: Show Current Time" type="boolean" default="true" />
-        <meta property="obj1_showDate" label="Small Clock: Show Current Date" type="boolean" default="false" />
-        <meta property="obj1_autoWidth" label="Small Clock: Auto-Width" type="boolean" default="true" />
-
-        <meta property="obj2_shape" label="Large Text: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
-        <meta property="obj2_x" label="Large Text: X Position" type="number" min="0" max="320" default="-3" />
-        <meta property="obj2_y" label="Large Text: Y Position" type="number" min="0" max="200" default="0" />
-        <meta property="obj2_width" label="Large Text: Width/Outer Diameter" type="number" min="2" max="320" default="237" />
-        <meta property="obj2_height" label="Large Text: Height" type="number" min="2" max="200" default="30" />
-        <meta property="obj2_rotation" label="Large Text: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj2_innerDiameter" label="Large Text: Inner Diameter" type="number" min="1" max="318" default="50" />
-        <meta property="obj2_numberOfSegments" label="Large Text: Segments" type="number" min="1" max="50" default="8" />
-        <meta property="obj2_angularWidth" label="Large Text: Segment Angle" type="number" min="1" max="360" default="20" />
-        <meta property="obj2_rotationSpeed" label="Large Text: Rotation Speed" type="number" min="-100" max="100" default="0" />
-        <meta property="obj2_animationSpeed" label="Large Text: Animation Speed" type="number" min="1" max="50" default="50" />
-        <meta property="obj2_animationMode" label="Large Text: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
-        <meta property="obj2_scrollDir" label="Large Text: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
-        <meta property="obj2_gradType" label="Large Text: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
-        <meta property="obj2_useSharpGradient" label="Large Text: Use Sharp Gradient" type="boolean" default="true" />
-        <meta property="obj2_gradientStop" label="Large Text: Gradient Stop %" type="number" min="0" max="100" default="72" />
-        <meta property="obj2_gradColor1" label="Large Text: Color 1" type="color" default="#00ff00" />
-        <meta property="obj2_gradColor2" label="Large Text: Color 2" type="color" default="#d400ff" />
-        <meta property="obj2_cycleColors" label="Large Text: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj2_cycleSpeed" label="Large Text: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj2_numberOfRows" label="Large Text: Number of Rows" type="number" min="1" max="100" default="2" />
-        <meta property="obj2_numberOfColumns" label="Large Text: Number of Columns" type="number" min="1" max="100" default="1" />
-        <meta property="obj2_phaseOffset" label="Large Text: Phase Offset" type="number" min="0" max="100" default="100" />
-        <meta property="obj2_text" label="Large Text: Text" type="textfield" default="Interactive Effect Builder" />
-        <meta property="obj2_fontSize" label="Large Text: Font Size" type="number" min="2" max="100" default="60" />
-        <meta property="obj2_textAlign" label="Large Text: Justification" type="combobox" values="left,center,right" default="left" />
-        <meta property="obj2_pixelFont" label="Large Text: Pixel Font Style" type="combobox" values="small,large" default="large" />
-        <meta property="obj2_textAnimation" label="Large Text: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="marquee" />
-        <meta property="obj2_textAnimationSpeed" label="Large Text: Animation Speed" type="number" min="1" max="100" default="29" />
-        <meta property="obj2_showTime" label="Large Text: Show Current Time" type="boolean" default="false" />
-        <meta property="obj2_showDate" label="Large Text: Show Current Date" type="boolean" default="false" />
-        <meta property="obj2_autoWidth" label="Large Text: Auto-Width" type="boolean" default="false" />
-
-        <meta property="obj3_shape" label="Matrix: Shape" type="combobox" values="rectangle,circle,ring,text" default="rectangle" />
-        <meta property="obj3_x" label="Matrix: X Position" type="number" min="0" max="320" default="0" />
-        <meta property="obj3_y" label="Matrix: Y Position" type="number" min="0" max="200" default="57" />
-        <meta property="obj3_width" label="Matrix: Width/Outer Diameter" type="number" min="2" max="320" default="181" />
-        <meta property="obj3_height" label="Matrix: Height" type="number" min="2" max="200" default="143" />
-        <meta property="obj3_rotation" label="Matrix: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj3_innerDiameter" label="Matrix: Inner Diameter" type="number" min="1" max="318" default="50" />
-        <meta property="obj3_numberOfSegments" label="Matrix: Segments" type="number" min="1" max="50" default="12" />
-        <meta property="obj3_angularWidth" label="Matrix: Segment Angle" type="number" min="1" max="360" default="20" />
-        <meta property="obj3_rotationSpeed" label="Matrix: Rotation Speed" type="number" min="-100" max="100" default="0" />
-        <meta property="obj3_animationSpeed" label="Matrix: Animation Speed" type="number" min="1" max="50" default="10" />
-        <meta property="obj3_animationMode" label="Matrix: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="loop" />
-        <meta property="obj3_scrollDir" label="Matrix: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
-        <meta property="obj3_gradType" label="Matrix: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="random" />
-        <meta property="obj3_useSharpGradient" label="Matrix: Use Sharp Gradient" type="boolean" default="false" />
-        <meta property="obj3_gradientStop" label="Matrix: Gradient Stop %" type="number" min="0" max="100" default="50" />
-        <meta property="obj3_gradColor1" label="Matrix: Color 1" type="color" default="#00ff00" />
-        <meta property="obj3_gradColor2" label="Matrix: Color 2" type="color" default="#d400ff" />
-        <meta property="obj3_cycleColors" label="Matrix: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj3_cycleSpeed" label="Matrix: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj3_numberOfRows" label="Matrix: Number of Rows" type="number" min="1" max="100" default="16" />
-        <meta property="obj3_numberOfColumns" label="Matrix: Number of Columns" type="number" min="1" max="100" default="16" />
-        <meta property="obj3_phaseOffset" label="Matrix: Phase Offset" type="number" min="0" max="100" default="10" />
-        <meta property="obj3_text" label="Matrix: Text" type="textfield" default="" />
-        <meta property="obj3_fontSize" label="Matrix: Font Size" type="number" min="2" max="100" default="15" />
-        <meta property="obj3_textAlign" label="Matrix: Justification" type="combobox" values="left,center,right" default="center" />
-        <meta property="obj3_pixelFont" label="Matrix: Pixel Font Style" type="combobox" values="small,large" default="small" />
-        <meta property="obj3_textAnimation" label="Matrix: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-        <meta property="obj3_textAnimationSpeed" label="Matrix: Animation Speed" type="number" min="1" max="100" default="10" />
-        <meta property="obj3_showTime" label="Matrix: Show Current Time" type="boolean" default="false" />
-        <meta property="obj3_showDate" label="Matrix: Show Current Date" type="boolean" default="false" />
-        <meta property="obj3_autoWidth" label="Matrix: Auto-Width" type="boolean" default="true" />
-    </template>
 </head>
 
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-WS7MGSDJSB"></script>
@@ -137,8 +31,10 @@
 <body class="d-flex flex-column vh-100">
     <nav class="navbar navbar-expand-lg bg-body-tertiary">
         <div class="container-fluid">
-            <a class="navbar-brand" href="./">SRGB Interactive Effect Builder</a>
-
+            <a class="navbar-brand d-flex align-items-center" href="./">
+                <img src="logo.png" alt="Effect Builder Logo" class="me-2" style="height: 1.5em;">
+                SRGB Interactive Effect Builder
+            </a>
             <div class="ms-auto d-flex align-items-center">
 
                 <div class="btn-group me-3" role="group" aria-label="Project management actions">
@@ -237,17 +133,6 @@
                     <i class="bi bi-crosshair me-2"></i>
                     <span id="coords-display" class="font-monospace" style="min-width: 100px;">---, ---</span>
                 </div>
-                <div id="right-panel-bottom" class="output-panel d-flex flex-column p-3 border-top bg-body-tertiary">
-                    <h5 class="text-body-emphasis mb-2">Generated Script Header</h5>
-
-                    <div class="d-flex flex-grow-1">
-                        <textarea id="output-script" class="form-control flex-grow-1" readonly></textarea>
-                        <button class="btn btn-primary ms-2" id="copy-btn" ...>
-                            <i class="bi bi-clipboard"></i>
-                        </button>
-                    </div>
-                </div>
-
             </div>
         </div>
 
@@ -348,36 +233,31 @@
                             <iframe src="https://www.youtube.com/embed/KSasPw0HScc?si=vCThireMBH0jnnHj" title="SRGB Interactive Effect Builder" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
                         </div>
 
-                        <h6 class="text-info">The Controls Panel (Left)</h6>
+                        <h6 class="text-info">Layout Overview</h6>
+                        <p>The builder is divided into two main, resizable columns:</p>
+                        <ul>
+                            <li>The <strong>Controls Panel</strong> on the left is where you manage all the objects and global settings for your effect.</li>
+                            <li>The <strong>Canvas Panel</strong> on the right contains the visual editor where you can directly manipulate your objects. The <strong>Toolbar</strong> with alignment and property tools is located just above the canvas.</li>
+                        </ul>
+
+                        <h6 class="text-info mt-4">The Controls Panel (Left)</h6>
                         <p>This is where you manage all the objects and global settings for your effect.</p>
                         <ul>
-                            <li><strong>General Settings:</strong> This panel contains properties for your entire effect.
-                                <ul>
-                                    <li><strong>Title & Description:</strong> Sets the metadata for your effect file.</li>
-                                    <li><strong>Minimize Properties for Export:</strong> When checked, this reduces the number of editable controls in the final exported file, writing most values as fixed constants in the script. This can improve performance in SignalRGB.</li>
-                                </ul>
-                            </li>
+                            <li><strong>General Settings:</strong> This panel contains properties for your entire effect, such as its Title and Description.</li>
                             <li><strong>Add New Object:</strong> Use the green button at the bottom to add a new shape to the canvas.</li>
                             <li><strong>Object Panels:</strong> Each object gets its own collapsible panel. You can perform several actions here:
                                 <ul>
                                     <li><strong>Rename:</strong> Click the object's name (e.g., "Object 1") to edit it.</li>
-                                    <li><strong>Reorder:</strong> Click and drag the <i class="bi bi-grip-vertical"></i> icon to change the rendering order (layers). Objects at the top are drawn first (in the back).</li>
+                                    <li><strong>Reorder:</strong> Click and drag the <i class="bi bi-grip-vertical"></i> icon to change the rendering order (layers). Objects at the top of the list are drawn last (on top).</li>
                                     <li><strong>Lock/Unlock:</strong> Use the <i class="bi bi-unlock-fill"></i> / <i class="bi bi-lock-fill"></i> button to prevent an object from being accidentally moved or resized on the canvas.</li>
                                     <li><strong>Duplicate/Delete:</strong> Use the menu button (<i class="bi bi-list"></i>) to access options for duplicating or deleting an object.</li>
                                 </ul>
                             </li>
                             <li><strong class="text-warning">Shape-Specific Settings:</strong> The real power of the builder lies in its specialized shapes. When you change an object's <strong>Shape</strong> property, different settings will appear.
-                                <ul>
-                                    <li><strong>Text:</strong> Offers several <strong>Text Animation</strong> modes, including <em>Marquee</em> (scrolling), <em>Typewriter</em>, and <em>Wave</em>. You can also override the text field to show the current time or date.</li>
-                                    <li><strong>Rectangle (Grid):</strong> By increasing the <strong>Number of Rows</strong> or <strong>Columns</strong>, you can turn a rectangle into a grid. Use the <strong>Phase Offset</strong> property to create cascading animations across the grid cells.</li>
-                                    <li><strong>Fire &amp; FireRadial:</strong> These are particle emitters. Their color is not controlled by a special property; instead, they use the standard <strong>Fill Type</strong> controls. For example, set the Fill Type to <em>Random</em> to get random-colored flames, or set it to <em>Rainbow</em> for a rainbow fire effect.</li>
-                                    <li><strong>Oscilloscope:</strong> This shape has a unique <strong>Display Mode</strong> called <em>Seismic</em>. This mode creates expanding, rotating, phased waves. The <strong>Phase Offset</strong> property is key here, as it controls the rotational difference between each wave, allowing for complex vortex effects.</li>
-                                    <li><strong>Pixel Art:</strong> This shape allows you to render custom art by providing a 2D array (a list of lists) in the <strong>Pixel Art Data</strong> field. Each number in the array corresponds to a pixel's opacity (from 0.0 for transparent to 1.0 for fully opaque). This shape supports all standard fill types (Linear, Radial, Rainbow, etc.), which are applied across the entire object, with the data array acting as an alpha mask. You can use the <a href="https://pixelart.nolliergb.com/" target="_blank" rel="noopener noreferrer">Pixel Art Generator</a> to create and export data for this shape.</li>
-                                </ul>
                             </li>
                         </ul>
 
-                        <h6 class="text-info mt-4">The Canvas (Center)</h6>
+                        <h6 class="text-info mt-4">The Canvas (Right Panel)</h6>
                         <p>This is your visual workspace where you can directly manipulate objects.</p>
                         <ul>
                             <li><strong>Select:</strong> Click an object to select it. Hold <kbd>Shift</kbd> or <kbd>Ctrl</kbd> while clicking to select multiple objects. Clicking on an empty area will deselect everything.</li>
@@ -388,7 +268,6 @@
                                     <li>Drag the circular handle at the top to <strong>rotate</strong> it.</li>
                                 </ul>
                             </li>
-                            <li><strong>Snapping:</strong> Objects will automatically snap to the edges and centerlines of the canvas, as well as to other objects, to help with precise alignment.</li>
                             <li><strong>Keyboard Shortcuts:</strong>
                                 <ul>
                                     <li><kbd>Arrow Keys</kbd>: Nudge selected objects by a small amount.</li>
@@ -400,15 +279,7 @@
                             </li>
                         </ul>
 
-                        <h6 class="text-info mt-4">The Canvas Toolbar (Above the Canvas)</h6>
-                        <p>This toolbar provides quick access to alignment and property management tools for selected objects.</p>
-                        <ul>
-                            <li><strong>Copy/Paste Properties:</strong> Use <i class="bi bi-clipboard-plus"></i> to copy properties from the first selected object and <i class="bi bi-clipboard-check"></i> to paste them onto other selected objects.</li>
-                            <li><strong>Alignment:</strong> Align objects to the screen's edges or center.</li>
-                            <li><strong>Matching:</strong> Match the width, height, or both dimensions of all selected objects to the dimensions of the *first* object that was selected.</li>
-                        </ul>
-
-                        <h6 class="text-info mt-4">The Main Toolbar (Top)</h6>
+                        <h6 class="text-info mt-4">The Navbar (Top)</h6>
                         <p>This toolbar contains actions for project management, sharing, and exporting. Most cloud-based actions require you to be signed in.</p>
                         <ul class="list-unstyled">
                             <li><strong class="text-primary-emphasis"><i class="bi bi-cloud-arrow-up me-1"></i> Save:</strong> Saves your current workspace to your personal cloud storage.</li>
@@ -603,6 +474,8 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
+        <script src="Shape.js"></script>
+        <script src="util.js"></script>
         <script src="main.js"></script>
 </body>
 

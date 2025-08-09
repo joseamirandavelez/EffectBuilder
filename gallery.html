@@ -19,7 +19,10 @@
 <body>
     <nav class="navbar navbar-expand-lg bg-body-tertiary">
         <div class="container-fluid">
-            <a class="navbar-brand" href="./">SRGB Interactive Effect Builder</a>
+            <a class="navbar-brand d-flex align-items-center" href="./">
+                <img src="logo.png" alt="Effect Builder Logo" class="me-2" style="height: 1.5em;">
+                SRGB Interactive Effect Builder
+            </a>
             <div class="ms-auto d-flex align-items-center">
                 <a href="./" class="btn btn-primary me-3"><i class="bi bi-pencil-square me-2"></i>Back to Editor</a>
 
@@ -44,6 +47,10 @@
                 <h2 class="mb-3"><i class="bi bi-view-list me-2"></i>Community Gallery</h2>
                 <p class="text-body-secondary">Browse public effects created by the community. Click the "Load" button on any effect to open it in the editor.</p>
                 <hr>
+                <nav id="pagination-nav-top" class="d-flex justify-content-center mb-4">
+                    <ul id="pagination-container-top" class="pagination">
+                    </ul>
+                </nav>
                 <ul class="list-group" id="gallery-project-list">
                     <li class="list-group-item text-center p-4">
                         <div class="spinner-border" role="status">
@@ -51,6 +58,10 @@
                         </div>
                     </li>
                 </ul>
+                <nav id="pagination-nav" class="d-flex justify-content-center mt-4">
+                    <ul id="pagination-container-bottom" class="pagination">
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
