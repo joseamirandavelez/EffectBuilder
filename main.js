@@ -1,4 +1,3 @@
-// At the top of main.js
 let cachedSnapTargets = null;
 let snapLines = [];
 let isDragging = false;
@@ -8,16 +7,49 @@ let activeResizeHandle = null;
 let initialDragState = [];
 let dragStartX = 0;
 let dragStartY = 0;
+let audioContext;
+let analyser;
+let frequencyData;
+let isAudioSetup = false;
 
 let gradientSpeedMultiplier = 1 / 400;
 let shapeAnimationSpeedMultiplier = 0.05;
 let seismicAnimationSpeedMultiplier = 0.015;
 let tetrisSpeedDivisor = 10.0;
 
-const EXPORT_GRADIENT_SPEED_MULTIPLIER = 1 / 400;
-const EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER = 0.05;
-const EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER = seismicAnimationSpeedMultiplier / 4;
+const EXPORT_GRADIENT_SPEED_MULTIPLIER = gradientSpeedMultiplier;
+const EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER = shapeAnimationSpeedMultiplier;
+const EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER = seismicAnimationSpeedMultiplier;
 const EXPORT_TETRIS_SPEED_DIVISOR = tetrisSpeedDivisor * 4;
+
+function hexToHsl(hex) {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if (max === min) { h = s = 0; } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+    return [h * 360, s * 100, l * 100];
+}
+
+function hslToHex(h, s, l) {
+    s /= 100;
+    l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+    const toHex = c => Math.round(c * 255).toString(16).padStart(2, '0');
+    return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+}
 
 // Helper function to compute world-coordinate edges and center
 function getWorldPoints(obj) {
@@ -168,16 +200,15 @@ function debounce(func, wait = 100) {
     };
 }
 
-function drawPixelText(ctx, shape) {
+function drawPixelText(ctx, shape, textToRender) {
     const { x, y, width, height, pixelFont, fontSize, textAlign,
         textAnimation, scrollOffsetX, waveAngle, visibleCharCount } = shape;
 
-    const textToRender = shape.getDisplayText();
     if (typeof textToRender !== 'string') return;
 
     const fontData = pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
     const { charWidth, charHeight, charSpacing, lineSpacing, map } = fontData;
-    const pixelSize = fontSize / 10; // This is our margin size
+    const pixelSize = fontSize / 10;
 
     const animatedText = textToRender.toUpperCase().substring(0, Math.floor(visibleCharCount));
     const lines = animatedText.split('\n');
@@ -186,7 +217,7 @@ function drawPixelText(ctx, shape) {
     ctx.beginPath();
 
     if (textAnimation === 'wave') {
-        const verticalPadding = 100; // Extra clipping space for wave animation
+        const verticalPadding = 100;
         ctx.rect(x, y - verticalPadding, width, height + verticalPadding * 2);
     } else {
         ctx.rect(x, y, width, height);
@@ -207,7 +238,6 @@ function drawPixelText(ctx, shape) {
             if (!charData) continue;
 
             let dx = lineStartX + i * (charWidth + charSpacing) * pixelSize + scrollOffsetX;
-            // Apply the top margin to the drawing's Y position
             let dy = y + pixelSize + lineIndex * (charHeight + lineSpacing) * pixelSize;
 
             if (textAnimation === 'wave') {
@@ -271,15 +301,24 @@ function getCookie(name) {
  * @returns {string} The interpolated color in hex format.
  */
 function lerpColor(a, b, amount) {
-    const amt = Math.max(0, Math.min(1, amount));
-    const ah = parseInt(a.slice(1), 16),
-        ar = ah >> 16,
-        ag = (ah >> 8) & 0xff,
-        ab = ah & 0xff,
-        bh = parseInt(b.slice(1), 16),
-        br = bh >> 16,
-        bg = (bh >> 8) & 0xff,
-        bb = bh & 0xff,
+    const amt = (typeof amount === 'number' && isFinite(amount)) ? Math.max(0, Math.min(1, amount)) : 0;
+
+    // --- START: New HSL interpolation logic ---
+    // Check if both inputs are HSL strings
+    if (typeof a === 'string' && a.startsWith('hsl') && typeof b === 'string' && b.startsWith('hsl')) {
+        const hslA = a.match(/(\d+(\.\d+)?)/g).map(Number);
+        const hslB = b.match(/(\d+(\.\d+)?)/g).map(Number);
+        const h = hslA[0] + amt * (hslB[0] - hslA[0]);
+        const s = hslA[1] + amt * (hslB[1] - hslA[1]);
+        const l = hslA[2] + amt * (hslB[2] - hslA[2]);
+        return `hsl(${h}, ${s}%, ${l}%)`;
+    }
+    // --- END: New HSL interpolation logic ---
+
+    const ah = parseInt(String(a).slice(1), 16),
+        ar = ah >> 16, ag = (ah >> 8) & 0xff, ab = ah & 0xff,
+        bh = parseInt(String(b).slice(1), 16),
+        br = bh >> 16, bg = (bh >> 8) & 0xff, bb = bh & 0xff,
         rr = Math.round(ar + amt * (br - ar)),
         rg = Math.round(ag + amt * (bg - ag)),
         rb = Math.round(ab + amt * (bb - ab));
@@ -333,14 +372,15 @@ function getBoundingBox(obj) {
  * Manages its own state, including position, size, appearance, and animation properties.
  */
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, gradientDirection, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontFamily, fontSize, fontWeight, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, multipliers, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireHeight, fireSpread, pixelArtData }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing, beatThreshold }) {
+        // --- ALL properties are assigned here first ---
         this.id = id;
         this.name = name || `Object ${id}`;
-        this.shape = shape;
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
+        this.shape = shape || 'rectangle';
+        this.x = x || 0;
+        this.y = y || 0;
+        this.width = width || 200;
+        this.height = height || 152;
         this.rotation = rotation || 0;
         this.gradType = gradType || 'solid';
         this.gradient = gradient || { color1: '#000000', color2: '#000000' };
@@ -353,8 +393,6 @@ class Shape {
         this.hue1 = 0;
         this.hue2 = 90;
         this.scrollOffset = 0;
-
-        // Stroke Properties
         this.enableStroke = enableStroke || false;
         this.strokeWidth = strokeWidth || 2;
         this.strokeGradType = strokeGradType || 'solid';
@@ -366,16 +404,15 @@ class Shape {
         this.strokeHue1 = 0;
         this.strokeHue2 = 90;
         this.strokeScrollOffset = 0;
-
         this.isReversing = false;
         this.animationState = 'scrolling';
         this.waitTimer = 0;
-        this.innerDiameter = innerDiameter;
-        this.angularWidth = angularWidth;
-        this.numberOfSegments = numberOfSegments;
+        this.innerDiameter = innerDiameter || 100;
+        this.angularWidth = angularWidth || 20;
+        this.numberOfSegments = numberOfSegments || 12;
         this.rotationSpeed = rotationSpeed || 0;
         this.rotationAngle = 0;
-        this.animationAngle = Math.random() * 2 * Math.PI;
+        this.animationAngle = 0;
         this.useSharpGradient = useSharpGradient !== undefined ? useSharpGradient : false;
         this.gradientStop = gradientStop !== undefined ? parseFloat(gradientStop) : 50;
         this.locked = locked || false;
@@ -388,13 +425,9 @@ class Shape {
         this.rotationHandleOffset = -30;
         this.rotationHandleRadius = 15;
         this.handles = [{ name: 'top-left', cursor: 'nwse-resize' }, { name: 'top', cursor: 'ns-resize' }, { name: 'top-right', cursor: 'nesw-resize' }, { name: 'left', cursor: 'ew-resize' }, { name: 'right', cursor: 'ew-resize' }, { name: 'bottom-left', cursor: 'nesw-resize' }, { name: 'bottom', cursor: 'ns-resize' }, { name: 'bottom-right', cursor: 'nwse-resize' }];
-
         this.randomElementState = null;
-
         this.text = text || 'Hello';
-        this.fontFamily = fontFamily || 'Arial';
         this.fontSize = fontSize || 60;
-        this.fontWeight = fontWeight || 'bold';
         this.textAlign = textAlign || 'center';
         this.pixelFont = pixelFont || 'small';
         this.textAnimation = textAnimation || 'none';
@@ -412,15 +445,15 @@ class Shape {
         this.fillShape = fillShape || false;
         this.enableWaveAnimation = enableWaveAnimation !== undefined ? enableWaveAnimation : true;
         this.oscDisplayMode = oscDisplayMode || 'linear';
-        this.waveMinY = this.y;
-        this.waveMaxY = this.y + this.height;
         this._pausedRotationSpeed = null;
+        this._pausedAnimationSpeed = null;
         this.waveStyle = waveStyle || 'wavy';
         this.waveCount = waveCount || 5;
         this.tetrisBlockCount = tetrisBlockCount || 10;
         this.tetrisAnimation = tetrisAnimation || 'gravity';
         this.tetrisSpeed = tetrisSpeed || 5;
         this.tetrisBounce = tetrisBounce || 50;
+        this.tetrisSpeedDivisor = 10.0;
         this.tetrisBlocks = [];
         this.tetrisSpawnTimer = 0;
         this.tetrisStackHeight = 0;
@@ -429,19 +462,90 @@ class Shape {
         this.sides = sides || 6;
         this.points = points || 5;
         this.starInnerRadius = starInnerRadius || 50;
-        this.gradientSpeedMultiplier = gradientSpeedMultiplier;
-        this.shapeAnimationSpeedMultiplier = shapeAnimationSpeedMultiplier;
-        this.seismicAnimationSpeedMultiplier = 0.015;
-        this.tetrisSpeedDivisor = 10.0;
-        this.exportedGradientSpeedMultiplier = 0.0025;
-        this.exportedShapeAnimationSpeedMultiplier = 0.05;
-        this.exportedSeismicAnimationSpeedMultiplier = 0.00375;
-        this.exportedTetrisSpeedDivisor = 40.0;
         this.fireParticles = [];
-        this.fireHeight = fireHeight || 100;
         this.fireSpread = fireSpread || 100;
         this.particleSpawnCounter = 0;
-        this.nextParticleId = 0; // Add this line
+        this.nextParticleId = 0;
+        this.pixelArtData = pixelArtData || '[[1]]';
+        this.internalScale = 1.0;
+        this.colorOverride = null;
+        this.audioHistory = new Array(30).fill(0); // Stores the last 30 frames of audio volume
+        this.flashDecay = 0; // Controls the fade-out of the flash effect
+        this.beatThreshold = beatThreshold || 30;
+        this.baseBeatThreshold = this.beatThreshold;
+
+        // --- ADD THESE NEW PROPERTIES ---
+        // Sound Reactivity Properties
+        this.enableAudioReactivity = enableAudioReactivity || false;
+        this.audioTarget = audioTarget || 'size';
+        this.audioMetric = audioMetric || 'volume';
+        this.audioSensitivity = audioSensitivity || 10;
+        this.smoothedAudioValue = 0;
+
+        // Store base properties for non-destructive reactivity
+        this.baseWidth = this.width;
+        this.baseHeight = this.height;
+        this.baseRotation = this.rotation;
+        this.baseAnimationSpeed = this.animationSpeed;
+        this.baseStrokeWidth = this.strokeWidth;
+        this.baseGradient = { ...this.gradient };
+
+        this.baseGradientStop = this.gradientStop;
+        this.baseStarInnerRadius = this.starInnerRadius;
+        this.baseInnerDiameter = this.innerDiameter;
+        this.basePulseDepth = this.pulseDepth;
+    }
+
+    _applyAudioReactivity(audioData) {
+        // Reset properties at the start of each frame.
+        this.rotation = this.baseRotation || 0;
+        this.internalScale = 1.0;
+        this.colorOverride = null;
+        this.gradient = { ...(this.baseGradient || { color1: '#000000', color2: '#000000' }) };
+
+        // 1. Update Flash Decay
+        if (this.flashDecay > 0) {
+            this.flashDecay -= 0.18;
+        }
+        this.flashDecay = Math.max(0, this.flashDecay);
+
+        // Exit if reactivity is disabled.
+        if (!this.enableAudioReactivity || !audioData || !audioData[this.audioMetric] || this.audioTarget === 'none') {
+            return;
+        }
+
+        const rawAudioValue = audioData[this.audioMetric].avg || 0;
+        this.audioHistory.push(rawAudioValue);
+        this.audioHistory.shift();
+
+        const n = this.audioHistory.length;
+        const mean = this.audioHistory.reduce((a, b) => a + b, 0) / n;
+        const stdDev = Math.sqrt(this.audioHistory.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / n);
+        const thresholdMultiplier = 0.5 + ((this.beatThreshold || 30) / 100.0) * 2.0;
+        const threshold = mean + thresholdMultiplier * stdDev;
+
+        if (rawAudioValue > threshold) {
+            const sensitivity = (this.audioSensitivity / 100.0) * 1.5;
+            this.flashDecay = Math.min(1.5, sensitivity);
+        }
+
+        const reactiveValue = this.flashDecay;
+        const randomSign = Math.random() < 0.5 ? -1 : 1;
+
+        switch (this.audioTarget) {
+            case 'Flash':
+                if (reactiveValue > 0) {
+                    this.colorOverride = '#FFFFFF';
+                    this.flashOpacity = Math.min(1.0, reactiveValue);
+                } else { this.flashOpacity = 0; }
+                break;
+            case 'Size':
+                this.internalScale = 1.0 + reactiveValue;
+                break;
+            case 'Rotation':
+                this.rotation = this.baseRotation + (randomSign * reactiveValue * 180);
+                break;
+        }
     }
 
     getDisplayText() {
@@ -626,43 +730,70 @@ class Shape {
     }
 
     update(props) {
+        // --- Store original state for calculations ---
+        const oldWidth = this.width;
+        const oldHeight = this.height;
+
+        // --- PRE-UPDATE LOGIC ---
         const textChanged = props.text !== undefined && props.text !== this.text;
         const animationChanged = props.textAnimation !== undefined && props.textAnimation !== this.textAnimation;
         if ((textChanged && this.textAnimation === 'typewriter') || (animationChanged && props.textAnimation === 'typewriter')) {
             this.visibleCharCount = 0;
             this.typewriterWaitTimer = 0;
         }
-
         const animationTypeChanged = props.tetrisAnimation !== undefined && props.tetrisAnimation !== this.tetrisAnimation;
         const gradTypeChangedToTetris = (props.gradType !== undefined && props.gradType.startsWith('tetris')) && !this.gradType.startsWith('tetris');
         const blockCountChanged = props.tetrisBlockCount !== undefined && props.tetrisBlockCount !== this.tetrisBlockCount;
-
         if (animationTypeChanged || gradTypeChangedToTetris || blockCountChanged) {
             this.tetrisBlocks = [];
             this.tetrisSpawnTimer = 0;
             this.tetrisActiveBlockIndex = 0;
             this.tetrisFadeState = 'in';
         }
-
         if ((textChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave')) || (animationChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave'))) {
             this.scrollOffsetX = 0;
             this.waveAngle = 0;
         }
         const oldRows = this.numberOfRows;
         const oldCols = this.numberOfColumns;
+
+        // --- UNIFIED UPDATE LOGIC ---
+        // 1. Directly update the object's live properties from the form input.
         for (const key in props) {
-            if (props[key] !== undefined) {
-                if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
-                    if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
-                    if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
-                } else if (key === 'strokeGradient' && typeof props[key] === 'object' && props[key] !== null) {
-                    if (props.strokeGradient.color1 !== undefined) this.strokeGradient.color1 = props.strokeGradient.color1;
-                    if (props.strokeGradient.color2 !== undefined) this.strokeGradient.color2 = props.strokeGradient.color2;
-                } else {
-                    this[key] = props[key];
-                }
+            if (props[key] === undefined) continue;
+            if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
+                if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
+                if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
+            } else if (key === 'strokeGradient' && typeof props[key] === 'object' && props[key] !== null) {
+                if (props.strokeGradient.color1 !== undefined) this.strokeGradient.color1 = props.strokeGradient.color1;
+                if (props.strokeGradient.color2 !== undefined) this.strokeGradient.color2 = props.strokeGradient.color2;
+            } else {
+                this[key] = props[key];
             }
         }
+
+        // --- NEW: Adjust position to keep the center stationary ---
+        if (props.width !== undefined || props.height !== undefined) {
+            const dWidth = oldWidth - this.width;
+            const dHeight = oldHeight - this.height;
+            this.x += dWidth / 2;
+            this.y += dHeight / 2;
+        }
+
+        // 2. AFTER updating, snapshot the new state into the 'base' properties.
+        this.baseWidth = this.width;
+        this.baseHeight = this.height;
+        this.baseRotation = this.rotation;
+        this.baseAnimationSpeed = this.animationSpeed;
+        this.baseStrokeWidth = this.strokeWidth;
+        this.baseGradient = { ...this.gradient };
+
+        this.baseGradientStop = this.gradientStop;
+        this.baseStarInnerRadius = this.starInnerRadius;
+        this.baseInnerDiameter = this.innerDiameter;
+        this.basePulseDepth = this.pulseDepth;
+
+        // --- POST-UPDATE LOGIC ---
         if (this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols) {
             this._shuffleCellOrder();
         }
@@ -672,6 +803,10 @@ class Shape {
     }
 
     _createLocalStrokeStyle(phase = 0) {
+        if (this.colorOverride) {
+            return this.colorOverride;
+        }
+
         const c1 = this.strokeCycleColors ? `hsl(${this.strokeHue1 % 360}, 100%, 50%)` : this.strokeGradient.color1;
         const c2 = this.strokeCycleColors ? `hsl(${this.strokeHue2 % 360}, 100%, 50%)` : this.strokeGradient.color2;
 
@@ -830,16 +965,25 @@ class Shape {
      * @returns {CanvasGradient|string} The generated canvas style.
      */
     _createLocalFillStyle(phase = 0) {
-        const c1 = this.cycleColors ? `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color1;
-        const c2 = this.cycleColors ? `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)` : this.gradient.color2;
+        // --- START OF FIX ---
+        // If the audio effect has set an override color, use it immediately.
+        if (this.colorOverride) {
+            return this.colorOverride;
+        }
+        // --- END OF FIX ---
+
+        let c1 = this.gradient.color1;
+        let c2 = this.gradient.color2;
+        if (this.cycleColors) {
+            c1 = `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)`;
+            c2 = `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)`;
+        }
 
         if (this.gradType === 'alternating') {
             return (phase % 2 === 0) ? c1 : c2;
         }
-
         const phaseIndex = this._getPhaseIndex(phase);
         const p = this._getAnimationProgress(phaseIndex);
-
         switch (this.gradType) {
             case 'linear':
                 return this._createLinearGradient(c1, c2, p);
@@ -899,20 +1043,19 @@ class Shape {
      * @private
      */
     _createLinearGradient(c1, c2, p) {
+        const gradientStop = (typeof this.gradientStop === 'number' && isFinite(this.gradientStop)) ? this.gradientStop : 50;
+        const progress = (typeof p === 'number' && isFinite(p)) ? p : 0;
         const halfW = this.width / 2;
         const halfH = this.height / 2;
         const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
-        const grad = isVertical
-            ? this.ctx.createLinearGradient(0, -halfH, 0, halfH)
-            : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
-
+        const grad = isVertical ? this.ctx.createLinearGradient(0, -halfH, 0, halfH) : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
         if (this.useSharpGradient) {
-            let p_bounce = p;
+            let p_bounce = progress;
             if (this.animationMode.includes('bounce')) {
-                const bounce_progress = (p < 0.5) ? (p * 2) : ((1 - p) * 2);
-                p_bounce = bounce_progress * (1.0 - (this.gradientStop / 100.0));
+                const bounce_progress = (progress < 0.5) ? (progress * 2) : ((1 - progress) * 2);
+                p_bounce = bounce_progress * (1.0 - (gradientStop / 100.0));
             }
-            const stopRatio = this.gradientStop / 100.0;
+            const stopRatio = gradientStop / 100.0;
             const p1 = p_bounce;
             const p2 = p1 + stopRatio;
             if (p2 > 1.0) {
@@ -925,31 +1068,34 @@ class Shape {
                 grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
                 grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
             }
-        } else { // Smooth Linear Gradient
+        } else {
             if (this.animationMode.includes('bounce')) {
-                grad.addColorStop(0, getPatternColor(0 - p, c1, c2));
-                grad.addColorStop(0.5, getPatternColor(0.5 - p, c1, c2));
-                grad.addColorStop(1, getPatternColor(1 - p, c1, c2));
-            } else { // Loop mode
-                const midPoint = this.gradientStop / 100.0;
+                grad.addColorStop(0, getPatternColor(0 - progress, c1, c2));
+                grad.addColorStop(0.5, getPatternColor(0.5 - progress, c1, c2));
+                grad.addColorStop(1, getPatternColor(1 - progress, c1, c2));
+            } else {
+                const midPoint = gradientStop / 100.0;
                 const stops = [];
                 const getPatternColorAtTime = (time) => {
                     const t = (time % 1.0 + 1.0) % 1.0;
-                    if (midPoint <= 0) return c2; if (midPoint >= 1) return c1;
+                    if (midPoint <= 0.0001) return c2;
+                    if (midPoint >= 0.9999) return c1;
                     if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
                     return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
                 };
-                stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
-                stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
+                stops.push({ pos: 0, color: getPatternColorAtTime(0 - progress) });
+                stops.push({ pos: 1, color: getPatternColorAtTime(1 - progress) });
                 for (let i = -2; i <= 2; i++) {
-                    const c1_pos = i + p;
-                    const c2_pos = i + midPoint + p;
+                    const c1_pos = i + progress;
+                    const c2_pos = i + midPoint + progress;
                     if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
                     if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
                 }
-                const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
-                    .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
-                uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
+                const uniqueStops = stops.sort((a, b) => a.pos - b.pos).filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
+                uniqueStops.forEach(stop => {
+                    const finalPos = (typeof stop.pos === 'number' && isFinite(stop.pos)) ? stop.pos : 0;
+                    grad.addColorStop(Math.max(0, Math.min(1, finalPos)), stop.color);
+                });
             }
         }
         return grad;
@@ -964,20 +1110,20 @@ class Shape {
      * @private
      */
     _createRadialGradient(c1, c2, p) {
+        const gradientStop = (typeof this.gradientStop === 'number' && isFinite(this.gradientStop)) ? this.gradientStop : 50;
+        const progress = (typeof p === 'number' && isFinite(p)) ? p : 0;
         const maxRadius = Math.max(this.width, this.height) / 2;
         if (maxRadius <= 0) return 'black';
-
         const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
-        const wave = 1 - Math.abs(2 * p - 1);
-
+        const wave = 1 - Math.abs(2 * progress - 1);
         if (this.useSharpGradient) {
-            const stopPoint = (this.gradientStop / 100) * wave;
+            const stopPoint = (gradientStop / 100) * wave;
             grad.addColorStop(0, c1);
             grad.addColorStop(stopPoint, c1);
             grad.addColorStop(Math.min(1, stopPoint + 0.001), c2);
             grad.addColorStop(1, c2);
         } else {
-            const midPoint = this.gradientStop / 100.0;
+            const midPoint = gradientStop / 100.0;
             const animatedMidPoint = midPoint * wave;
             grad.addColorStop(0, c1);
             grad.addColorStop(animatedMidPoint, c2);
@@ -1016,8 +1162,12 @@ class Shape {
         return grad;
     }
 
-    // In the Shape class, replace the entire updateAnimationState function with this one.
-    updateAnimationState() {
+    updateAnimationState(audioData) {
+        this._applyAudioReactivity(audioData);
+
+        // All speeds are now derived from the single, safeguarded 'animationSpeed' property.
+        const safeSpeed = (typeof this.animationSpeed === 'number' && isFinite(this.animationSpeed)) ? this.animationSpeed : 0;
+
         if (this.shape === 'tetris') {
             if (this.tetrisAnimation === 'fade-in-stack') {
                 if (this.tetrisBlocks.length === 0) {
@@ -1128,10 +1278,11 @@ class Shape {
             this.randomElementState = null;
         }
 
-        this.hue1 += this.cycleSpeed;
-        this.hue2 += this.cycleSpeed;
-        this.strokeHue1 += this.strokeCycleSpeed;
-        this.strokeHue2 += this.strokeCycleSpeed;
+        // Color cycling now uses the main animation speed.
+        this.hue1 += safeSpeed * 10;
+        this.hue2 += safeSpeed * 10;
+        this.strokeHue1 += safeSpeed * 10;
+        this.strokeHue2 += safeSpeed * 10;
 
         const currentText = this.getDisplayText();
         const textSpeed = this.textAnimationSpeed / 100;
@@ -1165,34 +1316,39 @@ class Shape {
                 break;
         }
 
+        // Gradient scrolling now uses the main animation speed.
         if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
-            const increment = this.animationSpeed * this.gradientSpeedMultiplier;
-            // FIX: This multiplier is now correct. Right/Down are positive, Left/Up are negative.
+            const increment = safeSpeed * gradientSpeedMultiplier;
             const directionMultiplier = (this.scrollDirection === 'left' || this.scrollDirection === 'up') ? -1 : 1;
             this.scrollOffset += increment * directionMultiplier;
         }
 
+        // Stroke gradient scrolling now uses the main animation speed.
         if (this.strokeGradType !== 'solid' && this.strokeGradType !== 'alternating' && this.strokeGradType !== 'random') {
-            const increment = this.strokeAnimationSpeed * this.gradientSpeedMultiplier;
+            const increment = safeSpeed * gradientSpeedMultiplier;
             const directionMultiplier = (this.strokeScrollDir === 'left' || this.strokeScrollDir === 'up') ? -1 : 1;
             this.strokeScrollOffset += increment * directionMultiplier;
         }
 
-        const rotationIncrement = (this.rotationSpeed || 0) / 1000;
+        const rotationIncrement = (typeof this.rotationSpeed === 'number' && isFinite(this.rotationSpeed)) ? (this.rotationSpeed / 1000) : 0;
         this.rotationAngle += rotationIncrement;
-        let animationIncrement;
 
+        let animationIncrement;
         if (this.shape == 'oscilloscope' && this.oscDisplayMode == 'seismic') {
-            animationIncrement = this.animationSpeed * this.seismicAnimationSpeedMultiplier;
+            animationIncrement = safeSpeed * seismicAnimationSpeedMultiplier;
             const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
             animationIncrement *= directionMultiplier;
         } else {
-            animationIncrement = this.animationSpeed * this.shapeAnimationSpeedMultiplier;
+            animationIncrement = safeSpeed * shapeAnimationSpeedMultiplier;
         }
-        this.animationAngle += animationIncrement;
+
+        if (isFinite(animationIncrement)) {
+            this.animationAngle += animationIncrement;
+        }
 
         if (this.shape === 'fire' || this.shape === 'fire-radial') {
-            this.particleSpawnCounter += this.animationSpeed / 4.0;
+            const speed = (typeof this.animationSpeed === 'number' && isFinite(this.animationSpeed)) ? this.animationSpeed : 0;
+            this.particleSpawnCounter += speed / 4.0;
             const particlesToSpawn = Math.floor(this.particleSpawnCounter);
             this.particleSpawnCounter -= particlesToSpawn;
 
@@ -1203,14 +1359,14 @@ class Shape {
                     if (this.fireParticles.length < 300) {
                         const halfH = this.height / 2;
                         const maxAge = (Math.random() * 60 + 90);
-                        const speed = (this.height / maxAge) * (Math.random() * 0.2 + 0.8);
+                        const particleSpeed = (this.height / maxAge) * (Math.random() * 0.2 + 0.8);
                         const startSize = (Math.random() * 0.5 + 0.5) * (this.width / 7);
 
                         const newParticle = {
                             id: this.nextParticleId++,
                             x: (Math.random() - 0.5) * this.width * 0.9, y: halfH,
                             sizeX: startSize, sizeY: startSize * (Math.random() * 1.5 + 0.5),
-                            age: 0, maxAge: maxAge, speed: speed
+                            age: 0, maxAge: maxAge, speed: particleSpeed
                         };
 
                         let baseColor;
@@ -1247,7 +1403,7 @@ class Shape {
                         const spreadMultiplier = this.fireSpread / 100.0;
                         const maxRadius = Math.min(this.width, this.height) / 2;
                         const maxAge = (Math.random() * 60 + 90);
-                        const speed = (maxRadius / maxAge) * spreadMultiplier;
+                        const particleSpeed = (maxRadius / maxAge) * spreadMultiplier;
                         const startSize = (Math.random() * 0.5 + 0.5) * (Math.min(this.width, this.height) / 8);
                         if (maxAge < 1) continue;
 
@@ -1256,7 +1412,7 @@ class Shape {
                             x: 0, y: 0,
                             sizeX: startSize, sizeY: startSize,
                             age: 0, maxAge: maxAge,
-                            speed: speed, angle: Math.random() * 2 * Math.PI
+                            speed: particleSpeed, angle: Math.random() * 2 * Math.PI
                         };
 
                         let baseColor;
@@ -1289,18 +1445,7 @@ class Shape {
         }
     }
 
-    // In main.js, replace the entire draw function in the Shape class
     draw(isSelected) {
-        if (isSelected && this.rotationSpeed !== 0) {
-            this.rotation = (this.rotationAngle * 180 / Math.PI) % 360;
-            this._pausedRotationSpeed = this.rotationSpeed;
-            this.rotationSpeed = 0;
-        } else if (!isSelected && this._pausedRotationSpeed !== null) {
-            const speedInput = document.querySelector(`[name="obj${this.id}_rotationSpeed"]`);
-            this.rotationSpeed = speedInput ? parseFloat(speedInput.value) : this._pausedRotationSpeed;
-            this._pausedRotationSpeed = null;
-        }
-
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
         const angleToUse = this.getRenderAngle();
@@ -1308,6 +1453,10 @@ class Shape {
         this.ctx.save();
         this.ctx.translate(centerX, centerY);
         this.ctx.rotate(angleToUse);
+
+        if (this.internalScale && this.internalScale !== 1.0) {
+            this.ctx.scale(this.internalScale, this.internalScale);
+        }
 
         const applyStrokeInside = () => {
             if (this.enableStroke && this.strokeWidth > 0) {
@@ -1325,14 +1474,11 @@ class Shape {
             this.ctx.beginPath();
             this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
             this.ctx.clip();
-
             this.ctx.fillStyle = '#000000';
             this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
             this.ctx.globalCompositeOperation = 'lighter';
-
             this.fireParticles.forEach(p => {
                 const lifeRatio = 1.0 - (p.age / p.maxAge);
-
                 let particleColor;
                 if (p.color.startsWith('hsl')) {
                     const baseHue = p.color.match(/hsl\((\d+\.?\d*)/)[1];
@@ -1341,7 +1487,6 @@ class Shape {
                 } else {
                     particleColor = lerpColor('#000000', p.color, lifeRatio);
                 }
-
                 const opacity = Math.sin(lifeRatio * Math.PI);
                 this.ctx.beginPath();
                 this.ctx.fillStyle = particleColor;
@@ -1349,82 +1494,56 @@ class Shape {
                 this.ctx.ellipse(p.x, p.y, p.sizeX * lifeRatio, p.sizeY * lifeRatio, 0, 0, 2 * Math.PI);
                 this.ctx.fill();
             });
-
             this.ctx.restore();
-
         } else if (this.shape === 'pixel-art') {
             try {
-                const data = JSON.parse(this.pixelArtData);
-                if (!Array.isArray(data) || data.length === 0 || !Array.isArray(data[0])) {
-                    return;
-                }
-
+                if (!this.pixelArtData) return;
+                const data = (typeof this.pixelArtData === 'string') ? JSON.parse(this.pixelArtData) : this.pixelArtData;
+                if (!Array.isArray(data) || data.length === 0 || !Array.isArray(data[0])) { return; }
                 const rows = data.length;
                 const cols = data[0].length;
+                if (cols === 0) return;
                 const cellWidth = this.width / cols;
                 const cellHeight = this.height / rows;
-
                 const isGradientFill = this.gradType === 'linear' || this.gradType === 'radial' || this.gradType.startsWith('rainbow');
-                if (isGradientFill) {
-                    this.ctx.fillStyle = this._createLocalFillStyle();
-                }
-
+                if (isGradientFill) { this.ctx.fillStyle = this._createLocalFillStyle(); }
                 for (let r = 0; r < rows; r++) {
                     for (let c = 0; c < cols; c++) {
                         const alphaValue = data[r] && data[r][c] ? data[r][c] : 0;
                         if (alphaValue > 0) {
                             if (!isGradientFill) {
                                 const cellIndex = r * cols + c;
-                                this.ctx.fillStyle = this.gradType === 'random'
-                                    ? this._getRandomColorForElement(cellIndex)
-                                    : this._createLocalFillStyle(cellIndex);
+                                this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(cellIndex) : this._createLocalFillStyle(cellIndex);
                             }
-
                             this.ctx.globalAlpha = alphaValue;
-
-                            this.ctx.fillRect(
-                                -this.width / 2 + c * cellWidth,
-                                -this.height / 2 + r * cellHeight,
-                                cellWidth,
-                                cellHeight
-                            );
+                            this.ctx.fillRect(-this.width / 2 + c * cellWidth, -this.height / 2 + r * cellHeight, cellWidth, cellHeight);
                         }
                     }
                 }
                 this.ctx.globalAlpha = 1.0;
-
-            } catch (e) {
-                // Silently fail if JSON is invalid.
-            }
+            } catch (e) { console.error("Failed to draw pixel art:", e); }
         } else if (this.shape === 'tetris') {
             this.ctx.beginPath();
             this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
             this.ctx.clip();
             this.tetrisBlocks.forEach((block, index) => {
-                if (this.gradType === 'random') {
-                    this.ctx.fillStyle = this._getRandomColorForElement(index);
-                } else {
-                    this.ctx.fillStyle = this._createLocalFillStyle(index);
-                }
+                this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(index) : this._createLocalFillStyle(index);
                 this.ctx.globalAlpha = block.life;
                 const drawX = block.x - (this.width / 2);
                 const drawY = block.y - (this.height / 2);
-                const topY = Math.round(drawY);
-                const bottomY = Math.round(drawY + block.h);
-                this.ctx.fillRect(Math.round(drawX), topY, Math.ceil(block.w), bottomY - topY);
+                this.ctx.fillRect(Math.round(drawX), Math.round(drawY), Math.ceil(block.w), Math.ceil(block.h));
             });
             this.ctx.globalAlpha = 1.0;
-
         } else if (this.shape === 'text') {
-            this.ctx.translate(-centerX, -centerY);
+            const textToRender = this.getDisplayText();
+            const centeredShape = { ...this, x: -this.width / 2, y: -this.height / 2, };
             this.ctx.fillStyle = this._createLocalFillStyle();
-            drawPixelText(this.ctx, this);
-
+            drawPixelText(this.ctx, centeredShape, textToRender);
         } else if (this.shape === 'oscilloscope') {
             const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
-
             if (this.oscDisplayMode === 'radial') {
-                this.ctx.lineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
+                this.ctx.lineWidth = this.lineWidth;
+                this.ctx.strokeStyle = this._createLocalFillStyle();
                 const totalRadius = (Math.min(this.width, this.height) / 2) - (this.ctx.lineWidth / 2);
                 if (totalRadius > 0) {
                     this.ctx.beginPath();
@@ -1446,11 +1565,10 @@ class Shape {
                         else this.ctx.lineTo(finalRadius * Math.cos(angleRad), finalRadius * Math.sin(angleRad));
                     }
                     this.ctx.closePath();
-                    this.ctx.strokeStyle = this.enableStroke ? this._createLocalStrokeStyle() : this._createLocalFillStyle();
                     this.ctx.stroke();
                 }
             } else if (this.oscDisplayMode === 'seismic') {
-                this.ctx.lineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
+                this.ctx.lineWidth = this.lineWidth;
                 const maxRadius = Math.min(this.width, this.height) / 2;
                 const waveCount = Math.max(1, this.waveCount);
                 const spacing = maxRadius / waveCount;
@@ -1463,7 +1581,6 @@ class Shape {
                     const fadeInLimit = spacing;
                     if (radius < fadeInLimit) alpha *= (radius / fadeInLimit);
                     if (alpha <= 0) continue;
-
                     this.ctx.globalAlpha = alpha;
                     this.ctx.beginPath();
                     if (this.waveStyle === 'wavy') {
@@ -1488,22 +1605,17 @@ class Shape {
                         }
                     } else { this.ctx.arc(0, 0, radius, 0, 2 * Math.PI); }
                     this.ctx.closePath();
-                    const style = this.gradType === 'random'
-                        ? this._getRandomColorForElement(i)
-                        : (this.enableStroke ? this._createLocalStrokeStyle(i) : this._createLocalFillStyle(i));
+                    const style = this._createLocalFillStyle(i);
                     this.ctx.strokeStyle = style;
                     this.ctx.fillStyle = style;
                     if (this.fillShape) { this.ctx.fill(); } else { this.ctx.stroke(); }
                 }
                 this.ctx.globalAlpha = 1.0;
             } else { // Linear Mode
-                // FIX: This entire block is rewritten to separate fill and stroke operations.
                 const halfW = this.width / 2;
                 const halfH = this.height / 2;
-                const activeLineWidth = this.enableStroke ? this.strokeWidth : this.lineWidth;
-                const amplitude = (this.height - activeLineWidth) / 2;
-
-                // 1. Create the path for the wave line.
+                const activeLineWidth = this.lineWidth;
+                const amplitude = Math.max(1, (this.height - activeLineWidth) / 2);
                 this.ctx.beginPath();
                 for (let i = 0; i <= this.width; i++) {
                     const progress = i / this.width;
@@ -1520,8 +1632,6 @@ class Shape {
                     const py = -y_wave * amplitude;
                     if (i === 0) this.ctx.moveTo(px, py); else this.ctx.lineTo(px, py);
                 }
-
-                // 2. If filling is enabled, create a new path for the fill and draw it.
                 if (this.fillShape) {
                     this.ctx.save();
                     this.ctx.lineTo(halfW, halfH);
@@ -1529,18 +1639,11 @@ class Shape {
                     this.ctx.closePath();
                     this.ctx.fillStyle = this._createLocalFillStyle();
                     this.ctx.fill();
-                    this.ctx.restore(); // Restore context, leaving original wave path intact.
+                    this.ctx.restore();
                 }
-
-                // 3. Stroke the original wave path.
-                if (this.enableStroke) {
-                    this.ctx.strokeStyle = this._createLocalStrokeStyle();
-                    this.ctx.lineWidth = this.strokeWidth;
-                } else {
-                    // This handles the case where the shape is not filled but should still be visible.
-                    this.ctx.strokeStyle = this._createLocalFillStyle();
-                    this.ctx.lineWidth = this.lineWidth;
-                }
+                this.ctx.strokeStyle = this._createLocalFillStyle();
+                this.ctx.lineWidth = this.lineWidth;
+                if (this.ctx.lineWidth <= 0 || !isFinite(this.ctx.lineWidth)) { this.ctx.lineWidth = 1; }
                 this.ctx.stroke();
             }
         } else {
@@ -1580,8 +1683,7 @@ class Shape {
                     const rX = this.width / 2; const rY = this.height / 2; const sides = Math.max(3, this.sides);
                     for (let i = 0; i < sides; i++) {
                         const a = (i / sides) * 2 * Math.PI - (Math.PI / 2);
-                        if (i === 0) this.ctx.moveTo(rX * Math.cos(a), rY * Math.sin(a));
-                        else this.ctx.lineTo(rX * Math.cos(a), rY * Math.sin(a));
+                        this.ctx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
                     }
                     this.ctx.closePath();
                 } else if (this.shape === 'star') {
@@ -1591,8 +1693,7 @@ class Shape {
                     for (let i = 0; i < 2 * points; i++) {
                         const rX = (i % 2 === 0) ? oRX : iRX; const rY = (i % 2 === 0) ? oRY : iRY;
                         const a = (i / (2 * points)) * 2 * Math.PI - (Math.PI / 2);
-                        if (i === 0) this.ctx.moveTo(rX * Math.cos(a), rY * Math.sin(a));
-                        else this.ctx.lineTo(rX * Math.cos(a), rY * Math.sin(a));
+                        this.ctx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
                     }
                     this.ctx.closePath();
                 } else { this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height); }
@@ -1678,6 +1779,8 @@ class ExportedShape extends Shape {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('startAudioBtn').addEventListener('click', setupAudio);
+
     if (!localStorage.getItem('termsAccepted')) {
         var termsModal = new bootstrap.Modal(document.getElementById('accept-terms-modal'));
         termsModal.show();
@@ -2430,11 +2533,6 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {object} config - The configuration for the control.
      * @returns {HTMLDivElement} The generated form group element.
      */
-    /**
- * Creates an HTML form control element based on a configuration object.
- * @param {object} config - The configuration for the control.
- * @returns {HTMLDivElement} The generated form group element.
- */
     function createFormControl(config) {
         const {
             property, name, label, type, default: defaultValue,
@@ -2572,13 +2670,21 @@ document.addEventListener('DOMContentLoaded', function () {
         let scriptHTML = '';
         let jsVars = '';
         let allKeys = [];
-        const minimize = document.getElementById('minimize-props-export')?.checked ?? false;
+        // const minimize = document.getElementById('minimize-props-export')?.checked ?? false;
+        const minimize = true;
+
+        // const essentialProps = [
+        //     'title', 'description', 'publisher', 'enableAnimation', 'gradType',
+        //     'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed',
+        //     'text', 'fontSize', 'frequency', 'waveCount', 'pulseDepth', 'animationMode',
+        //     'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeAnimationSpeed', 'strokeCycleSpeed',
+        //     'audioMetric', 'beatThreshold', 'audioSensitivity'
+        // ];
 
         const essentialProps = [
-            'title', 'description', 'publisher', 'enableAnimation', 'gradType',
-            'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed',
-            'text', 'fontSize', 'frequency', 'waveCount', 'pulseDepth', 'animationMode',
-            'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeAnimationSpeed', 'strokeCycleSpeed'
+            'gradType', 'gradColor1', 'gradColor2', 'animationSpeed', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2','strokeAnimationSpeed',
+            'title', 'description', 'publisher', 'enableAnimation','enableSound',
+            'enableAudioReactivity', 'audioMetric', 'beatThreshold', 'audioSensitivity'
         ];
 
         const generalValues = getControlValues();
@@ -2588,7 +2694,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return key && !key.startsWith('obj');
         }).forEach(conf => {
             const key = conf.property || conf.name;
-            const isEssential = essentialProps.includes(key);
+            // const isEssential = essentialProps.includes(key);
+            const isEssential = true;
             if (generalValues[key] !== undefined) {
                 allKeys.push(key);
                 let exportValue = generalValues[key];
@@ -2622,12 +2729,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
             objectConfigs.forEach(conf => {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-
-                if (propName !== 'shape' && !validPropsForShape.includes(propName)) {
-                    return;
-                }
-
                 const isEssential = essentialProps.includes(propName);
+
+                // if (propName !== 'shape' && !validPropsForShape.includes(propName)) {
+                //     return;
+                // }
+
+                // if (!isEssential) {
+                //     return;
+                // }
+
                 let liveValue;
 
                 if (propName.startsWith('gradColor')) {
@@ -2858,10 +2969,13 @@ document.addEventListener('DOMContentLoaded', function () {
             collapseWrapper.className = `collapse p-3 ${showObject ? 'show' : ''}`;
             collapseWrapper.appendChild(document.createElement('hr'));
 
+            // --- START OF FIX 1: UNIFY SPEED CONTROLS ---
             const groups = {
                 'Geometry': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed'],
-                'Color': ['gradType', 'gradColor1', 'gradColor2', 'useSharpGradient', 'gradientStop', 'phaseOffset', 'cycleColors', 'cycleSpeed', 'animationMode', 'animationSpeed', 'scrollDir']
+                'Color & Animation': ['gradType', 'gradColor1', 'gradColor2', 'useSharpGradient', 'gradientStop', 'phaseOffset', 'cycleColors', 'animationMode', 'animationSpeed', 'scrollDir'],
+                'Sound Reactivity': ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity']
             };
+            // --- END OF FIX 1 ---
             const currentShape = obj.shape;
 
             for (const groupName in groups) {
@@ -2896,9 +3010,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const createSettingsGroup = (title, propList, displayCondition) => {
+                if (!displayCondition) return;
                 const group = document.createElement('div');
                 group.className = 'control-group card card-body bg-body mb-3';
-                group.style.display = displayCondition ? 'block' : 'none';
                 const header = document.createElement('h6');
                 header.className = 'fs-5 text-body-secondary border-bottom pb-1 mb-3';
                 header.textContent = title;
@@ -2909,13 +3023,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             };
 
+            // --- START OF FIX 2: SIMPLIFY OSCILLOSCOPE STROKE ---
             const ringSettings = ['innerDiameter', 'numberOfSegments', 'angularWidth'];
             const gridSettings = ['numberOfRows', 'numberOfColumns'];
             const oscilloscopeSettings = ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'waveStyle', 'waveCount'];
             const tetrisSettings = ['tetrisBlockCount', 'tetrisAnimation', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce'];
             const polygonSettings = ['sides'];
             const starSettings = ['points', 'starInnerRadius'];
-            const strokeSettings = ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir'];
+            const strokeSettings = ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeScrollDir'];
             const radialFireSettings = ['fireSpread'];
             const pixelArtSettings = ['pixelArtData'];
             const textSubGroups = {
@@ -2924,17 +3039,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Text Animation': ['textAnimation', 'textAnimationSpeed']
             };
 
-
-
             createSettingsGroup('Ring Settings', ringSettings, currentShape === 'ring');
             createSettingsGroup('Polygon Settings', polygonSettings, currentShape === 'polygon');
             createSettingsGroup('Star Settings', starSettings, currentShape === 'star');
             createSettingsGroup('Oscilloscope Settings', oscilloscopeSettings, currentShape === 'oscilloscope');
             createSettingsGroup('Grid Settings', gridSettings, currentShape === 'rectangle');
             createSettingsGroup('Tetris Animation Settings', tetrisSettings, currentShape === 'tetris');
-            createSettingsGroup('Stroke Settings', strokeSettings, obj.shape !== 'text' && obj.shape !== 'tetris' && obj.shape !== 'fire' && obj.shape !== 'fire-radial' && obj.shape !== 'pixel-art');
+            // This condition now hides the Stroke panel for oscilloscopes.
+            createSettingsGroup('Stroke Settings', strokeSettings, currentShape !== 'text' && currentShape !== 'tetris' && currentShape !== 'fire' && currentShape !== 'fire-radial' && currentShape !== 'pixel-art' && currentShape !== 'oscilloscope');
             createSettingsGroup('Pixel Art Settings', pixelArtSettings, currentShape === 'pixel-art');
             createSettingsGroup('Radial Fire Settings', radialFireSettings, currentShape === 'fire-radial');
+            // --- END OF FIX 2 ---
 
             const textGroup = document.createElement('div');
             textGroup.style.display = currentShape === 'text' ? 'block' : 'none';
@@ -2975,7 +3090,6 @@ document.addEventListener('DOMContentLoaded', function () {
             trigger: 'hover'
         });
     }
-
 
     /**
      * Initializes the Sortable.js library on the controls form to allow
@@ -3044,8 +3158,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const key = conf.property || conf.name;
             const el = form.elements[key];
             if (el) {
-                // FIXED: This now correctly reads the 'checked' property for all booleans,
-                // including the 'enableAnimation' checkbox.
                 if (el.type === 'checkbox') {
                     data[key] = el.checked;
                 } else if (el.type === 'number') {
@@ -3285,20 +3397,18 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.restore();
     }
 
-    function drawFrame() {
+    function drawFrame(audioData = {}) { // <-- Add audioData parameter
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const animationEnabled = getControlValues().enableAnimation;
+        const soundEnabled = getControlValues().enableSound
 
-        // FIX: Replaced the forward forEach loop with a reverse for-loop.
-        // This draws the last object in the list first, so it appears at the back,
-        // perfectly matching the final rendering order in SignalRGB.
         for (let i = objects.length - 1; i >= 0; i--) {
             const obj = objects[i];
             if (obj instanceof Shape) {
                 if (animationEnabled) {
-                    obj.updateAnimationState();
+                    obj.updateAnimationState(audioData); // <-- Pass audioData here
                 }
                 obj.draw(selectedObjectIds.includes(obj.id));
             } else {
@@ -3306,7 +3416,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Draw selection UI for selected objects on top of everything.
         if (selectedObjectIds.length > 0) {
             selectedObjectIds.forEach(id => {
                 const obj = objects.find(o => o.id === id);
@@ -3319,6 +3428,33 @@ document.addEventListener('DOMContentLoaded', function () {
         drawSnapLines(snapLines);
     }
 
+    // function animate(timestamp) {
+    //     requestAnimationFrame(animate);
+
+    //     const now = timestamp;
+    //     const elapsed = now - then;
+
+    //     if (elapsed > fpsInterval) {
+    //         then = now - (elapsed % fpsInterval);
+
+    //         let audioData = {};
+    //         if (isAudioSetup) {
+    //             // If audio is running, get real metrics
+    //             audioData = getAudioMetrics();
+    //         } else {
+    //             // Otherwise, use the mock data as a fallback
+    //             const time = now / 1000;
+    //             audioData = {
+    //                 bass: (Math.sin(time * 2) + 1) / 2,
+    //                 mids: (Math.sin(time * 1.5 + 1) + 1) / 2,
+    //                 highs: (Math.sin(time * 3 + 2) + 1) / 2,
+    //                 volume: (Math.sin(time) + 1) / 2
+    //             };
+    //         }
+
+    //         drawFrame(audioData); // Pass the data (real or mock) to the draw function
+    //     }
+    // }
     function animate(timestamp) {
         requestAnimationFrame(animate);
 
@@ -3328,8 +3464,28 @@ document.addEventListener('DOMContentLoaded', function () {
         if (elapsed > fpsInterval) {
             then = now - (elapsed % fpsInterval);
 
-            // Always draw a frame to keep the UI responsive
-            drawFrame();
+            // Get the current state of the 'Enable Sound' checkbox from the form.
+            const generalValues = getControlValues();
+            const soundEnabled = generalValues.enableSound;
+
+            let audioData = {};
+
+            // Check if audio is enabled AND if the setup has been completed.
+            if (soundEnabled && isAudioSetup) {
+                // Use real audio metrics from the Web Audio API.
+                audioData = getAudioMetrics();
+            } else {
+                // Otherwise, use the mock data as a fallback.
+                const time = now / 1000;
+                audioData = {
+                    bass: (Math.sin(time * 2) + 1) / 2,
+                    mids: (Math.sin(time * 1.5 + 1) + 1) / 2,
+                    highs: (Math.sin(time * 3 + 2) + 1) / 2,
+                    volume: (Math.sin(time) + 1) / 2
+                };
+            }
+
+            drawFrame(audioData);
         }
     }
 
@@ -3588,6 +3744,108 @@ document.addEventListener('DOMContentLoaded', function () {
      * including complex shapes and strokes, are correctly applied.
      * @param {object} workspace - The workspace object to load.
      */
+    // function loadWorkspace(workspace) {
+    //     currentProjectMetadata = {
+    //         creatorName: workspace.creatorName,
+    //         createdAt: (workspace.createdAt && workspace.createdAt.toDate) ? workspace.createdAt.toDate() : workspace.createdAt
+    //     };
+
+    //     const loadedConfigs = workspace.configs;
+    //     const objectIds = [...new Set(
+    //         loadedConfigs
+    //             .map(c => (c.property || '').match(/^obj(\d+)_/))
+    //             .filter(match => match)
+    //             .map(match => parseInt(match[1], 10))
+    //     )];
+
+    //     const mergedConfigStore = loadedConfigs.filter(c => !(c.property || '').startsWith('obj'));
+
+    //     objectIds.forEach(id => {
+    //         const fullDefaultConfig = getDefaultObjectConfig(id);
+    //         const savedObjectConfigs = loadedConfigs.filter(c => c.property && c.property.startsWith(`obj${id}_`));
+    //         const savedPropsMap = new Map(savedObjectConfigs.map(c => [c.property, c]));
+
+    //         // This is the updated merging logic
+    //         const mergedObjectConfigs = fullDefaultConfig.map(defaultConf => {
+    //             if (savedPropsMap.has(defaultConf.property)) {
+    //                 const savedConf = savedPropsMap.get(defaultConf.property);
+
+    //                 // Start with the up-to-date default configuration...
+    //                 const mergedConf = { ...defaultConf };
+
+    //                 // ...then override it with the user's saved data.
+    //                 // This preserves the user's selection and custom name...
+    //                 if (savedConf.hasOwnProperty('default')) {
+    //                     mergedConf.default = savedConf.default;
+    //                 }
+    //                 if (savedConf.hasOwnProperty('label')) {
+    //                     mergedConf.label = savedConf.label;
+    //                 }
+    //                 // ...while always using the latest 'values', 'min', 'max', etc. from the default.
+    //                 return mergedConf;
+    //             }
+    //             return defaultConf;
+    //         });
+    //         mergedConfigStore.push(...mergedObjectConfigs);
+    //     });
+
+    //     configStore = mergedConfigStore;
+
+    //     createInitialObjects(objectIds);
+
+    //     if (workspace.objects) {
+    //         workspace.objects.forEach(savedObj => {
+    //             const obj = objects.find(o => o.id === savedObj.id);
+    //             if (obj) {
+    //                 obj.name = savedObj.name;
+    //                 obj.locked = savedObj.locked || false;
+    //             }
+    //         });
+    //     }
+
+    //     renderForm();
+
+    //     for (const config of configStore) {
+    //         const key = config.property || config.name;
+    //         const el = form.elements[key];
+    //         if (el) {
+    //             if (el.type === 'checkbox') {
+    //                 el.checked = (config.default === true || config.default === 'true');
+    //             } else {
+    //                 el.value = config.default;
+    //             }
+    //             if (el.type === 'number') {
+    //                 const slider = document.getElementById(`${el.id}_slider`);
+    //                 if (slider) slider.value = el.value;
+    //             }
+    //             if (el.type === 'color') {
+    //                 const hexInput = document.getElementById(`${el.id}_hex`);
+    //                 if (hexInput) hexInput.value = el.value;
+    //             }
+    //         }
+    //     }
+    //     if (workspace.creatorName) {
+    //         const publisherInput = form.elements['publisher'];
+    //         if (publisherInput) publisherInput.value = workspace.creatorName;
+    //     }
+
+    //     objects.forEach(obj => {
+    //         const finalProps = getFormValuesForObject(obj.id);
+    //         delete finalProps.shape;
+    //         obj.update(finalProps);
+    //     });
+
+    //     currentProjectDocId = workspace.docId || null;
+    //     updateShareButtonState();
+    //     generateOutputScript();
+    //     drawFrame();
+
+    //     if (workspace.docId) {
+    //         const newUrl = `${window.location.pathname}?effectId=${workspace.docId}`;
+    //         const effectTitle = workspace.name || "SRGB Effect Builder";
+    //         window.history.pushState({ effectId: workspace.docId }, effectTitle, newUrl);
+    //     }
+    // }
     function loadWorkspace(workspace) {
         currentProjectMetadata = {
             creatorName: workspace.creatorName,
@@ -3602,39 +3860,45 @@ document.addEventListener('DOMContentLoaded', function () {
                 .map(match => parseInt(match[1], 10))
         )];
 
-        const mergedConfigStore = loadedConfigs.filter(c => !(c.property || '').startsWith('obj'));
-
-        objectIds.forEach(id => {
-            const fullDefaultConfig = getDefaultObjectConfig(id);
-            const savedObjectConfigs = loadedConfigs.filter(c => c.property && c.property.startsWith(`obj${id}_`));
-            const savedPropsMap = new Map(savedObjectConfigs.map(c => [c.property, c]));
-
-            // This is the updated merging logic
-            const mergedObjectConfigs = fullDefaultConfig.map(defaultConf => {
-                if (savedPropsMap.has(defaultConf.property)) {
-                    const savedConf = savedPropsMap.get(defaultConf.property);
-
-                    // Start with the up-to-date default configuration...
-                    const mergedConf = { ...defaultConf };
-
-                    // ...then override it with the user's saved data.
-                    // This preserves the user's selection and custom name...
-                    if (savedConf.hasOwnProperty('default')) {
-                        mergedConf.default = savedConf.default;
-                    }
-                    if (savedConf.hasOwnProperty('label')) {
-                        mergedConf.label = savedConf.label;
-                    }
-                    // ...while always using the latest 'values', 'min', 'max', etc. from the default.
-                    return mergedConf;
-                }
-                return defaultConf;
-            });
-            mergedConfigStore.push(...mergedObjectConfigs);
+        // --- START OF FIX ---
+        // 1. Get the default general configs from the template.
+        const template = document.getElementById('initial-config');
+        const defaultMetaElements = Array.from(template.content.querySelectorAll('meta'));
+        const defaultConfigs = defaultMetaElements.map(parseMetaToConfig);
+        const defaultGeneralConfigs = defaultConfigs.filter(c => !(c.property || c.name).startsWith('obj'));
+        const defaultObjectConfigs = defaultConfigs.filter(c => (c.property || c.name).startsWith('obj'));
+        
+        // 2. Separate loaded configs into general and object-specific.
+        const loadedGeneralConfigs = loadedConfigs.filter(c => !(c.property || c.name).startsWith('obj'));
+        const loadedObjectConfigs = loadedConfigs.filter(c => (c.property || c.name).startsWith('obj'));
+        
+        // 3. Create a merged list for general configs, prioritizing loaded configs.
+        const mergedGeneralConfigs = defaultGeneralConfigs.map(defaultConf => {
+            const loadedConf = loadedGeneralConfigs.find(c => (c.property || c.name) === (defaultConf.property || defaultConf.name));
+            return loadedConf || defaultConf;
         });
 
-        configStore = mergedConfigStore;
+        // 4. Create a map of default object properties for a full set of defaults.
+        const defaultObjectProps = {};
+        objectIds.forEach(id => {
+            const defaults = getDefaultObjectConfig(id);
+            defaults.forEach(c => defaultObjectProps[c.property] = c);
+        });
 
+        // 5. Merge the loaded object properties with the defaults.
+        const mergedObjectConfigs = loadedObjectConfigs.map(loadedConf => {
+            const defaultConf = defaultObjectProps[loadedConf.property];
+            if (defaultConf) {
+                // Ensure latest 'values', 'min', 'max', etc. are always used.
+                return { ...defaultConf, default: loadedConf.default, label: loadedConf.label };
+            }
+            return loadedConf;
+        });
+
+        // 6. Combine all merged configs into the final configStore.
+        configStore = [...mergedGeneralConfigs, ...mergedObjectConfigs];
+        // --- END OF FIX ---
+        
         createInitialObjects(objectIds);
 
         if (workspace.objects) {
@@ -3737,7 +4001,6 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop', description: 'Determines how the gradient animation behaves.' },
             { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '0', max: '100', description: 'Master speed for gradient scroll, random color flicker, and oscilloscope movement.' },
             { property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100', description: 'The continuous rotation speed of the object. Overrides static rotation.' },
-            { property: `obj${newId}_cycleSpeed`, label: `Object ${newId}: Color Animation Speed`, type: 'number', default: '1', min: '0', max: '100', description: 'How fast the colors cycle when "Cycle Colors" is enabled.' },
             { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down', description: 'The direction the gradient animation moves.' },
             { property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100', description: 'Offsets the gradient animation for each item in a grid, seismic wave, or Tetris block, creating a cascading effect.' },
 
@@ -3781,8 +4044,6 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_strokeGradColor1`, label: `Object ${newId}: Stroke Color 1`, type: 'color', default: '#FFFFFF' },
             { property: `obj${newId}_strokeGradColor2`, label: `Object ${newId}: Stroke Color 2`, type: 'color', default: '#000000' },
             { property: `obj${newId}_strokeCycleColors`, label: `Object ${newId}: Cycle Stroke Colors`, type: 'boolean', default: 'false' },
-            { property: `obj${newId}_strokeCycleSpeed`, label: `Object ${newId}: Stroke Color Cycle Speed`, type: 'number', default: '1', min: '0', max: '100' },
-            { property: `obj${newId}_strokeAnimationSpeed`, label: `Object ${newId}: Stroke Animation Speed`, type: 'number', default: '2', min: '0', max: '100' },
             { property: `obj${newId}_strokeScrollDir`, label: `Object ${newId}: Stroke Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down' },
 
             // --- FIRE PROPERTIES ---
@@ -3791,6 +4052,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // --- PIXEL ART PROPERTIES ---
             { property: `obj${newId}_pixelArtData`, label: `Object ${newId}: Pixel Art Data`, type: 'textarea', default: '[[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],[0,0,0,0,0,0,0,0,0,0,0,1,0,0.5,0,1],[0,0,0,0,0,0,0,0,0,0,1,0,0.5,0,1,0],[0,0,0,0,0,0,0,0,0,1,0,0.5,0,1,0,0],[0,0,0,0,0,0,0,0,1,0,0.5,0,1,0,0,0],[0,0,1,1,0,0,0,1,0,0.5,0,1,0,0,0,0],[0,0,1,0.5,1,0,1,0,0.5,0,1,0,0,0,0,0],[0,0,0,1,0,1,0,0.5,0,1,0,0,0,0,0,0],[0,0,0,1,0,0,0.5,0,1,0,0,0,0,0,0,0],[0,0,0,0,1,0.5,0,1,0,0,0,0,0,0,0,0],[0,0,0,1,0.5,1,0,0,1,0,0,0,0,0,0,0],[0,0,1,0.5,1,0,1,1,0.5,1,0,0,0,0,0,0],[1,1,0.5,1,0,0,0,0,1,1,0,0,0,0,0,0],[1,0.5,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0]]', description: '(Pixel Art) A 2D array of alpha values (0 to 1) to draw.' },
+
+            // --- AUDIO REACTIVITY PROPERTIES ---
+            { property: `obj${newId}_enableAudioReactivity`, label: `Object ${newId}: Enable Sound Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sound.' },
+            { property: `obj${newId}_audioTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'White Flash', values: 'none,Flash,Size,Rotation', description: 'Which property of the object will be affected by the sound.' },
+            { property: `obj${newId}_audioMetric`, label: `Object ${newId}: Audio Metric`, type: 'combobox', default: 'volume', values: 'volume,bass,mids,highs', description: 'Which part of the audio spectrum to react to.' },
+            { property: `obj${newId}_beatThreshold`, label: `Object ${newId}: Beat Threshold`, type: 'number', default: '30', min: '1', max: '100', description: 'Sensitivity for beat detection. Higher values are MORE sensitive. Default is 30.' },
+            { property: `obj${newId}_audioSensitivity`, label: `Object ${newId}: Sensitivity`, type: 'number', default: '50', min: '0', max: '200', description: 'How strongly the object reacts to the audio metric.' },
+            { property: `obj${newId}_audioSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '50', min: '0', max: '99', description: 'Smooths out the reaction to prevent flickering. Higher values are smoother.' },
+
         ];
     }
 
@@ -3821,167 +4091,174 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const bodyContent = '<body><canvas id="signalCanvas"></canvas></body>';
 
-            // This surgically replaces the hardcoded speed in the exported code only.
-            const shapeClassString = Shape.toString().replace(
-                'this.seismicAnimationSpeedMultiplier = 0.015;',
-                'this.seismicAnimationSpeedMultiplier = seismicAnimationSpeedMultiplier;'
-            );
-            const shapeClasses = shapeClassString + '\n\n' + ExportedShape.toString();
+            // --- START OF DEFINITIVE FIX ---
+            // This new logic cleanly converts all necessary code to strings without manipulation.
+            const shapeClasses = [
+                Shape.toString(),
+                `
+    class ExportedShape extends Shape {
+        constructor(config) {
+            const scaledConfig = { ...config };
+            // We no longer need to scale props here as it's handled during object creation.
+            super(scaledConfig);
+        }
+        _applyAudioReactivity(audioData) {
+            // This directly calls the SignalRGB-specific logic.
+            (${srgb_applyAudioReactivity.toString()}).call(this, audioData);
+        }
+    }
+                `
+            ].join('\n\n');
+            // --- END OF DEFINITIVE FIX ---
 
             const exportedScript = `
-document.addEventListener('DOMContentLoaded', function () {
-    const canvas = document.getElementById('signalCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = 320;
-    canvas.height = 200;
-    let objects = [];
-    
-    ${jsVars}
-
-    // --- Speed Multipliers for SignalRGB Environment ---
-    let gradientSpeedMultiplier = ${EXPORT_GRADIENT_SPEED_MULTIPLIER};
-    let shapeAnimationSpeedMultiplier = ${EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER};
-    let seismicAnimationSpeedMultiplier = ${EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER};
-    let tetrisSpeedDivisor = ${EXPORT_TETRIS_SPEED_DIVISOR};
-
-    const FONT_DATA_4PX = ${JSON.stringify(FONT_DATA_4PX)};
-    const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};
-    const drawPixelText = ${drawPixelText.toString()};
-    const lerpColor = ${lerpColor.toString()};
-    const getPatternColor = ${getPatternColor.toString()};
-    
-    ${shapeClasses}
-
-    let fps = 50;
-    let fpsInterval;
-    let then;
-
-    const allPropKeys = ${allKeys};
-
-    function createInitialObjects() {
-        if (allPropKeys.length === 0) return;
+    document.addEventListener('DOMContentLoaded', function () {
+        const canvas = document.getElementById('signalCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = 320; // Use full resolution for export
+        canvas.height = 200;
+        let objects = [];
         
-        const uniqueIds = [...new Set(allPropKeys.map(p => {
-            if (!p.startsWith('obj')) return null;
-            const end = p.indexOf('_');
-            if (end <= 3) return null;
-            const idString = p.substring(3, end);
-            const id = parseInt(idString, 10);
-            return isNaN(id) ? null : String(id);
-        }).filter(id => id !== null))];
+        ${jsVars}
+
+        let gradientSpeedMultiplier = ${EXPORT_GRADIENT_SPEED_MULTIPLIER};
+        let shapeAnimationSpeedMultiplier = ${EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER};
+        let seismicAnimationSpeedMultiplier = ${EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER};
+        let tetrisSpeedDivisor = ${EXPORT_TETRIS_SPEED_DIVISOR};
+
+        const hexToHsl = ${hexToHsl.toString()};
+        const hslToHex = ${hslToHex.toString()};
+        const getSignalRGBAudioMetrics = ${getSignalRGBAudioMetrics.toString()};
+        const srgb_applyAudioReactivity = ${srgb_applyAudioReactivity.toString()};
         
-        objects = uniqueIds.map(id => {
-            const config = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
-            const prefix = 'obj' + id + '_';
+        const FONT_DATA_4PX = ${JSON.stringify(FONT_DATA_4PX)};
+        const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};
+        const drawPixelText = ${drawPixelText.toString()};
+        const lerpColor = ${lerpColor.toString()};
+        const getPatternColor = ${getPatternColor.toString()};
+        
+        ${shapeClasses}
+
+        let fps = 50;
+        let fpsInterval;
+        let then;
+
+        const allPropKeys = ${JSON.parse(JSON.stringify(allKeys))};
+
+        function createInitialObjects() {
+            if (allPropKeys.length === 0) return;
             
-            allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
-                const propName = key.substring(prefix.length);
-                try {
-                    let value = eval(key);
-                    if (value === "true") value = true;
-                    if (value === "false") value = false;
-
-                    if (propName.startsWith('gradColor')) {
-                        config.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                    } else if (propName.startsWith('strokeGradColor')) {
-                        config.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
-                    } else if (propName === 'scrollDir') {
-                        config.scrollDirection = value;
-                    } else if (propName === 'strokeScrollDir') {
-                        config.strokeScrollDir = value;
-                    } else {
-                        config[propName] = value;
-                    }
-                } catch (e) {}
-            });
+            const uniqueIds = [...new Set(allPropKeys.map(p => {
+                if (!p.startsWith('obj')) return null;
+                const end = p.indexOf('_');
+                if (end <= 3) return null;
+                const idString = p.substring(3, end);
+                const id = parseInt(idString, 10);
+                return isNaN(id) ? null : String(id);
+            }).filter(id => id !== null))];
             
-            config.animationSpeed = (config.animationSpeed || 0) / 10.0;
-            config.cycleSpeed = (config.cycleSpeed || 0) / 50.0;
-            config.strokeAnimationSpeed = (config.strokeAnimationSpeed || 0) / 10.0;
-            config.strokeCycleSpeed = (config.strokeCycleSpeed || 0) / 50.0;
+            objects = uniqueIds.map(id => {
+                const config = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
+                const prefix = 'obj' + id + '_';
+                
+                allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+                    const propName = key.substring(prefix.length);
+                    try {
+                        let value = eval(key);
+                        if (value === "true") value = true;
+                        if (value === "false") value = false;
 
-            if (config.shape === 'ring' || config.shape === 'circle') {
-                config.height = config.width;
-            }
-            return new ExportedShape(config);
-        });
-    }
+                        if (propName.startsWith('gradColor')) {
+                            config.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                        } else if (propName.startsWith('strokeGradColor')) {
+                            config.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                        } else if (propName === 'scrollDir') {
+                            config.scrollDirection = value;
+                        } else if (propName === 'strokeScrollDir') {
+                            config.strokeScrollDir = value;
+                        } else {
+                            config[propName] = value;
+                        }
+                    } catch (e) {}
+                });
+                
+                config.animationSpeed = (config.animationSpeed / 4 || 0) / 10.0;
+                
+                return new ExportedShape(config);
+            });
+        }
 
-    function drawFrame() {
-        if (!ctx) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        let shouldAnimate = false;
-        try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
+        function drawFrame() {
+            if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            let shouldAnimate = false;
+            try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
+            
+            const audioData = getSignalRGBAudioMetrics();
 
-        objects.forEach(obj => {
-            const prefix = 'obj' + obj.id + '_';
-            const propsToUpdate = { gradient: {}, strokeGradient: {} };
+            objects.forEach(obj => {
+                const prefix = 'obj' + obj.id + '_';
+                const propsToUpdate = { gradient: {}, strokeGradient: {} };
 
-            allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
-                const propName = key.substring(prefix.length);
-                try {
-                    let value = eval(key);
-                    if (value === "true") value = true;
-                    if (value === "false") value = false;
+                allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+                    const propName = key.substring(prefix.length);
+                    try {
+                        let value = eval(key);
+                        if (value === "true") value = true;
+                        if (value === "false") value = false;
 
-                    if (propName.startsWith('gradColor')) {
-                        propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                    } else if (propName.startsWith('strokeGradColor')) {
-                        propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
-                    } else if (propName === 'scrollDir') {
-                        propsToUpdate.scrollDirection = value;
-                    } else if (propName === 'strokeScrollDir') {
-                        propsToUpdate.strokeScrollDir = value;
-                    } else if (propName === 'animationSpeed') {
-                        propsToUpdate.animationSpeed = (value || 0) / 10.0;
-                    } else if (propName === 'cycleSpeed') {
-                        propsToUpdate.cycleSpeed = (value || 0) / 50.0;
-                    } else if (propName === 'strokeAnimationSpeed') {
-                        propsToUpdate.strokeAnimationSpeed = (value || 0) / 10.0;
-                    } else if (propName === 'strokeCycleSpeed') {
-                        propsToUpdate.strokeCycleSpeed = (value || 0) / 50.0;
-                    } else {
-                        propsToUpdate[propName] = value;
-                    }
-                } catch (e) {}
+                        if (propName.startsWith('gradColor')) {
+                            propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                        } else if (propName.startsWith('strokeGradColor')) {
+                            propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                        } else if (propName === 'scrollDir') {
+                            propsToUpdate.scrollDirection = value;
+                        } else if (propName === 'strokeScrollDir') {
+                            propsToUpdate.strokeScrollDir = value;
+                        } else if (propName === 'animationSpeed') {
+                            propsToUpdate.animationSpeed = (value || 0) / 10.0;
+                        } else {
+                            propsToUpdate[propName] = value;
+                        }
+                    } catch (e) {}
+                });
+
+                obj.update(propsToUpdate);
+
+                if (shouldAnimate) {
+                    obj.updateAnimationState(audioData);
+                }
             });
 
-            obj.update(propsToUpdate);
-
-            if (shouldAnimate) {
-                obj.updateAnimationState();
+            for (let i = objects.length - 1; i >= 0; i--) {
+                objects[i].draw(false);
             }
-        });
-
-        for (let i = objects.length - 1; i >= 0; i--) {
-            objects[i].draw(false);
         }
-    }
 
-    function animate(timestamp) {
-        requestAnimationFrame(animate);
-        const now = timestamp;
-        const elapsed = now - then;
+        function animate(timestamp) {
+            requestAnimationFrame(animate);
+            const now = timestamp;
+            const elapsed = now - then;
 
-        if (elapsed > fpsInterval) {
-            then = now - (elapsed % fpsInterval);
-            drawFrame();
+            if (elapsed > fpsInterval) {
+                then = now - (elapsed % fpsInterval);
+                drawFrame();
+            }
         }
-    }
 
-    function init() {
-        createInitialObjects();
-        fpsInterval = 1000 / fps;
-        then = window.performance.now();
-        animate(then);
-    }
+        function init() {
+            createInitialObjects();
+            fpsInterval = 1000 / fps;
+            then = window.performance.now();
+            animate(then);
+        }
 
-    init();
-});`;
+        init();
+    });`;
 
             const finalHtml = [
                 '<!DOCTYPE html>',
@@ -4322,10 +4599,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 let liveValue;
 
-                if (propName.startsWith('gradColor')) {
-                    liveValue = obj.gradient[propName.replace('gradColor', 'color')];
+                // --- START OF FIX ---
+                // This logic ensures we save the permanent base colors, not the temporary flash colors.
+                if (propName === 'gradColor1') {
+                    liveValue = obj.baseGradient.color1;
+                } else if (propName === 'gradColor2') {
+                    liveValue = obj.baseGradient.color2;
                 } else if (propName.startsWith('strokeGradColor')) {
                     liveValue = obj.strokeGradient[propName.replace('strokeGradColor', 'color')];
+                    // --- END OF FIX ---
                 } else if (propName === 'scrollDir') {
                     liveValue = obj.scrollDirection;
                 } else if (propName === 'strokeScrollDir') {
@@ -4338,16 +4620,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const propsToScaleDown = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth'];
                 const animPropsToScaleUp = ['animationSpeed', 'strokeAnimationSpeed'];
-                const cyclePropsToScaleUp = ['cycleSpeed', 'strokeCycleSpeed'];
 
                 if (propsToScaleDown.includes(propName)) {
                     liveValue /= 4.0;
                 } else if (animPropsToScaleUp.includes(propName)) {
                     liveValue *= 10.0;
-                } else if (cyclePropsToScaleUp.includes(propName)) {
-                    liveValue *= 50.0;
                 }
-                // Note: textAnimationSpeed is correctly excluded from scaling here.
 
                 if (typeof liveValue === 'boolean') {
                     liveValue = String(liveValue);
@@ -4676,14 +4954,11 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         const { x, y } = getCanvasCoordinates(e);
 
-        // FIX: This block detects if a drag has started after moving a small threshold.
         if (!isDragging && !isResizing && !isRotating && e.buttons === 1 && initialDragState.length > 0) {
             const dx = x - dragStartX;
             const dy = y - dragStartY;
-            if (Math.sqrt(dx * dx + dy * dy) > 5) { // Drag starts after moving 5 pixels
+            if (Math.sqrt(dx * dx + dy * dy) > 5) {
                 isDragging = true;
-
-                // When a drag starts, ensure the correct object is selected.
                 const hitObject = [...objects].reverse().find(obj => obj.isPointInside(dragStartX, dragStartY));
                 if (hitObject && !selectedObjectIds.includes(hitObject.id)) {
                     if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
@@ -4694,7 +4969,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }
-
 
         if (isRotating) {
             const initial = initialDragState[0];
@@ -4725,7 +4999,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const unSnappedState = (() => {
                 const tempObj = new Shape({ ...objects.find(o => o.id === initial.id) });
                 const anchorPoint = initial.anchorPoint;
-                const resizeAngle = tempObj.getRenderAngle();
+                const resizeAngle = tempObj.rotation * Math.PI / 180; // Use static rotation for box shape
                 const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
                 if (isSideHandle) {
                     const dragVecX = x - dragStartX;
@@ -4812,7 +5086,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const finalState = (() => {
                     const tempObj = new Shape({ ...objects.find(o => o.id === initial.id) });
                     const anchorPoint = initial.anchorPoint;
-                    const resizeAngle = tempObj.getRenderAngle();
+                    const resizeAngle = tempObj.rotation * Math.PI / 180; // Use static rotation for box shape
                     const isSideHandle = activeResizeHandle === 'top' || activeResizeHandle === 'bottom' || activeResizeHandle === 'left' || activeResizeHandle === 'right';
                     if (isSideHandle) {
                         const dragVecX = mouseX - dragStartX;
@@ -4905,8 +5179,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     selectedPoints.forEach(point => {
                         cachedSnapTargets.forEach(target => {
                             if (point.type === target.type) {
-                                if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x });
-                                if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y });
+                                if (Math.abs(point.x - target.x) < SNAP_THRESHOLD) hSnaps.push({ dist: Math.abs(point.x - target.x), adj: target.x - point.x, line: target.x, snapType: point.type });
+                                if (Math.abs(point.y - target.y) < SNAP_THRESHOLD) vSnaps.push({ dist: Math.abs(point.y - target.y), adj: target.y - point.y, line: target.y, snapType: point.type });
                             }
                         });
                     });
@@ -4918,42 +5192,29 @@ document.addEventListener('DOMContentLoaded', function () {
             if (hSnaps.length > 0) {
                 hSnaps.sort((a, b) => a.dist - b.dist);
                 finalDx += hSnaps[0].adj;
-                snapLines.push({ type: 'vertical', x: hSnaps[0].line, duration: 2 });
+                snapLines.push({ type: 'vertical', x: hSnaps[0].line, duration: 2, snapType: hSnaps[0].snapType });
             }
             if (vSnaps.length > 0) {
                 vSnaps.sort((a, b) => a.dist - b.dist);
                 finalDy += vSnaps[0].adj;
-                snapLines.push({ type: 'horizontal', y: vSnaps[0].line, duration: 2 });
-            }
-
-            if (constrainToCanvas) {
-                let constrainedDx = finalDx;
-                let constrainedDy = finalDy;
-                initialDragState.forEach(state => {
-                    const obj = objects.find(o => o.id === state.id);
-                    if (obj) {
-                        const originalX = obj.x;
-                        const originalY = obj.y;
-                        obj.x = state.x + finalDx;
-                        obj.y = state.y + finalDy;
-                        const { minX, minY, maxX, maxY } = getBoundingBox(obj);
-                        obj.x = originalX;
-                        obj.y = originalY;
-                        if (minX < 0) constrainedDx = Math.max(constrainedDx, -minX + finalDx);
-                        if (maxX > canvas.width) constrainedDx = Math.min(constrainedDx, canvas.width - maxX + finalDx);
-                        if (minY < 0) constrainedDy = Math.max(constrainedDy, -minY + finalDy);
-                        if (maxY > canvas.height) constrainedDy = Math.min(constrainedDy, canvas.height - maxY + finalDy);
-                    }
-                });
-                finalDx = constrainedDx;
-                finalDy = constrainedDy;
+                snapLines.push({ type: 'horizontal', y: vSnaps[0].line, duration: 2, snapType: vSnaps[0].snapType });
             }
 
             initialDragState.forEach(state => {
                 const obj = objects.find(o => o.id === state.id);
                 if (obj) {
-                    obj.x = state.x + finalDx;
-                    obj.y = state.y + finalDy;
+                    let newX = state.x + finalDx;
+                    let newY = state.y + finalDy;
+                    if (constrainToCanvas) {
+                        const tempObj = new Shape({ ...obj, x: newX, y: newY });
+                        const { minX, minY, maxX, maxY } = getBoundingBox(tempObj);
+                        if (minX < 0) newX -= minX;
+                        if (maxX > canvas.width) newX -= (maxX - canvas.width);
+                        if (minY < 0) newY -= minY;
+                        if (maxY > canvas.height) newY -= (maxY - canvas.height);
+                    }
+                    obj.x = newX;
+                    obj.y = newY;
                 }
             });
             needsRedraw = true;
@@ -4973,7 +5234,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             canvasContainer.style.cursor = cursor;
         }
-    });
+    });;
 
     /**
      * Handles the mouseup event to finalize dragging or resizing operations.
@@ -5158,7 +5419,6 @@ document.addEventListener('DOMContentLoaded', function () {
         recordHistory();
         updateUndoRedoButtons();
 
-        // --- START: Add "Minimize Properties" Checkbox ---
         const generalCollapseWrapper = document.querySelector('#collapse-general .p-3');
         if (generalCollapseWrapper) {
             const minimizeFormGroup = document.createElement('div');
@@ -5184,7 +5444,6 @@ document.addEventListener('DOMContentLoaded', function () {
             minimizeFormGroup.appendChild(helpText);
             generalCollapseWrapper.appendChild(minimizeFormGroup);
         }
-        // --- END: Add "Minimize Properties" Checkbox ---
 
         const lastUpdatedSpan = document.getElementById('last-updated-span');
         if (lastUpdatedSpan) {
@@ -5720,6 +5979,231 @@ document.addEventListener('DOMContentLoaded', function () {
             recordHistory();
             showToast(`Properties pasted to ${destObjects.length} object(s).`, 'success');
         });
+    }
+
+    /**
+     * Analyzes the current audio frame and returns calculated metrics, including average and peak values.
+     * @returns {object} An object with bass, mids, highs, and volume properties.
+     */
+    /**
+ * Analyzes the current audio frame and returns calculated metrics, including average and peak values.
+ * @returns {object} An object with bass, mids, highs, and volume properties.
+ */
+    function getAudioMetrics() {
+        if (!analyser) {
+            return {
+                bass: { avg: 0, peak: 0 },
+                mids: { avg: 0, peak: 0 },
+                highs: { avg: 0, peak: 0 },
+                volume: { avg: 0, peak: 0 }
+            };
+        }
+
+        analyser.getByteFrequencyData(frequencyData);
+
+        const bassEndIndex = Math.floor(analyser.frequencyBinCount * 0.1);
+        const midsEndIndex = Math.floor(analyser.frequencyBinCount * 0.4);
+
+        let bassTotal = 0, midsTotal = 0, highsTotal = 0;
+        let bassPeak = 0, midsPeak = 0, highsPeak = 0;
+        let volumeTotal = 0;
+
+        for (let i = 0; i < analyser.frequencyBinCount; i++) {
+            const value = frequencyData[i];
+            volumeTotal += value; // Add every frequency value to the total volume
+
+            if (i < bassEndIndex) {
+                bassTotal += value;
+                if (value > bassPeak) bassPeak = value;
+            } else if (i < midsEndIndex) {
+                midsTotal += value;
+                if (value > midsPeak) midsPeak = value;
+            } else {
+                highsTotal += value;
+                if (value > highsPeak) highsPeak = value;
+            }
+        }
+
+        // --- START OF FIX ---
+        // This provides a single, reliable 'avg' property for the volume metric.
+        const volumeAvg = (volumeTotal / analyser.frequencyBinCount) / 255;
+        // --- END OF FIX ---
+
+        return {
+            bass: {
+                avg: (bassTotal / (bassEndIndex || 1)) / 255,
+                peak: bassPeak / 255
+            },
+            mids: {
+                avg: (midsTotal / ((midsEndIndex - bassEndIndex) || 1)) / 255,
+                peak: midsPeak / 255
+            },
+            highs: {
+                avg: (highsTotal / ((analyser.frequencyBinCount - midsEndIndex) || 1)) / 255,
+                peak: highsPeak / 255
+            },
+            // We now provide the calculated average volume.
+            volume: {
+                avg: volumeAvg,
+                peak: volumeAvg // For volume, peak and avg can be the same for simplicity.
+            }
+        };
+    }
+
+    /**
+ * Sets up the Web Audio API to listen to a specific browser tab's audio.
+ */
+    async function setupAudio() {
+        if (isAudioSetup) return;
+
+        try {
+            // Step 1: Request permission to capture a tab. 
+            // We must request video:true to get the audio permission prompt.
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 44100
+                }
+            });
+
+            // Step 2: Check if the user actually shared audio.
+            if (stream.getAudioTracks().length === 0) {
+                // Stop the video track to remove the "sharing this screen" icon.
+                stream.getVideoTracks()[0].stop();
+                alert("Audio sharing was not enabled. Please try again and make sure to check the 'Share tab audio' box.");
+                return;
+            }
+
+            // Step 3: Create the audio context and connect the nodes (same as before).
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+
+            frequencyData = new Uint8Array(analyser.frequencyBinCount);
+            isAudioSetup = true;
+
+            // Stop the video track, as we only need the audio.
+            // This also removes the "sharing this screen" bar from the browser.
+            stream.getVideoTracks()[0].stop();
+
+            // Update the button UI
+            const startBtn = document.getElementById('startAudioBtn');
+            startBtn.textContent = 'Listening...';
+            startBtn.disabled = true;
+            showToast("Tab audio connected! Your visualizer is now live.", "success");
+
+        } catch (err) {
+            // This error happens if the user clicks "Cancel".
+            console.error('Error capturing tab:', err);
+            showToast("Tab capture was canceled or failed.", "error");
+        }
+    }
+
+    /**
+ * [SignalRGB Export] Analyzes SignalRGB's audio engine data and returns calculated metrics.
+ * @returns {object} An object with bass, mids, highs, and volume properties (0-1 range).
+ */
+    function getSignalRGBAudioMetrics() {
+        // Use a try/catch block in case the 'engine' object is not available.
+        if ( enableSound) {
+            const freqArray = engine.audio.freq || new Array(200).fill(0);
+            const level = engine.audio.level || -100;
+
+            // The frequency array from SignalRGB has 200 elements.
+            const bassEndIndex = 20;   // ~0-10% of spectrum
+            const midsEndIndex = 80;   // ~10-40% of spectrum
+
+            let bassTotal = 0, midsTotal = 0, highsTotal = 0;
+
+            for (let i = 0; i < bassEndIndex; i++) {
+                bassTotal += freqArray[i];
+            }
+            for (let i = bassEndIndex; i < midsEndIndex; i++) {
+                midsTotal += freqArray[i];
+            }
+            for (let i = midsEndIndex; i < freqArray.length; i++) {
+                highsTotal += freqArray[i];
+            }
+
+            // Normalize the frequency bands to a 0-1 range.
+            const bass = (bassTotal / (bassEndIndex || 1));
+            const mids = (midsTotal / ((midsEndIndex - bassEndIndex) || 1));
+            const highs = (highsTotal / ((freqArray.length - midsEndIndex) || 1));
+
+            // Convert SignalRGB's -100 to 0 level to our 0 to 1 volume scale.
+            const volume = (level + 100) / 100.0;
+
+            return {
+                bass: { avg: bass, peak: bass },
+                mids: { avg: mids, peak: mids },
+                highs: { avg: highs, peak: highs },
+                volume: { avg: volume, peak: volume }
+            };
+
+        } else {
+            // If engine data is not available, return silent values.
+            return {
+                bass: { avg: 0, peak: 0 },
+                mids: { avg: 0, peak: 0 },
+                highs: { avg: 0, peak: 0 },
+                volume: { avg: 0, peak: 0 }
+            };
+        }
+    }
+
+    /**
+     * [SignalRGB Export] A version of _applyAudioReactivity that works within SignalRGB.
+     * This function is converted to a method of the Shape class during export.
+     */
+    function srgb_applyAudioReactivity(audioData) {
+        this.rotation = this.baseRotation || 0;
+        this.internalScale = 1.0;
+        this.colorOverride = null;
+        this.gradient = { ...(this.baseGradient || { color1: '#000000', color2: '#000000' }) };
+        if (this.flashDecay > 0) { this.flashDecay -= 0.18; }
+        this.flashDecay = Math.max(0, this.flashDecay);
+
+        if (!this.enableAudioReactivity || !audioData || !audioData[this.audioMetric] || this.audioTarget === 'none') {
+            return;
+        }
+
+        const rawAudioValue = audioData[this.audioMetric].avg || 0;
+        this.audioHistory.push(rawAudioValue);
+        this.audioHistory.shift();
+
+        const n = this.audioHistory.length;
+        const mean = this.audioHistory.reduce((a, b) => a + b, 0) / n;
+        const stdDev = Math.sqrt(this.audioHistory.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / n);
+        const thresholdMultiplier = 0.5 + ((this.beatThreshold || 30) / 100.0) * 2.0;
+        const threshold = mean + thresholdMultiplier * stdDev;
+
+        if (rawAudioValue > threshold) {
+            const sensitivity = (this.audioSensitivity / 100.0) * 1.5;
+            this.flashDecay = Math.min(1.5, sensitivity);
+        }
+
+        const reactiveValue = this.flashDecay;
+
+        switch (this.audioTarget) {
+            case 'Flash':
+                if (reactiveValue > 0) {
+                    this.colorOverride = '#FFFFFF';
+                    this.flashOpacity = Math.min(1.0, reactiveValue);
+                } else { this.flashOpacity = 0; }
+                break;
+            case 'Size':
+                this.internalScale = 1.0 + reactiveValue;
+                break;
+            case 'Rotation':
+                const randomSign = Math.random() < 0.5 ? -1 : 1;
+                this.rotation = this.baseRotation + (randomSign * reactiveValue * 180);
+                break;
+        }
     }
 
     // Start the application.
