@@ -332,7 +332,7 @@ class Shape {
         if (this.isBeingManuallyRotated) {
             return;
         }
-        
+
         // Reset properties at the start of each frame.
         this.rotation = this.baseRotation || 0;
         this.internalScale = 1.0;
@@ -1575,10 +1575,9 @@ class Shape {
                 this.ctx.fillRect(pos.x - h2, pos.y - h2, this.handleSize, this.handleSize);
             });
 
-            // Draw the rotation handle in its dynamic position
             const rotHandlePos = this.getRotationHandlePosition();
             const connectionY = (rotHandlePos.y > 0) ? halfH : -halfH;
-
+            
             this.ctx.beginPath();
             this.ctx.moveTo(0, connectionY);
             this.ctx.lineTo(rotHandlePos.x, rotHandlePos.y);
@@ -1592,11 +1591,23 @@ class Shape {
 
         if (this.locked) {
             this.ctx.save();
-            this.ctx.font = '30px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
             this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            this.ctx.fillText('白', center.x, center.y); // Note: This character might not render for all users.
+
+            // SVG path data for Bootstrap's 'lock-fill' icon.
+            const lockPathData = "M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z";
+            const lockIconPath = new Path2D(lockPathData);
+
+            // The original icon is on a 16x16 grid. We'll scale it to 30px.
+            const iconSize = 30;
+            const scale = iconSize / 16;
+
+            // Translate to the center of the shape, then adjust for the icon's own center.
+            this.ctx.translate(center.x - (iconSize / 2), center.y - (iconSize / 2));
+            this.ctx.scale(scale, scale);
+
+            // Fill the path to draw the icon.
+            this.ctx.fill(lockIconPath);
+
             this.ctx.restore();
         }
     }
