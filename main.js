@@ -1078,15 +1078,16 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderForm() {
         // --- 1. PREPARATION & STATE PRESERVATION ---
 
-        // Dispose of any existing Bootstrap tooltips to prevent memory leaks or visual glitches.
+        // Dispose of any existing Bootstrap tooltips to prevent memory leaks or visual glitches
+        // when the form is rebuilt.
         const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         existingTooltips.forEach(el => {
             const tooltip = bootstrap.Tooltip.getInstance(el);
             if (tooltip) tooltip.dispose();
         });
 
-        // Before wiping the form, save the current values of the general settings.
-        // This ensures they persist through the re-render.
+        // Before wiping the form, save the current values of the general settings controls.
+        // This ensures settings like "Effect Title" aren't lost during the re-render.
         const generalSettingsValues = {};
         const generalConfigs = configStore.filter(c => !(c.property || c.name).startsWith('obj'));
         generalConfigs.forEach(conf => {
@@ -1097,7 +1098,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Save the open/closed (collapsed) state of all existing panels.
+        // Save the open/closed (collapsed) state of all existing panels to restore it later.
         const generalCollapseEl = form.querySelector('#collapse-general');
         const generalCollapseState = generalCollapseEl ? generalCollapseEl.classList.contains('show') : true;
 
@@ -1111,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Clear the entire form to rebuild it from scratch.
+        // Clear the entire form to rebuild it from scratch based on the current application state.
         form.innerHTML = '';
         // Group all configurations by object ID for easier processing.
         const grouped = groupConfigs(configStore);
@@ -1119,6 +1120,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // --- 2. GENERAL SETTINGS PANEL CREATION ---
 
+        // Create the main container for the General Settings panel.
         const generalFieldset = document.createElement('fieldset');
         generalFieldset.className = 'border p-2 mb-3 rounded bg-body-tertiary';
 
@@ -1133,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', function () {
         generalHeaderBar.setAttribute('aria-expanded', showGeneral);
         generalHeaderBar.setAttribute('aria-controls', generalCollapseId);
 
-        // Create the left side of the header (the title).
+        // Create a left group to hold the text.
         const generalLeftGroup = document.createElement('div');
         generalLeftGroup.className = 'd-flex align-items-center';
         const generalHeaderText = document.createElement('span');
@@ -1142,7 +1144,7 @@ document.addEventListener('DOMContentLoaded', function () {
         generalLeftGroup.appendChild(generalHeaderText);
         generalHeaderBar.appendChild(generalLeftGroup);
 
-        // Create the right side of the header (the chevron icon).
+        // Create a right group to hold the icon.
         const generalRightGroup = document.createElement('div');
         generalRightGroup.className = 'd-flex align-items-center';
         const generalCollapseIcon = document.createElement('span');
@@ -1151,11 +1153,12 @@ document.addEventListener('DOMContentLoaded', function () {
         generalRightGroup.appendChild(generalCollapseIcon);
         generalHeaderBar.appendChild(generalRightGroup);
 
-        // Create the collapsible area for the controls.
+        // Create the collapsible area that will hold the form controls.
         const generalCollapseWrapper = document.createElement('div');
         generalCollapseWrapper.id = generalCollapseId;
         generalCollapseWrapper.className = `collapse p-3 ${showGeneral ? 'show' : ''}`;
         generalCollapseWrapper.innerHTML = '<hr class="mt-2 mb-3">';
+        // Populate the collapsible area with the actual form controls.
         grouped.general.forEach(conf => generalCollapseWrapper.appendChild(createFormControl(conf)));
 
         generalFieldset.appendChild(generalHeaderBar);
@@ -1171,24 +1174,26 @@ document.addEventListener('DOMContentLoaded', function () {
             const objectConfigs = grouped.objects[id] || [];
             if (!objectConfigs) return;
             const objectName = obj.name || `Object ${id}`;
+
+            // Create the main container for this object's panel.
             const fieldset = document.createElement('fieldset');
             fieldset.className = 'border p-2 mb-3 rounded bg-body-tertiary';
             fieldset.dataset.objectId = id;
 
-            // Create the main header bar for the object panel.
+            // Create the header bar for the object panel.
             const headerBar = document.createElement('div');
             headerBar.className = 'd-flex justify-content-between align-items-center w-100 px-2 py-1';
             const collapseId = `collapse-obj-${id}`;
             const showObject = activeCollapseStates[id] === true || selectedObjectIds.includes(id);
 
-            // Make the entire header bar clickable to toggle the panel.
+            // Make the entire header bar clickable to toggle the panel's visibility.
             headerBar.style.cursor = 'pointer';
             headerBar.dataset.bsToggle = 'collapse';
             headerBar.dataset.bsTarget = `#${collapseId}`;
             headerBar.setAttribute('aria-expanded', showObject);
             headerBar.setAttribute('aria-controls', collapseId);
 
-            // Clicks on specific controls shouldn't toggle the panel, so we stop the event from bubbling up.
+            // This helper function prevents clicks on child buttons from also toggling the panel.
             const stopPropagation = (e) => e.stopPropagation();
 
             // Create the left group (drag handle, editable name).
@@ -1226,15 +1231,108 @@ document.addEventListener('DOMContentLoaded', function () {
             leftGroup.appendChild(editableArea);
             headerBar.appendChild(leftGroup);
 
-            // Create the right group (lock, duplicate/delete, chevron icon).
+            // Create the group of control buttons on the right (lock, menu, chevron).
             const controlsGroup = document.createElement('div');
             controlsGroup.className = 'd-flex align-items-center flex-shrink-0';
-            controlsGroup.addEventListener('click', stopPropagation);
 
+            // This listener now handles clicks on the buttons inside this group,
+            // while also stopping the click from toggling the panel's collapse state.
+            controlsGroup.addEventListener('click', (e) => {
+                e.stopPropagation();
+
+                const lockBtn = e.target.closest('.btn-lock');
+                const deleteBtn = e.target.closest('.btn-delete');
+                const duplicateBtn = e.target.closest('.btn-duplicate');
+
+                if (lockBtn) {
+                    const id = parseInt(lockBtn.dataset.id, 10);
+                    const obj = objects.find(o => o.id === id);
+                    if (obj) {
+                        obj.locked = !obj.locked;
+                        const icon = lockBtn.querySelector('i');
+                        lockBtn.classList.toggle('btn-warning', obj.locked);
+                        lockBtn.classList.toggle('btn-outline-secondary', !obj.locked);
+                        icon.className = `bi ${obj.locked ? 'bi-lock-fill' : 'bi-unlock-fill'}`;
+                        const tooltip = bootstrap.Tooltip.getInstance(lockBtn);
+                        if (tooltip) {
+                            tooltip.setContent({ '.tooltip-inner': obj.locked ? 'Unlock Object' : 'Lock Object' });
+                        }
+                        drawFrame();
+                    }
+                }
+
+                if (deleteBtn) {
+                    e.preventDefault();
+                    const idToDelete = parseInt(deleteBtn.dataset.id, 10);
+                    deleteObjects([idToDelete]);
+                }
+
+                if (duplicateBtn) {
+                    e.preventDefault();
+                    const idToCopy = parseInt(duplicateBtn.dataset.id, 10);
+                    const objectToCopy = objects.find(o => o.id === idToCopy);
+                    if (!objectToCopy) return;
+
+                    const newState = JSON.parse(JSON.stringify(objectToCopy, (key, value) => {
+                        if (key === 'ctx') return undefined;
+                        return value;
+                    }));
+
+                    const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
+                    newState.id = newId;
+                    newState.name = `${objectToCopy.name} Copy`;
+                    newState.x += 20;
+                    newState.y += 20;
+
+                    const newShape = new Shape({ ...newState, ctx });
+                    objects.push(newShape);
+
+                    const oldConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${idToCopy}_`));
+                    const newConfigs = oldConfigs.map(oldConf => {
+                        const newConf = { ...oldConf };
+                        const propName = oldConf.property.substring(oldConf.property.indexOf('_') + 1);
+                        newConf.property = `obj${newId}_${propName}`;
+                        newConf.label = `${newState.name}:${oldConf.label.split(':')[1]}`;
+
+                        let liveValue = newShape[propName];
+                        if (propName.startsWith('gradColor')) {
+                            liveValue = newShape.gradient[propName.replace('gradColor', 'color')];
+                        } else if (propName === 'scrollDir') {
+                            liveValue = newShape.scrollDirection;
+                        }
+
+                        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+                        if (propsToScale.includes(propName)) {
+                            liveValue /= 4;
+                        } else if (propName === 'animationSpeed') {
+                            liveValue *= 10;
+                        } else if (propName === 'cycleSpeed') {
+                            liveValue *= 50;
+                        }
+
+                        newConf.default = liveValue;
+                        return newConf;
+                    });
+
+                    configStore.push(...newConfigs);
+                    selectedObjectIds = [newId];
+                    renderForm();
+                    syncPanelsWithSelection();
+                    drawFrame();
+                    recordHistory();
+                }
+            });
+
+            // Create the lock/unlock button.
             const lockButton = document.createElement('button');
             const isLocked = obj.locked || false;
-            lockButton.className = `btn btn-sm btn-lock ${isLocked ? 'btn-warning' : 'btn-outline-secondary'} d-flex align-items-center justify-content-center p-0 ms-2`;
-            lockButton.style.width = '28px'; lockButton.style.height = '28px';
+            // --- START OF FIX ---
+            // Removed fixed width (style.width) and p-0 class.
+            // Added px-2 class to provide horizontal padding.
+            lockButton.className = `btn btn-sm btn-lock ${isLocked ? 'btn-warning' : 'btn-outline-secondary'} d-flex align-items-center justify-content-center px-2 ms-2`;
+            lockButton.style.height = '28px';
+            lockButton.style.width = '28px';
+            // --- END OF FIX ---
             lockButton.type = 'button';
             lockButton.dataset.id = id;
             lockButton.dataset.bsToggle = 'tooltip';
@@ -1242,11 +1340,17 @@ document.addEventListener('DOMContentLoaded', function () {
             lockButton.innerHTML = `<i class="bi ${isLocked ? 'bi-lock-fill' : 'bi-unlock-fill'}"></i>`;
             controlsGroup.appendChild(lockButton);
 
+            // Create the dropdown menu (for duplicate/delete).
             const dropdown = document.createElement('div');
             dropdown.className = 'dropdown';
-            dropdown.innerHTML = `<button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center p-0 ms-2" style="width: 28px; height: 28px;" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-list fs-5"></i></button><ul class="dropdown-menu dropdown-menu-dark"><li><a class="dropdown-item btn-duplicate" href="#" data-id="${id}"><i class="bi bi-copy me-2"></i>Duplicate</a></li><li><a class="dropdown-item btn-delete text-danger" href="#" data-id="${id}"><i class="bi bi-trash me-2"></i>Delete</a></li></ul>`;
+            // --- START OF FIX ---
+            // Removed fixed width (style.width) and p-0 class from the dropdown toggle button.
+            // Added px-2 class to provide horizontal padding.
+            dropdown.innerHTML = `<button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center px-2 ms-2" style="height: 28px;" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-list fs-5"></i></button><ul class="dropdown-menu dropdown-menu-dark"><li><a class="dropdown-item btn-duplicate" href="#" data-id="${id}"><i class="bi bi-copy me-2"></i>Duplicate</a></li><li><a class="dropdown-item btn-delete text-danger" href="#" data-id="${id}"><i class="bi bi-trash me-2"></i>Delete</a></li></ul>`;
+            // --- END OF FIX ---
             controlsGroup.appendChild(dropdown);
 
+            // Create the chevron icon indicator.
             const collapseIcon = document.createElement('span');
             collapseIcon.className = `legend-button ${showObject ? '' : 'collapsed'} ms-2`;
             collapseIcon.innerHTML = `<i class="bi bi-chevron-up"></i>`;
@@ -1259,7 +1363,10 @@ document.addEventListener('DOMContentLoaded', function () {
             collapseWrapper.className = `collapse p-3 ${showObject ? 'show' : ''}`;
             collapseWrapper.appendChild(document.createElement('hr'));
 
-            // --- Tabbed Interface Creation ---
+
+            // --- 4. TABBED INTERFACE CREATION ---
+
+            // Create the navigation and content containers for the tabs.
             const tabNav = document.createElement('ul');
             tabNav.className = 'nav nav-tabs';
             tabNav.id = `object-tabs-${id}`;
@@ -1268,6 +1375,7 @@ document.addEventListener('DOMContentLoaded', function () {
             tabContent.className = 'tab-content';
             tabContent.id = `object-tab-content-${id}`;
 
+            // Define the structure of the tabs and which controls go in each.
             const controlGroupMap = {
                 'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
                 'Fill & Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'useSharpGradient', 'gradientStop', 'animationMode', 'animationSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'textAnimationSpeed'], icon: 'bi-palette-fill' },
@@ -1285,14 +1393,18 @@ document.addEventListener('DOMContentLoaded', function () {
             let isFirstTab = true;
             for (const groupName in controlGroupMap) {
                 const groupProps = controlGroupMap[groupName].props;
+                // Filter the properties to only show those relevant to the current tab and object shape.
                 const relevantProps = objectConfigs.filter(conf => {
                     const propName = conf.property.substring(conf.property.indexOf('_') + 1);
                     return groupProps.includes(propName) && validPropsForShape.includes(propName);
                 });
 
+                // If there are any controls to show, create the tab.
                 if (relevantProps.length > 0) {
                     const tabId = `tab-${id}-${groupName.replace(/\s/g, '-')}`;
                     const paneId = `pane-${id}-${groupName.replace(/\s/g, '-')}`;
+
+                    // Create the clickable tab button.
                     const tabItem = document.createElement('li');
                     tabItem.className = 'nav-item';
                     tabItem.setAttribute('role', 'presentation');
@@ -1311,6 +1423,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     tabButton.appendChild(document.createTextNode(groupName));
                     tabItem.appendChild(tabButton);
                     tabNav.appendChild(tabItem);
+
+                    // Create the content pane for the tab.
                     const pane = document.createElement('div');
                     pane.className = `tab-pane fade ${isFirstTab ? 'show active' : ''}`;
                     pane.id = paneId;
@@ -1322,6 +1436,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     groupHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
                     groupHeader.textContent = groupName;
                     groupCard.appendChild(groupHeader);
+                    // Add the form controls to the content pane.
                     relevantProps.forEach(conf => {
                         groupCard.appendChild(createFormControl(conf));
                     });
@@ -1337,7 +1452,7 @@ document.addEventListener('DOMContentLoaded', function () {
             form.appendChild(fieldset);
         });
 
-        // --- 4. FINALIZATION ---
+        // --- 5. FINALIZATION ---
 
         // Restore the saved general settings values to the newly created controls.
         for (const key in generalSettingsValues) {
@@ -1351,9 +1466,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Sync the form controls with the live object properties.
+        // Sync all form controls with the live object properties.
         updateFormValuesFromObjects();
-        // Re-initialize all Bootstrap tooltips.
+        // Re-initialize all Bootstrap tooltips on the new elements.
         new bootstrap.Tooltip(document.body, {
             selector: "[data-bs-toggle='tooltip']",
             trigger: 'hover'
@@ -2589,6 +2704,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const fieldset = e.target.closest('fieldset[data-object-id]');
         const isInteractive = e.target.closest('button, a, input, [contenteditable="true"]');
 
+        // This listener is now only responsible for selecting a panel when the empty space is clicked.
         if (fieldset && !isInteractive) {
             const idToSelect = parseInt(fieldset.dataset.objectId, 10);
             if (!(selectedObjectIds.length === 1 && selectedObjectIds[0] === idToSelect)) {
@@ -2598,104 +2714,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 drawFrame();
             }
         }
-
-        if (e.target.classList.contains('object-name')) {
-            e.stopPropagation();
-            e.preventDefault();
-            return;
-        }
-        const deleteBtn = e.target.closest('.btn-delete');
-        const duplicateBtn = e.target.closest('.btn-duplicate');
-        const lockBtn = e.target.closest('.btn-lock');
-
-        if (lockBtn) {
-            e.preventDefault();
-            const id = parseInt(lockBtn.dataset.id, 10);
-            const obj = objects.find(o => o.id === id);
-            if (obj) {
-                obj.locked = !obj.locked;
-                const icon = lockBtn.querySelector('i');
-                lockBtn.classList.toggle('btn-warning', obj.locked);
-                lockBtn.classList.toggle('btn-outline-secondary', !obj.locked);
-                icon.className = `bi ${obj.locked ? 'bi-lock-fill' : 'bi-unlock-fill'}`;
-                const tooltip = bootstrap.Tooltip.getInstance(lockBtn);
-                if (tooltip) {
-                    tooltip.setContent({ '.tooltip-inner': obj.locked ? 'Unlock Object' : 'Lock Object' });
-                }
-                drawFrame();
-            }
-        }
-
-        if (deleteBtn) {
-            e.preventDefault();
-            const idToDelete = parseInt(deleteBtn.dataset.id, 10);
-            deleteObjects([idToDelete]); // Use the new, centralized delete function
-        }
-
-        if (duplicateBtn) {
-            e.preventDefault();
-
-            const idToCopy = parseInt(duplicateBtn.dataset.id, 10);
-            const objectToCopy = objects.find(o => o.id === idToCopy);
-            if (!objectToCopy) return;
-
-            // 1. Create a true copy of the source object's live properties
-            const newState = JSON.parse(JSON.stringify(objectToCopy, (key, value) => {
-                if (key === 'ctx') return undefined; // Exclude non-serializable canvas context
-                return value;
-            }));
-
-            // 2. Assign a new ID and Name, and offset it slightly
-            const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
-            newState.id = newId;
-            newState.name = `${objectToCopy.name} Copy`;
-            newState.x += 20;
-            newState.y += 20;
-
-            // 3. Create the new Shape instance from the copied state
-            const newShape = new Shape({ ...newState, ctx });
-            objects.push(newShape);
-
-            // 4. Generate a new set of form configurations based on the new object's state
-            const oldConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${idToCopy}_`));
-            const newConfigs = oldConfigs.map(oldConf => {
-                const newConf = { ...oldConf };
-                const propName = oldConf.property.substring(oldConf.property.indexOf('_') + 1);
-                newConf.property = `obj${newId}_${propName}`;
-                newConf.label = `${newState.name}:${oldConf.label.split(':')[1]}`;
-
-                // Get the live value from the newly created shape
-                let liveValue = newShape[propName];
-                if (propName.startsWith('gradColor')) {
-                    liveValue = newShape.gradient[propName.replace('gradColor', 'color')];
-                } else if (propName === 'scrollDir') {
-                    liveValue = newShape.scrollDirection;
-                }
-
-                // Apply inverse scaling to get the correct UI/form value
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
-                if (propsToScale.includes(propName)) {
-                    liveValue /= 4;
-                } else if (propName === 'animationSpeed') {
-                    liveValue *= 10;
-                } else if (propName === 'cycleSpeed') {
-                    liveValue *= 50;
-                }
-
-                newConf.default = liveValue;
-                return newConf;
-            });
-
-            configStore.push(...newConfigs);
-
-            // 5. Update the UI
-            selectedObjectIds = [newId];
-            renderForm();
-            syncPanelsWithSelection();
-            drawFrame();
-            recordHistory();
-        }
-    });
+    });;
 
     document.addEventListener('keydown', (e) => {
         // Handle Undo and Redo first, as these should work even when an input is focused.
@@ -3608,9 +3627,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 configStore = metaElements.map(parseMetaToConfig);
                 createInitialObjects();
                 renderForm();
-
-                // ... explicit setting of form values from default config ...
-
                 generateOutputScript(); // Generate script after setup
             }
         }
