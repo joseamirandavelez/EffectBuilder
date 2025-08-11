@@ -249,74 +249,75 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const shapePropertyMap = {
         rectangle: [
-            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         circle: [
-            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         ring: [
-            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         polygon: [
-            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'sides',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         star: [
-            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'points', 'starInnerRadius',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         text: [
-            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation',
             'textAnimationSpeed', 'showTime', 'showDate',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         oscilloscope: [
-            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationMode', 'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'scrollDir', 'phaseOffset',
             'lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape',
             'enableWaveAnimation', 'waveStyle', 'waveCount',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',,
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir', ,
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         tetris: [
-            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed', 'phaseOffset',
             'tetrisAnimation', 'tetrisBlockCount', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
-            
+
         ],
         fire: [
-            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         'fire-radial': [
-            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         'pixel-art': [
-            'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'pixelArtData',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
         ]
     };
 
@@ -1407,6 +1408,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Filter the properties to only show those relevant to the current tab and object shape.
                 const relevantProps = objectConfigs.filter(conf => {
                     const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+                    if (propName === 'shape' && groupName === 'Geometry') {
+                        return true;
+                    }
+
                     return groupProps.includes(propName) && validPropsForShape.includes(propName);
                 });
 
@@ -1503,15 +1508,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 const fieldsets = Array.from(form.querySelectorAll('fieldset[data-object-id]'));
                 const newOrderedIds = fieldsets.map(fieldset => parseInt(fieldset.dataset.objectId, 10));
 
-                // --- 2. Reorder the live `objects` array (this part was already correct) ---
+                // --- 2. Reorder the live `objects` array ---
                 objects.sort((a, b) => newOrderedIds.indexOf(a.id) - newOrderedIds.indexOf(b.id));
 
                 // --- 3. Reorder the `configStore` to match the new object order (THE FIX) ---
-                // Separate general configs from object-specific ones
                 const generalConfigs = configStore.filter(c => !(c.property || '').startsWith('obj'));
                 const objectConfigs = configStore.filter(c => (c.property || '').startsWith('obj'));
 
-                // Group all object configs by their ID
                 const configsById = {};
                 objectConfigs.forEach(conf => {
                     const match = conf.property.match(/^obj(\d+)_/);
@@ -1524,7 +1527,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 });
 
-                // Rebuild the object configs list in the new order
                 const reorderedObjectConfigs = [];
                 newOrderedIds.forEach(id => {
                     if (configsById[id]) {
@@ -1532,7 +1534,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 });
 
-                // Combine them back into the main configStore
                 configStore = [...generalConfigs, ...reorderedObjectConfigs];
 
                 // --- 4. Update the application state ---
@@ -1832,13 +1833,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const isAnimating = getControlValues().enableAnimation;
 
-        objects.forEach(obj => {
+        // Iterate backwards through the objects array. Because the array is ordered
+        // with the top-most layer at index 0, iterating backwards ensures that
+        // the bottom layers are drawn first, and the top layers are drawn last (on top).
+        for (let i = objects.length - 1; i >= 0; i--) {
+            const obj = objects[i];
             if (isAnimating) {
                 obj.updateAnimationState(audioData);
             }
             obj.draw(selectedObjectIds.includes(obj.id));
             obj.dirty = false;
-        });
+        }
 
         if (selectedObjectIds.length > 0) {
             selectedObjectIds.forEach(id => {
@@ -1988,6 +1993,7 @@ document.addEventListener('DOMContentLoaded', function () {
         values.strokeAnimationSpeed = (values.strokeAnimationSpeed || 0) / 10.0;
         // Note: textAnimationSpeed is a plain value and is not scaled.
 
+        // Enforce height lock for rings only, allowing circles to be stretched.
         if (values.shape === 'ring') {
             values.height = values.width;
         }
@@ -2103,7 +2109,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const grouped = groupConfigs(configStore);
         const initialStates = [];
 
-        const idsToProcess = Object.keys(grouped.objects);
+        const idsToProcess = [];
+        configStore.forEach(conf => {
+            const match = (conf.property || '').match(/^obj(\d+)_/);
+            if (match) {
+                const id = parseInt(match[1], 10);
+                if (!idsToProcess.includes(id)) {
+                    idsToProcess.push(id);
+                }
+            }
+        });
 
         idsToProcess.forEach(id => {
             const configForThisObject = { id: parseInt(id), gradient: {}, strokeGradient: {} };
@@ -2143,9 +2158,11 @@ document.addEventListener('DOMContentLoaded', function () {
             configForThisObject.strokeCycleSpeed = (configForThisObject.strokeCycleSpeed || 0) / 50.0;
             configForThisObject.strokeAnimationSpeed = (configForThisObject.strokeAnimationSpeed || 0) / 10.0;
 
-            if (configForThisObject.shape === 'ring' || configForThisObject.shape === 'circle') {
+            // Enforce height lock for rings only, allowing circles to be stretched.
+            if (configForThisObject.shape === 'ring') {
                 configForThisObject.height = configForThisObject.width;
             }
+
 
             initialStates.push(configForThisObject);
         });
@@ -2293,15 +2310,12 @@ document.addEventListener('DOMContentLoaded', function () {
             enableAnimationConfig.default = 'true';
         }
 
-        // --- START OF NEW CODE ---
-        // Force 'Enable Sound' to be true on every load.
         const enableSoundConfig = mergedGeneralConfigs.find(
             conf => conf.property === 'enableSound'
         );
         if (enableSoundConfig) {
             enableSoundConfig.default = 'true';
         }
-        // --- END OF NEW CODE ---
 
         const objectIds = [...new Set(
             loadedConfigs
@@ -2330,6 +2344,21 @@ document.addEventListener('DOMContentLoaded', function () {
         configStore = [...mergedGeneralConfigs, ...finalMergedObjectConfigs];
 
         createInitialObjects();
+
+        // --- START OF FIX ---
+        // Apply general settings from the merged configStore to the form.
+        configStore.filter(c => !(c.property || c.name).startsWith('obj')).forEach(conf => {
+            const key = conf.property || conf.name;
+            const el = form.elements[key];
+            if (el) {
+                if (el.type === 'checkbox') {
+                    el.checked = (conf.default === true || conf.default === 'true');
+                } else {
+                    el.value = conf.default;
+                }
+            }
+        });
+        // --- END OF FIX ---
 
         if (workspace.objects && workspace.objects.length > 0) {
             workspace.objects.forEach(savedObj => {
@@ -2449,6 +2478,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_audioSensitivity`, label: `Object ${newId}: Sensitivity`, type: 'number', default: '50', min: '0', max: '200', description: 'How strongly the object reacts to the audio metric.' },
             { property: `obj${newId}_audioSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '50', min: '0', max: '99', description: 'Smooths out the reaction to prevent flickering. Higher values are smoother.' },
             { property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'false', description: 'For text objects, automatically sets the object\'s width to the width of the text.' },
+            { property: `obj${newId}_pixelArtData`, label: `Object ${newId}: Pixel Art Data`, type: 'textarea', default: '[[1,0,0,1],[0,1,1,0],[0,1,1,0],[1,0,0,1]]', description: '(Pixel Art) Paste your pixel art data array here. Use a tool like the Pixel Art Data Generator for a starting point.' },
         ];
     }
 
@@ -2867,67 +2897,28 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
-     * Updates the global configStore with the current live state of all Shape objects.
+     * Updates the global configStore with the current state of all form controls.
+     * This makes the form the single source of truth at the moment of saving.
      */
     function syncConfigStoreWithState() {
-        const currentValues = getControlValues();
+        const formValues = getControlValues();
 
         configStore.forEach(conf => {
             const key = conf.property || conf.name;
-            const isObjectProp = key.startsWith('obj');
 
-            if (!isObjectProp) {
-                if (currentValues[key] !== undefined) {
-                    conf.default = currentValues[key];
-                }
-            } else {
-                const match = key.match(/^obj(\d+)_/);
-                if (!match) return;
+            // Ensure we only update properties that exist in the form
+            if (formValues.hasOwnProperty(key)) {
+                let valueToSave = formValues[key];
 
-                const id = parseInt(match[1], 10);
-                const propName = key.substring(match[0].length);
-                const obj = objects.find(o => o.id === id);
-                if (!obj) return;
-
-                let liveValue;
-
-                // --- START OF FIX ---
-                // This logic ensures we save the permanent base colors, not the temporary flash colors.
-                if (propName === 'gradColor1') {
-                    liveValue = obj.baseGradient.color1;
-                } else if (propName === 'gradColor2') {
-                    liveValue = obj.baseGradient.color2;
-                } else if (propName.startsWith('strokeGradColor')) {
-                    liveValue = obj.strokeGradient[propName.replace('strokeGradColor', 'color')];
-                    // --- END OF FIX ---
-                } else if (propName === 'scrollDir') {
-                    liveValue = obj.scrollDirection;
-                } else if (propName === 'strokeScrollDir') {
-                    liveValue = obj.strokeScrollDir;
-                } else {
-                    liveValue = obj[propName];
+                // The form holds UI-scaled values, which is what we need to save.
+                // We just need to ensure the data types are correct for saving.
+                if (conf.type === 'number') {
+                    valueToSave = Math.round(Number(valueToSave));
+                } else if (typeof valueToSave === 'boolean') {
+                    valueToSave = String(valueToSave);
                 }
 
-                if (liveValue === undefined) return;
-
-                const propsToScaleDown = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth'];
-                const animPropsToScaleUp = ['animationSpeed', 'strokeAnimationSpeed'];
-
-                if (propsToScaleDown.includes(propName)) {
-                    liveValue /= 4.0;
-                } else if (animPropsToScaleUp.includes(propName)) {
-                    liveValue *= 10.0;
-                }
-
-                if (typeof liveValue === 'boolean') {
-                    liveValue = String(liveValue);
-                } else if (typeof liveValue === 'number') {
-                    liveValue = Math.round(liveValue);
-                } else if (propName === 'text' && typeof liveValue === 'string') {
-                    liveValue = liveValue.replace(/\n/g, '\\n');
-                }
-
-                conf.default = liveValue;
+                conf.default = valueToSave;
             }
         });
     }
@@ -3202,7 +3193,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (!isRotating && !isResizing) {
-            const hitObject = [...objects].reverse().find(obj => obj.isPointInside(x, y));
+            const hitObject = objects.find(obj => obj.isPointInside(x, y));
             if (hitObject) {
                 const isNewlySelected = !selectedObjectIds.includes(hitObject.id);
 
@@ -4130,8 +4121,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const newId = objects.length > 0 ? (Math.max(...objects.map(o => o.id))) + 1 : 1;
         const newConfigs = getDefaultObjectConfig(newId);
 
-        // This is the corrected line:
-        configStore.unshift(...newConfigs);
+        // Find the insertion point (after general settings, before existing object settings).
+        const firstObjectConfigIndex = configStore.findIndex(c => (c.property || c.name || '').startsWith('obj'));
+
+        if (firstObjectConfigIndex === -1) {
+            // If no other objects exist, just add the new configs to the end.
+            configStore.push(...newConfigs);
+        } else {
+            // Otherwise, insert the new configs before the first existing object's configs.
+            configStore.splice(firstObjectConfigIndex, 0, ...newConfigs);
+        }
 
         const state = {
             id: newId,
@@ -4166,7 +4165,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const newShape = new Shape({ ...state, ctx });
+
+        // Add the new shape to the beginning of the objects array to place it on the top layer.
         objects.unshift(newShape);
+
 
         renderForm();
         updateFormValuesFromObjects();
@@ -4182,6 +4184,26 @@ document.addEventListener('DOMContentLoaded', function () {
             confirmActionCallback();
         }
     });
+
+    /**
+     * Creates a debounced version of a function that delays invoking the function
+     * until after a certain number of milliseconds have passed since the last time
+     * the debounced function was invoked.
+     * @param {Function} func The function to debounce.
+     * @param {number} delay The number of milliseconds to delay.
+     * @returns {Function} The new debounced function.
+     */
+    function debounce(func, delay) {
+        let timeout;
+        return function (...args) {
+            const context = this;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), delay);
+        };
+    }
+
+    const debouncedRecordHistory = debounce(recordHistory, 500);
+
 
     // This handles committed changes from text boxes, dropdowns, color pickers, and checkboxes.
     form.addEventListener('change', (e) => {
