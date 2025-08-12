@@ -202,7 +202,7 @@ function getPatternColor(t, c1, c2) {
 }
 
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, beatThreshold }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth }) {
         // --- ALL properties are assigned here first ---
         this.dirty = true;
         this.id = id;
@@ -301,27 +301,35 @@ class Shape {
         this.pixelArtData = pixelArtData || '[[1]]';
         this.internalScale = 1.0;
         this.colorOverride = null;
-        this.audioHistory = new Array(30).fill(0); // Stores the last 30 frames of audio volume
-        this.flashDecay = 0; // Controls the fade-out of the flash effect
+        this.audioHistory = new Array(30).fill(0);
+        this.flashDecay = 0;
         this.beatThreshold = beatThreshold || 30;
         this.baseBeatThreshold = this.beatThreshold;
-
-        // --- ADD THESE NEW PROPERTIES ---
-        // Sound Reactivity Properties
         this.enableAudioReactivity = enableAudioReactivity || false;
         this.audioTarget = audioTarget || 'size';
         this.audioMetric = audioMetric || 'volume';
         this.audioSensitivity = audioSensitivity || 10;
+        this.audioSmoothing = audioSmoothing;
         this.smoothedAudioValue = 0;
+        this.volumeMeterFill = 0;
+        this.vizBarCount = vizBarCount || 32;
+        this.vizBarSpacing = vizBarSpacing || 2;
+        this.vizSmoothing = vizSmoothing || 60;
+        this.vizStyle = vizStyle || 'bottom';
+        this.vizBarHeights = new Array(parseInt(this.vizBarCount, 10)).fill(0);
+        this.vizLayout = vizLayout || 'Linear';
+        this.vizDrawStyle = vizDrawStyle || 'Bars';
+        this.vizUseSegments = vizUseSegments || false;
+        this.vizSegmentCount = vizSegmentCount || 16;
+        this.vizSegmentSpacing = vizSegmentSpacing || 1;
+        this.vizLineWidth = vizLineWidth || 8;
 
-        // Store base properties for non-destructive reactivity
         this.baseWidth = this.width;
         this.baseHeight = this.height;
         this.baseRotation = this.rotation;
         this.baseAnimationSpeed = this.animationSpeed;
         this.baseStrokeWidth = this.strokeWidth;
         this.baseGradient = { ...this.gradient };
-
         this.baseGradientStop = this.gradientStop;
         this.baseStarInnerRadius = this.starInnerRadius;
         this.baseInnerDiameter = this.innerDiameter;
@@ -338,6 +346,7 @@ class Shape {
         this.internalScale = 1.0;
         this.colorOverride = null;
         this.gradient = { ...(this.baseGradient || { color1: '#000000', color2: '#000000' }) };
+        this.volumeMeterFill = 0; // Reset the meter fill
 
         // 1. Update Flash Decay
         if (this.flashDecay > 0) {
@@ -351,9 +360,14 @@ class Shape {
         }
 
         const rawAudioValue = audioData[this.audioMetric].avg || 0;
+
+        // Update smoothed value for continuous effects like the volume meter
+        const smoothingFactor = (this.audioSmoothing || 0) / 100.0;
+        this.smoothedAudioValue = smoothingFactor * this.smoothedAudioValue + (1.0 - smoothingFactor) * rawAudioValue;
+
+        // Beat detection for impulse effects
         this.audioHistory.push(rawAudioValue);
         this.audioHistory.shift();
-
         const n = this.audioHistory.length;
         const mean = this.audioHistory.reduce((a, b) => a + b, 0) / n;
         const stdDev = Math.sqrt(this.audioHistory.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / n);
@@ -381,6 +395,35 @@ class Shape {
             case 'Rotation':
                 this.rotation = this.baseRotation + (randomSign * reactiveValue * 180);
                 break;
+            case 'Volume Meter':
+                const sensitivity = 1.0 + (this.audioSensitivity / 100.0) * 2.0; // Sensitivity from 1x to 3x
+                this.volumeMeterFill = Math.min(1.0, this.smoothedAudioValue * sensitivity);
+                break;
+        }
+    }
+
+    _drawFill(phase = 0) {
+        if (this.audioTarget === 'Volume Meter' && this.volumeMeterFill > 0) {
+            this.ctx.save();
+            this.ctx.clip(); // Use the shape's path as a clipping mask
+
+            // Draw the "empty" part of the meter as a semi-transparent background
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+
+            // Calculate the height and position for the "filled" part of the meter
+            const fillHeight = this.height * this.volumeMeterFill;
+            const fillY = this.height / 2 - fillHeight; // Positioned from the bottom up
+
+            // Draw the filled part using the object's current style
+            this.ctx.fillStyle = this._createLocalFillStyle(phase);
+            this.ctx.fillRect(-this.width / 2, fillY, this.width, fillHeight);
+
+            this.ctx.restore(); // Remove the clipping mask
+        } else {
+            // If not a volume meter, use the original fill logic
+            this.ctx.fillStyle = this._createLocalFillStyle(phase);
+            this.ctx.fill();
         }
     }
 
@@ -578,6 +621,7 @@ class Shape {
         // --- Store original state for calculations ---
         const oldWidth = this.width;
         const oldHeight = this.height;
+        const oldVizBarCount = this.vizBarCount;
 
         // --- PRE-UPDATE LOGIC ---
         const textChanged = props.text !== undefined && props.text !== this.text;
@@ -603,7 +647,6 @@ class Shape {
         const oldCols = this.numberOfColumns;
 
         // --- UNIFIED UPDATE LOGIC ---
-        // 1. Directly update the object's live properties from the form input.
         for (const key in props) {
             if (props[key] === undefined) continue;
             if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
@@ -619,7 +662,6 @@ class Shape {
 
         this.dirty = true;
 
-        // --- NEW: Adjust position to keep the center stationary ---
         if (props.width !== undefined || props.height !== undefined) {
             const dWidth = oldWidth - this.width;
             const dHeight = oldHeight - this.height;
@@ -627,14 +669,13 @@ class Shape {
             this.y += dHeight / 2;
         }
 
-        // 2. AFTER updating, snapshot the new state into the 'base' properties.
+        // --- Snapshot base properties AFTER updating ---
         this.baseWidth = this.width;
         this.baseHeight = this.height;
         this.baseRotation = this.rotation;
         this.baseAnimationSpeed = this.animationSpeed;
         this.baseStrokeWidth = this.strokeWidth;
         this.baseGradient = { ...this.gradient };
-
         this.baseGradientStop = this.gradientStop;
         this.baseStarInnerRadius = this.starInnerRadius;
         this.baseInnerDiameter = this.innerDiameter;
@@ -647,6 +688,13 @@ class Shape {
         if (this.shape === 'text') {
             this._updateTextMetrics();
         }
+
+        // --- START: ROBUST VISUALIZER UPDATE ---
+        const vizBarCountChanged = this.vizBarCount !== oldVizBarCount;
+        if (this.shape === 'audio-visualizer' && (!this.vizBarHeights || vizBarCountChanged)) {
+            this.vizBarHeights = new Array(parseInt(this.vizBarCount, 10) || 0).fill(0);
+        }
+        // --- END: ROBUST VISUALIZER UPDATE ---
     }
 
     _createLocalStrokeStyle(phase = 0) {
@@ -654,8 +702,9 @@ class Shape {
             return this.colorOverride;
         }
 
-        const c1 = this.strokeCycleColors ? `hsl(${this.strokeHue1 % 360}, 100%, 50%)` : this.strokeGradient.color1;
-        const c2 = this.strokeCycleColors ? `hsl(${this.strokeHue2 % 360}, 100%, 50%)` : this.strokeGradient.color2;
+        const safeColor = (c) => (typeof c === 'string' && c.length > 0) ? c : '#000000';
+        const c1 = this.strokeCycleColors ? `hsl(${this.strokeHue1 % 360}, 100%, 50%)` : safeColor(this.strokeGradient.color1);
+        const c2 = this.strokeCycleColors ? `hsl(${this.strokeHue2 % 360}, 100%, 50%)` : safeColor(this.strokeGradient.color2);
 
         if (this.strokeGradType === 'alternating') {
             return (phase % 2 === 0) ? c1 : c2;
@@ -810,12 +859,17 @@ class Shape {
      * @returns {CanvasGradient|string} The generated canvas style.
      */
     _createLocalFillStyle(phase = 0) {
-        // If the audio effect has set an override color, use it immediately.
         if (this.colorOverride) {
             return this.colorOverride;
         }
-        let c1 = this.gradient.color1;
-        let c2 = this.gradient.color2;
+        // --- START: FIX ---
+        // Safeguard against invalid or undefined colors that might come from
+        // state transitions, ensuring a valid color is always used.
+        const safeColor = (c) => (typeof c === 'string' && c.length > 0) ? c : '#000000';
+        let c1 = safeColor(this.gradient.color1);
+        let c2 = safeColor(this.gradient.color2);
+        // --- END: FIX ---
+
         if (this.cycleColors) {
             c1 = `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)`;
             c2 = `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)`;
@@ -1007,8 +1061,89 @@ class Shape {
     updateAnimationState(audioData) {
         this._applyAudioReactivity(audioData);
 
-        // All speeds are now derived from the single, safeguarded 'animationSpeed' property.
+        if (this.shape === 'audio-visualizer' && audioData && audioData.frequencyData) {
+            const fullFreqData = audioData.frequencyData;
+            const smoothingFactor = this.vizSmoothing / 100.0;
+            const barCount = parseInt(this.vizBarCount, 10);
+
+            const maxFreqIndex = Math.round((20000 / 22050) * fullFreqData.length);
+            const freqData = fullFreqData.slice(0, maxFreqIndex);
+
+            if (!this.vizBarHeights || this.vizBarHeights.length !== barCount) {
+                this.vizBarHeights = new Array(barCount).fill(0);
+            }
+
+            let minFreq = 255;
+            let maxFreq = 0;
+            for (let i = 0; i < freqData.length; i++) {
+                if (freqData[i] < minFreq) minFreq = freqData[i];
+                if (freqData[i] > maxFreq) maxFreq = freqData[i];
+            }
+            const freqRange = maxFreq > minFreq ? maxFreq - minFreq : 1;
+
+            if (freqData.length === 0) return;
+            const logMax = Math.log(freqData.length);
+
+            const normalizedAvgs = [];
+            let peakNormalizedValue = 0;
+
+            for (let i = 0; i < barCount; i++) {
+                const startRatio = i / barCount;
+                const endRatio = (i + 1) / barCount;
+                const startFreqIndex = Math.max(0, Math.floor(Math.exp(startRatio * logMax)) - 1);
+                const endFreqIndex = Math.max(0, Math.floor(Math.exp(endRatio * logMax)) - 1);
+
+                let sum = 0;
+                let count = 0;
+                for (let j = startFreqIndex; j <= endFreqIndex && j < freqData.length; j++) {
+                    sum += freqData[j];
+                    count++;
+                }
+                const avg = count > 0 ? sum / count : 0;
+                const normalizedAvg = (avg - minFreq) / freqRange;
+                normalizedAvgs.push(normalizedAvg);
+
+                if (normalizedAvg > peakNormalizedValue) {
+                    peakNormalizedValue = normalizedAvg;
+                }
+            }
+
+            for (let i = 0; i < barCount; i++) {
+                let targetHeight;
+                const normalizedAvg = normalizedAvgs[i];
+
+                // --- THIS IS THE FIX ---
+                // Auto-scaling is now the default unless explicitly turned off.
+                if (this.vizAutoScale !== false) {
+                    // AUTO-SCALE MODE
+                    let shapeMaxHeight;
+                    if (this.vizLayout === 'Circular') {
+                        const outerRadius = Math.min(this.width, this.height) / 2;
+                        const innerRadiusRatio = (this.vizInnerRadius || 0) / 100.0;
+                        // Correctly calculate the available height for bars
+                        shapeMaxHeight = outerRadius * (1.0 - innerRadiusRatio);
+                    } else {
+                        // For linear layout, the max height is the shape's height
+                        shapeMaxHeight = this.height;
+                    }
+
+                    const scaleFactor = (peakNormalizedValue > 0) ? (1.0 / peakNormalizedValue) : 0;
+                    targetHeight = Math.max(0, normalizedAvg * scaleFactor * shapeMaxHeight);
+                } else {
+                    // MANUAL MODE (Fallback when Auto-Scale is unchecked)
+                    const availableSpace = this.vizLayout === 'Circular' ? (Math.min(this.width, this.height) / 2) : this.height;
+                    const maxBarHeight = ((this.vizMaxBarHeight || 30) / 100.0) * availableSpace;
+                    targetHeight = Math.max(0, normalizedAvg * maxBarHeight);
+                }
+
+                this.vizBarHeights[i] = smoothingFactor * this.vizBarHeights[i] + (1.0 - smoothingFactor) * targetHeight;
+            }
+        }
+
         const safeSpeed = (typeof this.animationSpeed === 'number' && isFinite(this.animationSpeed)) ? this.animationSpeed : 0;
+        const gradientSpeedMultiplier = 1 / 400;
+        const shapeAnimationSpeedMultiplier = 0.05;
+        const seismicAnimationSpeedMultiplier = 0.015;
 
         if (this.shape === 'tetris') {
             if (this.tetrisAnimation === 'fade-in-stack') {
@@ -1036,7 +1171,7 @@ class Shape {
                     } else {
                         this.tetrisFadeState = 'out';
                     }
-                } else { // Fade-out phase
+                } else {
                     let allFadedOut = true;
                     this.tetrisBlocks.forEach(block => {
                         block.life -= fadeSpeed;
@@ -1120,7 +1255,6 @@ class Shape {
             this.randomElementState = null;
         }
 
-        // Color cycling now uses the main animation speed.
         this.hue1 += safeSpeed * 10;
         this.hue2 += safeSpeed * 10;
         this.strokeHue1 += safeSpeed * 10;
@@ -1158,14 +1292,12 @@ class Shape {
                 break;
         }
 
-        // Gradient scrolling now uses the main animation speed.
         if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
             const increment = safeSpeed * gradientSpeedMultiplier;
             const directionMultiplier = (this.scrollDirection === 'left' || this.scrollDirection === 'up') ? -1 : 1;
             this.scrollOffset += increment * directionMultiplier;
         }
 
-        // Stroke gradient scrolling now uses the main animation speed.
         if (this.strokeGradType !== 'solid' && this.strokeGradType !== 'alternating' && this.strokeGradType !== 'random') {
             const increment = safeSpeed * gradientSpeedMultiplier;
             const directionMultiplier = (this.strokeScrollDir === 'left' || this.strokeScrollDir === 'up') ? -1 : 1;
@@ -1379,10 +1511,204 @@ class Shape {
             const centeredShape = { ...this, x: -this.width / 2, y: -this.height / 2, };
             this.ctx.fillStyle = this._createLocalFillStyle();
             drawPixelText(this.ctx, centeredShape, textToRender);
+        } else if (this.shape === 'audio-visualizer') {
+            const barCount = parseInt(this.vizBarCount, 10) || 32; // Get bar count from properties
+            const fillStyle = this._createLocalFillStyle();
+            this.ctx.fillStyle = fillStyle;
+            this.ctx.strokeStyle = fillStyle;
+
+            if (this.vizLayout === 'Circular') {
+                // --- These variables are now defined at the top for all circular styles ---
+                const centerX = 0;
+                const centerY = 0;
+                const outerRadius = Math.min(this.width, this.height) / 2;
+                const innerRadius = outerRadius * ((this.vizInnerRadius || 0) / 100.0);
+
+                if (this.vizDrawStyle === 'Line' || this.vizDrawStyle === 'Area') {
+                    if (barCount < 2) return;
+                    this.ctx.beginPath();
+                    for (let i = 0; i <= barCount; i++) {
+                        const index = i % barCount;
+                        const barHeight = this.vizBarHeights[index] || 0;
+                        const angle = (i / barCount) * 2 * Math.PI - (Math.PI / 2);
+                        const radius = innerRadius + barHeight;
+                        const x = centerX + radius * Math.cos(angle);
+                        const y = centerY + radius * Math.sin(angle);
+                        if (i === 0) {
+                            this.ctx.moveTo(x, y);
+                        } else {
+                            this.ctx.lineTo(x, y);
+                        }
+                    }
+                    if (this.vizDrawStyle === 'Area') {
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                    } else {
+                        this.ctx.lineWidth = this.vizLineWidth;
+                        this.ctx.stroke();
+                    }
+                } else { // Bar Style
+                    if (this.vizUseSegments) {
+                        // --- Correct logic for drawing circular segments ---
+                        const segmentCount = this.vizSegmentCount || 16;
+                        const segmentSpacing = this.vizSegmentSpacing || 1;
+                        const availableBarSpace = outerRadius - innerRadius;
+                        const totalSpacing = (segmentCount - 1) * segmentSpacing;
+                        const segmentLength = (availableBarSpace - totalSpacing) / segmentCount;
+
+                        if (segmentLength > 0) {
+                            const angleStep = (2 * Math.PI) / barCount;
+                            const barAngularWidth = angleStep * (1 - ((this.vizBarSpacing || 0) / 100.0));
+
+                            for (let i = 0; i < barCount; i++) {
+                                const barLength = this.vizBarHeights[i] || 0;
+                                if (barLength <= 0) continue;
+
+                                const litSegments = Math.floor(barLength / (segmentLength + segmentSpacing));
+                                const baseAngle = this.rotation * (Math.PI / 180);
+                                const startAngle = baseAngle + (i * angleStep) - (Math.PI / 2);
+                                const endAngle = startAngle + barAngularWidth;
+
+                                for (let j = 0; j < litSegments; j++) {
+                                    const segmentStartRadius = innerRadius + j * (segmentLength + segmentSpacing);
+                                    const segmentEndRadius = segmentStartRadius + segmentLength;
+
+                                    this.ctx.beginPath();
+                                    this.ctx.arc(centerX, centerY, segmentEndRadius, startAngle, endAngle);
+                                    this.ctx.arc(centerX, centerY, segmentStartRadius, endAngle, startAngle, true);
+                                    this.ctx.closePath();
+
+                                    if (this.gradType === 'alternating') {
+                                        this.ctx.fillStyle = this._createLocalFillStyle(j);
+                                    } else if (this.gradType === 'random') {
+                                        const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
+                                        const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
+                                        this.ctx.fillStyle = Math.random() < 0.5 ? c1 : c2;
+                                    }
+
+                                    this.ctx.fill();
+                                }
+                            }
+                        }
+                    } else {
+                        // --- Logic for drawing solid circular bars ---
+                        const angleStep = (2 * Math.PI) / barCount;
+                        const barAngularWidth = angleStep * (1 - ((this.vizBarSpacing || 0) / 100.0));
+
+                        for (let i = 0; i < barCount; i++) {
+                            const barLength = this.vizBarHeights[i] || 0;
+                            if (barLength <= 0) continue;
+
+                            const startRadius = innerRadius;
+                            const endRadius = innerRadius + barLength;
+                            const baseAngle = this.rotation * (Math.PI / 180);
+                            const startAngle = baseAngle + (i * angleStep) - (Math.PI / 2);
+                            const endAngle = startAngle + barAngularWidth;
+
+                            this.ctx.beginPath();
+                            this.ctx.arc(centerX, centerY, endRadius, startAngle, endAngle);
+                            this.ctx.arc(centerX, centerY, startRadius, endAngle, startAngle, true);
+                            this.ctx.closePath();
+                            this.ctx.fill();
+                        }
+                    }
+                }
+            } else { // Linear Layout
+                const totalSpacing = (barCount - 1) * this.vizBarSpacing;
+                const barWidth = (this.width - totalSpacing) / barCount;
+
+                if (this.vizDrawStyle === 'Line' || this.vizDrawStyle === 'Area') {
+
+                    this.ctx.beginPath();
+                    let firstX = -this.width / 2;
+                    let lastX = this.width / 2;
+                    // this.ctx.moveTo(firstX, firstY);
+
+                    for (let i = 0; i < barCount; i++) {
+                        const barHeight = this.vizBarHeights[i] || 0;
+                        const x = -this.width / 2 + i * (barWidth + this.vizBarSpacing) + barWidth / 2;
+                        const y = this.height / 2 - barHeight;
+                        if (i == 0) {
+                            this.ctx.lineTo(firstX, y);
+                        } else if (i == barCount - 1) {
+                            this.ctx.lineTo(lastX, y);
+                        } else {
+                            this.ctx.lineTo(x, y);
+                        }
+                    }
+
+                    if (this.vizDrawStyle === 'Area') {
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                    } else {
+                        this.ctx.lineWidth = this.vizLineWidth;
+                        this.ctx.stroke();
+                    }
+                } else { // Bar Style
+                    for (let i = 0; i < barCount; i++) {
+                        const barHeight = this.vizBarHeights[i] || 0;
+                        if (barHeight < 1) continue;
+                        const x = -this.width / 2 + i * (barWidth + this.vizBarSpacing);
+
+                        // --- NEW SEGMENT LOGIC STARTS HERE ---
+                        if (this.vizUseSegments) {
+                            // Use property values with safe defaults
+                            const segmentCount = this.vizSegmentCount || 16;
+                            const segmentSpacing = this.vizSegmentSpacing || 2;
+
+                            // Calculate the height of each segment "slot" based on the total shape height
+                            const totalSpacing = (segmentCount - 1) * segmentSpacing;
+                            const segmentHeight = (this.height - totalSpacing) / segmentCount;
+
+                            if (segmentHeight > 0) {
+                                // Calculate how many segments should be lit
+                                const litSegments = Math.floor(barHeight / (segmentHeight + segmentSpacing));
+
+                                for (let j = 0; j < litSegments; j++) {
+                                    let y;
+                                    const segYPos = j * (segmentHeight + segmentSpacing);
+
+                                    if (this.gradType === 'alternating') {
+                                        this.ctx.fillStyle = this._createLocalFillStyle(j);
+                                    } else if (this.gradType === 'random') {
+                                        const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
+                                        const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
+                                        this.ctx.fillStyle = Math.random() < 0.5 ? c1 : c2;
+                                    }
+
+                                    switch (this.vizStyle) {
+                                        case 'top':
+                                            y = -this.height / 2 + segYPos;
+                                            break;
+                                        case 'center':
+                                            const totalPossibleHeight = segmentCount * (segmentHeight + segmentSpacing) - segmentSpacing;
+                                            const initialY = -totalPossibleHeight / 2;
+                                            y = initialY + j * (segmentHeight + segmentSpacing);
+                                            break;
+                                        default: // 'bottom' style
+                                            y = this.height / 2 - segmentHeight - segYPos;
+                                            break;
+                                    }
+                                    this.ctx.fillRect(x, y, barWidth, segmentHeight);
+                                }
+                            }
+                        } else { // Fallback to solid bars
+                            let y;
+                            switch (this.vizStyle) {
+                                case 'top': y = -this.height / 2; break;
+                                case 'center': y = -barHeight / 2; break;
+
+                                default: y = this.height / 2 - barHeight; break;
+                            }
+                            this.ctx.fillRect(x, y, barWidth, barHeight);
+                        }
+                    }
+                }
+            }
         } else if (this.shape === 'oscilloscope') {
             const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
             if (this.oscDisplayMode === 'radial') {
-                this.ctx.lineWidth = this.lineWidth;
+                this.ctx.lineWidth = this.vizLineWidth;
                 this.ctx.strokeStyle = this._createLocalFillStyle();
                 const totalRadius = (Math.min(this.width, this.height) / 2) - (this.ctx.lineWidth / 2);
                 if (totalRadius > 0) {
@@ -1499,8 +1825,7 @@ class Shape {
                         this.ctx.lineTo(Math.cos(endAngle) * iR, Math.sin(endAngle) * iR);
                         this.ctx.arc(0, 0, iR, endAngle, startAngle, true);
                         this.ctx.closePath();
-                        this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(i) : this._createLocalFillStyle(i);
-                        this.ctx.fill();
+                        this._drawFill(i);
                         applyStrokeInside();
                     }
                 }
@@ -1511,8 +1836,7 @@ class Shape {
                         const cellIndex = row * this.numberOfColumns + col;
                         this.ctx.beginPath();
                         this.ctx.rect(-this.width / 2 + col * cellW, -this.height / 2 + row * cellH, cellW, cellH);
-                        this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(cellIndex) : this._createLocalFillStyle(cellIndex);
-                        this.ctx.fill();
+                        this._drawFill(cellIndex);
                         applyStrokeInside();
                     }
                 }
@@ -1537,8 +1861,7 @@ class Shape {
                     }
                     this.ctx.closePath();
                 } else { this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height); }
-                this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(0) : this._createLocalFillStyle();
-                this.ctx.fill();
+                this._drawFill();
                 applyStrokeInside();
             }
         }
@@ -1577,7 +1900,7 @@ class Shape {
 
             const rotHandlePos = this.getRotationHandlePosition();
             const connectionY = (rotHandlePos.y > 0) ? halfH : -halfH;
-            
+
             this.ctx.beginPath();
             this.ctx.moveTo(0, connectionY);
             this.ctx.lineTo(rotHandlePos.x, rotHandlePos.y);
