@@ -486,7 +486,7 @@ class Shape {
             case 'Rotation':
                 // Use a smoothed value to create a continuous rotation effect.
                 // The sensitivity can be applied here.
-                const rotationSensitivity = (this.audioSensitivity / 100.0) * 5/100;
+                const rotationSensitivity = (this.audioSensitivity / 100.0) * 5 / 100;
                 const sign = Math.random() < 0.5 ? -1 : 1;
                 // Update the animationAngle instead of the rotation
                 this.animationAngle = this.baseAnimationAngle + (sign * this.smoothedAudioValue * rotationSensitivity);
@@ -784,6 +784,9 @@ class Shape {
             this._shuffleCellOrder();
         }
         if (this.shape === 'text') {
+            if (props.height !== undefined && props.height !== oldHeight) {
+                this._updateFontSizeFromHeight();
+            }
             this._updateTextMetrics();
         }
 
@@ -1525,7 +1528,7 @@ class Shape {
 
         this.ctx.save();
         this.ctx.translate(centerX, centerY);
-        // this.ctx.rotate(angleToUse);
+        this.ctx.rotate(angleToUse);
 
         if (this.internalScale && this.internalScale !== 1.0) {
             this.ctx.scale(this.internalScale, this.internalScale);
