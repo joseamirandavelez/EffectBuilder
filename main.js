@@ -206,46 +206,53 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirmBtn = document.getElementById('confirm-overwrite-btn');
     const coordsDisplay = document.getElementById('coords-display');
 
+    // Update this for a new property
     const shapePropertyMap = {
         rectangle: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor','timePlotLineThickness','timePlotFillArea'
         ],
         circle: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor','timePlotLineThickness','timePlotFillArea'
         ],
         ring: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor','timePlotLineThickness','timePlotFillArea'
         ],
         polygon: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'sides',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor','timePlotLineThickness','timePlotFillArea'
         ],
         star: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'points', 'starInnerRadius',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor','timePlotLineThickness','timePlotFillArea'
         ],
         text: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation',
             'textAnimationSpeed', 'showTime', 'showDate',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor','timePlotLineThickness','timePlotFillArea'
         ],
         oscilloscope: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
@@ -253,13 +260,15 @@ document.addEventListener('DOMContentLoaded', function () {
             'lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape',
             'enableWaveAnimation', 'waveStyle', 'waveCount',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir', ,
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor','timePlotLineThickness','timePlotFillArea'
         ],
         tetris: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed', 'phaseOffset',
             'tetrisAnimation', 'tetrisBlockCount', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor','timePlotLineThickness','timePlotFillArea'
 
         ],
         fire: [
@@ -277,6 +286,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'pixelArtData',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor','timePlotLineThickness','timePlotFillArea'
         ],
         'audio-visualizer': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -798,11 +808,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const labelEl = document.createElement('label');
         labelEl.htmlFor = controlId;
         labelEl.className = 'form-label';
-
         if (label) {
             const cleanLabel = label.includes(':') ? label.substring(label.indexOf(':') + 1).trim() : label;
             labelEl.textContent = cleanLabel;
-
             if (description) {
                 labelEl.title = description;
             } else {
@@ -811,7 +819,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         labelEl.dataset.bsToggle = 'tooltip';
         formGroup.appendChild(labelEl);
-
         if (type === 'number') {
             const inputGroup = document.createElement('div');
             inputGroup.className = 'd-flex align-items-center';
@@ -885,8 +892,6 @@ document.addEventListener('DOMContentLoaded', function () {
             textarea.rows = (type === 'textarea') ? 10 : 3; // Give more rows for pixel art data
             textarea.textContent = defaultValue.replace(/\\n/g, '\n');
             formGroup.appendChild(textarea);
-
-            // This block adds the link specifically for the pixelArtData control.
             if (controlId.endsWith('_pixelArtData')) {
                 const toolLink = document.createElement('a');
                 toolLink.href = 'https://pixelart.nolliergb.com/';
@@ -896,7 +901,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 toolLink.innerHTML = 'Open Pixel Art Data Generator <i class="bi bi-box-arrow-up-right"></i>';
                 formGroup.appendChild(toolLink);
             }
-
         } else if (type === 'color') {
             const colorGroup = document.createElement('div');
             colorGroup.className = 'd-flex align-items-center';
@@ -916,6 +920,33 @@ document.addEventListener('DOMContentLoaded', function () {
             colorGroup.appendChild(input);
             colorGroup.appendChild(hexInput);
             formGroup.appendChild(colorGroup);
+        } else if (type === 'sensor') {
+            const select = document.createElement('select');
+            select.id = controlId;
+            select.className = 'form-select';
+            select.name = controlId;
+            const cpuSensors = [
+                'CPU Load', 'Memory Load', 'CPU Temperature', 'CPU Package Temp',
+                ...Array.from({ length: 32 }, (_, i) => `CPU Core #${i + 1}`)
+            ];
+            const gpuSensors = [
+                'GPU Core Voltage', 'GPU Hot Spot Temperature', 'GPU Memory Junction Temp',
+                'GPU Core Temperature', 'GPU Memory Clock', 'GPU Core Clock',
+                'GPU Load', 'GPU VRAM Usage'
+            ];
+            const fanSensors = [
+                ...Array.from({ length: 4 }, (_, i) => `Fan Speed #${i + 1}`),
+                ...Array.from({ length: 7 }, (_, i) => `Fan Load #${i + 1}`)
+            ];
+            const sensorValues = [...cpuSensors, ...gpuSensors, ...fanSensors];
+            sensorValues.forEach(val => {
+                const option = document.createElement('option');
+                option.value = val;
+                option.textContent = val;
+                if (val === defaultValue) option.selected = true;
+                select.appendChild(option);
+            });
+            formGroup.appendChild(select);
         }
         return formGroup;
     }
@@ -929,7 +960,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const essentialProps = [
             'gradType', 'gradColor1', 'gradColor2', 'animationSpeed', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeAnimationSpeed',
             'title', 'description', 'publisher', 'enableAnimation', 'enableSound',
-            'enableAudioReactivity', 'audioMetric', 'beatThreshold', 'audioSensitivity'
+            'enableAudioReactivity', 'audioMetric', 'beatThreshold', 'audioSensitivity',
+            // New sensor-related properties are added to the essential list
+            'enableSensorReactivity', 'sensorTarget', 'userSensor','timePlotLineThickness','timePlotFillArea'
         ];
 
         const generalValues = getControlValues();
@@ -939,7 +972,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return key && !key.startsWith('obj');
         }).forEach(conf => {
             const key = conf.property || conf.name;
-            const isEssential = true;
+            const isEssential = essentialProps.includes(key);
             if (generalValues[key] !== undefined) {
                 allKeys.push(key);
                 let exportValue = generalValues[key];
@@ -992,13 +1025,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 let exportValue = liveValue;
 
                 // Parameter scaling
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth','vizSegmentSpacing','vizBarSpacing','vizBarHeights'];
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'vizSegmentSpacing', 'vizBarSpacing', 'vizBarHeights'];
 
                 if (conf.type === 'number') {
                     const numValue = parseFloat(liveValue) || 0;
 
                     if (propsToScale.includes(propName)) {
-                        // This correctly scales down the property for the 320x200 canvas.
                         exportValue = Math.round(numValue / 4);
                     } else if (propName === 'animationSpeed' || propName === 'strokeAnimationSpeed') {
                         exportValue = Math.round(numValue * 10);
@@ -1007,10 +1039,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     } else {
                         exportValue = Math.round(numValue);
                     }
-                }
-                // --- END OF FIX ---
-
-                else if (typeof liveValue === 'boolean') {
+                } else if (typeof liveValue === 'boolean') {
                     exportValue = String(liveValue);
                 } else if (conf.type === 'textfield' && typeof liveValue === 'string') {
                     exportValue = liveValue.replace(/\n/g, '\\n');
@@ -1029,7 +1058,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (conf.values) attrs.push(`values="${conf.values}"`);
                     if (conf.min) attrs.push(`min="${conf.min}"`);
                     if (conf.max) attrs.push(`max="${conf.max}"`);
-                    scriptHTML += `<meta ${attrs.join(' ')} type="${conf.type}" default="${exportValue}" />\n`;
+
+                    // Special handling for the new 'sensor' type
+                    if (conf.type === 'sensor') {
+                        // The `values` attribute isn't needed for export as it's dynamically populated by SignalRGB
+                        scriptHTML += `<meta property="${conf.property}" label="${conf.label}" type="sensor" default="${exportValue}" />\n`;
+                    } else {
+                        scriptHTML += `<meta ${attrs.join(' ')} type="${conf.type}" default="${exportValue}" />\n`;
+                    }
+
                 } else {
                     jsVars += `const ${conf.property} = ${JSON.stringify(exportValue)};\n`;
                 }
@@ -1282,6 +1319,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const tabContent = document.createElement('div');
             tabContent.className = 'tab-content';
             tabContent.id = `object-tab-content-${id}`;
+
+            // Update this for a new property
             const controlGroupMap = {
                 'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
                 'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'useSharpGradient', 'gradientStop', 'animationMode', 'animationSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'textAnimationSpeed'], icon: 'bi-palette-fill' },
@@ -1293,7 +1332,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
                 'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius'], icon: 'bi-bar-chart-line-fill' },
                 'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
+                'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'sensorValueSource', 'userSensor','timePlotLineThickness','timePlotFillArea'], icon: 'bi-cpu-fill' },
             };
+
             const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
             let isFirstTab = true;
             let firstTabId = null;
@@ -1703,27 +1744,20 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.restore();
     }
 
-    function drawFrame(audioData = {}) {
+    function drawFrame(audioData = {}, sensorData = {}) {
         if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
         const isAnimating = getControlValues().enableAnimation;
-
-        // Iterate backwards through the objects array. Because the array is ordered
-        // with the top-most layer at index 0, iterating backwards ensures that
-        // the bottom layers are drawn first, and the top layers are drawn last (on top).
         for (let i = objects.length - 1; i >= 0; i--) {
             const obj = objects[i];
             if (isAnimating) {
-                obj.updateAnimationState(audioData);
+                obj.updateAnimationState(audioData, sensorData);
             }
             obj.draw(selectedObjectIds.includes(obj.id));
             obj.dirty = false;
         }
-
         if (selectedObjectIds.length > 0) {
             selectedObjectIds.forEach(id => {
                 const obj = objects.find(o => o.id === id);
@@ -1732,7 +1766,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
         }
-
         drawSnapLines(snapLines);
     }
 
@@ -1746,14 +1779,11 @@ document.addEventListener('DOMContentLoaded', function () {
             then = now - (elapsed % fpsInterval);
 
             const generalValues = getControlValues();
-            // --- START: FIX ---
-            // This check now correctly defaults to `true` if the control isn't
-            // available during a form re-render. This ensures the preview
-            // animation continues to run.
             const soundEnabled = generalValues.enableSound !== false;
-            // --- END: FIX ---
+            const isAnimating = generalValues.enableAnimation !== false;
 
             let audioData = {};
+            let sensorData = {}; // Declare sensorData once here
 
             if (soundEnabled) {
                 if (isAudioSetup) {
@@ -1795,7 +1825,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 };
             }
 
-            drawFrame(audioData);
+            // Mock sensor data for the editor
+            const mockSensorData = {
+                'CPU Load': {
+                    value: Math.sin(timestamp / 2000) * 50 + 50,
+                    min: 0,
+                    max: 100
+                },
+                'Memory Load': {
+                    value: Math.cos(timestamp / 3000) * 40 + 50,
+                    min: 0,
+                    max: 100
+                },
+                'CPU Temperature': {
+                    value: Math.sin(timestamp / 4000) * 10 + 60,
+                    min: 40,
+                    max: 80
+                }
+            };
+
+            // Assign the mock data to the sensorData object.
+            sensorData = mockSensorData;
+
+            drawFrame(audioData, sensorData);
         }
     }
 
@@ -2201,88 +2253,97 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {number} newId - The ID for the new object.
      * @returns {object[]} An array of default configuration objects.
      */
+    // Update this for a new property
     function getDefaultObjectConfig(newId) {
         return [
-            // Geometry & Transform
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art,audio-visualizer', description: 'The basic shape of the object.' },
-            { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320' },
-            { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200' },
-            { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320' },
-            { property: `obj${newId}_height`, label: `Object ${newId}: Height`, type: 'number', default: '38', min: '2', max: '200' },
-            { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360', description: 'The static rotation of the object in degrees.' },
+           // Geometry & Transform
+{ property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art,audio-visualizer', description: 'The basic shape of the object.' },
+{ property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320', description: 'The horizontal position of the object on the canvas.' },
+{ property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200', description: 'The vertical position of the object on the canvas.' },
+{ property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320', description: 'The width of the object.' },
+{ property: `obj${newId}_height`, label: `Object ${newId}: Height`, type: 'number', default: '38', min: '2', max: '200', description: 'The height of the object.' },
+{ property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360', description: 'The static rotation of the object in degrees.' },
 
-            // Fill Style & Animation
-            { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,alternating,random,rainbow,rainbow-radial', description: 'The type of color fill or gradient to use.' },
-            { property: `obj${newId}_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false', description: 'If checked, creates a hard line between colors in Linear/Radial gradients instead of a smooth blend.' },
-            { property: `obj${newId}_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100', description: 'For sharp gradients, this is the percentage width of the primary color band.' },
-            { property: `obj${newId}_gradColor1`, label: `Object ${newId}: Color 1`, type: 'color', default: '#00ff00' },
-            { property: `obj${newId}_gradColor2`, label: `Object ${newId}: Color 2`, type: 'color', default: '#d400ff' },
-            { property: `obj${newId}_cycleColors`, label: `Object ${newId}: Cycle Colors`, type: 'boolean', default: 'false', description: 'Animates the colors by cycling through the color spectrum.' },
-            { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop', description: 'Determines how the gradient animation behaves.' },
-            { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '0', max: '100', description: 'Master speed for gradient scroll, random color flicker, and oscilloscope movement.' },
-            { property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100', description: 'The continuous rotation speed of the object. Overrides static rotation.' },
-            { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', values: 'right,left,up,down', default: 'right', description: 'The direction the gradient animation moves.' },
-            { property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100', description: 'Offsets the gradient animation for each item in a grid, seismic wave, or Tetris block, creating a cascading effect.' },
+// Fill Style & Animation
+{ property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,alternating,random,rainbow,rainbow-radial', description: 'The type of color fill or gradient to use.' },
+{ property: `obj${newId}_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false', description: 'If checked, creates a hard line between colors in Linear/Radial gradients instead of a smooth blend.' },
+{ property: `obj${newId}_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100', description: 'For sharp gradients, this is the percentage width of the primary color band.' },
+{ property: `obj${newId}_gradColor1`, label: `Object ${newId}: Color 1`, type: 'color', default: '#00ff00', description: 'The starting color for gradients and solid fills.' },
+{ property: `obj${newId}_gradColor2`, label: `Object ${newId}: Color 2`, type: 'color', default: '#d400ff', description: 'The ending color for gradients.' },
+{ property: `obj${newId}_cycleColors`, label: `Object ${newId}: Cycle Colors`, type: 'boolean', default: 'false', description: 'Animates the colors by cycling through the color spectrum.' },
+{ property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop', description: 'Determines how the gradient animation behaves.' },
+{ property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '0', max: '100', description: 'Master speed for gradient scroll, random color flicker, and oscilloscope movement.' },
+{ property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100', description: 'The continuous rotation speed of the object. Overrides static rotation.' },
+{ property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', values: 'right,left,up,down', default: 'right', description: 'The direction the gradient animation moves.' },
+{ property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100', description: 'Offsets the gradient animation for each item in a grid, seismic wave, or Tetris block, creating a cascading effect.' },
 
-            // Shape-Specific Properties
-            { property: `obj${newId}_sides`, label: `Object ${newId}: Sides`, type: 'number', default: '6', min: '3', max: '50', description: '(Polygon) The number of sides for the polygon.' },
-            { property: `obj${newId}_points`, label: `Object ${newId}: Points`, type: 'number', default: '5', min: '3', max: '50', description: '(Star) The number of points on the star.' },
-            { property: `obj${newId}_starInnerRadius`, label: `Object ${newId}: Inner Radius %`, type: 'number', default: '50', min: '1', max: '99', description: '(Star) The size of the inner points as a percentage of the outer radius.' },
-            { property: `obj${newId}_innerDiameter`, label: `Object ${newId}: Inner Diameter`, type: 'number', default: '25', min: '1', max: '318', description: '(Ring) The diameter of the inner hole of the ring.' },
-            { property: `obj${newId}_numberOfSegments`, label: `Object ${newId}: Segments`, type: 'number', default: '12', min: '1', max: '50', description: '(Ring) The number of individual segments that make up the ring.' },
-            { property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', min: '1', max: '360', default: '20', description: '(Ring) The width of each ring segment, in degrees.' },
-            { property: `obj${newId}_numberOfRows`, label: `Object ${newId}: Number of Rows`, type: 'number', default: '1', min: '1', max: '100', description: '(Grid) The number of vertical cells in the grid.' },
-            { property: `obj${newId}_numberOfColumns`, label: `Object ${newId}: Number of Columns`, type: 'number', default: '1', min: '1', max: '100', description: '(Grid) The number of horizontal cells in the grid.' },
-            { property: `obj${newId}_text`, label: `Object ${newId}: Text`, type: 'textfield', default: 'New Text' },
-            { property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '15', min: '2', max: '100' },
-            { property: `obj${newId}_textAlign`, label: `Object ${newId}: Justification`, type: 'combobox', values: 'left,center,right', default: 'center' },
-            { property: `obj${newId}_pixelFont`, label: `Object ${newId}: Pixel Font Style`, type: 'combobox', values: 'small,large', default: 'small' },
-            { property: `obj${newId}_textAnimation`, label: `Object ${newId}: Text Animation`, type: 'combobox', values: 'none,marquee,typewriter,wave', default: 'none' },
-            { property: `obj${newId}_textAnimationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', min: '1', max: '100', default: '10' },
-            { property: `obj${newId}_showTime`, label: `Object ${newId}: Show Current Time`, type: 'boolean', default: 'false', description: 'Overrides the text content to show the current time.' },
-            { property: `obj${newId}_showDate`, label: `Object ${newId}: Show Current Date`, type: 'boolean', default: 'false', description: 'Overrides the text content to show the current date.' },
-            { property: `obj${newId}_lineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '1', min: '1', max: '20' },
-            { property: `obj${newId}_waveType`, label: `Object ${newId}: Wave Type`, type: 'combobox', default: 'sine', values: 'sine,square,sawtooth,triangle,earthquake' },
-            { property: `obj${newId}_frequency`, label: `Object ${newId}: Frequency / Wave Peaks`, type: 'number', default: '5', min: '1', max: '50' },
-            { property: `obj${newId}_oscDisplayMode`, label: `Object ${newId}: Display Mode`, type: 'combobox', default: 'linear', values: 'linear,radial,seismic' },
-            { property: `obj${newId}_pulseDepth`, label: `Object ${newId}: Pulse Depth`, type: 'number', default: '50', min: '0', max: '100', description: 'The intensity of the wave\'s amplitude or pulse effect.' },
-            { property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false', description: 'For linear oscilloscopes, fills the area under the wave.' },
-            { property: `obj${newId}_enableWaveAnimation`, label: `Object ${newId}: Enable Wave Animation`, type: 'boolean', default: 'true', description: 'Toggles the movement of the oscilloscope wave.' },
-            { property: `obj${newId}_waveStyle`, label: `Object ${newId}: Seismic Wave Style`, type: 'combobox', default: 'wavy', values: 'wavy,round' },
-            { property: `obj${newId}_waveCount`, label: `Object ${newId}: Seismic Wave Count`, type: 'number', default: '5', min: '1', max: '20' },
-            { property: `obj${newId}_tetrisBlockCount`, label: `Object ${newId}: Block Count`, type: 'number', default: '10', min: '1', max: '50', description: '(Tetris) The number of blocks in the animation cycle.' },
-            { property: `obj${newId}_tetrisAnimation`, label: `Object ${newId}: Drop Physics`, type: 'combobox', values: 'gravity,linear,gravity-fade,fade-in-stack', default: 'gravity', description: '(Tetris) The physics governing how the blocks fall. Gravity-fade removes blocks as they settle.' },
-            { property: `obj${newId}_tetrisSpeed`, label: `Object ${newId}: Drop Speed`, type: 'number', default: '5', min: '1', max: '100', description: '(Tetris) The speed of the drop animation.' },
-            { property: `obj${newId}_tetrisBounce`, label: `Object ${newId}: Bounce Factor`, type: 'number', default: '50', min: '0', max: '90', description: '(Tetris) How much the blocks bounce on impact. 0 is no bounce.' },
-            { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fire-radial) Controls how far the flames spread from the center.' },
-            { property: `obj${newId}_enableStroke`, label: `Object ${newId}: Enable Stroke`, type: 'boolean', default: 'false' },
-            { property: `obj${newId}_strokeWidth`, label: `Object ${newId}: Stroke Width`, type: 'number', default: '2', min: '1', max: '50' },
-            { property: `obj${newId}_strokeGradType`, label: `Object ${newId}: Stroke Type`, type: 'combobox', default: 'solid', values: 'solid,linear,radial,rainbow,rainbow-radial' },
-            { property: `obj${newId}_strokeGradColor1`, label: `Object ${newId}: Stroke Color 1`, type: 'color', default: '#FFFFFF' },
-            { property: `obj${newId}_strokeGradColor2`, label: `Object ${newId}: Stroke Color 2`, type: 'color', default: '#000000' },
-            { property: `obj${newId}_strokeCycleColors`, label: `Object ${newId}: Cycle Stroke Colors`, type: 'boolean', default: 'false' },
-            { property: `obj${newId}_strokeScrollDir`, label: `Object ${newId}: Stroke Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down' },
-            { property: `obj${newId}_enableAudioReactivity`, label: `Object ${newId}: Enable Sound Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sound.' },
-            { property: `obj${newId}_audioTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Flash', values: 'none,Flash,Size,Rotation,Volume Meter', description: 'Which property of the object will be affected by the sound.' },
-            { property: `obj${newId}_audioMetric`, label: `Object ${newId}: Audio Metric`, type: 'combobox', default: 'volume', values: 'volume,bass,mids,highs', description: 'Which part of the audio spectrum to react to.' },
-            { property: `obj${newId}_beatThreshold`, label: `Object ${newId}: Beat Threshold`, type: 'number', default: '30', min: '1', max: '100', description: 'Sensitivity for beat detection. Higher values are MORE sensitive. Default is 30.' },
-            { property: `obj${newId}_audioSensitivity`, label: `Object ${newId}: Sensitivity`, type: 'number', default: '50', min: '0', max: '200', description: 'How strongly the object reacts to the audio metric.' },
-            { property: `obj${newId}_audioSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '50', min: '0', max: '99', description: 'Smooths out the reaction to prevent flickering. Higher values are smoother.' },
-            { property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'false', description: 'For text objects, automatically sets the object\'s width to the width of the text.' },
-            { property: `obj${newId}_pixelArtData`, label: `Object ${newId}: Pixel Art Data`, type: 'textarea', default: '[[1,0,0,1],[0,1,1,0],[0,1,1,0],[1,0,0,1]]', description: '(Pixel Art) Paste your pixel art data array here. Use a tool like the Pixel Art Data Generator for a starting point.' },
-            { property: `obj${newId}_vizBarCount`, label: `Object ${newId}: Bar Count`, type: 'number', default: '12', min: '2', max: '200', description: '(Visualizer) The number of frequency bars to display.' },
-            { property: `obj${newId}_vizBarSpacing`, label: `Object ${newId}: Bar Spacing`, type: 'number', default: '2', min: '0', max: '20', description: '(Visualizer) The space between each bar in pixels.' },
-            { property: `obj${newId}_vizSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '60', min: '0', max: '99', description: '(Visualizer) How smoothly the bars react to audio changes. Higher is smoother.' },
-            { property: `obj${newId}_vizStyle`, label: `Object ${newId}: Style`, type: 'combobox', default: 'bottom', values: 'bottom,center,top', description: '(Visualizer) The alignment of the visualizer bars.' },
-            { property: `obj${newId}_vizLayout`, label: `Object ${newId}: Layout`, type: 'combobox', default: 'Linear', values: 'Linear,Circular', description: '(Visualizer) The overall layout of the visualizer.' },
-            { property: `obj${newId}_vizDrawStyle`, label: `Object ${newId}: Draw Style`, type: 'combobox', default: 'Line', values: 'Bars,Line,Area', description: '(Visualizer) How the frequencies are rendered (as bars or a continuous line).' },
-            { property: `obj${newId}_vizUseSegments`, label: `Object ${newId}: Use LED Segments`, type: 'boolean', default: 'false', description: '(Visualizer) Renders bars as discrete segments instead of solid blocks.' },
-            { property: `obj${newId}_vizSegmentSpacing`, label: `Object ${newId}: Segment Spacing`, type: 'number', default: '1', min: '0', max: '10', description: '(Visualizer) The spacing between segments in a bar.' },
-            { property: `obj${newId}_vizInnerRadius`, label: `Object ${newId}: Inner Radius`, type: 'number', default: '40', min: '0', max: '95', description: '(Visualizer) Sets the radius of the empty inner circle, as a percentage of the total size.' },
-            { property: `obj${newId}_vizMaxBarHeight`, label: `Object ${newId}: Max Bar Height`, type: 'number', default: '30', min: '5', max: '100', description: '(Visualizer) Sets the maximum possible length for any visualizer bar, as a percentage of the available space.' },
-            { property: `obj${newId}_vizAutoScale`, label: `Object ${newId}: Auto-Scale Height`, type: 'boolean', default: 'true', description: '(Visualizer) If checked, the tallest bar will always reach the top of the shape.' },
-            { property: `obj${newId}_vizSegmentCount`, label: `Object ${newId}: Segment Count`, type: 'number', default: '16', min: '2', max: '64', description: '(Visualizer) The number of vertical LED segments the bar is divided into.' },
-            { property: `obj${newId}_vizLineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20', description: '(Visualizer) The thickness of the line for the Line/Area draw styles.' },
+// Shape-Specific Properties
+{ property: `obj${newId}_sides`, label: `Object ${newId}: Sides`, type: 'number', default: '6', min: '3', max: '50', description: '(Polygon) The number of sides for the polygon.' },
+{ property: `obj${newId}_points`, label: `Object ${newId}: Points`, type: 'number', default: '5', min: '3', max: '50', description: '(Star) The number of points on the star.' },
+{ property: `obj${newId}_starInnerRadius`, label: `Object ${newId}: Inner Radius %`, type: 'number', default: '50', min: '1', max: '99', description: '(Star) The size of the inner points as a percentage of the outer radius.' },
+{ property: `obj${newId}_innerDiameter`, label: `Object ${newId}: Inner Diameter`, type: 'number', default: '25', min: '1', max: '318', description: '(Ring) The diameter of the inner hole of the ring.' },
+{ property: `obj${newId}_numberOfSegments`, label: `Object ${newId}: Segments`, type: 'number', default: '12', min: '1', max: '50', description: '(Ring) The number of individual segments that make up the ring.' },
+{ property: `obj${newId}_angularWidth`, label: `Object ${newId}: Segment Angle`, type: 'number', min: '1', max: '360', default: '20', description: '(Ring) The width of each ring segment, in degrees.' },
+{ property: `obj${newId}_numberOfRows`, label: `Object ${newId}: Number of Rows`, type: 'number', default: '1', min: '1', max: '100', description: '(Grid) The number of vertical cells in the grid.' },
+{ property: `obj${newId}_numberOfColumns`, label: `Object ${newId}: Number of Columns`, type: 'number', default: '1', min: '1', max: '100', description: '(Grid) The number of horizontal cells in the grid.' },
+{ property: `obj${newId}_text`, label: `Object ${newId}: Text`, type: 'textfield', default: 'New Text', description: '(Text) The content displayed within the text object.' },
+{ property: `obj${newId}_fontSize`, label: `Object ${newId}: Font Size`, type: 'number', default: '15', min: '2', max: '100', description: '(Text) The size of the text.' },
+{ property: `obj${newId}_textAlign`, label: `Object ${newId}: Justification`, type: 'combobox', values: 'left,center,right', default: 'center', description: '(Text) The horizontal alignment of the text.' },
+{ property: `obj${newId}_pixelFont`, label: `Object ${newId}: Pixel Font Style`, type: 'combobox', values: 'small,large', default: 'small', description: '(Text) The style of the pixelated font.' },
+{ property: `obj${newId}_textAnimation`, label: `Object ${newId}: Text Animation`, type: 'combobox', values: 'none,marquee,typewriter,wave', default: 'none', description: '(Text) The animation style for the text.' },
+{ property: `obj${newId}_textAnimationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', min: '1', max: '100', default: '10', description: '(Text) The speed of the text animation.' },
+{ property: `obj${newId}_showTime`, label: `Object ${newId}: Show Current Time`, type: 'boolean', default: 'false', description: 'Overrides the text content to show the current time.' },
+{ property: `obj${newId}_showDate`, label: `Object ${newId}: Show Current Date`, type: 'boolean', default: 'false', description: 'Overrides the text content to show the current date.' },
+{ property: `obj${newId}_lineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '1', min: '1', max: '20', description: '(Oscilloscope) The thickness of the oscilloscope line.' },
+{ property: `obj${newId}_waveType`, label: `Object ${newId}: Wave Type`, type: 'combobox', default: 'sine', values: 'sine,square,sawtooth,triangle,earthquake', description: '(Oscilloscope) The shape of the wave being displayed.' },
+{ property: `obj${newId}_frequency`, label: `Object ${newId}: Frequency / Wave Peaks`, type: 'number', default: '5', min: '1', max: '50', description: '(Oscilloscope) The number of wave peaks displayed across the shape.' },
+{ property: `obj${newId}_oscDisplayMode`, label: `Object ${newId}: Display Mode`, type: 'combobox', default: 'linear', values: 'linear,radial,seismic', description: '(Oscilloscope) The layout of the oscilloscope animation.' },
+{ property: `obj${newId}_pulseDepth`, label: `Object ${newId}: Pulse Depth`, type: 'number', default: '50', min: '0', max: '100', description: 'The intensity of the wave\'s amplitude or pulse effect.' },
+{ property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false', description: 'For linear oscilloscopes, fills the area under the wave.' },
+{ property: `obj${newId}_enableWaveAnimation`, label: `Object ${newId}: Enable Wave Animation`, type: 'boolean', default: 'true', description: 'Toggles the movement of the oscilloscope wave.' },
+{ property: `obj${newId}_waveStyle`, label: `Object ${newId}: Seismic Wave Style`, type: 'combobox', default: 'wavy', values: 'wavy,round', description: '(Oscilloscope) The style of the seismic wave.' },
+{ property: `obj${newId}_waveCount`, label: `Object ${newId}: Seismic Wave Count`, type: 'number', default: '5', min: '1', max: '20', description: '(Oscilloscope) The number of seismic waves to display.' },
+{ property: `obj${newId}_tetrisBlockCount`, label: `Object ${newId}: Block Count`, type: 'number', default: '10', min: '1', max: '50', description: '(Tetris) The number of blocks in the animation cycle.' },
+{ property: `obj${newId}_tetrisAnimation`, label: `Object ${newId}: Drop Physics`, type: 'combobox', values: 'gravity,linear,gravity-fade,fade-in-stack', default: 'gravity', description: '(Tetris) The physics governing how the blocks fall. Gravity-fade removes blocks as they settle.' },
+{ property: `obj${newId}_tetrisSpeed`, label: `Object ${newId}: Drop Speed`, type: 'number', default: '5', min: '1', max: '100', description: '(Tetris) The speed of the drop animation.' },
+{ property: `obj${newId}_tetrisBounce`, label: `Object ${newId}: Bounce Factor`, type: 'number', default: '50', min: '0', max: '90', description: '(Tetris) How much the blocks bounce on impact. 0 is no bounce.' },
+{ property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fire-radial) Controls how far the flames spread from the center.' },
+{ property: `obj${newId}_enableStroke`, label: `Object ${newId}: Enable Stroke`, type: 'boolean', default: 'false', description: 'Enables a stroke (outline) for the shape.' },
+{ property: `obj${newId}_strokeWidth`, label: `Object ${newId}: Stroke Width`, type: 'number', default: '2', min: '1', max: '50', description: 'The thickness of the shape\'s stroke.' },
+{ property: `obj${newId}_strokeGradType`, label: `Object ${newId}: Stroke Type`, type: 'combobox', default: 'solid', values: 'solid,linear,radial,rainbow,rainbow-radial', description: 'The type of color fill or gradient to use for the stroke.' },
+{ property: `obj${newId}_strokeGradColor1`, label: `Object ${newId}: Stroke Color 1`, type: 'color', default: '#FFFFFF', description: 'The starting color for the stroke gradient.' },
+{ property: `obj${newId}_strokeGradColor2`, label: `Object ${newId}: Stroke Color 2`, type: 'color', default: '#000000', description: 'The ending color for the stroke gradient.' },
+{ property: `obj${newId}_strokeCycleColors`, label: `Object ${newId}: Cycle Stroke Colors`, type: 'boolean', default: 'false', description: 'Animates the stroke colors by cycling through the color spectrum.' },
+{ property: `obj${newId}_strokeScrollDir`, label: `Object ${newId}: Stroke Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down', description: 'The direction the stroke gradient animation moves.' },
+{ property: `obj${newId}_enableAudioReactivity`, label: `Object ${newId}: Enable Sound Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sound.' },
+{ property: `obj${newId}_audioTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Flash', values: 'none,Flash,Size,Rotation,Volume Meter', description: 'Which property of the object will be affected by the sound.' },
+{ property: `obj${newId}_audioMetric`, label: `Object ${newId}: Audio Metric`, type: 'combobox', default: 'volume', values: 'volume,bass,mids,highs', description: 'Which part of the audio spectrum to react to.' },
+{ property: `obj${newId}_beatThreshold`, label: `Object ${newId}: Beat Threshold`, type: 'number', default: '30', min: '1', max: '100', description: 'Sensitivity for beat detection. Higher values are MORE sensitive. Default is 30.' },
+{ property: `obj${newId}_audioSensitivity`, label: `Object ${newId}: Sensitivity`, type: 'number', default: '50', min: '0', max: '200', description: 'How strongly the object reacts to the audio metric.' },
+{ property: `obj${newId}_audioSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '50', min: '0', max: '99', description: 'Smooths out the reaction to prevent flickering. Higher values are smoother.' },
+{ property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'false', description: 'For text objects, automatically sets the object\'s width to the width of the text.' },
+{ property: `obj${newId}_pixelArtData`, label: `Object ${newId}: Pixel Art Data`, type: 'textarea', default: '[[1,0,0,1],[0,1,1,0],[0,1,1,0],[1,0,0,1]]', description: '(Pixel Art) Paste your pixel art data array here. Use a tool like the Pixel Art Data Generator for a starting point.' },
+
+{ property: `obj${newId}_vizBarCount`, label: `Object ${newId}: Bar Count`, type: 'number', default: '12', min: '2', max: '200', description: '(Visualizer) The number of frequency bars to display.' },
+{ property: `obj${newId}_vizBarSpacing`, label: `Object ${newId}: Bar Spacing`, type: 'number', default: '2', min: '0', max: '20', description: '(Visualizer) The space between each bar in pixels.' },
+{ property: `obj${newId}_vizSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '60', min: '0', max: '99', description: '(Visualizer) How smoothly the bars react to audio changes. Higher is smoother.' },
+{ property: `obj${newId}_vizStyle`, label: `Object ${newId}: Style`, type: 'combobox', default: 'bottom', values: 'bottom,center,top', description: '(Visualizer) The alignment of the visualizer bars.' },
+{ property: `obj${newId}_vizLayout`, label: `Object ${newId}: Layout`, type: 'combobox', default: 'Linear', values: 'Linear,Circular', description: '(Visualizer) The overall layout of the visualizer.' },
+{ property: `obj${newId}_vizDrawStyle`, label: `Object ${newId}: Draw Style`, type: 'combobox', default: 'Line', values: 'Bars,Line,Area', description: '(Visualizer) How the frequencies are rendered (as bars or a continuous line).' },
+{ property: `obj${newId}_vizUseSegments`, label: `Object ${newId}: Use LED Segments`, type: 'boolean', default: 'false', description: '(Visualizer) Renders bars as discrete segments instead of solid blocks.' },
+{ property: `obj${newId}_vizSegmentSpacing`, label: `Object ${newId}: Segment Spacing`, type: 'number', default: '1', min: '0', max: '10', description: '(Visualizer) The spacing between segments in a bar.' },
+{ property: `obj${newId}_vizInnerRadius`, label: `Object ${newId}: Inner Radius`, type: 'number', default: '40', min: '0', max: '95', description: '(Visualizer) Sets the radius of the empty inner circle, as a percentage of the total size.' },
+{ property: `obj${newId}_vizMaxBarHeight`, label: `Object ${newId}: Max Bar Height`, type: 'number', default: '30', min: '5', max: '100', description: '(Visualizer) Sets the maximum possible length for any visualizer bar, as a percentage of the available space.' },
+{ property: `obj${newId}_vizAutoScale`, label: `Object ${newId}: Auto-Scale Height`, type: 'boolean', default: 'true', description: '(Visualizer) If checked, the tallest bar will always reach the top of the shape.' },
+{ property: `obj${newId}_vizSegmentCount`, label: `Object ${newId}: Segment Count`, type: 'number', default: '16', min: '2', max: '64', description: '(Visualizer) The number of vertical LED segments the bar is divided into.' },
+{ property: `obj${newId}_vizLineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20', description: '(Visualizer) The thickness of the line for the Line/Area draw styles.' },
+
+{ property: `obj${newId}_enableSensorReactivity`, label: `Object ${newId}: Enable Sensor Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sensor data.' },
+{ property: `obj${newId}_sensorTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Sensor Meter', values: 'Sensor Meter,Time Plot', description: 'Selects the specific effect that the object will perform in response to sensor data.' },
+{ property: `obj${newId}_sensorValueSource`, label: `Object ${newId}: Sensor Value`, type: 'combobox', default: 'value', values: 'value,min,max', description: 'The source of the data value to use from the selected sensor (current, min, or max).' },
+{ property: `obj${newId}_userSensor`, label: `Object ${newId}: Sensor`, type: 'sensor', default: 'CPU Load', description: 'The hardware sensor to monitor for reactivity.' },
+{ property: `obj${newId}_timePlotLineThickness`, label: `Object ${newId}: Line Thickness`, type: 'number', default: '1', min: '1', max: '50', description: '(Time Plot) Sets the thickness of the time-plot line.' },
+{ property: `obj${newId}_timePlotFillArea`, label: `Object ${newId}: Fill Area`, type: 'boolean', default: 'false', description: '(Time Plot) Fills the area under the time plot line.' },
         ];
 
     }
@@ -2323,153 +2384,165 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
             const exportedScript = `
-    document.addEventListener('DOMContentLoaded', function () {
-        const canvas = document.getElementById('signalCanvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        canvas.width = 320; // Use full resolution for export
-        canvas.height = 200;
-        let objects = [];
-        
-        ${jsVars}
+document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('signalCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = 320;
+    canvas.height = 200;
+    let objects = [];
+    
+    ${jsVars}
 
-        let gradientSpeedMultiplier = ${EXPORT_GRADIENT_SPEED_MULTIPLIER};
-        let shapeAnimationSpeedMultiplier = ${EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER};
-        let seismicAnimationSpeedMultiplier = ${EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER};
-        let tetrisSpeedDivisor = ${EXPORT_TETRIS_SPEED_DIVISOR};
+    let gradientSpeedMultiplier = ${EXPORT_GRADIENT_SPEED_MULTIPLIER};
+    let shapeAnimationSpeedMultiplier = ${EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER};
+    let seismicAnimationSpeedMultiplier = ${EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER};
+    let tetrisSpeedDivisor = ${EXPORT_TETRIS_SPEED_DIVISOR};
 
-        const hexToHsl = ${hexToHsl.toString()};
-        const hslToHex = ${hslToHex.toString()};
-        const getSignalRGBAudioMetrics = ${getSignalRGBAudioMetrics.toString()};
-        const srgb_applyAudioReactivity = ${srgb_applyAudioReactivity.toString()};
-        
-        const FONT_DATA_4PX = ${JSON.stringify(FONT_DATA_4PX)};
-        const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};
-        const drawPixelText = ${drawPixelText.toString()};
-        const lerpColor = ${lerpColor.toString()};
-        const getPatternColor = ${getPatternColor.toString()};
-        
-        ${shapeClasses}
+    // Include the new getSensorValue function
+    const getSensorValue = (sensorName) => {
+        try {
+            return engine.getSensorValue(sensorName);
+        } catch (e) {
+            return { value: 0, min: 0, max: 100 };
+        }
+    };
+    
+    const hexToHsl = ${hexToHsl.toString()};
+    const hslToHex = ${hslToHex.toString()};
+    const getSignalRGBAudioMetrics = ${getSignalRGBAudioMetrics.toString()};
+    
+    // You must include the full Shape class, not just parts of it.
+    // The Shape.js file itself should contain all the necessary methods,
+    // including the new _applySensorReactivity.
+    const Shape = ${Shape.toString()};
 
-        let fps = 50;
-        let fpsInterval;
-        let then;
+    let fps = 50;
+    let fpsInterval;
+    let then;
 
-        const allPropKeys = ${formattedKeys};
+    const allPropKeys = ${formattedKeys};
+
+    function createInitialObjects() {
+        if (allPropKeys.length === 0) return;
         
-        function createInitialObjects() {
-            if (allPropKeys.length === 0) return;
+        const uniqueIds = [...new Set(allPropKeys.map(p => {
+            if (!p.startsWith('obj')) return null;
+            const end = p.indexOf('_');
+            if (end <= 3) return null;
+            const idString = p.substring(3, end);
+            const id = parseInt(idString, 10);
+            return isNaN(id) ? null : String(id);
+        }).filter(id => id !== null))];
+        
+        objects = uniqueIds.map(id => {
+            const config = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
+            const prefix = 'obj' + id + '_';
             
-            const uniqueIds = [...new Set(allPropKeys.map(p => {
-                if (!p.startsWith('obj')) return null;
-                const end = p.indexOf('_');
-                if (end <= 3) return null;
-                const idString = p.substring(3, end);
-                const id = parseInt(idString, 10);
-                return isNaN(id) ? null : String(id);
-            }).filter(id => id !== null))];
-            
-            objects = uniqueIds.map(id => {
-                const config = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
-                const prefix = 'obj' + id + '_';
-                
-                allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
-                    const propName = key.substring(prefix.length);
-                    try {
-                        let value = eval(key);
-                        if (value === "true") value = true;
-                        if (value === "false") value = false;
+            allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+                const propName = key.substring(prefix.length);
+                try {
+                    let value = eval(key);
+                    if (value === "true") value = true;
+                    if (value === "false") value = false;
 
-                        if (propName.startsWith('gradColor')) {
-                            config.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                        } else if (propName.startsWith('strokeGradColor')) {
-                            config.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
-                        } else if (propName === 'scrollDir') {
-                            config.scrollDirection = value;
-                        } else if (propName === 'strokeScrollDir') {
-                            config.strokeScrollDir = value;
-                        } else {
-                            config[propName] = value;
-                        }
-                    } catch (e) {}
-                });
-                
-                config.animationSpeed = (config.animationSpeed / 4 || 0) / 10.0;
-                
-                return new Shape(config);
+                    if (propName.startsWith('gradColor')) {
+                        config.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                    } else if (propName.startsWith('strokeGradColor')) {
+                        config.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                    } else if (propName === 'scrollDir') {
+                        config.scrollDirection = value;
+                    } else if (propName === 'strokeScrollDir') {
+                        config.strokeScrollDir = value;
+                    } else if (propName === 'animationSpeed') {
+                        config.animationSpeed = (value || 0) / 10.0;
+                    } else {
+                        config[propName] = value;
+                    }
+                } catch (e) {}
             });
-        }
-
-        function drawFrame() {
-            if (!ctx) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            let shouldAnimate = false;
-            try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
+            config.animationSpeed = (config.animationSpeed / 4 || 0) / 10.0;
             
-            const audioData = getSignalRGBAudioMetrics();
+            return new Shape(config);
+        });
+    }
 
-            objects.forEach(obj => {
-                const prefix = 'obj' + obj.id + '_';
-                const propsToUpdate = { gradient: {}, strokeGradient: {} };
+    function drawFrame() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        let shouldAnimate = false;
+        try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
+        
+        const audioData = getSignalRGBAudioMetrics();
+        const objectsWithSensors = objects.filter(obj => obj.enableSensorReactivity);
+        const sensorData = {};
+        objectsWithSensors.forEach(obj => {
+            sensorData[obj.userSensor] = getSensorValue(obj.userSensor);
+        });
 
-                allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
-                    const propName = key.substring(prefix.length);
-                    try {
-                        let value = eval(key);
-                        if (value === "true") value = true;
-                        if (value === "false") value = false;
+        objects.forEach(obj => {
+            const prefix = 'obj' + obj.id + '_';
+            const propsToUpdate = { gradient: {}, strokeGradient: {} };
 
-                        if (propName.startsWith('gradColor')) {
-                            propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                        } else if (propName.startsWith('strokeGradColor')) {
-                            propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
-                        } else if (propName === 'scrollDir') {
-                            propsToUpdate.scrollDirection = value;
-                        } else if (propName === 'strokeScrollDir') {
-                            propsToUpdate.strokeScrollDir = value;
-                        } else if (propName === 'animationSpeed') {
-                            propsToUpdate.animationSpeed = (value || 0) / 10.0;
-                        } else {
-                            propsToUpdate[propName] = value;
-                        }
-                    } catch (e) {}
-                });
+            allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+                const propName = key.substring(prefix.length);
+                try {
+                    let value = eval(key);
+                    if (value === "true") value = true;
+                    if (value === "false") value = false;
 
-                obj.update(propsToUpdate);
-
-                if (shouldAnimate) {
-                    obj.updateAnimationState(audioData);
-                }
+                    if (propName.startsWith('gradColor')) {
+                        propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                    } else if (propName.startsWith('strokeGradColor')) {
+                        propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                    } else if (propName === 'scrollDir') {
+                        propsToUpdate.scrollDirection = value;
+                    } else if (propName === 'strokeScrollDir') {
+                        propsToUpdate.strokeScrollDir = value;
+                    } else if (propName === 'animationSpeed') {
+                        propsToUpdate.animationSpeed = (value || 0) / 10.0;
+                    } else {
+                        propsToUpdate[propName] = value;
+                    }
+                } catch (e) {}
             });
 
-            for (let i = objects.length - 1; i >= 0; i--) {
-                objects[i].draw(false);
+            obj.update(propsToUpdate);
+
+            if (shouldAnimate) {
+                obj.updateAnimationState(audioData, sensorData);
             }
+        });
+
+        for (let i = objects.length - 1; i >= 0; i--) {
+            objects[i].draw(false);
         }
+    }
 
-        function animate(timestamp) {
-            requestAnimationFrame(animate);
-            const now = timestamp;
-            const elapsed = now - then;
+    function animate(timestamp) {
+        requestAnimationFrame(animate);
+        const now = timestamp;
+        const elapsed = now - then;
 
-            if (elapsed > fpsInterval) {
-                then = now - (elapsed % fpsInterval);
-                drawFrame();
-            }
+        if (elapsed > fpsInterval) {
+            then = now - (elapsed % fpsInterval);
+            drawFrame();
         }
+    }
 
-        function init() {
-            createInitialObjects();
-            fpsInterval = 1000 / fps;
-            then = window.performance.now();
-            animate(then);
-        }
+    function init() {
+        createInitialObjects();
+        fpsInterval = 1000 / fps;
+        then = window.performance.now();
+        animate(then);
+    }
 
-        init();
-    });`;
+    init();
+});`;
 
             const finalHtml = [
                 '<!DOCTYPE html>',

@@ -201,8 +201,9 @@ function getPatternColor(t, c1, c2) {
     }
 }
 
+// Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false }) {
         // --- ALL properties are assigned here first ---
         this.dirty = true;
         this.id = id;
@@ -214,6 +215,9 @@ class Shape {
         this.width = width || 200;
         this.height = height || 152;
         this.rotation = rotation || 0;
+        this.baseRotation = this.rotation; // Store the original static rotation
+        this.animationAngle = 0; // The new property for dynamic rotation
+        this.baseAnimationAngle = 0; // Store the original dynamic rotation
         this.gradType = gradType || 'solid';
         this.gradient = gradient ? { ...gradient } : { color1: '#000000', color2: '#000000' };
         this.scrollDirection = scrollDirection || 'right';
@@ -324,6 +328,14 @@ class Shape {
         this.vizSegmentSpacing = vizSegmentSpacing || 1;
         this.vizLineWidth = vizLineWidth || 8;
 
+        this.enableSensorReactivity = enableSensorReactivity || false;
+        this.sensorTarget = sensorTarget || 'Size';
+        this.sensorValueSource = sensorValueSource || 'value';
+        this.userSensor = userSensor || 'CPU Load';
+        this.sensorMeterFill = sensorMeterFill || 0;
+        this.timePlotLineThickness = timePlotLineThickness || 1;
+        this.timePlotFillArea = timePlotFillArea;
+
         this.baseWidth = this.width;
         this.baseHeight = this.height;
         this.baseRotation = this.rotation;
@@ -334,6 +346,86 @@ class Shape {
         this.baseStarInnerRadius = this.starInnerRadius;
         this.baseInnerDiameter = this.innerDiameter;
         this.basePulseDepth = this.pulseDepth;
+        this.sensorHistory = [];
+    }
+
+    _applySensorReactivity(sensorData) {
+        if (!this.enableSensorReactivity || this.sensorTarget === 'none') {
+            this.sensorMeterFill = 0;
+            this.sensorHistory = [];
+            return;
+        }
+
+        const sensor = sensorData[this.userSensor];
+
+        if (!sensor || typeof sensor.value !== 'number') {
+            this.sensorMeterFill = 0;
+            return;
+        }
+
+        const rawValue = sensor.value;
+        const min = sensor.min;
+        const max = sensor.max;
+
+        let normalizedValue = (rawValue - min) / (max - min);
+        normalizedValue = Math.min(1.0, Math.max(0, normalizedValue));
+
+        if (this.sensorTarget === 'Sensor Meter') {
+            this.sensorMeterFill = normalizedValue;
+        } else if (this.sensorTarget === 'Time Plot') {
+            this.sensorHistory.push(normalizedValue);
+            if (this.sensorHistory.length > this.width) {
+                this.sensorHistory.shift();
+            }
+        }
+    }
+
+    _drawTimePlot() {
+        if (this.sensorHistory.length === 0) return;
+
+        // Use a new context for rotation, so it doesn't affect the object's bounding box.
+        this.ctx.save();
+        this.ctx.rotate(this.animationAngle);
+
+        // Apply the dynamic animation angle.
+        this.ctx.rotate(this.animationAngle);
+
+        this.ctx.beginPath();
+
+        // Check if the area should be filled.
+        if (this.timePlotFillArea) {
+            this.ctx.fillStyle = this._createLocalFillStyle();
+            // Start the path at the bottom-left of the plot area.
+            this.ctx.moveTo(-this.width / 2, this.height / 2);
+        }
+
+        // Set up the style for the line.
+        this.ctx.strokeStyle = this._createLocalFillStyle();
+        this.ctx.lineWidth = this.timePlotLineThickness;
+
+        const xStep = this.width / this.sensorHistory.length;
+        const halfHeight = this.height / 2;
+
+        // Draw the main time plot line.
+        this.sensorHistory.forEach((value, i) => {
+            const x = -this.width / 2 + i * xStep;
+            const y = halfHeight - (value * this.height);
+            this.ctx.lineTo(x, y);
+        });
+
+        // If filling is enabled, close the path and fill the area.
+        if (this.timePlotFillArea) {
+            // Connect the end of the line to the bottom-right of the plot area.
+            this.ctx.lineTo(this.width / 2, this.height / 2);
+            this.ctx.closePath();
+            this.ctx.fill();
+        }
+
+        // Draw the line on top of the filled area.
+        this.ctx.stroke();
+
+        // Restore the canvas context to its previous state.
+        this.ctx.restore();
     }
 
     _applyAudioReactivity(audioData) {
@@ -346,7 +438,7 @@ class Shape {
         this.internalScale = 1.0;
         this.colorOverride = null;
         this.gradient = { ...(this.baseGradient || { color1: '#000000', color2: '#000000' }) };
-        this.volumeMeterFill = 0; // Reset the meter fill
+        this.volumeMeterFill = 0;
 
         // 1. Update Flash Decay
         if (this.flashDecay > 0) {
@@ -361,7 +453,7 @@ class Shape {
 
         const rawAudioValue = audioData[this.audioMetric].avg || 0;
 
-        // Update smoothed value for continuous effects like the volume meter
+        // Update smoothed value for continuous effects
         const smoothingFactor = (this.audioSmoothing || 0) / 100.0;
         this.smoothedAudioValue = smoothingFactor * this.smoothedAudioValue + (1.0 - smoothingFactor) * rawAudioValue;
 
@@ -380,7 +472,6 @@ class Shape {
         }
 
         const reactiveValue = this.flashDecay;
-        const randomSign = Math.random() < 0.5 ? -1 : 1;
 
         switch (this.audioTarget) {
             case 'Flash':
@@ -393,35 +484,42 @@ class Shape {
                 this.internalScale = 1.0 + reactiveValue;
                 break;
             case 'Rotation':
-                this.rotation = this.baseRotation + (randomSign * reactiveValue * 180);
+                // Use a smoothed value to create a continuous rotation effect.
+                // The sensitivity can be applied here.
+                const rotationSensitivity = (this.audioSensitivity / 100.0) * 5/100;
+                const sign = Math.random() < 0.5 ? -1 : 1;
+                // Update the animationAngle instead of the rotation
+                this.animationAngle = this.baseAnimationAngle + (sign * this.smoothedAudioValue * rotationSensitivity);
                 break;
             case 'Volume Meter':
-                const sensitivity = 1.0 + (this.audioSensitivity / 100.0) * 2.0; // Sensitivity from 1x to 3x
-                this.volumeMeterFill = Math.min(1.0, this.smoothedAudioValue * sensitivity);
+                const volumeSensitivity = 1.0 + (this.audioSensitivity / 100.0) * 2.0;
+                this.volumeMeterFill = Math.min(1.0, this.smoothedAudioValue * volumeSensitivity);
                 break;
         }
     }
 
     _drawFill(phase = 0) {
         if (this.audioTarget === 'Volume Meter' && this.volumeMeterFill > 0) {
+            // ... existing volume meter logic
+        } else if (this.sensorTarget === 'Sensor Meter' && this.sensorMeterFill > 0) {
             this.ctx.save();
-            this.ctx.clip(); // Use the shape's path as a clipping mask
+            this.ctx.clip();
 
-            // Draw the "empty" part of the meter as a semi-transparent background
+            // Draw the empty part of the meter
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
             this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
 
-            // Calculate the height and position for the "filled" part of the meter
-            const fillHeight = this.height * this.volumeMeterFill;
-            const fillY = this.height / 2 - fillHeight; // Positioned from the bottom up
+            // Calculate the filled part's height and position
+            const fillHeight = this.height * this.sensorMeterFill;
+            const fillY = this.height / 2 - fillHeight;
 
-            // Draw the filled part using the object's current style
+            // Draw the filled part with the shape's current style
             this.ctx.fillStyle = this._createLocalFillStyle(phase);
             this.ctx.fillRect(-this.width / 2, fillY, this.width, fillHeight);
 
-            this.ctx.restore(); // Remove the clipping mask
+            this.ctx.restore();
         } else {
-            // If not a volume meter, use the original fill logic
+            // If not a meter, use the original fill logic
             this.ctx.fillStyle = this._createLocalFillStyle(phase);
             this.ctx.fill();
         }
@@ -520,7 +618,7 @@ class Shape {
     }
 
     getRenderAngle() {
-        return (this.rotationSpeed !== 0) ? this.rotationAngle : (this.rotation * Math.PI / 180);
+        return (this.rotation * Math.PI / 180);
     }
 
     getWorldCoordsOfCorner(handleName) {
@@ -1058,8 +1156,9 @@ class Shape {
         return grad;
     }
 
-    updateAnimationState(audioData) {
+    updateAnimationState(audioData, sensorData) {
         this._applyAudioReactivity(audioData);
+        this._applySensorReactivity(sensorData);
 
         if (this.shape === 'audio-visualizer' && audioData && audioData.frequencyData) {
             const fullFreqData = audioData.frequencyData;
@@ -1304,8 +1403,8 @@ class Shape {
             this.strokeScrollOffset += increment * directionMultiplier;
         }
 
-        const rotationIncrement = (typeof this.rotationSpeed === 'number' && isFinite(this.rotationSpeed)) ? (this.rotationSpeed / 1000) : 0;
-        this.rotationAngle += rotationIncrement;
+        // const rotationIncrement = (typeof this.rotationSpeed === 'number' && isFinite(this.rotationSpeed)) ? (this.rotationSpeed / 1000) : 0;
+        // this.animationAngle += rotationIncrement;
 
         let animationIncrement;
         if (this.shape == 'oscilloscope' && this.oscDisplayMode == 'seismic') {
@@ -1317,7 +1416,7 @@ class Shape {
         }
 
         if (isFinite(animationIncrement)) {
-            this.animationAngle += animationIncrement;
+            // this.animationAngle += animationIncrement;
         }
 
         if (this.shape === 'fire' || this.shape === 'fire-radial') {
@@ -1426,7 +1525,7 @@ class Shape {
 
         this.ctx.save();
         this.ctx.translate(centerX, centerY);
-        this.ctx.rotate(angleToUse);
+        // this.ctx.rotate(angleToUse);
 
         if (this.internalScale && this.internalScale !== 1.0) {
             this.ctx.scale(this.internalScale, this.internalScale);
@@ -1512,13 +1611,12 @@ class Shape {
             this.ctx.fillStyle = this._createLocalFillStyle();
             drawPixelText(this.ctx, centeredShape, textToRender);
         } else if (this.shape === 'audio-visualizer') {
-            const barCount = parseInt(this.vizBarCount, 10) || 32; // Get bar count from properties
+            const barCount = parseInt(this.vizBarCount, 10) || 32;
             const fillStyle = this._createLocalFillStyle();
             this.ctx.fillStyle = fillStyle;
             this.ctx.strokeStyle = fillStyle;
 
             if (this.vizLayout === 'Circular') {
-                // --- These variables are now defined at the top for all circular styles ---
                 const centerX = 0;
                 const centerY = 0;
                 const outerRadius = Math.min(this.width, this.height) / 2;
@@ -1547,9 +1645,8 @@ class Shape {
                         this.ctx.lineWidth = this.vizLineWidth;
                         this.ctx.stroke();
                     }
-                } else { // Bar Style
+                } else {
                     if (this.vizUseSegments) {
-                        // --- Correct logic for drawing circular segments ---
                         const segmentCount = this.vizSegmentCount || 16;
                         const segmentSpacing = this.vizSegmentSpacing || 1;
                         const availableBarSpace = outerRadius - innerRadius;
@@ -1591,7 +1688,6 @@ class Shape {
                             }
                         }
                     } else {
-                        // --- Logic for drawing solid circular bars ---
                         const angleStep = (2 * Math.PI) / barCount;
                         const barAngularWidth = angleStep * (1 - ((this.vizBarSpacing || 0) / 100.0));
 
@@ -1613,7 +1709,7 @@ class Shape {
                         }
                     }
                 }
-            } else { // Linear Layout
+            } else {
                 const totalSpacing = (barCount - 1) * this.vizBarSpacing;
                 const barWidth = (this.width - totalSpacing) / barCount;
 
@@ -1622,7 +1718,6 @@ class Shape {
                     this.ctx.beginPath();
                     let firstX = -this.width / 2;
                     let lastX = this.width / 2;
-                    // this.ctx.moveTo(firstX, firstY);
 
                     for (let i = 0; i < barCount; i++) {
                         const barHeight = this.vizBarHeights[i] || 0;
@@ -1644,30 +1739,21 @@ class Shape {
                         this.ctx.lineWidth = this.vizLineWidth;
                         this.ctx.stroke();
                     }
-                } else { // Bar Style
+                } else {
                     for (let i = 0; i < barCount; i++) {
                         const barHeight = this.vizBarHeights[i] || 0;
                         if (barHeight < 1) continue;
                         const x = -this.width / 2 + i * (barWidth + this.vizBarSpacing);
-
-                        // --- NEW SEGMENT LOGIC STARTS HERE ---
                         if (this.vizUseSegments) {
-                            // Use property values with safe defaults
                             const segmentCount = this.vizSegmentCount || 16;
                             const segmentSpacing = this.vizSegmentSpacing || 2;
-
-                            // Calculate the height of each segment "slot" based on the total shape height
                             const totalSpacing = (segmentCount - 1) * segmentSpacing;
                             const segmentHeight = (this.height - totalSpacing) / segmentCount;
-
                             if (segmentHeight > 0) {
-                                // Calculate how many segments should be lit
                                 const litSegments = Math.floor(barHeight / (segmentHeight + segmentSpacing));
-
                                 for (let j = 0; j < litSegments; j++) {
                                     let y;
                                     const segYPos = j * (segmentHeight + segmentSpacing);
-
                                     if (this.gradType === 'alternating') {
                                         this.ctx.fillStyle = this._createLocalFillStyle(j);
                                     } else if (this.gradType === 'random') {
@@ -1675,7 +1761,6 @@ class Shape {
                                         const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
                                         this.ctx.fillStyle = Math.random() < 0.5 ? c1 : c2;
                                     }
-
                                     switch (this.vizStyle) {
                                         case 'top':
                                             y = -this.height / 2 + segYPos;
@@ -1685,14 +1770,14 @@ class Shape {
                                             const initialY = -totalPossibleHeight / 2;
                                             y = initialY + j * (segmentHeight + segmentSpacing);
                                             break;
-                                        default: // 'bottom' style
+                                        default:
                                             y = this.height / 2 - segmentHeight - segYPos;
                                             break;
                                     }
                                     this.ctx.fillRect(x, y, barWidth, segmentHeight);
                                 }
                             }
-                        } else { // Fallback to solid bars
+                        } else {
                             let y;
                             switch (this.vizStyle) {
                                 case 'top': y = -this.height / 2; break;
@@ -1777,7 +1862,7 @@ class Shape {
                     if (this.fillShape) { this.ctx.fill(); } else { this.ctx.stroke(); }
                 }
                 this.ctx.globalAlpha = 1.0;
-            } else { // Linear Mode
+            } else {
                 const halfW = this.width / 2;
                 const halfH = this.height / 2;
                 const activeLineWidth = this.lineWidth;
@@ -1812,55 +1897,69 @@ class Shape {
                 if (this.ctx.lineWidth <= 0 || !isFinite(this.ctx.lineWidth)) { this.ctx.lineWidth = 1; }
                 this.ctx.stroke();
             }
+        } else if (this.shape === 'ring') {
+            const oR = this.width / 2;
+            const iR = this.innerDiameter / 2;
+            if (iR >= 0 && iR < oR && this.numberOfSegments > 0) {
+                const aStep = (2 * Math.PI) / this.numberOfSegments;
+                const segAngle = (this.angularWidth * Math.PI) / 180;
+                for (let i = 0; i < this.numberOfSegments; i++) {
+                    this.ctx.beginPath();
+                    const startAngle = i * aStep + this.animationAngle;
+                    const endAngle = startAngle + segAngle;
+                    this.ctx.moveTo(Math.cos(startAngle) * oR, Math.sin(startAngle) * oR);
+                    this.ctx.arc(0, 0, oR, startAngle, endAngle, false);
+                    this.ctx.lineTo(Math.cos(endAngle) * iR, Math.sin(endAngle) * iR);
+                    this.ctx.arc(0, 0, iR, endAngle, startAngle, true);
+                    this.ctx.closePath();
+                    this._drawFill(i);
+                    applyStrokeInside();
+                }
+            }
+        } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
+            const cellW = this.width / this.numberOfColumns;
+            const cellH = this.height / this.numberOfRows;
+            for (let row = 0; row < this.numberOfRows; row++) {
+                for (let col = 0; col < this.numberOfColumns; col++) {
+                    const cellIndex = row * this.numberOfColumns + col;
+                    this.ctx.beginPath();
+                    this.ctx.rect(-this.width / 2 + col * cellW, -this.height / 2 + row * cellH, cellW, cellH);
+                    this._drawFill(cellIndex);
+                    applyStrokeInside();
+                }
+            }
         } else {
-            if (this.shape === 'ring') {
-                const oR = this.width / 2; const iR = this.innerDiameter / 2;
-                if (iR >= 0 && iR < oR && this.numberOfSegments > 0) {
-                    const aStep = (2 * Math.PI) / this.numberOfSegments; const segAngle = (this.angularWidth * Math.PI) / 180;
-                    for (let i = 0; i < this.numberOfSegments; i++) {
-                        this.ctx.beginPath();
-                        const startAngle = i * aStep + this.animationAngle; const endAngle = startAngle + segAngle;
-                        this.ctx.moveTo(Math.cos(startAngle) * oR, Math.sin(startAngle) * oR);
-                        this.ctx.arc(0, 0, oR, startAngle, endAngle, false);
-                        this.ctx.lineTo(Math.cos(endAngle) * iR, Math.sin(endAngle) * iR);
-                        this.ctx.arc(0, 0, iR, endAngle, startAngle, true);
-                        this.ctx.closePath();
-                        this._drawFill(i);
-                        applyStrokeInside();
-                    }
-                }
-            } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
-                const cellW = this.width / this.numberOfColumns; const cellH = this.height / this.numberOfRows;
-                for (let row = 0; row < this.numberOfRows; row++) {
-                    for (let col = 0; col < this.numberOfColumns; col++) {
-                        const cellIndex = row * this.numberOfColumns + col;
-                        this.ctx.beginPath();
-                        this.ctx.rect(-this.width / 2 + col * cellW, -this.height / 2 + row * cellH, cellW, cellH);
-                        this._drawFill(cellIndex);
-                        applyStrokeInside();
-                    }
-                }
+            if (this.sensorTarget === 'Time Plot') {
+                this._drawTimePlot();
             } else {
                 this.ctx.beginPath();
-                if (this.shape === 'circle') { this.ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, 2 * Math.PI); }
-                else if (this.shape === 'polygon') {
-                    const rX = this.width / 2; const rY = this.height / 2; const sides = Math.max(3, this.sides);
+                if (this.shape === 'circle') {
+                    this.ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, 2 * Math.PI);
+                } else if (this.shape === 'polygon') {
+                    const rX = this.width / 2;
+                    const rY = this.height / 2;
+                    const sides = Math.max(3, this.sides);
                     for (let i = 0; i < sides; i++) {
                         const a = (i / sides) * 2 * Math.PI - (Math.PI / 2);
                         this.ctx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
                     }
                     this.ctx.closePath();
                 } else if (this.shape === 'star') {
-                    const oRX = this.width / 2; const oRY = this.height / 2;
-                    const iRX = oRX * (this.starInnerRadius / 100); const iRY = oRY * (this.starInnerRadius / 100);
+                    const oRX = this.width / 2;
+                    const oRY = this.height / 2;
+                    const iRX = oRX * (this.starInnerRadius / 100);
+                    const iRY = oRY * (this.starInnerRadius / 100);
                     const points = Math.max(3, this.points);
                     for (let i = 0; i < 2 * points; i++) {
-                        const rX = (i % 2 === 0) ? oRX : iRX; const rY = (i % 2 === 0) ? oRY : iRY;
+                        const rX = (i % 2 === 0) ? oRX : iRX;
+                        const rY = (i % 2 === 0) ? oRY : iRY;
                         const a = (i / (2 * points)) * 2 * Math.PI - (Math.PI / 2);
                         this.ctx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
                     }
                     this.ctx.closePath();
-                } else { this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height); }
+                } else {
+                    this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+                }
                 this._drawFill();
                 applyStrokeInside();
             }
