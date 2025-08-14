@@ -962,13 +962,9 @@ class Shape {
         if (this.colorOverride) {
             return this.colorOverride;
         }
-        // --- START: FIX ---
-        // Safeguard against invalid or undefined colors that might come from
-        // state transitions, ensuring a valid color is always used.
         const safeColor = (c) => (typeof c === 'string' && c.length > 0) ? c : '#000000';
         let c1 = safeColor(this.gradient.color1);
         let c2 = safeColor(this.gradient.color2);
-        // --- END: FIX ---
 
         if (this.cycleColors) {
             c1 = `hsl(${(this.hue1 + phase * this.phaseOffset) % 360}, 100%, 50%)`;
@@ -978,8 +974,10 @@ class Shape {
         if (this.gradType === 'alternating') {
             return (phase % 2 === 0) ? c1 : c2;
         }
+
         const phaseIndex = this._getPhaseIndex(phase);
         const p = this._getAnimationProgress(phaseIndex);
+
         switch (this.gradType) {
             case 'linear':
                 return this._createLinearGradient(c1, c2, p);
@@ -989,6 +987,8 @@ class Shape {
             case 'rainbow-radial':
                 const hueOffset = (this.scrollOffset * 360) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
                 return this._createRainbowGradient(hueOffset);
+            case 'random':
+                return this._getRandomColorForElement(phase);
             default: // solid
                 return c1 || 'black';
         }
@@ -1352,8 +1352,10 @@ class Shape {
             }
         }
 
-        if (this.gradType !== 'random' && this.randomElementState) {
-            this.randomElementState = null;
+        if (this.gradType === 'random' && this.randomElementState) {
+            for (const key in this.randomElementState) {
+                this.randomElementState[key].timer -= this.animationSpeed;
+            }
         }
 
         this.hue1 += safeSpeed * 10;
@@ -1924,6 +1926,8 @@ class Shape {
         } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
             const cellW = this.width / this.numberOfColumns;
             const cellH = this.height / this.numberOfRows;
+            const isRandomFill = this.gradType === 'random';
+
             for (let row = 0; row < this.numberOfRows; row++) {
                 for (let col = 0; col < this.numberOfColumns; col++) {
                     const cellIndex = row * this.numberOfColumns + col;

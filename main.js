@@ -1993,7 +1993,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (key === 'strokeScrollDir') {
                     values.strokeScrollDir = value;
                 } else {
-                    values[key] = value;
+                    // FIX: Add a conditional check to scale down the textAnimationSpeed.
+                    if (key === 'textAnimationSpeed') {
+                        values.textAnimationSpeed = (value || 0) / 4;
+                    } else {
+                        values[key] = value;
+                    }
                 }
             }
         });
@@ -2474,16 +2479,14 @@ document.addEventListener('DOMContentLoaded', function () {
             return { value: 0, min: 0, max: 100 };
         }
     };
-
+    
+    const FONT_DATA_4PX = ${JSON.stringify(FONT_DATA_4PX)};
+    const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};
     const lerpColor = ${lerpColor.toString()};
     const getPatternColor = ${getPatternColor.toString()};
-    const hexToHsl = ${hexToHsl.toString()};
-    const hslToHex = ${hslToHex.toString()};
+    const drawPixelText = ${drawPixelText.toString()};
     const getSignalRGBAudioMetrics = ${getSignalRGBAudioMetrics.toString()};
     
-    // You must include the full Shape class, not just parts of it.
-    // The Shape.js file itself should contain all the necessary methods,
-    // including the new _applySensorReactivity.
     const Shape = ${Shape.toString()};
 
     let fps = 50;
@@ -2525,6 +2528,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         config.strokeScrollDir = value;
                     } else if (propName === 'animationSpeed') {
                         config.animationSpeed = (value || 0) / 10.0;
+                    } else if (propName === 'textAnimationSpeed') {
+                        // FIX: The text scroll speed needs to be divided by 4 for the exported file
+                        config.textAnimationSpeed = (value || 0) / 4;
                     } else {
                         config[propName] = value;
                     }
