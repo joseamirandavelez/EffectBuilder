@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
         ],
         text: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation',
             'textAnimationSpeed', 'showTime', 'showDate',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
@@ -4259,6 +4259,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         copyPropsBtn.addEventListener('click', () => {
             if (selectedObjectIds.length === 0) return;
+            // Fix: Use a globally accessible variable to store the source ID.
             sourceObjectId = selectedObjectIds[0];
             const sourceObject = objects.find(o => o.id === sourceObjectId);
             if (!sourceObject) return;
@@ -4279,7 +4280,10 @@ document.addEventListener('DOMContentLoaded', function () {
             copyPropsModal.show();
         });
 
-        confirmCopyBtn.addEventListener('click', () => {
+        confirmCopyBtn.addEventListener('click', (event) => {
+            event.preventDefault(); // Fix: Prevent form submission.
+
+            // Fix: Retrieve the source object using the global sourceObjectId.
             const sourceObject = objects.find(o => o.id === sourceObjectId);
             if (!sourceObject) return;
 
@@ -4290,7 +4294,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (copyPropsForm.elements['copy-rotation'].checked) { Object.assign(propsToCopy, { rotation: sourceObject.rotation, rotationSpeed: sourceObject.rotationSpeed }); }
             if (copyPropsForm.elements['copy-fill-style'].checked) { Object.assign(propsToCopy, { gradType: sourceObject.gradType, useSharpGradient: sourceObject.useSharpGradient, gradientStop: sourceObject.gradientStop, gradient: { ...sourceObject.gradient } }); }
 
-            // CORRECTED: This block now properly includes animationSpeed
             if (copyPropsForm.elements['copy-animation'].checked) {
                 Object.assign(propsToCopy, {
                     animationMode: sourceObject.animationMode,
