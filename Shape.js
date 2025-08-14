@@ -1250,7 +1250,7 @@ class Shape {
         const safeSpeed = (typeof this.animationSpeed === 'number' && isFinite(this.animationSpeed)) ? this.animationSpeed : 0;
         const gradientSpeedMultiplier = 1 / 400;
         const shapeAnimationSpeedMultiplier = 0.025;
-        const radialAnimationSpeedMultiplier = 10; // New, faster multiplier for radial mode
+        const radialAnimationSpeedMultiplier = 10;
         const seismicAnimationSpeedMultiplier = 0.0075;
 
         if (this.shape === 'tetris') {
