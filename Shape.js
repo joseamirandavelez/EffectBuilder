@@ -216,7 +216,6 @@ class Shape {
         this.height = height || 152;
         this.rotation = rotation || 0;
         this.baseRotation = this.rotation; // Store the original static rotation
-        this.animationAngle = 0; // The new property for dynamic rotation
         this.baseAnimationAngle = 0; // Store the original dynamic rotation
         this.gradType = gradType || 'solid';
         this.gradient = gradient ? { ...gradient } : { color1: '#000000', color2: '#000000' };
@@ -1410,7 +1409,7 @@ class Shape {
         // this.animationAngle += rotationIncrement;
 
         let animationIncrement;
-        if (this.shape == 'oscilloscope' && this.oscDisplayMode == 'seismic') {
+        if (this.shape === 'oscilloscope' && this.oscDisplayMode === 'seismic') {
             animationIncrement = safeSpeed * seismicAnimationSpeedMultiplier;
             const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
             animationIncrement *= directionMultiplier;
@@ -1419,8 +1418,10 @@ class Shape {
         }
 
         if (isFinite(animationIncrement)) {
-            // this.animationAngle += animationIncrement;
+            const rotationIncrement = (typeof this.rotationSpeed === 'number' && isFinite(this.rotationSpeed)) ? (this.rotationSpeed / 1000) : 0;
+            this.animationAngle += rotationIncrement;
         }
+
 
         if (this.shape === 'fire' || this.shape === 'fire-radial') {
             const speed = (typeof this.animationSpeed === 'number' && isFinite(this.animationSpeed)) ? this.animationSpeed : 0;
@@ -1528,7 +1529,8 @@ class Shape {
 
         this.ctx.save();
         this.ctx.translate(centerX, centerY);
-        this.ctx.rotate(angleToUse);
+        this.ctx.rotate(angleToUse); // This is the static rotation
+        this.ctx.rotate(this.animationAngle); // This is the fix, it applies the animation rotation
 
         if (this.internalScale && this.internalScale !== 1.0) {
             this.ctx.scale(this.internalScale, this.internalScale);
