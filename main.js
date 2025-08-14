@@ -165,6 +165,75 @@ function getBoundingBox(obj) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    const srgbLinkBtn = document.getElementById('generate-srgb-link-btn');
+
+    srgbLinkBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        const allProps = getControlValues();
+
+        // Get the title and ensure it's URL-encoded for the path.
+        const effectTitle = allProps['title'] || 'My Effect';
+        const urlSafeTitle = encodeURIComponent(effectTitle);
+        const baseUrl = `https://go.signalrgb.com/app/effect/apply/${urlSafeTitle}`;
+
+        let params = [];
+
+        // Loop through every property and append it to the params array.
+        for (const key in allProps) {
+            if (!allProps.hasOwnProperty(key)) {
+                continue;
+            }
+
+            let value = allProps[key];
+
+            // Filter out metadata that shouldn't be in the link.
+            if (key === 'title' || key === 'description' || key === 'publisher') {
+                continue;
+            }
+
+            // The SignalRGB app expects boolean values as string literals.
+            if (typeof value === 'boolean') {
+                value = value ? 'true' : 'false';
+            }
+            // Numbers and other simple data types should be converted to strings.
+
+            else if (typeof value === 'number') {
+                value = String(value);
+            }
+
+            // Manually handle hex color codes and spaces for consistency.
+            if (typeof value === 'string') {
+                // Replace '#' with the correct %23 encoding.
+                if (value.startsWith('#')) {
+                    value = `%23${value.substring(1)}`;
+                }
+                // Replace spaces with the standard %20 encoding.
+                value = value.replace(/ /g, '%20');
+            }
+
+            // Push the correctly encoded key-value pair.
+            params.push(`${key}=${value}`);
+        }
+
+        const queryString = params.join('&');
+        const finalUrl = `${baseUrl}?${queryString}`;
+
+        // FIX: Open the link immediately to prevent the browser from blocking the pop-up.
+        window.open(finalUrl, '_blank');
+
+        // Then, show a notification.
+        const modalBody = 'This link has been opened in a new tab. It will only work if the corresponding effect is already installed in your SignalRGB library.\n\nThe link has also been copied to your clipboard.';
+        showToast(modalBody, 'success');
+
+        // Also, copy to clipboard for convenience.
+        navigator.clipboard.writeText(finalUrl).then(() => {
+            // The success message is now part of the modal.
+
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+    });
+
     document.getElementById('startAudioBtn').addEventListener('click', setupAudio);
 
     if (!localStorage.getItem('termsAccepted')) {
@@ -3763,7 +3832,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const toastBody = document.getElementById('app-toast-body');
         const toastIcon = document.getElementById('app-toast-icon');
 
-        toastBody.textContent = message;
+        // Replace newline characters with HTML break tags for correct rendering.
+        toastBody.innerHTML = message.replace(/\n/g, '<br>');
 
         // Remove old color and icon classes
         toastHeader.classList.remove('bg-success', 'bg-danger', 'bg-primary');
