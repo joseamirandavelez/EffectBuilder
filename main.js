@@ -234,6 +234,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    const buttonsWithTitles = document.querySelectorAll('button[title]');
+    buttonsWithTitles.forEach(btn => {
+        new bootstrap.Tooltip(btn);
+    });
+
     document.getElementById('startAudioBtn').addEventListener('click', setupAudio);
 
     if (!localStorage.getItem('termsAccepted')) {
@@ -2031,6 +2036,9 @@ document.addEventListener('DOMContentLoaded', function () {
     /**
      * Reads all properties from the 'objects' array and updates the form inputs to match.
      */
+    /**
+ * Reads all properties from the 'objects' array and updates the form inputs to match.
+ */
     function updateFormValuesFromObjects() {
         // The complete list of properties that need to be scaled down by 4x for the UI.
         const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
@@ -2058,7 +2066,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 if (propsToScale.includes(key)) {
-                    updateField(key, obj[key] / 4);
+                    // FIX: Round the value to the nearest integer before updating the form.
+                    updateField(key, Math.round(obj[key] / 4));
                 } else if (key === 'gradient') {
                     updateField('gradColor1', obj.gradient.color1);
                     updateField('gradColor2', obj.gradient.color2);
@@ -2066,15 +2075,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateField('strokeGradColor1', obj.strokeGradient.color1);
                     updateField('strokeGradColor2', obj.strokeGradient.color2);
                 } else if (key === 'animationSpeed' || key === 'strokeAnimationSpeed') {
-                    updateField(key, obj[key] * 10);
+                    updateField(key, Math.round(obj[key] * 10));
                 } else if (key === 'cycleSpeed' || key === 'strokeCycleSpeed') {
-                    updateField(key, obj[key] * 50);
+                    updateField(key, Math.round(obj[key] * 50));
                 } else if (key === 'scrollDirection') {
                     updateField('scrollDir', obj.scrollDirection);
                 } else if (key === 'strokeScrollDir') {
                     updateField('strokeScrollDir', obj.strokeScrollDir);
                 } else if (typeof obj[key] !== 'object' && typeof obj[key] !== 'function') {
-                    updateField(key, obj[key]);
+                    // FIX: Round the value to the nearest integer before updating the form.
+                    if (typeof obj[key] === 'number') {
+                        updateField(key, Math.round(obj[key]));
+                    } else {
+                        updateField(key, obj[key]);
+                    }
                 }
             });
         });
@@ -2432,16 +2446,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const styleContent =
                 '        canvas { width: 100%; height: 100%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #000000; }\n' +
                 '        body { background-color: #000000; overflow: hidden; margin: 0; }\n';
-
             const bodyContent = '<body><canvas id="signalCanvas"></canvas></body>';
-
-            // --- START OF DEFINITIVE FIX ---
-            // This new logic cleanly converts all necessary code to strings without manipulation.
             const shapeClasses = [`${Shape.toString()}`].join('\n\n');
-            // --- END OF DEFINITIVE FIX ---
-
             const formattedKeys = '[' + allKeys.map(key => `'${key}'`).join(',') + ']';
-
 
             const exportedScript = `
 document.addEventListener('DOMContentLoaded', function () {
@@ -2467,7 +2474,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return { value: 0, min: 0, max: 100 };
         }
     };
-    
+
+    const lerpColor = ${lerpColor.toString()};
+    const getPatternColor = ${getPatternColor.toString()};
     const hexToHsl = ${hexToHsl.toString()};
     const hslToHex = ${hslToHex.toString()};
     const getSignalRGBAudioMetrics = ${getSignalRGBAudioMetrics.toString()};
