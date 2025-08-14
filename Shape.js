@@ -203,8 +203,9 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, canvasWidth, oscAnimationSpeed, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false }) {
         // --- ALL properties are assigned here first ---
+        this.canvasWidth = canvasWidth || 1280;
         this.dirty = true;
         this.id = id;
         this.name = name || `Object ${id}`;
@@ -281,6 +282,7 @@ class Shape {
         this.fillShape = fillShape || false;
         this.enableWaveAnimation = enableWaveAnimation !== undefined ? enableWaveAnimation : true;
         this.oscDisplayMode = oscDisplayMode || 'linear';
+        this.oscAnimationSpeed = oscAnimationSpeed || 0;
         this._pausedRotationSpeed = null;
         this._pausedAnimationSpeed = null;
         this.waveStyle = waveStyle || 'wavy';
@@ -380,14 +382,12 @@ class Shape {
         }
     }
 
+    // MODIFIED - Removed a duplicate line that caused a double-rotation
     _drawTimePlot() {
         if (this.sensorHistory.length === 0) return;
 
         // Use a new context for rotation, so it doesn't affect the object's bounding box.
         this.ctx.save();
-        this.ctx.rotate(this.animationAngle);
-
-        // Apply the dynamic animation angle.
         this.ctx.rotate(this.animationAngle);
 
         this.ctx.beginPath();
@@ -715,8 +715,6 @@ class Shape {
             localY >= -halfHeight && localY <= halfHeight);
     }
 
-    // MODIFIED - Prevents incorrect position shifting when pasting size and position together
-    // MODIFIED - Resets the animationAngle when rotation properties are updated
     update(props) {
         // --- Store original state for calculations ---
         const oldWidth = this.width;
@@ -746,6 +744,10 @@ class Shape {
         const oldRows = this.numberOfRows;
         const oldCols = this.numberOfColumns;
 
+        // Check if rotation values are changing BEFORE applying them
+        const rotationChanged = (props.hasOwnProperty('rotation') && props.rotation !== this.rotation) ||
+            (props.hasOwnProperty('rotationSpeed') && props.rotationSpeed !== this.rotationSpeed);
+
         // --- UNIFIED UPDATE LOGIC ---
         for (const key in props) {
             if (props[key] === undefined) continue;
@@ -760,8 +762,8 @@ class Shape {
             }
         }
 
-        // If rotation properties are being updated, reset the animation angle.
-        if (props.hasOwnProperty('rotation') || props.hasOwnProperty('rotationSpeed')) {
+        // If rotation properties have changed, reset the animation angle.
+        if (rotationChanged) {
             this.animationAngle = 0;
         }
 
@@ -1247,10 +1249,14 @@ class Shape {
 
         const safeSpeed = (typeof this.animationSpeed === 'number' && isFinite(this.animationSpeed)) ? this.animationSpeed : 0;
         const gradientSpeedMultiplier = 1 / 400;
-        const shapeAnimationSpeedMultiplier = 0.05;
-        const seismicAnimationSpeedMultiplier = 0.015;
+        const shapeAnimationSpeedMultiplier = 0.025;
+        const radialAnimationSpeedMultiplier = 10; // New, faster multiplier for radial mode
+        const seismicAnimationSpeedMultiplier = 0.0075;
 
         if (this.shape === 'tetris') {
+            const isHiRes = this.canvasWidth > 320;
+            const positionalSpeedScaleFactor = isHiRes ? 4 : 1;
+
             if (this.tetrisAnimation === 'fade-in-stack') {
                 if (this.tetrisBlocks.length === 0) {
                     const blockHeight = this.height / this.tetrisBlockCount;
@@ -1264,7 +1270,7 @@ class Shape {
                     this.tetrisActiveBlockIndex = 0;
                     this.tetrisFadeState = 'in';
                 }
-                const fadeSpeed = this.tetrisSpeed / 100.0;
+                const fadeSpeed = this.tetrisSpeed / 50.0;
                 if (this.tetrisFadeState === 'in') {
                     if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
                         const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
@@ -1303,7 +1309,7 @@ class Shape {
                 if (this.tetrisAnimation === 'gravity' || this.tetrisAnimation === 'gravity-fade') {
                     this.tetrisBlocks.forEach((block, index) => {
                         if (block.settled) return;
-                        const gravity = 0.5;
+                        const gravity = 0.5 * positionalSpeedScaleFactor;
                         const bounceFactor = this.tetrisBounce / 100.0;
                         let bounceBoundaryTop = this.height;
                         this.tetrisBlocks.forEach((other, i) => {
@@ -1331,7 +1337,7 @@ class Shape {
                     if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
                         const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
                         if (!activeBlock.settled) {
-                            const speed = this.tetrisSpeed / tetrisSpeedDivisor;
+                            const speed = (this.tetrisSpeed * positionalSpeedScaleFactor) / this.tetrisSpeedDivisor;
                             let boundary = (this.tetrisActiveBlockIndex > 0) ? this.tetrisBlocks[this.tetrisActiveBlockIndex - 1].y : this.height;
                             activeBlock.y += speed;
                             if (activeBlock.y + activeBlock.h >= boundary) {
@@ -1411,21 +1417,23 @@ class Shape {
             this.strokeScrollOffset += increment * directionMultiplier;
         }
 
-        let animationIncrement;
-        if (this.shape === 'oscilloscope' && this.oscDisplayMode === 'seismic') {
-            animationIncrement = safeSpeed * seismicAnimationSpeedMultiplier;
-            const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
-            animationIncrement *= directionMultiplier;
-        } else {
-            animationIncrement = safeSpeed * shapeAnimationSpeedMultiplier;
+        if (this.shape === 'oscilloscope') {
+            const oscSafeSpeed = (typeof this.oscAnimationSpeed === 'number' && isFinite(this.oscAnimationSpeed)) ? this.oscAnimationSpeed : 0;
+            let animationIncrement;
+            if (this.oscDisplayMode === 'seismic') {
+                animationIncrement = oscSafeSpeed * seismicAnimationSpeedMultiplier;
+                const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
+                animationIncrement *= directionMultiplier;
+            } else if (this.oscDisplayMode === 'radial') {
+                animationIncrement = oscSafeSpeed * radialAnimationSpeedMultiplier;
+            } else {
+                animationIncrement = oscSafeSpeed * shapeAnimationSpeedMultiplier;
+            }
+            this.wavePhaseAngle += animationIncrement;
         }
 
         const rotationIncrement = (typeof this.rotationSpeed === 'number' && isFinite(this.rotationSpeed)) ? (this.rotationSpeed / 1000) : 0;
         this.animationAngle += rotationIncrement;
-
-        if (this.shape === 'oscilloscope') {
-            this.wavePhaseAngle += animationIncrement;
-        }
 
         if (this.shape === 'fire' || this.shape === 'fire-radial') {
             const speed = (typeof this.animationSpeed === 'number' && isFinite(this.animationSpeed)) ? this.animationSpeed : 0;
@@ -1526,6 +1534,7 @@ class Shape {
         }
     }
 
+    // MODIFIED - Removed hardcoded speed multiplier and fixed lineWidth property for radial oscilloscope
     draw(isSelected) {
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
@@ -1802,7 +1811,7 @@ class Shape {
         } else if (this.shape === 'oscilloscope') {
             const activeWavePhase = this.enableWaveAnimation ? this.wavePhaseAngle : 0;
             if (this.oscDisplayMode === 'radial') {
-                this.ctx.lineWidth = this.vizLineWidth;
+                this.ctx.lineWidth = this.lineWidth;
                 this.ctx.strokeStyle = this._createLocalFillStyle();
                 const totalRadius = (Math.min(this.width, this.height) / 2) - (this.ctx.lineWidth / 2);
                 if (totalRadius > 0) {
@@ -1811,7 +1820,7 @@ class Shape {
                     const maxAmplitude = totalRadius - baseRadius;
                     for (let i = 0; i <= 360; i++) {
                         const angleRad = (i * Math.PI) / 180;
-                        const waveFuncAngle = 2 * Math.PI * this.frequency * (i / 360) + activeWavePhase * 2;
+                        const waveFuncAngle = 2 * Math.PI * this.frequency * (i / 360) + activeWavePhase;
                         let y_wave;
                         switch (this.waveType) {
                             case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
@@ -1914,7 +1923,7 @@ class Shape {
                 const segAngle = (this.angularWidth * Math.PI) / 180;
                 for (let i = 0; i < this.numberOfSegments; i++) {
                     this.ctx.beginPath();
-                    const startAngle = i * aStep + this.animationAngle;
+                    const startAngle = i * aStep;
                     const endAngle = startAngle + segAngle;
                     this.ctx.moveTo(Math.cos(startAngle) * oR, Math.sin(startAngle) * oR);
                     this.ctx.arc(0, 0, oR, startAngle, endAngle, false);

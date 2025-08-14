@@ -145,7 +145,7 @@ let tetrisSpeedDivisor = 10.0;
 const EXPORT_GRADIENT_SPEED_MULTIPLIER = gradientSpeedMultiplier;
 const EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER = shapeAnimationSpeedMultiplier;
 const EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER = seismicAnimationSpeedMultiplier;
-const EXPORT_TETRIS_SPEED_DIVISOR = tetrisSpeedDivisor * 4;
+const EXPORT_TETRIS_SPEED_DIVISOR = tetrisSpeedDivisor;
 
 
 
@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationMode', 'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'scrollDir', 'phaseOffset',
             'lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape',
-            'enableWaveAnimation', 'waveStyle', 'waveCount',
+            'enableWaveAnimation', 'waveStyle', 'waveCount', 'oscAnimationSpeed',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir', ,
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
         ],
@@ -1100,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     if (propsToScale.includes(propName)) {
                         exportValue = Math.round(numValue / 4);
-                    } else if (propName === 'animationSpeed' || propName === 'strokeAnimationSpeed') {
+                    } else if (propName === 'animationSpeed' || propName === 'strokeAnimationSpeed' || propName === 'oscAnimationSpeed') {
                         exportValue = Math.round(numValue * 10);
                     } else if (propName === 'cycleSpeed' || propName === 'strokeCycleSpeed') {
                         exportValue = Math.round(numValue * 50);
@@ -1321,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     newState.name = `${objectToCopy.name} Copy`;
                     newState.x += 20;
                     newState.y += 20;
-                    const newShape = new Shape({ ...newState, ctx });
+                    const newShape = new Shape({ ...newState, ctx, canvasWidth: canvas.width });
                     objects.push(newShape);
                     const oldConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${idToCopy}_`));
                     const newConfigs = oldConfigs.map(oldConf => {
@@ -1392,7 +1392,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'useSharpGradient', 'gradientStop', 'animationMode', 'animationSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns'], icon: 'bi-palette-fill' },
                 'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir'], icon: 'bi-brush-fill' },
                 'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'], icon: 'bi-fonts' },
-                'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
+                'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
                 'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'], icon: 'bi-grid-3x3-gap-fill' },
                 'Fire': { props: ['fireSpread'], icon: 'bi-fire' },
                 'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
@@ -2005,9 +2005,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Scale down the speed values for the live object.
         values.cycleSpeed = (values.cycleSpeed || 0) / 50.0;
         values.animationSpeed = (values.animationSpeed || 0) / 10.0;
+        values.oscAnimationSpeed = (values.oscAnimationSpeed || 0) / 10.0;
         values.strokeCycleSpeed = (values.strokeCycleSpeed || 0) / 50.0;
         values.strokeAnimationSpeed = (values.strokeAnimationSpeed || 0) / 10.0;
-        // Note: textAnimationSpeed is a plain value and is not scaled.
 
         // Enforce height lock for rings only, allowing circles to be stretched.
         if (values.shape === 'ring') {
@@ -2040,12 +2040,9 @@ document.addEventListener('DOMContentLoaded', function () {
     /**
      * Reads all properties from the 'objects' array and updates the form inputs to match.
      */
-    /**
- * Reads all properties from the 'objects' array and updates the form inputs to match.
- */
     function updateFormValuesFromObjects() {
         // The complete list of properties that need to be scaled down by 4x for the UI.
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'tetrisSpeed'];
 
         objects.forEach(obj => {
             const fieldset = form.querySelector(`fieldset[data-object-id="${obj.id}"]`);
@@ -2070,7 +2067,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 if (propsToScale.includes(key)) {
-                    // FIX: Round the value to the nearest integer before updating the form.
                     updateField(key, Math.round(obj[key] / 4));
                 } else if (key === 'gradient') {
                     updateField('gradColor1', obj.gradient.color1);
@@ -2078,7 +2074,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (key === 'strokeGradient') {
                     updateField('strokeGradColor1', obj.strokeGradient.color1);
                     updateField('strokeGradColor2', obj.strokeGradient.color2);
-                } else if (key === 'animationSpeed' || key === 'strokeAnimationSpeed') {
+                } else if (key === 'animationSpeed' || key === 'strokeAnimationSpeed' || key === 'oscAnimationSpeed') {
                     updateField(key, Math.round(obj[key] * 10));
                 } else if (key === 'cycleSpeed' || key === 'strokeCycleSpeed') {
                     updateField(key, Math.round(obj[key] * 50));
@@ -2087,7 +2083,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (key === 'strokeScrollDir') {
                     updateField('strokeScrollDir', obj.strokeScrollDir);
                 } else if (typeof obj[key] !== 'object' && typeof obj[key] !== 'function') {
-                    // FIX: Round the value to the nearest integer before updating the form.
                     if (typeof obj[key] === 'number') {
                         updateField(key, Math.round(obj[key]));
                     } else {
@@ -2130,27 +2125,25 @@ document.addEventListener('DOMContentLoaded', function () {
     /**
      * Creates the initial set of Shape objects based on the `configStore`.
      */
+    // MODIFIED - Restored the 4x scaling for positional and size properties
     function createInitialObjects() {
-        const grouped = groupConfigs(configStore);
-        const initialStates = [];
+        const allPropKeysFromStore = configStore.map(c => c.property || c.name);
+        if (allPropKeysFromStore.length === 0) return;
 
-        const idsToProcess = [];
-        configStore.forEach(conf => {
-            const match = (conf.property || '').match(/^obj(\d+)_/);
-            if (match) {
-                const id = parseInt(match[1], 10);
-                if (!idsToProcess.includes(id)) {
-                    idsToProcess.push(id);
-                }
-            }
-        });
+        const uniqueIds = [...new Set(allPropKeysFromStore.map(p => {
+            if (!p || !p.startsWith('obj')) return null;
+            const end = p.indexOf('_');
+            if (end <= 3) return null;
+            const idString = p.substring(3, end);
+            const id = parseInt(idString, 10);
+            return isNaN(id) ? null : String(id);
+        }).filter(id => id !== null))];
 
-        idsToProcess.forEach(id => {
+        const initialStates = uniqueIds.map(id => {
             const configForThisObject = { id: parseInt(id), gradient: {}, strokeGradient: {} };
-            const objectConfigs = grouped.objects[id];
+            const objectConfigs = groupConfigs(configStore).objects[id];
 
-            const nameConfig = objectConfigs.find(c => c.property === `obj${id}_name`);
-            configForThisObject.name = nameConfig ? nameConfig.default : `Object ${id}`;
+            if (!objectConfigs) return null;
 
             objectConfigs.forEach(conf => {
                 const key = conf.property.replace(`obj${id}_`, '');
@@ -2180,19 +2173,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             configForThisObject.cycleSpeed = (configForThisObject.cycleSpeed || 0) / 50.0;
             configForThisObject.animationSpeed = (configForThisObject.animationSpeed || 0) / 10.0;
+            configForThisObject.oscAnimationSpeed = (configForThisObject.oscAnimationSpeed || 0) / 10.0;
             configForThisObject.strokeCycleSpeed = (configForThisObject.strokeCycleSpeed || 0) / 50.0;
             configForThisObject.strokeAnimationSpeed = (configForThisObject.strokeAnimationSpeed || 0) / 10.0;
 
-            // Enforce height lock for rings only, allowing circles to be stretched.
             if (configForThisObject.shape === 'ring') {
                 configForThisObject.height = configForThisObject.width;
             }
 
+            return configForThisObject;
+        }).filter(Boolean);
 
-            initialStates.push(configForThisObject);
-        });
-
-        objects = initialStates.map(state => new Shape({ ...state, ctx }));
+        objects = initialStates.map(state => new Shape({ ...state, ctx, canvasWidth: canvas.width }));
     }
 
     /**
@@ -2379,11 +2371,12 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_pulseDepth`, label: `Object ${newId}: Pulse Depth`, type: 'number', default: '50', min: '0', max: '100', description: 'The intensity of the wave\'s amplitude or pulse effect.' },
             { property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false', description: 'For linear oscilloscopes, fills the area under the wave.' },
             { property: `obj${newId}_enableWaveAnimation`, label: `Object ${newId}: Enable Wave Animation`, type: 'boolean', default: 'true', description: 'Toggles the movement of the oscilloscope wave.' },
+            { property: `obj${newId}_oscAnimationSpeed`, label: `Object ${newId}: Wave Animation Speed`, type: 'number', min: '0', max: '100', default: '10', description: 'Controls the speed of the oscilloscope wave movement, independent of the fill animation.' },
             { property: `obj${newId}_waveStyle`, label: `Object ${newId}: Seismic Wave Style`, type: 'combobox', default: 'wavy', values: 'wavy,round', description: '(Oscilloscope) The style of the seismic wave.' },
             { property: `obj${newId}_waveCount`, label: `Object ${newId}: Seismic Wave Count`, type: 'number', default: '5', min: '1', max: '20', description: '(Oscilloscope) The number of seismic waves to display.' },
             { property: `obj${newId}_tetrisBlockCount`, label: `Object ${newId}: Block Count`, type: 'number', default: '10', min: '1', max: '50', description: '(Tetris) The number of blocks in the animation cycle.' },
             { property: `obj${newId}_tetrisAnimation`, label: `Object ${newId}: Drop Physics`, type: 'combobox', values: 'gravity,linear,gravity-fade,fade-in-stack', default: 'gravity', description: '(Tetris) The physics governing how the blocks fall. Gravity-fade removes blocks as they settle.' },
-            { property: `obj${newId}_tetrisSpeed`, label: `Object ${newId}: Drop Speed`, type: 'number', default: '5', min: '1', max: '100', description: '(Tetris) The speed of the drop animation.' },
+            { property: `obj${newId}_tetrisSpeed`, label: `Object ${newId}: Drop/Fade-in Speed`, type: 'number', default: '5', min: '1', max: '100', description: '(Tetris) The speed of the drop animation.' },
             { property: `obj${newId}_tetrisBounce`, label: `Object ${newId}: Bounce Factor`, type: 'number', default: '50', min: '0', max: '90', description: '(Tetris) How much the blocks bounce on impact. 0 is no bounce.' },
             { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fire-radial) Controls how far the flames spread from the center.' },
             { property: `obj${newId}_enableStroke`, label: `Object ${newId}: Enable Stroke`, type: 'boolean', default: 'false', description: 'Enables a stroke (outline) for the shape.' },
@@ -2435,7 +2428,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return 'const ' + varName + ' = ' + JSON.stringify(fontData) + ';';
     }
 
-    // MODIFIED - Corrected the exported canvas resolution and added proper scaling logic
     async function exportFile() {
         const exportButton = document.getElementById('export-btn');
         exportButton.disabled = true;
@@ -2460,15 +2452,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const canvas = document.getElementById('signalCanvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    canvas.width = 1280;
-    canvas.height = 800;
+    canvas.width = 320;
+    canvas.height = 200;
     let objects = [];
     
     ${jsVars}
 
-    let gradientSpeedMultiplier = ${EXPORT_GRADIENT_SPEED_MULTIPLIER};
-    let shapeAnimationSpeedMultiplier = ${EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER};
-    let seismicAnimationSpeedMultiplier = ${EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER};
+    let gradientSpeedMultiplier = ${gradientSpeedMultiplier};
+    let shapeAnimationSpeedMultiplier = ${shapeAnimationSpeedMultiplier};
+    let seismicAnimationSpeedMultiplier = ${seismicAnimationSpeedMultiplier};
     let tetrisSpeedDivisor = ${tetrisSpeedDivisor};
 
     const getSensorValue = (sensorName) => {
@@ -2494,6 +2486,49 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const allPropKeys = ${formattedKeys};
 
+    function processProperties(targetObject, id) {
+        const prefix = 'obj' + id + '_';
+        allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+            const propName = key.substring(prefix.length);
+            try {
+                let value = eval(key);
+                if (value === "true") value = true;
+                if (value === "false") value = false;
+
+                switch (propName) {
+                    case 'gradColor1':
+                    case 'gradColor2':
+                        if (!targetObject.gradient) targetObject.gradient = {};
+                        targetObject.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                        break;
+                    case 'strokeGradColor1':
+                    case 'strokeGradColor2':
+                        if (!targetObject.strokeGradient) targetObject.strokeGradient = {};
+                        targetObject.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                        break;
+                    case 'scrollDir':
+                        targetObject.scrollDirection = value;
+                        break;
+                    case 'strokeScrollDir':
+                        targetObject.strokeScrollDir = value;
+                        break;
+                    case 'animationSpeed':
+                        targetObject.animationSpeed = (value || 0) / 10.0;
+                        break;
+                    case 'textAnimationSpeed':
+                        targetObject.textAnimationSpeed = (value || 0) / 4.0;
+                        break;
+                    case 'oscAnimationSpeed':
+                        targetObject.oscAnimationSpeed = (value || 0) / 10.0;
+                        break;
+                    default:
+                        targetObject[propName] = value;
+                        break;
+                }
+            } catch (e) {}
+        });
+    }
+
     function createInitialObjects() {
         if (allPropKeys.length === 0) return;
 
@@ -2506,39 +2541,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return isNaN(id) ? null : String(id);
         }).filter(id => id !== null))];
         
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'tetrisSpeed'];
-
         objects = uniqueIds.map(id => {
-            const config = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
-            const prefix = 'obj' + id + '_';
-
-            allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
-                const propName = key.substring(prefix.length);
-                try {
-                    let value = eval(key);
-                    if (value === "true") value = true;
-                    if (value === "false") value = false;
-
-                    if (propsToScale.includes(propName) && typeof value === 'number') {
-                        value *= 4;
-                    }
-
-                    if (propName.startsWith('gradColor')) {
-                        config.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                    } else if (propName.startsWith('strokeGradColor')) {
-                        config.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
-                    } else if (propName === 'scrollDir') {
-                        config.scrollDirection = value;
-                    } else if (propName === 'strokeScrollDir') {
-                        config.strokeScrollDir = value;
-                    } else if (propName === 'animationSpeed') {
-                        config.animationSpeed = (value || 0) / 10.0;
-                    } else {
-                        config[propName] = value;
-                    }
-                } catch (e) {}
-            });
-
+            const config = { id: parseInt(id), ctx: ctx, canvasWidth: canvas.width };
+            processProperties(config, id);
             return new Shape(config);
         });
     }
@@ -2559,39 +2564,9 @@ document.addEventListener('DOMContentLoaded', function () {
             sensorData[obj.userSensor] = getSensorValue(obj.userSensor);
         });
 
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'tetrisSpeed'];
-
         objects.forEach(obj => {
-            const prefix = 'obj' + obj.id + '_';
-            const propsToUpdate = { gradient: {}, strokeGradient: {} };
-
-            allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
-                const propName = key.substring(prefix.length);
-                try {
-                    let value = eval(key);
-                    if (value === "true") value = true;
-                    if (value === "false") value = false;
-                    
-                    if (propsToScale.includes(propName) && typeof value === 'number') {
-                        value *= 4;
-                    }
-
-                    if (propName.startsWith('gradColor')) {
-                        propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                    } else if (propName.startsWith('strokeGradColor')) {
-                        propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
-                    } else if (propName === 'scrollDir') {
-                        propsToUpdate.scrollDirection = value;
-                    } else if (propName === 'strokeScrollDir') {
-                        propsToUpdate.strokeScrollDir = value;
-                    } else if (propName === 'animationSpeed') {
-                        propsToUpdate.animationSpeed = (value || 0) / 10.0;
-                    } else {
-                        propsToUpdate[propName] = value;
-                    }
-                } catch (e) {}
-            });
-
+            const propsToUpdate = {};
+            processProperties(propsToUpdate, obj.id);
             obj.update(propsToUpdate);
 
             if (shouldAnimate) {
@@ -4136,7 +4111,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const newShape = new Shape({ ...state, ctx });
+        const newShape = new Shape({ ...state, ctx, canvasWidth: canvas.width });
 
         // Add the new shape to the beginning of the objects array to place it on the top layer.
         objects.unshift(newShape);
