@@ -248,6 +248,7 @@ class Shape {
         this.rotationSpeed = rotationSpeed || 0;
         this.rotationAngle = 0;
         this.animationAngle = 0;
+        this.wavePhaseAngle = 0; // New property for oscilloscope wave phase
         this.useSharpGradient = useSharpGradient !== undefined ? useSharpGradient : false;
         this.gradientStop = gradientStop !== undefined ? parseFloat(gradientStop) : 50;
         this.locked = locked || false;
@@ -714,6 +715,8 @@ class Shape {
             localY >= -halfHeight && localY <= halfHeight);
     }
 
+    // MODIFIED - Prevents incorrect position shifting when pasting size and position together
+    // MODIFIED - Resets the animationAngle when rotation properties are updated
     update(props) {
         // --- Store original state for calculations ---
         const oldWidth = this.width;
@@ -757,12 +760,19 @@ class Shape {
             }
         }
 
+        // If rotation properties are being updated, reset the animation angle.
+        if (props.hasOwnProperty('rotation') || props.hasOwnProperty('rotationSpeed')) {
+            this.animationAngle = 0;
+        }
+
         this.dirty = true;
 
-        if (props.width !== undefined || props.height !== undefined) {
+        if (props.width !== undefined && !props.hasOwnProperty('x')) {
             const dWidth = oldWidth - this.width;
-            const dHeight = oldHeight - this.height;
             this.x += dWidth / 2;
+        }
+        if (props.height !== undefined && !props.hasOwnProperty('y')) {
+            const dHeight = oldHeight - this.height;
             this.y += dHeight / 2;
         }
 
@@ -1213,25 +1223,19 @@ class Shape {
                 let targetHeight;
                 const normalizedAvg = normalizedAvgs[i];
 
-                // --- THIS IS THE FIX ---
-                // Auto-scaling is now the default unless explicitly turned off.
                 if (this.vizAutoScale !== false) {
-                    // AUTO-SCALE MODE
                     let shapeMaxHeight;
                     if (this.vizLayout === 'Circular') {
                         const outerRadius = Math.min(this.width, this.height) / 2;
                         const innerRadiusRatio = (this.vizInnerRadius || 0) / 100.0;
-                        // Correctly calculate the available height for bars
                         shapeMaxHeight = outerRadius * (1.0 - innerRadiusRatio);
                     } else {
-                        // For linear layout, the max height is the shape's height
                         shapeMaxHeight = this.height;
                     }
 
                     const scaleFactor = (peakNormalizedValue > 0) ? (1.0 / peakNormalizedValue) : 0;
                     targetHeight = Math.max(0, normalizedAvg * scaleFactor * shapeMaxHeight);
                 } else {
-                    // MANUAL MODE (Fallback when Auto-Scale is unchecked)
                     const availableSpace = this.vizLayout === 'Circular' ? (Math.min(this.width, this.height) / 2) : this.height;
                     const maxBarHeight = ((this.vizMaxBarHeight || 30) / 100.0) * availableSpace;
                     targetHeight = Math.max(0, normalizedAvg * maxBarHeight);
@@ -1327,7 +1331,7 @@ class Shape {
                     if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
                         const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
                         if (!activeBlock.settled) {
-                            const speed = this.tetrisSpeed / this.tetrisSpeedDivisor;
+                            const speed = this.tetrisSpeed / tetrisSpeedDivisor;
                             let boundary = (this.tetrisActiveBlockIndex > 0) ? this.tetrisBlocks[this.tetrisActiveBlockIndex - 1].y : this.height;
                             activeBlock.y += speed;
                             if (activeBlock.y + activeBlock.h >= boundary) {
@@ -1407,9 +1411,6 @@ class Shape {
             this.strokeScrollOffset += increment * directionMultiplier;
         }
 
-        // const rotationIncrement = (typeof this.rotationSpeed === 'number' && isFinite(this.rotationSpeed)) ? (this.rotationSpeed / 1000) : 0;
-        // this.animationAngle += rotationIncrement;
-
         let animationIncrement;
         if (this.shape === 'oscilloscope' && this.oscDisplayMode === 'seismic') {
             animationIncrement = safeSpeed * seismicAnimationSpeedMultiplier;
@@ -1419,11 +1420,12 @@ class Shape {
             animationIncrement = safeSpeed * shapeAnimationSpeedMultiplier;
         }
 
-        if (isFinite(animationIncrement)) {
-            const rotationIncrement = (typeof this.rotationSpeed === 'number' && isFinite(this.rotationSpeed)) ? (this.rotationSpeed / 1000) : 0;
-            this.animationAngle += rotationIncrement;
-        }
+        const rotationIncrement = (typeof this.rotationSpeed === 'number' && isFinite(this.rotationSpeed)) ? (this.rotationSpeed / 1000) : 0;
+        this.animationAngle += rotationIncrement;
 
+        if (this.shape === 'oscilloscope') {
+            this.wavePhaseAngle += animationIncrement;
+        }
 
         if (this.shape === 'fire' || this.shape === 'fire-radial') {
             const speed = (typeof this.animationSpeed === 'number' && isFinite(this.animationSpeed)) ? this.animationSpeed : 0;
@@ -1463,7 +1465,7 @@ class Shape {
                             baseColor = newParticle.id % 2 === 0 ? this.gradient.color1 : this.gradient.color2;
                         } else if (this.gradType === 'linear') {
                             baseColor = lerpColor(this.gradient.color1, this.gradient.color2, gradProgress);
-                        } else { // Solid color is the default
+                        } else {
                             baseColor = this.gradient.color1;
                         }
                         newParticle.color = baseColor;
@@ -1509,7 +1511,7 @@ class Shape {
                             baseColor = newParticle.id % 2 === 0 ? this.gradient.color1 : this.gradient.color2;
                         } else if (this.gradType === 'radial' || this.gradType === 'linear') {
                             baseColor = lerpColor(this.gradient.color1, this.gradient.color2, gradProgress);
-                        } else { // Solid color is the default
+                        } else {
                             baseColor = this.gradient.color1;
                         }
                         newParticle.color = baseColor;
@@ -1531,8 +1533,8 @@ class Shape {
 
         this.ctx.save();
         this.ctx.translate(centerX, centerY);
-        this.ctx.rotate(angleToUse); // This is the static rotation
-        this.ctx.rotate(this.animationAngle); // This is the fix, it applies the animation rotation
+        this.ctx.rotate(angleToUse);
+        this.ctx.rotate(this.animationAngle);
 
         if (this.internalScale && this.internalScale !== 1.0) {
             this.ctx.scale(this.internalScale, this.internalScale);
@@ -1798,7 +1800,7 @@ class Shape {
                 }
             }
         } else if (this.shape === 'oscilloscope') {
-            const activeAnimationAngle = this.enableWaveAnimation ? this.animationAngle : 0;
+            const activeWavePhase = this.enableWaveAnimation ? this.wavePhaseAngle : 0;
             if (this.oscDisplayMode === 'radial') {
                 this.ctx.lineWidth = this.vizLineWidth;
                 this.ctx.strokeStyle = this._createLocalFillStyle();
@@ -1809,7 +1811,7 @@ class Shape {
                     const maxAmplitude = totalRadius - baseRadius;
                     for (let i = 0; i <= 360; i++) {
                         const angleRad = (i * Math.PI) / 180;
-                        const waveFuncAngle = 2 * Math.PI * this.frequency * (i / 360) + activeAnimationAngle * 2;
+                        const waveFuncAngle = 2 * Math.PI * this.frequency * (i / 360) + activeWavePhase * 2;
                         let y_wave;
                         switch (this.waveType) {
                             case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
@@ -1831,7 +1833,7 @@ class Shape {
                 const waveCount = Math.max(1, this.waveCount);
                 const spacing = maxRadius / waveCount;
                 const totalCycle = maxRadius + spacing;
-                const progress = ((activeAnimationAngle * 10) % totalCycle + totalCycle) % totalCycle;
+                const progress = ((activeWavePhase * 10) % totalCycle + totalCycle) % totalCycle;
                 for (let i = waveCount - 1; i >= 0; i--) {
                     let radius = (progress + i * spacing) % totalCycle;
                     if (radius > maxRadius) continue;
@@ -1845,7 +1847,7 @@ class Shape {
                         const points = Math.max(60, this.frequency * 20);
                         const maxAmplitude = (this.pulseDepth / 100) * 20;
                         const amplitude = maxAmplitude * (radius / maxRadius);
-                        const rotationalPhase = (activeAnimationAngle / 10.0) - (i * (this.phaseOffset / this.frequency) * (Math.PI / 2));
+                        const rotationalPhase = (activeWavePhase / 10.0) - (i * (this.phaseOffset / this.frequency) * (Math.PI / 2));
                         for (let j = 0; j <= points; j++) {
                             const angle = (j / points) * 2 * Math.PI;
                             const freqAngle = angle * this.frequency;
@@ -1877,7 +1879,7 @@ class Shape {
                 this.ctx.beginPath();
                 for (let i = 0; i <= this.width; i++) {
                     const progress = i / this.width;
-                    const angle = 2 * Math.PI * this.frequency * progress + activeAnimationAngle;
+                    const angle = 2 * Math.PI * this.frequency * progress + activeWavePhase;
                     let y_wave;
                     switch (this.waveType) {
                         case 'square': y_wave = Math.sin(angle) >= 0 ? 1 : -1; break;

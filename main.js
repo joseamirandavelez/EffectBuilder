@@ -33,7 +33,7 @@ const INITIAL_CONFIG_TEMPLATE = `
         <meta property="obj1_textAlign" label="Small Clock: Justification" type="combobox" values="left,center,right" default="center" />
         <meta property="obj1_pixelFont" label="Small Clock: Pixel Font Style" type="combobox" values="small,large" default="small" />
         <meta property="obj1_textAnimation" label="Small Clock: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-        <meta property="obj1_textAnimationSpeed" label="Small Clock: Animation Speed" type="number" min="1" max="100" default="10" />
+        <meta property="obj1_textAnimationSpeed" label="Small Clock: Text Scroll Speed" type="number" min="1" max="100" default="10" />
         <meta property="obj1_showTime" label="Small Clock: Show Current Time" type="boolean" default="true" />
         <meta property="obj1_showDate" label="Small Clock: Show Current Date" type="boolean" default="false" />
         <meta property="obj1_autoWidth" label="Small Clock: Auto-Width" type="boolean" default="true" />
@@ -72,7 +72,7 @@ const INITIAL_CONFIG_TEMPLATE = `
         <meta property="obj2_textAlign" label="Large Text: Justification" type="combobox" values="left,center,right" default="left" />
         <meta property="obj2_pixelFont" label="Large Text: Pixel Font Style" type="combobox" values="small,large" default="large" />
         <meta property="obj2_textAnimation" label="Large Text: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="marquee" />
-        <meta property="obj2_textAnimationSpeed" label="Large Text: Animation Speed" type="number" min="1" max="100" default="29" />
+        <meta property="obj2_textAnimationSpeed" label="Large Text: Text Scroll Speed" type="number" min="1" max="100" default="29" />
         <meta property="obj2_showTime" label="Large Text: Show Current Time" type="boolean" default="false" />
         <meta property="obj2_showDate" label="Large Text: Show Current Date" type="boolean" default="false" />
         <meta property="obj2_autoWidth" label="Large Text: Auto-Width" type="boolean" default="false" />
@@ -1389,9 +1389,9 @@ document.addEventListener('DOMContentLoaded', function () {
             tabContent.id = `object-tab-content-${id}`;
             const controlGroupMap = {
                 'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
-                'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'useSharpGradient', 'gradientStop', 'animationMode', 'animationSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'textAnimationSpeed'], icon: 'bi-palette-fill' },
+                'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'useSharpGradient', 'gradientStop', 'animationMode', 'animationSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns'], icon: 'bi-palette-fill' },
                 'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir'], icon: 'bi-brush-fill' },
-                'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'showTime', 'showDate'], icon: 'bi-fonts' },
+                'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'], icon: 'bi-fonts' },
                 'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
                 'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'], icon: 'bi-grid-3x3-gap-fill' },
                 'Fire': { props: ['fireSpread'], icon: 'bi-fire' },
@@ -1505,7 +1505,6 @@ document.addEventListener('DOMContentLoaded', function () {
             trigger: 'hover'
         });
     }
-
 
     /**
      * Initializes the Sortable.js library on the controls form to allow
@@ -1995,7 +1994,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else {
                     // FIX: Add a conditional check to scale down the textAnimationSpeed.
                     if (key === 'textAnimationSpeed') {
-                        values.textAnimationSpeed = (value || 0) / 4;
+                        values.textAnimationSpeed = (value || 0);
                     } else {
                         values[key] = value;
                     }
@@ -2370,7 +2369,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_textAlign`, label: `Object ${newId}: Justification`, type: 'combobox', values: 'left,center,right', default: 'center', description: '(Text) The horizontal alignment of the text.' },
             { property: `obj${newId}_pixelFont`, label: `Object ${newId}: Pixel Font Style`, type: 'combobox', values: 'small,large', default: 'small', description: '(Text) The style of the pixelated font.' },
             { property: `obj${newId}_textAnimation`, label: `Object ${newId}: Text Animation`, type: 'combobox', values: 'none,marquee,typewriter,wave', default: 'none', description: '(Text) The animation style for the text.' },
-            { property: `obj${newId}_textAnimationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', min: '1', max: '100', default: '10', description: '(Text) The speed of the text animation.' },
+            { property: `obj${newId}_textAnimationSpeed`, label: `Object ${newId}: Text Scroll Speed`, type: 'number', min: '1', max: '100', default: '10', description: '(Text) The speed of the text animation.' },
             { property: `obj${newId}_showTime`, label: `Object ${newId}: Show Current Time`, type: 'boolean', default: 'false', description: 'Overrides the text content to show the current time.' },
             { property: `obj${newId}_showDate`, label: `Object ${newId}: Show Current Date`, type: 'boolean', default: 'false', description: 'Overrides the text content to show the current date.' },
             { property: `obj${newId}_lineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '1', min: '1', max: '20', description: '(Oscilloscope) The thickness of the oscilloscope line.' },
@@ -2436,6 +2435,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return 'const ' + varName + ' = ' + JSON.stringify(fontData) + ';';
     }
 
+    // MODIFIED - Corrected the exported canvas resolution and added proper scaling logic
     async function exportFile() {
         const exportButton = document.getElementById('export-btn');
         exportButton.disabled = true;
@@ -2460,8 +2460,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const canvas = document.getElementById('signalCanvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    canvas.width = 320;
-    canvas.height = 200;
+    canvas.width = 1280;
+    canvas.height = 800;
     let objects = [];
     
     ${jsVars}
@@ -2469,9 +2469,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let gradientSpeedMultiplier = ${EXPORT_GRADIENT_SPEED_MULTIPLIER};
     let shapeAnimationSpeedMultiplier = ${EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER};
     let seismicAnimationSpeedMultiplier = ${EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER};
-    let tetrisSpeedDivisor = ${EXPORT_TETRIS_SPEED_DIVISOR};
+    let tetrisSpeedDivisor = ${tetrisSpeedDivisor};
 
-    // Include the new getSensorValue function
     const getSensorValue = (sensorName) => {
         try {
             return engine.getSensorValue(sensorName);
@@ -2497,7 +2496,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function createInitialObjects() {
         if (allPropKeys.length === 0) return;
-        
+
         const uniqueIds = [...new Set(allPropKeys.map(p => {
             if (!p.startsWith('obj')) return null;
             const end = p.indexOf('_');
@@ -2507,16 +2506,22 @@ document.addEventListener('DOMContentLoaded', function () {
             return isNaN(id) ? null : String(id);
         }).filter(id => id !== null))];
         
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'tetrisSpeed'];
+
         objects = uniqueIds.map(id => {
             const config = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
             const prefix = 'obj' + id + '_';
-            
+
             allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
                 const propName = key.substring(prefix.length);
                 try {
                     let value = eval(key);
                     if (value === "true") value = true;
                     if (value === "false") value = false;
+
+                    if (propsToScale.includes(propName) && typeof value === 'number') {
+                        value *= 4;
+                    }
 
                     if (propName.startsWith('gradColor')) {
                         config.gradient[propName.replace('grad', '').toLowerCase()] = value;
@@ -2528,17 +2533,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         config.strokeScrollDir = value;
                     } else if (propName === 'animationSpeed') {
                         config.animationSpeed = (value || 0) / 10.0;
-                    } else if (propName === 'textAnimationSpeed') {
-                        // FIX: The text scroll speed needs to be divided by 4 for the exported file
-                        config.textAnimationSpeed = (value || 0) / 4;
                     } else {
                         config[propName] = value;
                     }
                 } catch (e) {}
             });
-            
-            config.animationSpeed = (config.animationSpeed / 4 || 0) / 10.0;
-            
+
             return new Shape(config);
         });
     }
@@ -2559,6 +2559,8 @@ document.addEventListener('DOMContentLoaded', function () {
             sensorData[obj.userSensor] = getSensorValue(obj.userSensor);
         });
 
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'tetrisSpeed'];
+
         objects.forEach(obj => {
             const prefix = 'obj' + obj.id + '_';
             const propsToUpdate = { gradient: {}, strokeGradient: {} };
@@ -2569,6 +2571,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     let value = eval(key);
                     if (value === "true") value = true;
                     if (value === "false") value = false;
+                    
+                    if (propsToScale.includes(propName) && typeof value === 'number') {
+                        value *= 4;
+                    }
 
                     if (propName.startsWith('gradColor')) {
                         propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
@@ -2698,8 +2704,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });;
 
+    // MODIFIED - Added Ctrl+C and Ctrl+V keyboard shortcuts for copy/paste
     document.addEventListener('keydown', (e) => {
-        // Handle Undo and Redo first, as these should work even when an input is focused.
+        // Handle Undo, Redo, Copy, and Paste first, as these should work even when an input is focused.
         if (e.ctrlKey || e.metaKey) {
             if (e.key.toLowerCase() === 'z') {
                 e.preventDefault();
@@ -2710,6 +2717,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 e.preventDefault();
                 const state = appHistory.redo();
                 applyHistoryState(state);
+                return;
+            } else if (e.key.toLowerCase() === 'c') {
+                e.preventDefault();
+                if (selectedObjectIds.length > 0) {
+                    // Trigger the same logic as the copy button click
+                    document.getElementById('copy-props-btn').click();
+                }
+                return;
+            } else if (e.key.toLowerCase() === 'v') {
+                e.preventDefault();
+                if (propertyClipboard && selectedObjectIds.length > 0) {
+                    // Trigger the same logic as the paste button click
+                    document.getElementById('paste-props-btn').click();
+                }
                 return;
             }
         }
@@ -4286,10 +4307,10 @@ document.addEventListener('DOMContentLoaded', function () {
             copyPropsModal.show();
         });
 
+        // MODIFIED - When copying an object with any active animation, set base rotation to 0
         confirmCopyBtn.addEventListener('click', (event) => {
-            event.preventDefault(); // Fix: Prevent form submission.
+            event.preventDefault();
 
-            // Fix: Retrieve the source object using the global sourceObjectId.
             const sourceObject = objects.find(o => o.id === sourceObjectId);
             if (!sourceObject) return;
 
@@ -4297,14 +4318,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (copyPropsForm.elements['copy-position'].checked) { Object.assign(propsToCopy, { x: sourceObject.x, y: sourceObject.y }); }
             if (copyPropsForm.elements['copy-size'].checked) { Object.assign(propsToCopy, { width: sourceObject.width, height: sourceObject.height }); }
-            if (copyPropsForm.elements['copy-rotation'].checked) { Object.assign(propsToCopy, { rotation: sourceObject.rotation, rotationSpeed: sourceObject.rotationSpeed }); }
+
+            if (copyPropsForm.elements['copy-rotation'].checked) {
+                // If the source object has an active rotation speed OR a master animation speed,
+                // copy the base rotation as 0. Otherwise, copy its static rotation.
+                const isAnimating = sourceObject.rotationSpeed !== 0 || sourceObject.animationSpeed !== 0;
+                const rotationToCopy = isAnimating ? 0 : sourceObject.rotation;
+
+                Object.assign(propsToCopy, {
+                    rotation: rotationToCopy,
+                    rotationSpeed: sourceObject.rotationSpeed
+                });
+            }
+
             if (copyPropsForm.elements['copy-fill-style'].checked) { Object.assign(propsToCopy, { gradType: sourceObject.gradType, useSharpGradient: sourceObject.useSharpGradient, gradientStop: sourceObject.gradientStop, gradient: { ...sourceObject.gradient } }); }
 
             if (copyPropsForm.elements['copy-animation'].checked) {
                 Object.assign(propsToCopy, {
                     animationMode: sourceObject.animationMode,
                     animationSpeed: sourceObject.animationSpeed,
-                    scrollDirection: sourceObject.scrollDirection
+                    scrollDirection: sourceObject.scrollDirection,
+                    phaseOffset: sourceObject.phaseOffset
                 });
             }
 
@@ -4316,7 +4350,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     case 'ring': Object.assign(propsToCopy, { innerDiameter: sourceObject.innerDiameter, numberOfSegments: sourceObject.numberOfSegments, angularWidth: sourceObject.angularWidth }); break;
                     case 'oscilloscope': Object.assign(propsToCopy, { lineWidth: sourceObject.lineWidth, waveType: sourceObject.waveType, frequency: sourceObject.frequency, oscDisplayMode: sourceObject.oscDisplayMode, pulseDepth: sourceObject.pulseDepth, fillShape: sourceObject.fillShape }); break;
                     case 'text': Object.assign(propsToCopy, { text: sourceObject.text, fontSize: sourceObject.fontSize, textAlign: sourceObject.textAlign, pixelFont: sourceObject.pixelFont, textAnimation: sourceObject.textAnimation, textAnimationSpeed: sourceObject.textAnimationSpeed, showTime: sourceObject.showTime, showDate: sourceObject.showDate }); break;
-                    case 'rectangle': Object.assign(propsToCopy, { numberOfRows: sourceObject.numberOfRows, numberOfColumns: sourceObject.numberOfColumns, phaseOffset: sourceObject.phaseOffset }); break;
+                    case 'rectangle': Object.assign(propsToCopy, { numberOfRows: sourceObject.numberOfRows, numberOfColumns: sourceObject.numberOfColumns }); break;
                 }
             }
 
