@@ -1050,6 +1050,23 @@ class Shape {
         const halfH = this.height / 2;
         const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
         const grad = isVertical ? this.ctx.createLinearGradient(0, -halfH, 0, halfH) : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
+
+        // This new block handles static gradients when animation speed is zero.
+        if (this.animationSpeed === 0) {
+            if (this.useSharpGradient) {
+                const stopPoint = gradientStop / 100.0;
+                grad.addColorStop(0, c1);
+                grad.addColorStop(stopPoint, c1);
+                grad.addColorStop(Math.min(1, stopPoint + 0.001), c2);
+                grad.addColorStop(1, c2);
+            } else {
+                grad.addColorStop(0, c1);
+                grad.addColorStop(1, c2);
+            }
+            return grad;
+        }
+
+        // The rest of the function handles the existing animation logic
         if (this.useSharpGradient) {
             let p_bounce = progress;
             if (this.animationMode.includes('bounce')) {
@@ -1627,7 +1644,7 @@ class Shape {
                         this.ctx.lineWidth = this.vizLineWidth;
                         this.ctx.stroke();
                     }
-                } else {
+                } else { // Bars
                     if (this.vizUseSegments) {
                         const segmentCount = this.vizSegmentCount || 16;
                         const segmentSpacing = this.vizSegmentSpacing || 1;
@@ -1657,19 +1674,14 @@ class Shape {
                                     this.ctx.arc(centerX, centerY, segmentStartRadius, endAngle, startAngle, true);
                                     this.ctx.closePath();
 
-                                    if (this.gradType === 'alternating') {
+                                    if (this.gradType === 'alternating' || this.gradType === 'random') {
                                         this.ctx.fillStyle = this._createLocalFillStyle(j);
-                                    } else if (this.gradType === 'random') {
-                                        const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
-                                        const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-                                        this.ctx.fillStyle = Math.random() < 0.5 ? c1 : c2;
                                     }
-
                                     this.ctx.fill();
                                 }
                             }
                         }
-                    } else {
+                    } else { // Solid Bars
                         const angleStep = (2 * Math.PI) / barCount;
                         const barAngularWidth = angleStep * (1 - ((this.vizBarSpacing || 0) / 100.0));
 
@@ -1691,37 +1703,38 @@ class Shape {
                         }
                     }
                 }
-            } else {
+            } else { // Linear Layout
                 const totalSpacing = (barCount - 1) * this.vizBarSpacing;
                 const barWidth = (this.width - totalSpacing) / barCount;
 
                 if (this.vizDrawStyle === 'Line' || this.vizDrawStyle === 'Area') {
-
                     this.ctx.beginPath();
-                    let firstX = -this.width / 2;
-                    let lastX = this.width / 2;
+                    const halfW = this.width / 2;
+                    const halfH = this.height / 2;
 
+                    // Move to the starting point of the line
+                    const firstBarHeight = this.vizBarHeights[0] || 0;
+                    this.ctx.moveTo(-halfW, halfH - firstBarHeight);
+
+                    // Draw the line across the top of the bars
                     for (let i = 0; i < barCount; i++) {
                         const barHeight = this.vizBarHeights[i] || 0;
-                        const x = -this.width / 2 + i * (barWidth + this.vizBarSpacing) + barWidth / 2;
-                        const y = this.height / 2 - barHeight;
-                        if (i == 0) {
-                            this.ctx.lineTo(firstX, y);
-                        } else if (i == barCount - 1) {
-                            this.ctx.lineTo(lastX, y);
-                        } else {
-                            this.ctx.lineTo(x, y);
-                        }
+                        const x = -halfW + i * (barWidth + this.vizBarSpacing) + barWidth / 2;
+                        const y = halfH - barHeight;
+                        this.ctx.lineTo(x, y);
                     }
 
                     if (this.vizDrawStyle === 'Area') {
+                        // This connects the path to the bottom corners to create a fillable shape
+                        this.ctx.lineTo(halfW, halfH);
+                        this.ctx.lineTo(-halfW, halfH);
                         this.ctx.closePath();
                         this.ctx.fill();
-                    } else {
+                    } else { // Line
                         this.ctx.lineWidth = this.vizLineWidth;
                         this.ctx.stroke();
                     }
-                } else {
+                } else { // Bars
                     for (let i = 0; i < barCount; i++) {
                         const barHeight = this.vizBarHeights[i] || 0;
                         if (barHeight < 1) continue;
@@ -1729,42 +1742,32 @@ class Shape {
                         if (this.vizUseSegments) {
                             const segmentCount = this.vizSegmentCount || 16;
                             const segmentSpacing = this.vizSegmentSpacing || 2;
-                            const totalSpacing = (segmentCount - 1) * segmentSpacing;
-                            const segmentHeight = (this.height - totalSpacing) / segmentCount;
+                            const totalSegSpacing = (segmentCount - 1) * segmentSpacing;
+                            const segmentHeight = (this.height - totalSegSpacing) / segmentCount;
                             if (segmentHeight > 0) {
                                 const litSegments = Math.floor(barHeight / (segmentHeight + segmentSpacing));
                                 for (let j = 0; j < litSegments; j++) {
                                     let y;
                                     const segYPos = j * (segmentHeight + segmentSpacing);
-                                    if (this.gradType === 'alternating') {
+                                    if (this.gradType === 'alternating' || this.gradType === 'random') {
                                         this.ctx.fillStyle = this._createLocalFillStyle(j);
-                                    } else if (this.gradType === 'random') {
-                                        const c1 = this.cycleColors ? `hsl(${this.hue1 % 360}, 100%, 50%)` : this.gradient.color1;
-                                        const c2 = this.cycleColors ? `hsl(${this.hue2 % 360}, 100%, 50%)` : this.gradient.color2;
-                                        this.ctx.fillStyle = Math.random() < 0.5 ? c1 : c2;
                                     }
                                     switch (this.vizStyle) {
-                                        case 'top':
-                                            y = -this.height / 2 + segYPos;
-                                            break;
+                                        case 'top': y = -this.height / 2 + segYPos; break;
                                         case 'center':
                                             const totalPossibleHeight = segmentCount * (segmentHeight + segmentSpacing) - segmentSpacing;
-                                            const initialY = -totalPossibleHeight / 2;
-                                            y = initialY + j * (segmentHeight + segmentSpacing);
+                                            y = -totalPossibleHeight / 2 + j * (segmentHeight + segmentSpacing);
                                             break;
-                                        default:
-                                            y = this.height / 2 - segmentHeight - segYPos;
-                                            break;
+                                        default: y = this.height / 2 - segmentHeight - segYPos; break;
                                     }
                                     this.ctx.fillRect(x, y, barWidth, segmentHeight);
                                 }
                             }
-                        } else {
+                        } else { // Solid Bars
                             let y;
                             switch (this.vizStyle) {
                                 case 'top': y = -this.height / 2; break;
                                 case 'center': y = -barHeight / 2; break;
-
                                 default: y = this.height / 2 - barHeight; break;
                             }
                             this.ctx.fillRect(x, y, barWidth, barHeight);
@@ -1901,8 +1904,6 @@ class Shape {
         } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
             const cellW = this.width / this.numberOfColumns;
             const cellH = this.height / this.numberOfRows;
-            const isRandomFill = this.gradType === 'random';
-
             for (let row = 0; row < this.numberOfRows; row++) {
                 for (let col = 0; col < this.numberOfColumns; col++) {
                     const cellIndex = row * this.numberOfColumns + col;

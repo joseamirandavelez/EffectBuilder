@@ -1019,19 +1019,20 @@ document.addEventListener('DOMContentLoaded', function () {
         return formGroup;
     }
 
-    // MODIFIED - Fixed property scaling logic to use the configStore as the source of truth
-    // In main.js, replace the entire generateOutputScript function
-
     function generateOutputScript() {
         let scriptHTML = '';
         let jsVars = '';
         let allKeys = [];
-        const minimize = false;
+
+        const minimizeCheckbox = document.getElementById('minimize-props-export');
+        const minimize = minimizeCheckbox ? minimizeCheckbox.checked : false;
 
         const essentialProps = [
             'gradType', 'gradColor1', 'gradColor2', 'animationSpeed', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeAnimationSpeed',
             'title', 'description', 'publisher', 'enableAnimation', 'enableSound',
-            'enableAudioReactivity', 'audioMetric', 'beatThreshold', 'audioSensitivity'
+            'enableAudioReactivity', 'audioMetric', 'beatThreshold', 'audioSensitivity',
+            'vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount',
+            'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius'
         ];
 
         const generalValues = getControlValues();
@@ -1093,22 +1094,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 let exportValue = liveValue;
 
-                // Parameter scaling
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'vizSegmentSpacing', 'vizBarSpacing', 'vizBarHeights'];
+                // `vizSegmentSpacing` and `vizBarSpacing` have been removed from this list.
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
 
                 if (conf.type === 'number') {
                     const numValue = parseFloat(liveValue) || 0;
-
-                    // --- START OF FIX ---
-                    // The scaling logic for speeds is removed because the 'liveValue'
-                    // is now the correct UI value we want to export.
                     if (propsToScale.includes(propName)) {
                         exportValue = Math.round(numValue / 4);
                     } else {
                         exportValue = Math.round(numValue);
                     }
-                    // --- END OF FIX ---
-
                 } else if (typeof liveValue === 'boolean') {
                     exportValue = String(liveValue);
                 } else if (conf.type === 'textfield' && typeof liveValue === 'string') {
@@ -1134,7 +1129,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     } else {
                         scriptHTML += `<meta ${attrs.join(' ')} type="${conf.type}" default="${exportValue}" />\n`;
                     }
-
                 } else {
                     jsVars += `const ${conf.property} = ${JSON.stringify(exportValue)};\n`;
                 }
@@ -2191,6 +2185,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const masterConfigTemplates = Array.from(doc.querySelectorAll('meta')).map(parseMetaToConfig);
 
         const masterGeneralConfigs = masterConfigTemplates.filter(c => !(c.property || c.name).startsWith('obj'));
+
         const loadedGeneralConfigs = loadedConfigs.filter(c => !(c.property || c.name).startsWith('obj'));
         const loadedGeneralConfigMap = new Map(loadedGeneralConfigs.map(c => [(c.property || c.name), c]));
 
@@ -2253,11 +2248,22 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        renderForm();
+        renderForm(); // First, create the form elements.
 
-        // THIS IS THE FIX:
-        // Change updateFormValuesFromObjects() to updateObjectsFromForm()
-        updateObjectsFromForm();
+        // This block is now correctly placed AFTER renderForm()
+        configStore.filter(c => !(c.property || c.name).startsWith('obj')).forEach(conf => {
+            const key = conf.property || conf.name;
+            const el = form.elements[key];
+            if (el) {
+                if (el.type === 'checkbox') {
+                    el.checked = (conf.default === true || conf.default === 'true');
+                } else {
+                    el.value = conf.default;
+                }
+            }
+        });
+
+        updateObjectsFromForm(); // Then, sync the objects with the correct form values.
 
         currentProjectDocId = workspace.docId || null;
         updateShareButtonState();
@@ -2368,19 +2374,20 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'false', description: 'For text objects, automatically sets the object\'s width to the width of the text.' },
             { property: `obj${newId}_pixelArtData`, label: `Object ${newId}: Pixel Art Data`, type: 'textarea', default: '[[1,0,0,1],[0,1,1,0],[0,1,1,0],[1,0,0,1]]', description: '(Pixel Art) Paste your pixel art data array here. Use a tool like the Pixel Art Data Generator for a starting point.' },
 
+            { property: `obj${newId}_vizSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '60', min: '0', max: '99', description: '(Visualizer) How smoothly the bars react to audio changes. Higher is smoother.' },
+            { property: `obj${newId}_vizDrawStyle`, label: `Object ${newId}: Draw Style`, type: 'combobox', default: 'Line', values: 'Bars,Line,Area', description: '(Visualizer) How the frequencies are rendered (as bars or a continuous line).' },
+            { property: `obj${newId}_vizLayout`, label: `Object ${newId}: Layout`, type: 'combobox', default: 'Linear', values: 'Linear,Circular', description: '(Visualizer) The overall layout of the visualizer.' },
+            { property: `obj${newId}_vizStyle`, label: `Object ${newId}: Style`, type: 'combobox', default: 'bottom', values: 'bottom,center,top', description: '(Visualizer) The alignment of the visualizer bars.' },
+            { property: `obj${newId}_vizInnerRadiu/s`, label: `Object ${newId}: Inner Radius`, type: 'number', default: '40', min: '0', max: '95', description: '(Visualizer) Sets the radius of the empty inner circle, as a percentage of the total size.' },
+            { property: `obj${newId}_vizLineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20', description: '(Visualizer) The thickness of the line for the Line/Area draw styles.' },
+            { property: `obj${newId}_vizAutoScale`, label: `Object ${newId}: Auto-Scale Height`, type: 'boolean', default: 'true', description: '(Visualizer) If checked, the tallest bar will always reach the top of the shape.' },
             { property: `obj${newId}_vizBarCount`, label: `Object ${newId}: Bar Count`, type: 'number', default: '12', min: '2', max: '200', description: '(Visualizer) The number of frequency bars to display.' },
             { property: `obj${newId}_vizBarSpacing`, label: `Object ${newId}: Bar Spacing`, type: 'number', default: '2', min: '0', max: '20', description: '(Visualizer) The space between each bar in pixels.' },
-            { property: `obj${newId}_vizSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '60', min: '0', max: '99', description: '(Visualizer) How smoothly the bars react to audio changes. Higher is smoother.' },
-            { property: `obj${newId}_vizStyle`, label: `Object ${newId}: Style`, type: 'combobox', default: 'bottom', values: 'bottom,center,top', description: '(Visualizer) The alignment of the visualizer bars.' },
-            { property: `obj${newId}_vizLayout`, label: `Object ${newId}: Layout`, type: 'combobox', default: 'Linear', values: 'Linear,Circular', description: '(Visualizer) The overall layout of the visualizer.' },
-            { property: `obj${newId}_vizDrawStyle`, label: `Object ${newId}: Draw Style`, type: 'combobox', default: 'Line', values: 'Bars,Line,Area', description: '(Visualizer) How the frequencies are rendered (as bars or a continuous line).' },
-            { property: `obj${newId}_vizUseSegments`, label: `Object ${newId}: Use LED Segments`, type: 'boolean', default: 'false', description: '(Visualizer) Renders bars as discrete segments instead of solid blocks.' },
-            { property: `obj${newId}_vizSegmentSpacing`, label: `Object ${newId}: Segment Spacing`, type: 'number', default: '1', min: '0', max: '10', description: '(Visualizer) The spacing between segments in a bar.' },
-            { property: `obj${newId}_vizInnerRadius`, label: `Object ${newId}: Inner Radius`, type: 'number', default: '40', min: '0', max: '95', description: '(Visualizer) Sets the radius of the empty inner circle, as a percentage of the total size.' },
             { property: `obj${newId}_vizMaxBarHeight`, label: `Object ${newId}: Max Bar Height`, type: 'number', default: '30', min: '5', max: '100', description: '(Visualizer) Sets the maximum possible length for any visualizer bar, as a percentage of the available space.' },
-            { property: `obj${newId}_vizAutoScale`, label: `Object ${newId}: Auto-Scale Height`, type: 'boolean', default: 'true', description: '(Visualizer) If checked, the tallest bar will always reach the top of the shape.' },
+            { property: `obj${newId}_vizUseSegments`, label: `Object ${newId}: Use LED Segments`, type: 'boolean', default: 'false', description: '(Visualizer) Renders bars as discrete segments instead of solid blocks.' },
             { property: `obj${newId}_vizSegmentCount`, label: `Object ${newId}: Segment Count`, type: 'number', default: '16', min: '2', max: '64', description: '(Visualizer) The number of vertical LED segments the bar is divided into.' },
-            { property: `obj${newId}_vizLineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20', description: '(Visualizer) The thickness of the line for the Line/Area draw styles.' },
+            { property: `obj${newId}_vizSegmentSpacing`, label: `Object ${newId}: Segment Spacing`, type: 'number', default: '1', min: '0', max: '10', description: '(Visualizer) The spacing between segments in a bar.' },
+
 
             { property: `obj${newId}_enableSensorReactivity`, label: `Object ${newId}: Enable Sensor Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sensor data.' },
             { property: `obj${newId}_sensorTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Sensor Meter', values: 'Sensor Meter,Time Plot', description: 'Selects the specific effect that the object will perform in response to sensor data.' },
