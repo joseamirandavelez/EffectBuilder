@@ -4230,7 +4230,8 @@ document.addEventListener('DOMContentLoaded', function () {
         debouncedRecordHistory();
     });
 
-    // --- FINAL: Robust Copy/Paste Properties Logic ---
+
+    // Copy and Paste section
     const copyPropsBtn = document.getElementById('copy-props-btn');
     const pastePropsBtn = document.getElementById('paste-props-btn');
     const copyPropsModalEl = document.getElementById('copy-props-modal');
@@ -4242,7 +4243,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         copyPropsBtn.addEventListener('click', () => {
             if (selectedObjectIds.length === 0) return;
-            // Fix: Use a globally accessible variable to store the source ID.
             sourceObjectId = selectedObjectIds[0];
             const sourceObject = objects.find(o => o.id === sourceObjectId);
             if (!sourceObject) return;
@@ -4251,7 +4251,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const shapeSpecificContainer = document.getElementById('shape-specific-props-container');
             const shapeSpecificName = document.getElementById('shape-specific-name');
-            const shapeSpecificProps = ['ring', 'oscilloscope', 'text', 'rectangle'];
+            const shapeSpecificProps = ['ring', 'oscilloscope', 'text', 'rectangle', 'polygon', 'star', 'tetris', 'fire-radial', 'pixel-art', 'audio-visualizer'];
 
             if (shapeSpecificProps.includes(sourceObject.shape)) {
                 shapeSpecificName.textContent = sourceObject.shape.charAt(0).toUpperCase() + sourceObject.shape.slice(1);
@@ -4263,7 +4263,6 @@ document.addEventListener('DOMContentLoaded', function () {
             copyPropsModal.show();
         });
 
-        // MODIFIED - When copying an object with any active animation, set base rotation to 0
         confirmCopyBtn.addEventListener('click', (event) => {
             event.preventDefault();
 
@@ -4272,47 +4271,44 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const propsToCopy = {};
 
-            if (copyPropsForm.elements['copy-position'].checked) { Object.assign(propsToCopy, { x: sourceObject.x, y: sourceObject.y }); }
-            if (copyPropsForm.elements['copy-size'].checked) { Object.assign(propsToCopy, { width: sourceObject.width, height: sourceObject.height }); }
-
-            if (copyPropsForm.elements['copy-rotation'].checked) {
-                // If the source object has an active rotation speed OR a master animation speed,
-                // copy the base rotation as 0. Otherwise, copy its static rotation.
-                const isAnimating = sourceObject.rotationSpeed !== 0 || sourceObject.animationSpeed !== 0;
-                const rotationToCopy = isAnimating ? 0 : sourceObject.rotation;
-
-                Object.assign(propsToCopy, {
-                    rotation: rotationToCopy,
-                    rotationSpeed: sourceObject.rotationSpeed
+            // Helper to copy properties from the source object
+            const copyProps = (propNames) => {
+                propNames.forEach(prop => {
+                    if (sourceObject[prop] !== undefined) {
+                        propsToCopy[prop] = sourceObject[prop];
+                    }
                 });
-            }
+            };
 
-            if (copyPropsForm.elements['copy-fill-style'].checked) { Object.assign(propsToCopy, { gradType: sourceObject.gradType, useSharpGradient: sourceObject.useSharpGradient, gradientStop: sourceObject.gradientStop, gradient: { ...sourceObject.gradient } }); }
+            if (copyPropsForm.elements['copy-position'].checked) copyProps(['x', 'y']);
+            if (copyPropsForm.elements['copy-size'].checked) copyProps(['width', 'height']);
+            if (copyPropsForm.elements['copy-rotation'].checked) copyProps(['rotation', 'rotationSpeed']);
+            if (copyPropsForm.elements['copy-fill-style'].checked) Object.assign(propsToCopy, { gradType: sourceObject.gradType, useSharpGradient: sourceObject.useSharpGradient, gradientStop: sourceObject.gradientStop, gradient: { ...sourceObject.gradient } });
+            if (copyPropsForm.elements['copy-animation'].checked) copyProps(['animationMode', 'animationSpeed', 'scrollDirection', 'phaseOffset']);
+            if (copyPropsForm.elements['copy-color-animation'].checked) copyProps(['cycleColors', 'cycleSpeed']);
+            if (copyPropsForm.elements['copy-shape-type'].checked) copyProps(['shape']);
 
-            if (copyPropsForm.elements['copy-animation'].checked) {
-                Object.assign(propsToCopy, {
-                    animationMode: sourceObject.animationMode,
-                    animationSpeed: sourceObject.animationSpeed,
-                    scrollDirection: sourceObject.scrollDirection,
-                    phaseOffset: sourceObject.phaseOffset
-                });
-            }
-
-            if (copyPropsForm.elements['copy-color-animation'].checked) { Object.assign(propsToCopy, { cycleColors: sourceObject.cycleColors, cycleSpeed: sourceObject.cycleSpeed }); }
-
-            if (copyPropsForm.elements['copy-shape-type'].checked) { propsToCopy.shape = sourceObject.shape; }
             if (copyPropsForm.elements['copy-shape-specific'].checked) {
-                switch (sourceObject.shape) {
-                    case 'ring': Object.assign(propsToCopy, { innerDiameter: sourceObject.innerDiameter, numberOfSegments: sourceObject.numberOfSegments, angularWidth: sourceObject.angularWidth }); break;
-                    case 'oscilloscope': Object.assign(propsToCopy, { lineWidth: sourceObject.lineWidth, waveType: sourceObject.waveType, frequency: sourceObject.frequency, oscDisplayMode: sourceObject.oscDisplayMode, pulseDepth: sourceObject.pulseDepth, fillShape: sourceObject.fillShape }); break;
-                    case 'text': Object.assign(propsToCopy, { text: sourceObject.text, fontSize: sourceObject.fontSize, textAlign: sourceObject.textAlign, pixelFont: sourceObject.pixelFont, textAnimation: sourceObject.textAnimation, textAnimationSpeed: sourceObject.textAnimationSpeed, showTime: sourceObject.showTime, showDate: sourceObject.showDate }); break;
-                    case 'rectangle': Object.assign(propsToCopy, { numberOfRows: sourceObject.numberOfRows, numberOfColumns: sourceObject.numberOfColumns }); break;
+                const shapeSpecificMap = {
+                    'ring': ['innerDiameter', 'numberOfSegments', 'angularWidth'],
+                    'oscilloscope': ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'],
+                    'text': ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate', 'autoWidth'],
+                    'rectangle': ['numberOfRows', 'numberOfColumns'],
+                    'polygon': ['sides'],
+                    'star': ['points', 'starInnerRadius'],
+                    'tetris': ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'],
+                    'fire-radial': ['fireSpread'],
+                    'pixel-art': ['pixelArtData'],
+                    'audio-visualizer': ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius']
+                };
+                if (shapeSpecificMap[sourceObject.shape]) {
+                    copyProps(shapeSpecificMap[sourceObject.shape]);
                 }
             }
 
             propertyClipboard = propsToCopy;
             updateToolbarState();
-            showToast("Properties copied to clipboard!", 'info');
+            showToast("Properties copied!", 'info');
             copyPropsModal.hide();
         });
 
@@ -4320,13 +4316,26 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!propertyClipboard || selectedObjectIds.length === 0) return;
 
             const destObjects = selectedObjectIds.map(id => objects.find(o => o.id === id));
+            let shapeChanged = false;
+
             destObjects.forEach(obj => {
                 if (obj) {
+                    if (propertyClipboard.shape && obj.shape !== propertyClipboard.shape) {
+                        shapeChanged = true;
+                    }
                     obj.update(propertyClipboard);
                 }
             });
 
-            if (propertyClipboard.hasOwnProperty('shape')) {
+            // If the shape type was pasted, the entire form needs to be rebuilt
+            if (shapeChanged) {
+                // Update the central configStore to reflect the shape change
+                destObjects.forEach(obj => {
+                    const shapeConf = configStore.find(c => c.property === `obj${obj.id}_shape`);
+                    if (shapeConf) {
+                        shapeConf.default = obj.shape;
+                    }
+                });
                 renderForm();
             }
 
@@ -4341,10 +4350,6 @@ document.addEventListener('DOMContentLoaded', function () {
      * Analyzes the current audio frame and returns calculated metrics, including average and peak values.
      * @returns {object} An object with bass, mids, highs, and volume properties.
      */
-    /**
- * Analyzes the current audio frame and returns calculated metrics, including average and peak values.
- * @returns {object} An object with bass, mids, highs, and volume properties.
- */
     function getAudioMetrics() {
         if (!analyser) {
             return {
