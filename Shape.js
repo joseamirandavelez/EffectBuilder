@@ -203,9 +203,8 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, canvasWidth, oscAnimationSpeed, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier }) {
         // --- ALL properties are assigned here first ---
-        this.canvasWidth = canvasWidth || 1280;
         this.dirty = true;
         this.id = id;
         this.name = name || `Object ${id}`;
@@ -282,7 +281,6 @@ class Shape {
         this.fillShape = fillShape || false;
         this.enableWaveAnimation = enableWaveAnimation !== undefined ? enableWaveAnimation : true;
         this.oscDisplayMode = oscDisplayMode || 'linear';
-        this.oscAnimationSpeed = oscAnimationSpeed || 0;
         this._pausedRotationSpeed = null;
         this._pausedAnimationSpeed = null;
         this.waveStyle = waveStyle || 'wavy';
@@ -349,6 +347,10 @@ class Shape {
         this.baseInnerDiameter = this.innerDiameter;
         this.basePulseDepth = this.pulseDepth;
         this.sensorHistory = [];
+        this.gradientSpeedMultiplier = gradientSpeedMultiplier || (1 / 400);
+        this.shapeAnimationSpeedMultiplier = shapeAnimationSpeedMultiplier || 0.05;
+        this.seismicAnimationSpeedMultiplier = seismicAnimationSpeedMultiplier || 0.015;
+
     }
 
     _applySensorReactivity(sensorData) {
@@ -382,12 +384,14 @@ class Shape {
         }
     }
 
-    // MODIFIED - Removed a duplicate line that caused a double-rotation
     _drawTimePlot() {
         if (this.sensorHistory.length === 0) return;
 
         // Use a new context for rotation, so it doesn't affect the object's bounding box.
         this.ctx.save();
+        this.ctx.rotate(this.animationAngle);
+
+        // Apply the dynamic animation angle.
         this.ctx.rotate(this.animationAngle);
 
         this.ctx.beginPath();
@@ -744,10 +748,6 @@ class Shape {
         const oldRows = this.numberOfRows;
         const oldCols = this.numberOfColumns;
 
-        // Check if rotation values are changing BEFORE applying them
-        const rotationChanged = (props.hasOwnProperty('rotation') && props.rotation !== this.rotation) ||
-            (props.hasOwnProperty('rotationSpeed') && props.rotationSpeed !== this.rotationSpeed);
-
         // --- UNIFIED UPDATE LOGIC ---
         for (const key in props) {
             if (props[key] === undefined) continue;
@@ -762,19 +762,12 @@ class Shape {
             }
         }
 
-        // If rotation properties have changed, reset the animation angle.
-        if (rotationChanged) {
-            this.animationAngle = 0;
-        }
-
         this.dirty = true;
 
-        if (props.width !== undefined && !props.hasOwnProperty('x')) {
+        if (props.width !== undefined || props.height !== undefined) {
             const dWidth = oldWidth - this.width;
-            this.x += dWidth / 2;
-        }
-        if (props.height !== undefined && !props.hasOwnProperty('y')) {
             const dHeight = oldHeight - this.height;
+            this.x += dWidth / 2;
             this.y += dHeight / 2;
         }
 
@@ -1170,22 +1163,30 @@ class Shape {
         return grad;
     }
 
-    updateAnimationState(audioData, sensorData) {
+    updateAnimationState(audioData, sensorData, deltaTime = 0) {
         this._applyAudioReactivity(audioData);
         this._applySensorReactivity(sensorData);
+
+        // Speed values are now scaled by deltaTime for frame-rate independence.
+        // A UI value of 50 now represents a speed of "50 units per second".
+        const animSpeed = (this.animationSpeed || 0) * deltaTime;
+        const cycleSpeed = (this.cycleSpeed || 0) * deltaTime;
+        const strokeAnimSpeed = (this.strokeAnimationSpeed || 0) * deltaTime;
+        const strokeCycleSpeed = (this.strokeCycleSpeed || 0) * deltaTime;
+        const oscAnimSpeed = (this.oscAnimationSpeed || 0) * deltaTime;
+        const textAnimSpeed = (this.textAnimationSpeed || 0) * deltaTime;
+        const rotationSpeed = (this.rotationSpeed || 0) * deltaTime;
+        const tetrisSpeed = (this.tetrisSpeed || 0) * deltaTime;
 
         if (this.shape === 'audio-visualizer' && audioData && audioData.frequencyData) {
             const fullFreqData = audioData.frequencyData;
             const smoothingFactor = this.vizSmoothing / 100.0;
             const barCount = parseInt(this.vizBarCount, 10);
-
             const maxFreqIndex = Math.round((20000 / 22050) * fullFreqData.length);
             const freqData = fullFreqData.slice(0, maxFreqIndex);
-
             if (!this.vizBarHeights || this.vizBarHeights.length !== barCount) {
                 this.vizBarHeights = new Array(barCount).fill(0);
             }
-
             let minFreq = 255;
             let maxFreq = 0;
             for (let i = 0; i < freqData.length; i++) {
@@ -1193,19 +1194,15 @@ class Shape {
                 if (freqData[i] > maxFreq) maxFreq = freqData[i];
             }
             const freqRange = maxFreq > minFreq ? maxFreq - minFreq : 1;
-
             if (freqData.length === 0) return;
             const logMax = Math.log(freqData.length);
-
             const normalizedAvgs = [];
             let peakNormalizedValue = 0;
-
             for (let i = 0; i < barCount; i++) {
                 const startRatio = i / barCount;
                 const endRatio = (i + 1) / barCount;
                 const startFreqIndex = Math.max(0, Math.floor(Math.exp(startRatio * logMax)) - 1);
                 const endFreqIndex = Math.max(0, Math.floor(Math.exp(endRatio * logMax)) - 1);
-
                 let sum = 0;
                 let count = 0;
                 for (let j = startFreqIndex; j <= endFreqIndex && j < freqData.length; j++) {
@@ -1215,16 +1212,13 @@ class Shape {
                 const avg = count > 0 ? sum / count : 0;
                 const normalizedAvg = (avg - minFreq) / freqRange;
                 normalizedAvgs.push(normalizedAvg);
-
                 if (normalizedAvg > peakNormalizedValue) {
                     peakNormalizedValue = normalizedAvg;
                 }
             }
-
             for (let i = 0; i < barCount; i++) {
                 let targetHeight;
                 const normalizedAvg = normalizedAvgs[i];
-
                 if (this.vizAutoScale !== false) {
                     let shapeMaxHeight;
                     if (this.vizLayout === 'Circular') {
@@ -1234,7 +1228,6 @@ class Shape {
                     } else {
                         shapeMaxHeight = this.height;
                     }
-
                     const scaleFactor = (peakNormalizedValue > 0) ? (1.0 / peakNormalizedValue) : 0;
                     targetHeight = Math.max(0, normalizedAvg * scaleFactor * shapeMaxHeight);
                 } else {
@@ -1242,35 +1235,22 @@ class Shape {
                     const maxBarHeight = ((this.vizMaxBarHeight || 30) / 100.0) * availableSpace;
                     targetHeight = Math.max(0, normalizedAvg * maxBarHeight);
                 }
-
                 this.vizBarHeights[i] = smoothingFactor * this.vizBarHeights[i] + (1.0 - smoothingFactor) * targetHeight;
             }
         }
 
-        const safeSpeed = (typeof this.animationSpeed === 'number' && isFinite(this.animationSpeed)) ? this.animationSpeed : 0;
-        const gradientSpeedMultiplier = 1 / 400;
-        const shapeAnimationSpeedMultiplier = 0.025;
-        const radialAnimationSpeedMultiplier = 10;
-        const seismicAnimationSpeedMultiplier = 0.0075;
-
         if (this.shape === 'tetris') {
-            const isHiRes = this.canvasWidth > 320;
-            const positionalSpeedScaleFactor = isHiRes ? 4 : 1;
-
+            const baseSpeed = tetrisSpeed * 0.2;
             if (this.tetrisAnimation === 'fade-in-stack') {
+                const fadeSpeed = baseSpeed * 0.1;
                 if (this.tetrisBlocks.length === 0) {
                     const blockHeight = this.height / this.tetrisBlockCount;
                     for (let i = 0; i < this.tetrisBlockCount; i++) {
-                        this.tetrisBlocks.push({
-                            w: this.width, h: blockHeight, x: 0,
-                            y: this.height - (i + 1) * blockHeight,
-                            life: 0, settled: true
-                        });
+                        this.tetrisBlocks.push({ w: this.width, h: blockHeight, x: 0, y: this.height - (i + 1) * blockHeight, life: 0, settled: true });
                     }
                     this.tetrisActiveBlockIndex = 0;
                     this.tetrisFadeState = 'in';
                 }
-                const fadeSpeed = this.tetrisSpeed / 50.0;
                 if (this.tetrisFadeState === 'in') {
                     if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
                         const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
@@ -1291,7 +1271,7 @@ class Shape {
                     if (allFadedOut) { this.tetrisBlocks = []; }
                 }
             } else {
-                this.tetrisSpawnTimer--;
+                this.tetrisSpawnTimer -= deltaTime * 60;
                 if (this.tetrisBlocks.length === 0 && this.tetrisSpawnTimer < 0) {
                     this.tetrisSpawnTimer = 0;
                     this.tetrisActiveBlockIndex = 0;
@@ -1309,7 +1289,7 @@ class Shape {
                 if (this.tetrisAnimation === 'gravity' || this.tetrisAnimation === 'gravity-fade') {
                     this.tetrisBlocks.forEach((block, index) => {
                         if (block.settled) return;
-                        const gravity = 0.5 * positionalSpeedScaleFactor;
+                        const gravity = baseSpeed * 30 * deltaTime;
                         const bounceFactor = this.tetrisBounce / 100.0;
                         let bounceBoundaryTop = this.height;
                         this.tetrisBlocks.forEach((other, i) => {
@@ -1337,7 +1317,7 @@ class Shape {
                     if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
                         const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
                         if (!activeBlock.settled) {
-                            const speed = (this.tetrisSpeed * positionalSpeedScaleFactor) / this.tetrisSpeedDivisor;
+                            const speed = baseSpeed * 100;
                             let boundary = (this.tetrisActiveBlockIndex > 0) ? this.tetrisBlocks[this.tetrisActiveBlockIndex - 1].y : this.height;
                             activeBlock.y += speed;
                             if (activeBlock.y + activeBlock.h >= boundary) {
@@ -1357,44 +1337,46 @@ class Shape {
                         this.tetrisBlocks.forEach(b => b.fading = true);
                     }
                 }
-                this.tetrisBlocks.forEach(block => { if (block.fading) block.life -= 0.05; });
+                this.tetrisBlocks.forEach(block => { if (block.fading) block.life -= 3 * deltaTime; });
                 this.tetrisBlocks = this.tetrisBlocks.filter(b => b.life > 0);
             }
         }
 
         if (this.gradType === 'random' && this.randomElementState) {
             for (const key in this.randomElementState) {
-                this.randomElementState[key].timer -= this.animationSpeed;
+                this.randomElementState[key].timer -= cycleSpeed * 0.2;
             }
         }
 
-        this.hue1 += safeSpeed * 10;
-        this.hue2 += safeSpeed * 10;
-        this.strokeHue1 += safeSpeed * 10;
-        this.strokeHue2 += safeSpeed * 10;
+        this.hue1 += cycleSpeed * 20;
+        this.hue2 += cycleSpeed * 20;
+        this.strokeHue1 += strokeCycleSpeed * 20;
+        this.strokeHue2 += strokeCycleSpeed * 20;
 
         const currentText = this.getDisplayText();
-        const textSpeed = this.textAnimationSpeed / 100;
         switch (this.textAnimation) {
             case 'marquee':
             case 'wave':
                 const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
                 const pixelSize = this.fontSize / 10;
                 const textWidth = currentText.length * (fontData.charWidth + fontData.charSpacing) * pixelSize;
-                this.scrollOffsetX -= textSpeed * 20;
+                this.scrollOffsetX -= textAnimSpeed * 20;
                 if (this.scrollOffsetX < -textWidth) { this.scrollOffsetX = this.width; }
-                if (this.textAnimation === 'wave') { this.waveAngle += textSpeed; }
+                if (this.textAnimation === 'wave') { this.waveAngle += textAnimSpeed * 0.5; }
                 this.visibleCharCount = currentText.length;
                 break;
             case 'typewriter':
                 if (this.typewriterWaitTimer > 0) {
-                    this.typewriterWaitTimer--;
-                    if (this.typewriterWaitTimer <= 0) { this.visibleCharCount = 0; }
+                    // This line is now correctly time-based
+                    this.typewriterWaitTimer -= deltaTime * 60;
+                    if (this.typewriterWaitTimer <= 0) {
+                        this.visibleCharCount = 0;
+                    }
                 } else {
-                    this.visibleCharCount += textSpeed;
+                    this.visibleCharCount += textAnimSpeed;
                     if (this.visibleCharCount >= currentText.length) {
                         this.visibleCharCount = currentText.length;
-                        this.typewriterWaitTimer = 50;
+                        this.typewriterWaitTimer = 50; // Reset wait timer
                     }
                 }
                 this.scrollOffsetX = 0;
@@ -1406,61 +1388,52 @@ class Shape {
         }
 
         if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
-            const increment = safeSpeed * gradientSpeedMultiplier;
+            const increment = animSpeed * 0.025;
             const directionMultiplier = (this.scrollDirection === 'left' || this.scrollDirection === 'up') ? -1 : 1;
             this.scrollOffset += increment * directionMultiplier;
         }
 
         if (this.strokeGradType !== 'solid' && this.strokeGradType !== 'alternating' && this.strokeGradType !== 'random') {
-            const increment = safeSpeed * gradientSpeedMultiplier;
+            const increment = strokeAnimSpeed * 0.025;
             const directionMultiplier = (this.strokeScrollDir === 'left' || this.strokeScrollDir === 'up') ? -1 : 1;
             this.strokeScrollOffset += increment * directionMultiplier;
         }
 
+        let shapeIncrement;
         if (this.shape === 'oscilloscope') {
-            const oscSafeSpeed = (typeof this.oscAnimationSpeed === 'number' && isFinite(this.oscAnimationSpeed)) ? this.oscAnimationSpeed : 0;
-            let animationIncrement;
             if (this.oscDisplayMode === 'seismic') {
-                animationIncrement = oscSafeSpeed * seismicAnimationSpeedMultiplier;
-                const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : -1;
-                animationIncrement *= directionMultiplier;
-            } else if (this.oscDisplayMode === 'radial') {
-                animationIncrement = oscSafeSpeed * radialAnimationSpeedMultiplier;
+                shapeIncrement = oscAnimSpeed * 0.15;
+                const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : 1;
+                shapeIncrement *= directionMultiplier;
             } else {
-                animationIncrement = oscSafeSpeed * shapeAnimationSpeedMultiplier;
+                shapeIncrement = oscAnimSpeed * 0.5;
             }
-            this.wavePhaseAngle += animationIncrement;
+        } else {
+            shapeIncrement = animSpeed * 0.5;
         }
 
-        const rotationIncrement = (typeof this.rotationSpeed === 'number' && isFinite(this.rotationSpeed)) ? (this.rotationSpeed / 1000) : 0;
-        this.animationAngle += rotationIncrement;
+        this.animationAngle += rotationSpeed * 0.06;
+
+        if (this.shape === 'oscilloscope') {
+            this.wavePhaseAngle += shapeIncrement;
+        }
 
         if (this.shape === 'fire' || this.shape === 'fire-radial') {
-            const speed = (typeof this.animationSpeed === 'number' && isFinite(this.animationSpeed)) ? this.animationSpeed : 0;
-            this.particleSpawnCounter += speed / 4.0;
+            this.particleSpawnCounter += animSpeed * 0.25;
             const particlesToSpawn = Math.floor(this.particleSpawnCounter);
             this.particleSpawnCounter -= particlesToSpawn;
-
             if (this.shape === 'fire') {
-                this.fireParticles.forEach(p => { p.y -= p.speed; p.age++; });
+                this.fireParticles.forEach(p => { p.y -= p.speed; p.age += deltaTime * 60; });
                 this.fireParticles = this.fireParticles.filter(p => p.age < p.maxAge);
                 for (let i = 0; i < particlesToSpawn; i++) {
                     if (this.fireParticles.length < 300) {
                         const halfH = this.height / 2;
                         const maxAge = (Math.random() * 60 + 90);
-                        const particleSpeed = (this.height / maxAge) * (Math.random() * 0.2 + 0.8);
+                        const particleSpeed = (this.height / maxAge) * (Math.random() * 0.2 + 0.8) * 60 * deltaTime;
                         const startSize = (Math.random() * 0.5 + 0.5) * (this.width / 7);
-
-                        const newParticle = {
-                            id: this.nextParticleId++,
-                            x: (Math.random() - 0.5) * this.width * 0.9, y: halfH,
-                            sizeX: startSize, sizeY: startSize * (Math.random() * 1.5 + 0.5),
-                            age: 0, maxAge: maxAge, speed: particleSpeed
-                        };
-
+                        const newParticle = { id: this.nextParticleId++, x: (Math.random() - 0.5) * this.width * 0.9, y: halfH, sizeX: startSize, sizeY: startSize * (Math.random() * 1.5 + 0.5), age: 0, maxAge: maxAge, speed: particleSpeed };
                         let baseColor;
                         const gradProgress = (newParticle.x + (this.width / 2)) / this.width;
-
                         if (this.cycleColors) {
                             const hue = (this.hue1 + newParticle.id * this.phaseOffset) % 360;
                             baseColor = `hsl(${hue}, 100%, 50%)`;
@@ -1482,9 +1455,10 @@ class Shape {
                 }
             } else { // 'fire-radial'
                 this.fireParticles.forEach(p => {
-                    p.x += Math.cos(p.angle) * p.speed;
-                    p.y += Math.sin(p.angle) * p.speed;
-                    p.age++;
+                    const speed = p.speed * 60 * deltaTime;
+                    p.x += Math.cos(p.angle) * speed;
+                    p.y += Math.sin(p.angle) * speed;
+                    p.age += deltaTime * 60;
                 });
                 this.fireParticles = this.fireParticles.filter(p => p.age < p.maxAge);
                 for (let i = 0; i < particlesToSpawn; i++) {
@@ -1495,18 +1469,9 @@ class Shape {
                         const particleSpeed = (maxRadius / maxAge) * spreadMultiplier;
                         const startSize = (Math.random() * 0.5 + 0.5) * (Math.min(this.width, this.height) / 8);
                         if (maxAge < 1) continue;
-
-                        const newParticle = {
-                            id: this.nextParticleId++,
-                            x: 0, y: 0,
-                            sizeX: startSize, sizeY: startSize,
-                            age: 0, maxAge: maxAge,
-                            speed: particleSpeed, angle: Math.random() * 2 * Math.PI
-                        };
-
+                        const newParticle = { id: this.nextParticleId++, x: 0, y: 0, sizeX: startSize, sizeY: startSize, age: 0, maxAge: maxAge, speed: particleSpeed, angle: Math.random() * 2 * Math.PI };
                         let baseColor;
                         const gradProgress = newParticle.angle / (2 * Math.PI);
-
                         if (this.cycleColors) {
                             const hue = (this.hue1 + newParticle.id * this.phaseOffset) % 360;
                             baseColor = `hsl(${hue}, 100%, 50%)`;
@@ -1534,7 +1499,6 @@ class Shape {
         }
     }
 
-    // MODIFIED - Removed hardcoded speed multiplier and fixed lineWidth property for radial oscilloscope
     draw(isSelected) {
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
@@ -1811,7 +1775,7 @@ class Shape {
         } else if (this.shape === 'oscilloscope') {
             const activeWavePhase = this.enableWaveAnimation ? this.wavePhaseAngle : 0;
             if (this.oscDisplayMode === 'radial') {
-                this.ctx.lineWidth = this.lineWidth;
+                this.ctx.lineWidth = this.vizLineWidth;
                 this.ctx.strokeStyle = this._createLocalFillStyle();
                 const totalRadius = (Math.min(this.width, this.height) / 2) - (this.ctx.lineWidth / 2);
                 if (totalRadius > 0) {
@@ -1820,7 +1784,7 @@ class Shape {
                     const maxAmplitude = totalRadius - baseRadius;
                     for (let i = 0; i <= 360; i++) {
                         const angleRad = (i * Math.PI) / 180;
-                        const waveFuncAngle = 2 * Math.PI * this.frequency * (i / 360) + activeWavePhase;
+                        const waveFuncAngle = 2 * Math.PI * this.frequency * (i / 360) + activeWavePhase * 2;
                         let y_wave;
                         switch (this.waveType) {
                             case 'square': y_wave = Math.sin(waveFuncAngle) >= 0 ? 1 : -1; break;
@@ -1923,7 +1887,7 @@ class Shape {
                 const segAngle = (this.angularWidth * Math.PI) / 180;
                 for (let i = 0; i < this.numberOfSegments; i++) {
                     this.ctx.beginPath();
-                    const startAngle = i * aStep;
+                    const startAngle = i * aStep + this.animationAngle;
                     const endAngle = startAngle + segAngle;
                     this.ctx.moveTo(Math.cos(startAngle) * oR, Math.sin(startAngle) * oR);
                     this.ctx.arc(0, 0, oR, startAngle, endAngle, false);

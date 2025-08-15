@@ -504,47 +504,40 @@
                     </div>
                     <form id="copy-props-form">
                         <div class="modal-body">
-                            <p>Select which properties to copy from the source object.</p>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="copy-position-check" name="copy-position" checked>
-                                        <label class="form-check-label" for="copy-position-check">Position (X, Y)</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="copy-size-check" name="copy-size" checked>
-                                        <label class="form-check-label" for="copy-size-check">Size (Width, Height)</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="copy-rotation-check" name="copy-rotation" checked>
-                                        <label class="form-check-label" for="copy-rotation-check">Rotation</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="copy-fill-style-check" name="copy-fill-style" checked>
-                                        <label class="form-check-label" for="copy-fill-style-check">Fill Style & Colors</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="copy-animation-check" name="copy-animation" checked>
-                                        <label class="form-check-label" for="copy-animation-check">Fill Animation</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="copy-color-animation-check" name="copy-color-animation" checked>
-                                        <label class="form-check-label" for="copy-color-animation-check">Color Animation</label>
-                                    </div>
-                                </div>
-                            </div>
-                            <hr>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="copy-shape-type-check" name="copy-shape-type">
-                                <label class="form-check-label" for="copy-shape-type-check"><strong>Shape Type</strong> (e.g., Rectangle, Circle)</label>
-                            </div>
-                            <div id="shape-specific-props-container" class="mt-2 ps-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="copy-shape-specific-check" name="copy-shape-specific" checked>
-                                    <label class="form-check-label" for="copy-shape-specific-check">Include <strong id="shape-specific-name"></strong> properties</label>
-                                </div>
+                            <p>Select the property groups you want to copy from the source object.</p>
+                            <div class="list-group">
+                                <label class="list-group-item">
+                                    <input class="form-check-input me-1" type="checkbox" name="copy-position" checked>
+                                    Position (X, Y)
+                                </label>
+                                <label class="list-group-item">
+                                    <input class="form-check-input me-1" type="checkbox" name="copy-size" checked>
+                                    Size (Width, Height)
+                                </label>
+                                <label class="list-group-item">
+                                    <input class="form-check-input me-1" type="checkbox" name="copy-rotation" checked>
+                                    Rotation & Rotation Speed
+                                </label>
+                                <label class="list-group-item">
+                                    <input class="form-check-input me-1" type="checkbox" name="copy-fill-style" checked>
+                                    Fill Style (Type, Colors, Gradient)
+                                </label>
+                                <label class="list-group-item">
+                                    <input class="form-check-input me-1" type="checkbox" name="copy-animation" checked>
+                                    Fill Animation (Mode, Speed, Direction)
+                                </label>
+                                <label class="list-group-item">
+                                    <input class="form-check-input me-1" type="checkbox" name="copy-color-animation" checked>
+                                    Color Animation (Cycle Colors & Speed)
+                                </label>
+                                <label class="list-group-item">
+                                    <input class="form-check-input me-1" type="checkbox" name="copy-shape-type">
+                                    Shape Type
+                                </label>
+                                <label class="list-group-item d-none" id="shape-specific-props-container">
+                                    <input class="form-check-input me-1" type="checkbox" name="copy-shape-specific">
+                                    Shape-Specific Properties (<span id="shape-specific-name"></span>)
+                                </label>
                             </div>
                         </div>
                         <div class="modal-footer">

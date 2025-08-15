@@ -1,3 +1,10 @@
+// Global speed multipliers (adjust these to change animation speeds across the board)
+window.gradientSpeedMultiplier = 1;
+window.shapeSpeedMultiplier = 1;
+window.seismicSpeedMultiplier = 1;
+window.tetrisGravityMultiplier = 2;
+window.textSpeedMultiplier = 1;
+
 const INITIAL_CONFIG_TEMPLATE = `
     <meta title="Text Test" />
         <meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
@@ -137,15 +144,6 @@ let audioContext;
 let analyser;
 let frequencyData;
 let isAudioSetup = false;
-let gradientSpeedMultiplier = 1 / 400;
-let shapeAnimationSpeedMultiplier = 0.05;
-let seismicAnimationSpeedMultiplier = 0.015;
-let tetrisSpeedDivisor = 10.0;
-
-const EXPORT_GRADIENT_SPEED_MULTIPLIER = gradientSpeedMultiplier;
-const EXPORT_SHAPE_ANIMATION_SPEED_MULTIPLIER = shapeAnimationSpeedMultiplier;
-const EXPORT_SEISMIC_ANIMATION_SPEED_MULTIPLIER = seismicAnimationSpeedMultiplier;
-const EXPORT_TETRIS_SPEED_DIVISOR = tetrisSpeedDivisor;
 
 
 
@@ -1021,6 +1019,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return formGroup;
     }
 
+    // MODIFIED - Fixed property scaling logic to use the configStore as the source of truth
+    // In main.js, replace the entire generateOutputScript function
+
     function generateOutputScript() {
         let scriptHTML = '';
         let jsVars = '';
@@ -1098,15 +1099,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (conf.type === 'number') {
                     const numValue = parseFloat(liveValue) || 0;
 
+                    // --- START OF FIX ---
+                    // The scaling logic for speeds is removed because the 'liveValue'
+                    // is now the correct UI value we want to export.
                     if (propsToScale.includes(propName)) {
                         exportValue = Math.round(numValue / 4);
-                    } else if (propName === 'animationSpeed' || propName === 'strokeAnimationSpeed' || propName === 'oscAnimationSpeed') {
-                        exportValue = Math.round(numValue * 10);
-                    } else if (propName === 'cycleSpeed' || propName === 'strokeCycleSpeed') {
-                        exportValue = Math.round(numValue * 50);
                     } else {
                         exportValue = Math.round(numValue);
                     }
+                    // --- END OF FIX ---
+
                 } else if (typeof liveValue === 'boolean') {
                     exportValue = String(liveValue);
                 } else if (conf.type === 'textfield' && typeof liveValue === 'string') {
@@ -1127,9 +1129,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (conf.min) attrs.push(`min="${conf.min}"`);
                     if (conf.max) attrs.push(`max="${conf.max}"`);
 
-                    // Special handling for the new 'sensor' type
                     if (conf.type === 'sensor') {
-                        // The `values` attribute isn't needed for export as it's dynamically populated by SignalRGB
                         scriptHTML += `<meta property="${conf.property}" label="${conf.label}" type="sensor" default="${exportValue}" />\n`;
                     } else {
                         scriptHTML += `<meta ${attrs.join(' ')} type="${conf.type}" default="${exportValue}" />\n`;
@@ -1808,20 +1808,22 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.restore();
     }
 
-    function drawFrame(audioData = {}, sensorData = {}) {
+    // In main.js, find the drawFrame function and replace it
+
+    function drawFrame(audioData = {}, sensorData = {}, deltaTime = 0) {
         if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        const isAnimating = getControlValues().enableAnimation;
+
         for (let i = objects.length - 1; i >= 0; i--) {
             const obj = objects[i];
-            if (isAnimating) {
-                obj.updateAnimationState(audioData, sensorData);
-            }
+            // This now correctly passes deltaTime to the object for time-based animation
+            obj.updateAnimationState(audioData, sensorData, deltaTime);
             obj.draw(selectedObjectIds.includes(obj.id));
             obj.dirty = false;
         }
+
         if (selectedObjectIds.length > 0) {
             selectedObjectIds.forEach(id => {
                 const obj = objects.find(o => o.id === id);
@@ -1833,86 +1835,81 @@ document.addEventListener('DOMContentLoaded', function () {
         drawSnapLines(snapLines);
     }
 
+    // MODIFIED - A new, time-based animation loop using delta time
     function animate(timestamp) {
         requestAnimationFrame(animate);
 
         const now = timestamp;
-        const elapsed = now - then;
+        const deltaTime = (now - then) / 1000.0; // deltaTime in seconds
+        then = now;
 
-        if (elapsed > fpsInterval) {
-            then = now - (elapsed % fpsInterval);
+        const generalValues = getControlValues();
+        const soundEnabled = generalValues.enableSound !== false;
+        const isAnimating = generalValues.enableAnimation !== false;
 
-            const generalValues = getControlValues();
-            const soundEnabled = generalValues.enableSound !== false;
-            const isAnimating = generalValues.enableAnimation !== false;
+        let audioData = {};
+        let sensorData = {};
 
-            let audioData = {};
-            let sensorData = {}; // Declare sensorData once here
-
-            if (soundEnabled) {
-                if (isAudioSetup) {
-                    audioData = getAudioMetrics();
-                } else {
-                    // Use mock data for a preview animation
-                    const time = now / 1000;
-                    const randomRate = (Math.sin(time * 0.2) + 1.5);
-                    const mockVol = (Math.sin(time * 1.8 * randomRate) * 0.5 + Math.sin(time * 0.9 * randomRate) * 0.5) / 2 + 0.5;
-                    const mockBass = (Math.sin(time * 2.2 * randomRate) * 0.6 + Math.sin(time * 4.7 * randomRate) * 0.4) / 2 + 0.5;
-                    const mockMids = (Math.sin(time * 1.5 * randomRate) * 0.5 + Math.sin(time * 2.8 * randomRate) * 0.5) / 2 + 0.5;
-                    const mockHighs = (Math.sin(time * 3.3 * randomRate) * 0.7 + Math.sin(time * 8.2 * randomRate) * 0.3) / 2 + 0.5;
-
-                    const mockFreqData = new Uint8Array(128);
-                    for (let i = 0; i < mockFreqData.length; i++) {
-                        const progress = i / mockFreqData.length;
-                        const bassEffect = Math.pow(1 - progress, 2) * mockBass;
-                        const midEffect = (1 - Math.abs(progress - 0.5) * 2) * mockMids;
-                        const highEffect = Math.pow(progress, 2) * mockHighs;
-                        mockFreqData[i] = (bassEffect + midEffect + highEffect) / 3 * 255 * (Math.sin(i * 0.2 + time * 5) * 0.1 + 0.9);
-                    }
-
-                    audioData = {
-                        bass: { avg: mockBass, peak: mockBass },
-                        mids: { avg: mockMids, peak: mockMids },
-                        highs: { avg: mockHighs, peak: mockHighs },
-                        volume: { avg: mockVol, peak: mockVol },
-                        frequencyData: mockFreqData
-                    };
-                }
+        if (soundEnabled) {
+            if (isAudioSetup) {
+                audioData = getAudioMetrics();
             } else {
-                // If sound is disabled, send a "silent" object to stop reactivity.
+                const time = now / 1000;
+                const randomRate = (Math.sin(time * 0.2) + 1.5);
+                const mockVol = (Math.sin(time * 1.8 * randomRate) * 0.5 + Math.sin(time * 0.9 * randomRate) * 0.5) / 2 + 0.5;
+                const mockBass = (Math.sin(time * 2.2 * randomRate) * 0.6 + Math.sin(time * 4.7 * randomRate) * 0.4) / 2 + 0.5;
+                const mockMids = (Math.sin(time * 1.5 * randomRate) * 0.5 + Math.sin(time * 2.8 * randomRate) * 0.5) / 2 + 0.5;
+                const mockHighs = (Math.sin(time * 3.3 * randomRate) * 0.7 + Math.sin(time * 8.2 * randomRate) * 0.3) / 2 + 0.5;
+
+                const mockFreqData = new Uint8Array(128);
+                for (let i = 0; i < mockFreqData.length; i++) {
+                    const progress = i / mockFreqData.length;
+                    const bassEffect = Math.pow(1 - progress, 2) * mockBass;
+                    const midEffect = (1 - Math.abs(progress - 0.5) * 2) * mockMids;
+                    const highEffect = Math.pow(progress, 2) * mockHighs;
+                    mockFreqData[i] = (bassEffect + midEffect + highEffect) / 3 * 255 * (Math.sin(i * 0.2 + time * 5) * 0.1 + 0.9);
+                }
+
                 audioData = {
-                    bass: { avg: 0, peak: 0 },
-                    mids: { avg: 0, peak: 0 },
-                    highs: { avg: 0, peak: 0 },
-                    volume: { avg: 0, peak: 0 },
-                    frequencyData: new Uint8Array(128).fill(0)
+                    bass: { avg: mockBass, peak: mockBass },
+                    mids: { avg: mockMids, peak: mockMids },
+                    highs: { avg: mockHighs, peak: mockHighs },
+                    volume: { avg: mockVol, peak: mockVol },
+                    frequencyData: mockFreqData
                 };
             }
-
-            // Mock sensor data for the editor
-            const mockSensorData = {
-                'CPU Load': {
-                    value: Math.sin(timestamp / 2000) * 50 + 50,
-                    min: 0,
-                    max: 100
-                },
-                'Memory Load': {
-                    value: Math.cos(timestamp / 3000) * 40 + 50,
-                    min: 0,
-                    max: 100
-                },
-                'CPU Temperature': {
-                    value: Math.sin(timestamp / 4000) * 10 + 60,
-                    min: 40,
-                    max: 80
-                }
+        } else {
+            audioData = {
+                bass: { avg: 0, peak: 0 },
+                mids: { avg: 0, peak: 0 },
+                highs: { avg: 0, peak: 0 },
+                volume: { avg: 0, peak: 0 },
+                frequencyData: new Uint8Array(128).fill(0)
             };
-
-            // Assign the mock data to the sensorData object.
-            sensorData = mockSensorData;
-
-            drawFrame(audioData, sensorData);
         }
+
+        const mockSensorData = {
+            'CPU Load': {
+                value: Math.sin(timestamp / 2000) * 50 + 50,
+                min: 0,
+                max: 100
+            },
+            'Memory Load': {
+                value: Math.cos(timestamp / 3000) * 40 + 50,
+                min: 0,
+                max: 100
+            },
+            'CPU Temperature': {
+                value: Math.sin(timestamp / 4000) * 10 + 60,
+                min: 40,
+                max: 80
+            }
+        };
+
+        sensorData = mockSensorData;
+
+        // Pass deltaTime to the drawFrame function
+        drawFrame(audioData, sensorData, isAnimating ? deltaTime : 0);
     }
 
     /**
@@ -1959,7 +1956,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const values = {};
         const prefix = `obj${id}_`;
         const configs = configStore.filter(c => c.property && c.property.startsWith(prefix));
-        // The complete list of properties that need to be scaled up by 4x.
         const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
 
         configs.forEach(conf => {
@@ -1975,12 +1971,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     value = el.value;
                 }
 
-                // Scale the appropriate properties from their UI value to the internal live value.
                 if (propsToScale.includes(key)) {
                     value *= 4;
                 }
 
-                // Correctly route properties to their nested objects.
                 if (key.startsWith('gradColor')) {
                     if (!values.gradient) values.gradient = {};
                     values.gradient[key.replace('grad', '').toLowerCase()] = value;
@@ -1992,24 +1986,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (key === 'strokeScrollDir') {
                     values.strokeScrollDir = value;
                 } else {
-                    // FIX: Add a conditional check to scale down the textAnimationSpeed.
-                    if (key === 'textAnimationSpeed') {
-                        values.textAnimationSpeed = (value || 0);
-                    } else {
-                        values[key] = value;
-                    }
+                    values[key] = value;
                 }
             }
         });
 
-        // Scale down the speed values for the live object.
-        values.cycleSpeed = (values.cycleSpeed || 0) / 50.0;
-        values.animationSpeed = (values.animationSpeed || 0) / 10.0;
-        values.oscAnimationSpeed = (values.oscAnimationSpeed || 0) / 10.0;
-        values.strokeCycleSpeed = (values.strokeCycleSpeed || 0) / 50.0;
-        values.strokeAnimationSpeed = (values.strokeAnimationSpeed || 0) / 10.0;
-
-        // Enforce height lock for rings only, allowing circles to be stretched.
         if (values.shape === 'ring') {
             values.height = values.width;
         }
@@ -2023,17 +2004,32 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function updateObjectsFromForm() {
         if (isRestoring) return;
+        const formValues = getControlValues();
+
         objects.forEach(obj => {
             const newProps = getFormValuesForObject(obj.id);
 
-            // If the object's rotation is paused, handle the speed update separately.
             if (obj._pausedRotationSpeed !== null && newProps.rotationSpeed !== undefined) {
-                obj._pausedRotationSpeed = newProps.rotationSpeed; // Update the stored speed
-                delete newProps.rotationSpeed; // Prevent overwriting the live (paused) speed
+                obj._pausedRotationSpeed = newProps.rotationSpeed;
+                delete newProps.rotationSpeed;
             }
 
             obj.update(newProps);
         });
+
+        configStore.forEach(conf => {
+            const key = conf.property || conf.name;
+            if (formValues.hasOwnProperty(key)) {
+                let valueToSave = formValues[key];
+                if (conf.type === 'number') {
+                    valueToSave = Number(valueToSave);
+                } else if (typeof valueToSave === 'boolean') {
+                    valueToSave = String(valueToSave);
+                }
+                conf.default = valueToSave;
+            }
+        });
+
         generateOutputScript();
     }
 
@@ -2041,8 +2037,7 @@ document.addEventListener('DOMContentLoaded', function () {
      * Reads all properties from the 'objects' array and updates the form inputs to match.
      */
     function updateFormValuesFromObjects() {
-        // The complete list of properties that need to be scaled down by 4x for the UI.
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'tetrisSpeed'];
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
 
         objects.forEach(obj => {
             const fieldset = form.querySelector(`fieldset[data-object-id="${obj.id}"]`);
@@ -2053,10 +2048,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (input) {
                     if (input.type === 'checkbox') input.checked = value;
                     else input.value = value;
-
                     const slider = fieldset.querySelector(`[name="obj${obj.id}_${prop}_slider"]`);
                     if (slider) slider.value = value;
-
                     const hexInput = fieldset.querySelector(`[name="obj${obj.id}_${prop}_hex"]`);
                     if (hexInput) hexInput.value = value;
                 }
@@ -2074,10 +2067,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (key === 'strokeGradient') {
                     updateField('strokeGradColor1', obj.strokeGradient.color1);
                     updateField('strokeGradColor2', obj.strokeGradient.color2);
-                } else if (key === 'animationSpeed' || key === 'strokeAnimationSpeed' || key === 'oscAnimationSpeed') {
-                    updateField(key, Math.round(obj[key] * 10));
-                } else if (key === 'cycleSpeed' || key === 'strokeCycleSpeed') {
-                    updateField(key, Math.round(obj[key] * 50));
                 } else if (key === 'scrollDirection') {
                     updateField('scrollDir', obj.scrollDirection);
                 } else if (key === 'strokeScrollDir') {
@@ -2093,8 +2082,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         generateOutputScript();
     }
-
-
 
     /**
      * A master update function that syncs the shapes from the form and regenerates the output script.
@@ -2125,7 +2112,6 @@ document.addEventListener('DOMContentLoaded', function () {
     /**
      * Creates the initial set of Shape objects based on the `configStore`.
      */
-    // MODIFIED - Restored the 4x scaling for positional and size properties
     function createInitialObjects() {
         const allPropKeysFromStore = configStore.map(c => c.property || c.name);
         if (allPropKeysFromStore.length === 0) return;
@@ -2149,9 +2135,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 const key = conf.property.replace(`obj${id}_`, '');
                 let value = conf.default;
 
-                if (conf.type === 'number') value = parseFloat(value);
-                else if (conf.type === 'boolean') value = (value === 'true');
-                else if (conf.type === 'textfield' || conf.type === 'textarea') value = String(value).replace(/\\n/g, '\n');
+                if (conf.type === 'number') {
+                    value = parseFloat(value);
+                } else if (conf.type === 'boolean') {
+                    value = (String(value).toLowerCase() === 'true' || value === 1);
+                } else if (conf.type === 'textfield' || conf.type === 'textarea') {
+                    value = String(value).replace(/\\n/g, '\n');
+                }
 
                 const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
                 if (propsToScale.includes(key) && typeof value === 'number') {
@@ -2171,12 +2161,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            configForThisObject.cycleSpeed = (configForThisObject.cycleSpeed || 0) / 50.0;
-            configForThisObject.animationSpeed = (configForThisObject.animationSpeed || 0) / 10.0;
-            configForThisObject.oscAnimationSpeed = (configForThisObject.oscAnimationSpeed || 0) / 10.0;
-            configForThisObject.strokeCycleSpeed = (configForThisObject.strokeCycleSpeed || 0) / 50.0;
-            configForThisObject.strokeAnimationSpeed = (configForThisObject.strokeAnimationSpeed || 0) / 10.0;
-
             if (configForThisObject.shape === 'ring') {
                 configForThisObject.height = configForThisObject.width;
             }
@@ -2192,6 +2176,8 @@ document.addEventListener('DOMContentLoaded', function () {
      * including complex shapes and strokes, are correctly applied.
      * @param {object} workspace - The workspace object to load.
      */
+    // In main.js, find the loadWorkspace function and replace it
+
     function loadWorkspace(workspace) {
         currentProjectMetadata = {
             creatorName: workspace.creatorName,
@@ -2205,7 +2191,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const masterConfigTemplates = Array.from(doc.querySelectorAll('meta')).map(parseMetaToConfig);
 
         const masterGeneralConfigs = masterConfigTemplates.filter(c => !(c.property || c.name).startsWith('obj'));
-
         const loadedGeneralConfigs = loadedConfigs.filter(c => !(c.property || c.name).startsWith('obj'));
         const loadedGeneralConfigMap = new Map(loadedGeneralConfigs.map(c => [(c.property || c.name), c]));
 
@@ -2258,21 +2243,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         createInitialObjects();
 
-        // --- START OF FIX ---
-        // Apply general settings from the merged configStore to the form.
-        configStore.filter(c => !(c.property || c.name).startsWith('obj')).forEach(conf => {
-            const key = conf.property || conf.name;
-            const el = form.elements[key];
-            if (el) {
-                if (el.type === 'checkbox') {
-                    el.checked = (conf.default === true || conf.default === 'true');
-                } else {
-                    el.value = conf.default;
-                }
-            }
-        });
-        // --- END OF FIX ---
-
         if (workspace.objects && workspace.objects.length > 0) {
             workspace.objects.forEach(savedObj => {
                 const obj = objects.find(o => o.id === savedObj.id);
@@ -2284,7 +2254,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         renderForm();
-        updateFormValuesFromObjects();
+
+        // THIS IS THE FIX:
+        // Change updateFormValuesFromObjects() to updateObjectsFromForm()
+        updateObjectsFromForm();
 
         currentProjectDocId = workspace.docId || null;
         updateShareButtonState();
@@ -2452,16 +2425,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const canvas = document.getElementById('signalCanvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    canvas.width = 320;
-    canvas.height = 200;
+    canvas.width = 1280;
+    canvas.height = 800;
     let objects = [];
     
     ${jsVars}
 
-    let gradientSpeedMultiplier = ${gradientSpeedMultiplier};
-    let shapeAnimationSpeedMultiplier = ${shapeAnimationSpeedMultiplier};
-    let seismicAnimationSpeedMultiplier = ${seismicAnimationSpeedMultiplier};
-    let tetrisSpeedDivisor = ${tetrisSpeedDivisor};
+    window.gradientSpeedMultiplier = ${window.gradientSpeedMultiplier};
+    window.shapeSpeedMultiplier = ${window.shapeSpeedMultiplier};
+    window.seismicSpeedMultiplier = ${window.seismicSpeedMultiplier};
+    window.tetrisGravityMultiplier = ${window.tetrisGravityMultiplier};
+    window.textSpeedMultiplier = ${window.textSpeedMultiplier};
 
     const getSensorValue = (sensorName) => {
         try {
@@ -2480,54 +2454,8 @@ document.addEventListener('DOMContentLoaded', function () {
     
     const Shape = ${Shape.toString()};
 
-    let fps = 50;
-    let fpsInterval;
     let then;
-
     const allPropKeys = ${formattedKeys};
-
-    function processProperties(targetObject, id) {
-        const prefix = 'obj' + id + '_';
-        allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
-            const propName = key.substring(prefix.length);
-            try {
-                let value = eval(key);
-                if (value === "true") value = true;
-                if (value === "false") value = false;
-
-                switch (propName) {
-                    case 'gradColor1':
-                    case 'gradColor2':
-                        if (!targetObject.gradient) targetObject.gradient = {};
-                        targetObject.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                        break;
-                    case 'strokeGradColor1':
-                    case 'strokeGradColor2':
-                        if (!targetObject.strokeGradient) targetObject.strokeGradient = {};
-                        targetObject.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
-                        break;
-                    case 'scrollDir':
-                        targetObject.scrollDirection = value;
-                        break;
-                    case 'strokeScrollDir':
-                        targetObject.strokeScrollDir = value;
-                        break;
-                    case 'animationSpeed':
-                        targetObject.animationSpeed = (value || 0) / 10.0;
-                        break;
-                    case 'textAnimationSpeed':
-                        targetObject.textAnimationSpeed = (value || 0) / 4.0;
-                        break;
-                    case 'oscAnimationSpeed':
-                        targetObject.oscAnimationSpeed = (value || 0) / 10.0;
-                        break;
-                    default:
-                        targetObject[propName] = value;
-                        break;
-                }
-            } catch (e) {}
-        });
-    }
 
     function createInitialObjects() {
         if (allPropKeys.length === 0) return;
@@ -2541,14 +2469,42 @@ document.addEventListener('DOMContentLoaded', function () {
             return isNaN(id) ? null : String(id);
         }).filter(id => id !== null))];
         
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
+
         objects = uniqueIds.map(id => {
-            const config = { id: parseInt(id), ctx: ctx, canvasWidth: canvas.width };
-            processProperties(config, id);
+            const config = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
+            const prefix = 'obj' + id + '_';
+
+            allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+                const propName = key.substring(prefix.length);
+                try {
+                    let value = eval(key);
+                    if (value === "true") value = true;
+                    if (value === "false") value = false;
+
+                    if (propsToScale.includes(propName) && typeof value === 'number') {
+                        value *= 4;
+                    }
+
+                    if (propName.startsWith('gradColor')) {
+                        config.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                    } else if (propName.startsWith('strokeGradColor')) {
+                        config.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                    } else if (propName === 'scrollDir') {
+                        config.scrollDirection = value;
+                    } else if (propName === 'strokeScrollDir') {
+                        config.strokeScrollDir = value;
+                    } else {
+                        config[propName] = value;
+                    }
+                } catch (e) {}
+            });
+
             return new Shape(config);
         });
     }
 
-    function drawFrame() {
+    function drawFrame(deltaTime = 0) {
         if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#000';
@@ -2564,13 +2520,41 @@ document.addEventListener('DOMContentLoaded', function () {
             sensorData[obj.userSensor] = getSensorValue(obj.userSensor);
         });
 
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
+
         objects.forEach(obj => {
-            const propsToUpdate = {};
-            processProperties(propsToUpdate, obj.id);
+            const prefix = 'obj' + obj.id + '_';
+            const propsToUpdate = { gradient: {}, strokeGradient: {} };
+
+            allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
+                const propName = key.substring(prefix.length);
+                try {
+                    let value = eval(key);
+                    if (value === "true") value = true;
+                    if (value === "false") value = false;
+                    
+                    if (propsToScale.includes(propName) && typeof value === 'number') {
+                        value *= 4;
+                    }
+
+                    if (propName.startsWith('gradColor')) {
+                        propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                    } else if (propName.startsWith('strokeGradColor')) {
+                        propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                    } else if (propName === 'scrollDir') {
+                        propsToUpdate.scrollDirection = value;
+                    } else if (propName === 'strokeScrollDir') {
+                        propsToUpdate.strokeScrollDir = value;
+                    } else {
+                        propsToUpdate[propName] = value;
+                    }
+                } catch (e) {}
+            });
+
             obj.update(propsToUpdate);
 
             if (shouldAnimate) {
-                obj.updateAnimationState(audioData, sensorData);
+                obj.updateAnimationState(audioData, sensorData, deltaTime);
             }
         });
 
@@ -2582,17 +2566,14 @@ document.addEventListener('DOMContentLoaded', function () {
     function animate(timestamp) {
         requestAnimationFrame(animate);
         const now = timestamp;
-        const elapsed = now - then;
-
-        if (elapsed > fpsInterval) {
-            then = now - (elapsed % fpsInterval);
-            drawFrame();
-        }
+        const deltaTime = (now - (then || now)) / 1000.0;
+        then = now;
+        
+        drawFrame(deltaTime);
     }
 
     function init() {
         createInitialObjects();
-        fpsInterval = 1000 / fps;
         then = window.performance.now();
         animate(then);
     }
@@ -4249,7 +4230,8 @@ document.addEventListener('DOMContentLoaded', function () {
         debouncedRecordHistory();
     });
 
-    // --- FINAL: Robust Copy/Paste Properties Logic ---
+
+    // Copy and Paste section
     const copyPropsBtn = document.getElementById('copy-props-btn');
     const pastePropsBtn = document.getElementById('paste-props-btn');
     const copyPropsModalEl = document.getElementById('copy-props-modal');
@@ -4261,7 +4243,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         copyPropsBtn.addEventListener('click', () => {
             if (selectedObjectIds.length === 0) return;
-            // Fix: Use a globally accessible variable to store the source ID.
             sourceObjectId = selectedObjectIds[0];
             const sourceObject = objects.find(o => o.id === sourceObjectId);
             if (!sourceObject) return;
@@ -4270,7 +4251,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const shapeSpecificContainer = document.getElementById('shape-specific-props-container');
             const shapeSpecificName = document.getElementById('shape-specific-name');
-            const shapeSpecificProps = ['ring', 'oscilloscope', 'text', 'rectangle'];
+            const shapeSpecificProps = ['ring', 'oscilloscope', 'text', 'rectangle', 'polygon', 'star', 'tetris', 'fire-radial', 'pixel-art', 'audio-visualizer'];
 
             if (shapeSpecificProps.includes(sourceObject.shape)) {
                 shapeSpecificName.textContent = sourceObject.shape.charAt(0).toUpperCase() + sourceObject.shape.slice(1);
@@ -4282,7 +4263,6 @@ document.addEventListener('DOMContentLoaded', function () {
             copyPropsModal.show();
         });
 
-        // MODIFIED - When copying an object with any active animation, set base rotation to 0
         confirmCopyBtn.addEventListener('click', (event) => {
             event.preventDefault();
 
@@ -4291,47 +4271,44 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const propsToCopy = {};
 
-            if (copyPropsForm.elements['copy-position'].checked) { Object.assign(propsToCopy, { x: sourceObject.x, y: sourceObject.y }); }
-            if (copyPropsForm.elements['copy-size'].checked) { Object.assign(propsToCopy, { width: sourceObject.width, height: sourceObject.height }); }
-
-            if (copyPropsForm.elements['copy-rotation'].checked) {
-                // If the source object has an active rotation speed OR a master animation speed,
-                // copy the base rotation as 0. Otherwise, copy its static rotation.
-                const isAnimating = sourceObject.rotationSpeed !== 0 || sourceObject.animationSpeed !== 0;
-                const rotationToCopy = isAnimating ? 0 : sourceObject.rotation;
-
-                Object.assign(propsToCopy, {
-                    rotation: rotationToCopy,
-                    rotationSpeed: sourceObject.rotationSpeed
+            // Helper to copy properties from the source object
+            const copyProps = (propNames) => {
+                propNames.forEach(prop => {
+                    if (sourceObject[prop] !== undefined) {
+                        propsToCopy[prop] = sourceObject[prop];
+                    }
                 });
-            }
+            };
 
-            if (copyPropsForm.elements['copy-fill-style'].checked) { Object.assign(propsToCopy, { gradType: sourceObject.gradType, useSharpGradient: sourceObject.useSharpGradient, gradientStop: sourceObject.gradientStop, gradient: { ...sourceObject.gradient } }); }
+            if (copyPropsForm.elements['copy-position'].checked) copyProps(['x', 'y']);
+            if (copyPropsForm.elements['copy-size'].checked) copyProps(['width', 'height']);
+            if (copyPropsForm.elements['copy-rotation'].checked) copyProps(['rotation', 'rotationSpeed']);
+            if (copyPropsForm.elements['copy-fill-style'].checked) Object.assign(propsToCopy, { gradType: sourceObject.gradType, useSharpGradient: sourceObject.useSharpGradient, gradientStop: sourceObject.gradientStop, gradient: { ...sourceObject.gradient } });
+            if (copyPropsForm.elements['copy-animation'].checked) copyProps(['animationMode', 'animationSpeed', 'scrollDirection', 'phaseOffset']);
+            if (copyPropsForm.elements['copy-color-animation'].checked) copyProps(['cycleColors', 'cycleSpeed']);
+            if (copyPropsForm.elements['copy-shape-type'].checked) copyProps(['shape']);
 
-            if (copyPropsForm.elements['copy-animation'].checked) {
-                Object.assign(propsToCopy, {
-                    animationMode: sourceObject.animationMode,
-                    animationSpeed: sourceObject.animationSpeed,
-                    scrollDirection: sourceObject.scrollDirection,
-                    phaseOffset: sourceObject.phaseOffset
-                });
-            }
-
-            if (copyPropsForm.elements['copy-color-animation'].checked) { Object.assign(propsToCopy, { cycleColors: sourceObject.cycleColors, cycleSpeed: sourceObject.cycleSpeed }); }
-
-            if (copyPropsForm.elements['copy-shape-type'].checked) { propsToCopy.shape = sourceObject.shape; }
             if (copyPropsForm.elements['copy-shape-specific'].checked) {
-                switch (sourceObject.shape) {
-                    case 'ring': Object.assign(propsToCopy, { innerDiameter: sourceObject.innerDiameter, numberOfSegments: sourceObject.numberOfSegments, angularWidth: sourceObject.angularWidth }); break;
-                    case 'oscilloscope': Object.assign(propsToCopy, { lineWidth: sourceObject.lineWidth, waveType: sourceObject.waveType, frequency: sourceObject.frequency, oscDisplayMode: sourceObject.oscDisplayMode, pulseDepth: sourceObject.pulseDepth, fillShape: sourceObject.fillShape }); break;
-                    case 'text': Object.assign(propsToCopy, { text: sourceObject.text, fontSize: sourceObject.fontSize, textAlign: sourceObject.textAlign, pixelFont: sourceObject.pixelFont, textAnimation: sourceObject.textAnimation, textAnimationSpeed: sourceObject.textAnimationSpeed, showTime: sourceObject.showTime, showDate: sourceObject.showDate }); break;
-                    case 'rectangle': Object.assign(propsToCopy, { numberOfRows: sourceObject.numberOfRows, numberOfColumns: sourceObject.numberOfColumns }); break;
+                const shapeSpecificMap = {
+                    'ring': ['innerDiameter', 'numberOfSegments', 'angularWidth'],
+                    'oscilloscope': ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'],
+                    'text': ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate', 'autoWidth'],
+                    'rectangle': ['numberOfRows', 'numberOfColumns'],
+                    'polygon': ['sides'],
+                    'star': ['points', 'starInnerRadius'],
+                    'tetris': ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'],
+                    'fire-radial': ['fireSpread'],
+                    'pixel-art': ['pixelArtData'],
+                    'audio-visualizer': ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius']
+                };
+                if (shapeSpecificMap[sourceObject.shape]) {
+                    copyProps(shapeSpecificMap[sourceObject.shape]);
                 }
             }
 
             propertyClipboard = propsToCopy;
             updateToolbarState();
-            showToast("Properties copied to clipboard!", 'info');
+            showToast("Properties copied!", 'info');
             copyPropsModal.hide();
         });
 
@@ -4339,13 +4316,26 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!propertyClipboard || selectedObjectIds.length === 0) return;
 
             const destObjects = selectedObjectIds.map(id => objects.find(o => o.id === id));
+            let shapeChanged = false;
+
             destObjects.forEach(obj => {
                 if (obj) {
+                    if (propertyClipboard.shape && obj.shape !== propertyClipboard.shape) {
+                        shapeChanged = true;
+                    }
                     obj.update(propertyClipboard);
                 }
             });
 
-            if (propertyClipboard.hasOwnProperty('shape')) {
+            // If the shape type was pasted, the entire form needs to be rebuilt
+            if (shapeChanged) {
+                // Update the central configStore to reflect the shape change
+                destObjects.forEach(obj => {
+                    const shapeConf = configStore.find(c => c.property === `obj${obj.id}_shape`);
+                    if (shapeConf) {
+                        shapeConf.default = obj.shape;
+                    }
+                });
                 renderForm();
             }
 
@@ -4360,10 +4350,6 @@ document.addEventListener('DOMContentLoaded', function () {
      * Analyzes the current audio frame and returns calculated metrics, including average and peak values.
      * @returns {object} An object with bass, mids, highs, and volume properties.
      */
-    /**
- * Analyzes the current audio frame and returns calculated metrics, including average and peak values.
- * @returns {object} An object with bass, mids, highs, and volume properties.
- */
     function getAudioMetrics() {
         if (!analyser) {
             return {
