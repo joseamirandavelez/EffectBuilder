@@ -278,7 +278,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirmBtn = document.getElementById('confirm-overwrite-btn');
     const coordsDisplay = document.getElementById('coords-display');
 
-    // Update this for a new property
     const shapePropertyMap = {
         rectangle: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -286,7 +285,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
         circle: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -294,14 +294,16 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
         ring: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
         polygon: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -309,7 +311,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'sides',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
         star: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -317,13 +320,15 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'points', 'starInnerRadius',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
         text: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation',
             'textAnimationSpeed', 'showTime', 'showDate',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
         oscilloscope: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
@@ -332,29 +337,34 @@ document.addEventListener('DOMContentLoaded', function () {
             'enableWaveAnimation', 'waveStyle', 'waveCount', 'oscAnimationSpeed',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir', ,
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
         tetris: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed', 'phaseOffset',
             'tetrisAnimation', 'tetrisBlockCount', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
         fire: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
         'fire-radial': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
         'pixel-art': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'pixelArtData',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
         'audio-visualizer': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -364,7 +374,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'vizAutoScale', 'vizMaxBarHeight',
             'vizBarCount', 'vizBarSpacing', 'vizSmoothing',
             'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing',
-            'vizInnerRadius'
+            'vizInnerRadius',
+            'animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'
         ],
     };
 
@@ -1392,6 +1403,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
                 'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius'], icon: 'bi-bar-chart-line-fill' },
                 'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
+                'Animation-Linking': { props: ['animationLinkMode', 'animationLinkTarget', 'animationLinkDelay'], icon: 'bi-link-45deg' },
                 'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'sensorValueSource', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'], icon: 'bi-cpu-fill' },
             };
             const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
@@ -1480,6 +1492,46 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             }
+        });
+
+        // --- 4.5 DYNAMIC UI LOGIC ---
+        form.querySelectorAll('fieldset[data-object-id]').forEach(fieldset => {
+            const id = parseInt(fieldset.dataset.objectId, 10);
+            const modeSelect = fieldset.querySelector(`[name="obj${id}_animationLinkMode"]`);
+            const targetGroup = fieldset.querySelector(`[name="obj${id}_animationLinkTarget"]`)?.closest('.mb-3');
+            const delayGroup = fieldset.querySelector(`[name="obj${id}_animationLinkDelay"]`)?.closest('.mb-3');
+            const targetSelect = fieldset.querySelector(`[name="obj${id}_animationLinkTarget"]`);
+
+            const updateVisibility = () => {
+                if (!modeSelect) return;
+                const mode = modeSelect.value;
+                if (targetGroup) targetGroup.style.display = (mode === 'sync' || mode === 'sequence') ? '' : 'none';
+                if (delayGroup) delayGroup.style.display = (mode === 'delay') ? '' : 'none';
+            };
+
+            if (targetSelect) {
+                // Clear existing options
+                targetSelect.innerHTML = '<option value="">Select Target...</option>';
+                // Populate with other objects
+                objects.forEach(otherObj => {
+                    if (otherObj.id !== id) {
+                        const option = document.createElement('option');
+                        option.value = otherObj.id;
+                        option.textContent = otherObj.name || `Object ${otherObj.id}`;
+                        // If this was the previously selected target, re-select it
+                        const config = configStore.find(c => c.property === `obj${id}_animationLinkTarget`);
+                        if (config && config.default == otherObj.id) {
+                            option.selected = true;
+                        }
+                        targetSelect.appendChild(option);
+                    }
+                });
+            }
+
+            if (modeSelect) {
+                modeSelect.addEventListener('change', updateVisibility);
+            }
+            updateVisibility();
         });
 
         // --- 5. FINALIZATION ---
@@ -1812,9 +1864,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         for (let i = objects.length - 1; i >= 0; i--) {
             const obj = objects[i];
-            // This now correctly passes deltaTime to the object for time-based animation
-            obj.updateAnimationState(audioData, sensorData, deltaTime);
-            obj.draw(selectedObjectIds.includes(obj.id));
+            // This now correctly passes deltaTime and the list of all objects
+            obj.updateAnimationState(audioData, sensorData, deltaTime, objects);
+            obj.draw(selectedObjectIds.includes(obj.id), objects); // Also pass objects to draw
             obj.dirty = false;
         }
 
@@ -2388,6 +2440,10 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_vizSegmentCount`, label: `Object ${newId}: Segment Count`, type: 'number', default: '16', min: '2', max: '64', description: '(Visualizer) The number of vertical LED segments the bar is divided into.' },
             { property: `obj${newId}_vizSegmentSpacing`, label: `Object ${newId}: Segment Spacing`, type: 'number', default: '1', min: '0', max: '10', description: '(Visualizer) The spacing between segments in a bar.' },
 
+            // Animation Linking
+            { property: `obj${newId}_animationLinkMode`, label: `Object ${newId}: Link Mode`, type: 'combobox', default: 'none', values: 'none,sync,sequence,delay', description: 'Links this animation to another object or a timer. "Sync" matches the leader\'s animation progress. "Sequence" starts after the leader completes one cycle. "Delay" starts after a set time.' },
+            { property: `obj${newId}_animationLinkTarget`, label: `Object ${newId}: Link Target`, type: 'combobox', default: '', values: '', description: 'The object to use as the leader for Sync or Sequence mode.' },
+            { property: `obj${newId}_animationLinkDelay`, label: `Object ${newId}: Start Delay (s)`, type: 'number', default: '1', min: '0', max: '300', description: 'The delay in seconds before the animation begins.' },
 
             { property: `obj${newId}_enableSensorReactivity`, label: `Object ${newId}: Enable Sensor Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sensor data.' },
             { property: `obj${newId}_sensorTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Sensor Meter', values: 'Sensor Meter,Time Plot', description: 'Selects the specific effect that the object will perform in response to sensor data.' },
@@ -2395,6 +2451,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_userSensor`, label: `Object ${newId}: Sensor`, type: 'sensor', default: 'CPU Load', description: 'The hardware sensor to monitor for reactivity.' },
             { property: `obj${newId}_timePlotLineThickness`, label: `Object ${newId}: Line Thickness`, type: 'number', default: '1', min: '1', max: '50', description: '(Time Plot) Sets the thickness of the time-plot line.' },
             { property: `obj${newId}_timePlotFillArea`, label: `Object ${newId}: Fill Area`, type: 'boolean', default: 'false', description: '(Time Plot) Fills the area under the time plot line.' },
+
         ];
 
     }

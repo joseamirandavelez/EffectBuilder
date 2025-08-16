@@ -203,7 +203,7 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, animationLinkMode, animationLinkTarget, animationLinkDelay }) {
         // --- ALL properties are assigned here first ---
         this.dirty = true;
         this.id = id;
@@ -351,6 +351,21 @@ class Shape {
         this.shapeAnimationSpeedMultiplier = shapeAnimationSpeedMultiplier || 0.05;
         this.seismicAnimationSpeedMultiplier = seismicAnimationSpeedMultiplier || 0.015;
 
+        // --- Animation Linking Properties ---
+        this.animationLinkMode = animationLinkMode || 'none';
+        this.animationLinkTarget = animationLinkTarget ? parseInt(animationLinkTarget, 10) : null;
+        this.animationLinkDelay = animationLinkDelay || 0;
+        this.resetAnimationState(); // Initialize state variables
+
+    }
+
+    resetAnimationState() {
+        this.isAnimationActive = (this.animationLinkMode === 'none');
+        this.animationStartTime = -1;
+        this.hasCompletedOneCycle = false;
+        // Also reset other animation-specific states if necessary
+        this.scrollOffset = 0;
+        this.isReversing = false;
     }
 
     _applySensorReactivity(sensorData) {
@@ -384,7 +399,7 @@ class Shape {
         }
     }
 
-    _drawTimePlot() {
+    _drawTimePlot(allObjects = []) { // Add allObjects to the signature
         if (this.sensorHistory.length === 0) return;
 
         // Use a new context for rotation, so it doesn't affect the object's bounding box.
@@ -398,13 +413,15 @@ class Shape {
 
         // Check if the area should be filled.
         if (this.timePlotFillArea) {
-            this.ctx.fillStyle = this._createLocalFillStyle();
+            // Use phase 0 and pass allObjects
+            this.ctx.fillStyle = this._createLocalFillStyle(0, allObjects);
             // Start the path at the bottom-left of the plot area.
             this.ctx.moveTo(-this.width / 2, this.height / 2);
         }
 
         // Set up the style for the line.
-        this.ctx.strokeStyle = this._createLocalFillStyle();
+        // Use phase 0 and pass allObjects
+        this.ctx.strokeStyle = this._createLocalFillStyle(0, allObjects);
         this.ctx.lineWidth = this.timePlotLineThickness;
 
         const xStep = this.width / this.sensorHistory.length;
@@ -802,7 +819,7 @@ class Shape {
         // --- END: ROBUST VISUALIZER UPDATE ---
     }
 
-    _createLocalStrokeStyle(phase = 0) {
+    _createLocalStrokeStyle(phase = 0, allObjects = []) {
         if (this.colorOverride) {
             return this.colorOverride;
         }
@@ -963,7 +980,7 @@ class Shape {
      * @param {number} [phase=0] - The phase offset for animations, used in grids/groups.
      * @returns {CanvasGradient|string} The generated canvas style.
      */
-    _createLocalFillStyle(phase = 0) {
+    _createLocalFillStyle(phase = 0, allObjects = []) {
         if (this.colorOverride) {
             return this.colorOverride;
         }
@@ -1180,12 +1197,44 @@ class Shape {
         return grad;
     }
 
-    updateAnimationState(audioData, sensorData, deltaTime = 0) {
+    updateAnimationState(audioData, sensorData, deltaTime = 0, allObjects = []) {
         this._applyAudioReactivity(audioData);
         this._applySensorReactivity(sensorData);
 
+        // --- Animation Linking Gatekeeper ---
+        if (!this.isAnimationActive) {
+            const currentTime = performance.now();
+            switch (this.animationLinkMode) {
+                case 'delay':
+                    if (this.animationStartTime < 0) {
+                        this.animationStartTime = currentTime; // Start the timer on the first frame
+                    }
+                    if (currentTime - this.animationStartTime >= this.animationLinkDelay * 1000) {
+                        this.isAnimationActive = true; // Delay has passed, activate animation
+                    }
+                    break;
+                case 'sequence':
+                    const leader = allObjects.find(o => o.id === this.animationLinkTarget);
+                    if (leader && leader.hasCompletedOneCycle) {
+                        this.isAnimationActive = true; // Leader finished, activate animation
+                    }
+                    break;
+                case 'sync':
+                    // Sync mode doesn't need to update its own animation state here.
+                    // The logic is handled during the draw phase by copying the leader's progress.
+                    return;
+            }
+        }
+
+        // If the animation is still not active after checks, exit early.
+        if (!this.isAnimationActive) {
+            return;
+        }
+
+        // --- START OF ORIGINAL ANIMATION LOGIC ---
+        const oldScrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
+
         // Speed values are now scaled by deltaTime for frame-rate independence.
-        // A UI value of 50 now represents a speed of "50 units per second".
         const animSpeed = (this.animationSpeed || 0) * deltaTime;
         const cycleSpeed = (this.cycleSpeed || 0) * deltaTime;
         const strokeAnimSpeed = (this.strokeAnimationSpeed || 0) * deltaTime;
@@ -1384,7 +1433,6 @@ class Shape {
                 break;
             case 'typewriter':
                 if (this.typewriterWaitTimer > 0) {
-                    // This line is now correctly time-based
                     this.typewriterWaitTimer -= deltaTime * 60;
                     if (this.typewriterWaitTimer <= 0) {
                         this.visibleCharCount = 0;
@@ -1514,9 +1562,26 @@ class Shape {
                 this.fireParticles = [];
             }
         }
+
+        // --- Detect Animation Cycle Completion ---
+        const newScrollOffset = (this.scrollOffset % 1.0 + 1.0) % 1.0;
+        if (this.animationMode.includes('bounce')) {
+            // Bounce completes a cycle when it returns to the start after reversing
+            const p_normalized = (this.scrollOffset % 2.0 + 2.0) % 2.0;
+            if (p_normalized >= 1.0 && !this.isReversing) {
+                this.isReversing = true; // Mark that we are on the return trip
+            } else if (p_normalized < 1.0 && this.isReversing) {
+                this.hasCompletedOneCycle = true; // We've completed a full back-and-forth
+                this.isReversing = false; // Reset for the next cycle
+            }
+        } else { // Loop mode
+            if (oldScrollOffset > newScrollOffset) { // Catches the wrap-around from >0.99 to <0.01
+                this.hasCompletedOneCycle = true;
+            }
+        }
     }
 
-    draw(isSelected) {
+    draw(isSelected, allObjects = []) {
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
         const angleToUse = this.getRenderAngle();
@@ -1534,7 +1599,7 @@ class Shape {
             if (this.enableStroke && this.strokeWidth > 0) {
                 this.ctx.save();
                 this.ctx.clip();
-                this.ctx.strokeStyle = this._createLocalStrokeStyle();
+                this.ctx.strokeStyle = this._createLocalStrokeStyle(cellIndex, allObjects);
                 this.ctx.lineWidth = this.strokeWidth * 2;
                 this.ctx.stroke();
                 this.ctx.restore();
@@ -1576,7 +1641,7 @@ class Shape {
                 const cellWidth = this.width / cols;
                 const cellHeight = this.height / rows;
                 const isGradientFill = this.gradType === 'linear' || this.gradType === 'radial' || this.gradType.startsWith('rainbow');
-                if (isGradientFill) { this.ctx.fillStyle = this._createLocalFillStyle(); }
+                if (isGradientFill) { this.ctx.fillStyle = this._createLocalFillStyle(cellIndex, allObjects); }
                 for (let r = 0; r < rows; r++) {
                     for (let c = 0; c < cols; c++) {
                         const alphaValue = data[r] && data[r][c] ? data[r][c] : 0;
@@ -1607,11 +1672,11 @@ class Shape {
         } else if (this.shape === 'text') {
             const textToRender = this.getDisplayText();
             const centeredShape = { ...this, x: -this.width / 2, y: -this.height / 2, };
-            this.ctx.fillStyle = this._createLocalFillStyle();
+            this.ctx.fillStyle = this._createLocalFillStyle(cellIndex, allObjects);
             drawPixelText(this.ctx, centeredShape, textToRender);
         } else if (this.shape === 'audio-visualizer') {
             const barCount = parseInt(this.vizBarCount, 10) || 32;
-            const fillStyle = this._createLocalFillStyle();
+            const fillStyle = this._createLocalFillStyle(cellIndex, allObjects);
             this.ctx.fillStyle = fillStyle;
             this.ctx.strokeStyle = fillStyle;
 
@@ -1779,7 +1844,7 @@ class Shape {
             const activeWavePhase = this.enableWaveAnimation ? this.wavePhaseAngle : 0;
             if (this.oscDisplayMode === 'radial') {
                 this.ctx.lineWidth = this.vizLineWidth;
-                this.ctx.strokeStyle = this._createLocalFillStyle();
+                this.ctx.strokeStyle = this._createLocalFillStyle(cellIndex, allObjects);
                 const totalRadius = (Math.min(this.width, this.height) / 2) - (this.ctx.lineWidth / 2);
                 if (totalRadius > 0) {
                     this.ctx.beginPath();
@@ -1873,11 +1938,11 @@ class Shape {
                     this.ctx.lineTo(halfW, halfH);
                     this.ctx.lineTo(-halfW, halfH);
                     this.ctx.closePath();
-                    this.ctx.fillStyle = this._createLocalFillStyle();
+                    this.ctx.fillStyle = this._createLocalFillStyle(cellIndex, allObjects);
                     this.ctx.fill();
                     this.ctx.restore();
                 }
-                this.ctx.strokeStyle = this._createLocalFillStyle();
+                this.ctx.strokeStyle = this._createLocalFillStyle(cellIndex, allObjects);
                 this.ctx.lineWidth = this.lineWidth;
                 if (this.ctx.lineWidth <= 0 || !isFinite(this.ctx.lineWidth)) { this.ctx.lineWidth = 1; }
                 this.ctx.stroke();
@@ -1915,7 +1980,7 @@ class Shape {
             }
         } else {
             if (this.sensorTarget === 'Time Plot') {
-                this._drawTimePlot();
+                this._drawTimePlot(allIObjects);
             } else {
                 this.ctx.beginPath();
                 if (this.shape === 'circle') {
