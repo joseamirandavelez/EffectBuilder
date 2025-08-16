@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
         showToast(modalBody, 'success');
 
         // Also, copy to clipboard for convenience.
-        navigator.clipboard.writeText(finalUrl).then(() => {
+        navigator.clipboard.writeText(finalUrl).then((finalUrl) => {
             // The success message is now part of the modal.
 
         }).catch(err => {
