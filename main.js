@@ -108,6 +108,8 @@ const INITIAL_CONFIG_TEMPLATE = `
 `;
 
 // --- State Management ---
+let loadedStateSnapshot = null;
+let dirtyProperties = new Set();
 let leftPanelPixelWidth = 0;
 let isRestoring = false;
 let configStore = [];
@@ -169,7 +171,6 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault();
         const allProps = getControlValues();
 
-        // Get the title and ensure it's URL-encoded for the path.
         const effectTitle = allProps['title'] || 'My Effect';
         const urlSafeTitle = encodeURIComponent(effectTitle);
         const baseUrl = `https://go.signalrgb.com/app/effect/apply/${urlSafeTitle}`;
@@ -182,52 +183,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 continue;
             }
 
+            // --- NEW: Check if the property was touched during this session ---
+            if (!dirtyProperties.has(key) && key !== 'title') {
+                continue; // Skip properties that were never changed (but always process title)
+            }
+
             let value = allProps[key];
 
-            // Filter out metadata that shouldn't be in the link.
+            // Filter out metadata that shouldn't be in the link's query string.
             if (key === 'title' || key === 'description' || key === 'publisher') {
                 continue;
             }
 
-            // The SignalRGB app expects boolean values as string literals.
             if (typeof value === 'boolean') {
                 value = value ? 'true' : 'false';
             }
-            // Numbers and other simple data types should be converted to strings.
-
             else if (typeof value === 'number') {
                 value = String(value);
             }
 
-            // Manually handle hex color codes and spaces for consistency.
             if (typeof value === 'string') {
-                // Replace '#' with the correct %23 encoding.
                 if (value.startsWith('#')) {
                     value = `%23${value.substring(1)}`;
                 }
-                // Replace spaces with the standard %20 encoding.
                 value = value.replace(/ /g, '%20');
             }
 
-            // Push the correctly encoded key-value pair.
             params.push(`${key}=${value}`);
         }
 
         const queryString = params.join('&');
         const finalUrl = `${baseUrl}?${queryString}`;
 
-        // FIX: Open the link immediately to prevent the browser from blocking the pop-up.
         window.open(finalUrl, '_blank');
 
-        // Then, show a notification.
         const modalBody = 'This link has been opened in a new tab. It will only work if the corresponding effect is already installed in your SignalRGB library.\n\nThe link has also been copied to your clipboard.';
         showToast(modalBody, 'success');
 
-        // Also, copy to clipboard for convenience.
-        navigator.clipboard.writeText(finalUrl).then((finalUrl) => {
-            // The success message is now part of the modal.
-
-        }).catch(err => {
+        navigator.clipboard.writeText(finalUrl).catch(err => {
             console.error('Failed to copy text: ', err);
         });
     });
@@ -297,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
         ],
         ring: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
@@ -320,13 +313,13 @@ document.addEventListener('DOMContentLoaded', function () {
             'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
         ],
         text: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation',
             'textAnimationSpeed', 'showTime', 'showDate',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
         ],
         oscilloscope: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationMode', 'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'scrollDir', 'phaseOffset',
             'lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape',
             'enableWaveAnimation', 'waveStyle', 'waveCount', 'oscAnimationSpeed',
@@ -340,12 +333,12 @@ document.addEventListener('DOMContentLoaded', function () {
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
         ],
         fire: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         'fire-radial': [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors',
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
@@ -487,6 +480,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Clear any saved project ID from the session
         currentProjectDocId = null;
         updateShareButtonState();
+
+        loadedStateSnapshot = null;
+        dirtyProperties.clear();
 
         showToast("New workspace created.", "info");
     }
@@ -2275,6 +2271,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const effectTitle = getControlValues()['title'] || "SRGB Effect Builder";
             window.history.pushState({ effectId: workspace.docId }, effectTitle, newUrl);
         }
+        loadedStateSnapshot = getControlValues(); // Take a snapshot of the loaded state
+        dirtyProperties.clear();
     }
 
     /**
@@ -2314,7 +2312,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360', description: 'The static rotation of the object in degrees.' },
 
             // Fill Style & Animation
-            { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,alternating,random,rainbow,rainbow-radial', description: 'The type of color fill or gradient to use.' },
+            { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,conic,alternating,random,rainbow,rainbow-radial,rainbow-conic', description: 'The type of color fill or gradient to use.' },
             { property: `obj${newId}_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false', description: 'If checked, creates a hard line between colors in Linear/Radial gradients instead of a smooth blend.' },
             { property: `obj${newId}_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100', description: 'For sharp gradients, this is the percentage width of the primary color band.' },
             { property: `obj${newId}_gradColor1`, label: `Object ${newId}: Color 1`, type: 'color', default: '#00ff00', description: 'The starting color for gradients and solid fills.' },
@@ -2628,6 +2626,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     form.addEventListener('input', (e) => {
         const target = e.target;
+        if (target.name) {
+            dirtyProperties.add(target.name);
+        }
 
         // Sync number inputs with their corresponding range sliders
         if (target.type === 'number' && document.getElementById(`${target.id}_slider`)) {

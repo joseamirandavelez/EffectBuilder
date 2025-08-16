@@ -524,8 +524,17 @@ class Shape {
             this.ctx.restore();
         } else {
             // If not a meter, use the original fill logic
-            this.ctx.fillStyle = this._createLocalFillStyle(phase);
-            this.ctx.fill();
+            const fillStyle = this._createLocalFillStyle(phase);
+            this.ctx.fillStyle = fillStyle;
+            // This handles the necessary translation for pattern-based fills (like conic)
+            if (fillStyle instanceof CanvasPattern && fillStyle.offsetX) {
+                this.ctx.save();
+                this.ctx.translate(fillStyle.offsetX, fillStyle.offsetY);
+                this.ctx.fill();
+                this.ctx.restore();
+            } else {
+                this.ctx.fill();
+            }
         }
     }
 
@@ -994,6 +1003,50 @@ class Shape {
                 return this._createRainbowGradient(hueOffset);
             case 'random':
                 return this._getRandomColorForElement(phase);
+            case 'conic':
+            case 'rainbow-conic': {
+                if (this._conicPatternCache) {
+                    return this._conicPatternCache;
+                }
+                const size = Math.ceil(Math.sqrt(this.width * this.width + this.height * this.height));
+                if (size <= 0) return 'black';
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = size;
+                tempCanvas.height = size;
+                const tempCtx = tempCanvas.getContext('2d');
+                const centerX = size / 2;
+                const centerY = size / 2;
+                const rotationOffset = this.scrollOffset * 2 * Math.PI;
+                const segments = 360; // Higher number means a smoother gradient
+                for (let i = 0; i < segments; i++) {
+                    const startAngle = (i / segments) * 2 * Math.PI + rotationOffset;
+                    const endAngle = ((i + 1.5) / segments) * 2 * Math.PI + rotationOffset; // The +1.5 creates the overlap
+                    let segmentColor;
+                    if (this.gradType === 'rainbow-conic') {
+                        const hue = ((i / segments) * 360 + this.hue1) % 360;
+                        segmentColor = `hsl(${hue}, 100%, 50%)`;
+                    } else { // 'conic'
+                        const progress = i / segments;
+                        if (this.useSharpGradient) {
+                            const stopPoint = this.gradientStop / 100.0;
+                            segmentColor = progress < stopPoint ? c1 : c2;
+                        } else {
+                            segmentColor = lerpColor(c1, c2, progress);
+                        }
+                    }
+                    tempCtx.beginPath();
+                    tempCtx.moveTo(centerX, centerY);
+                    tempCtx.arc(centerX, centerY, size, startAngle, endAngle);
+                    tempCtx.closePath();
+                    tempCtx.fillStyle = segmentColor;
+                    tempCtx.fill();
+                }
+                const pattern = this.ctx.createPattern(tempCanvas, 'no-repeat');
+                pattern.offsetX = -centerX;
+                pattern.offsetY = -centerY;
+                this._conicPatternCache = pattern;
+                return pattern;
+            }
             default: // solid
                 return c1 || 'black';
         }
@@ -1181,6 +1234,7 @@ class Shape {
     }
 
     updateAnimationState(audioData, sensorData, deltaTime = 0) {
+        this._conicPatternCache = null;
         this._applyAudioReactivity(audioData);
         this._applySensorReactivity(sensorData);
 
