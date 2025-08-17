@@ -149,6 +149,54 @@ function drawPixelText(ctx, shape, textToRender) {
     ctx.restore();
 }
 
+function parseColorToRgba(colorStr) {
+    if (typeof colorStr !== 'string') colorStr = '#000000';
+
+    if (colorStr.startsWith('#')) {
+        let hex = colorStr.slice(1);
+        if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+        if (hex.length === 4) hex = hex.split('').map(c => c + c).join('');
+
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        const a = hex.length === 8 ? parseInt(hex.substring(6, 8), 16) / 255 : 1;
+        return { r, g, b, a };
+    }
+
+    if (colorStr.startsWith('rgb')) {
+        const parts = colorStr.match(/(\d+(\.\d+)?)/g).map(Number);
+        return { r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1 };
+    }
+
+    if (colorStr.startsWith('hsl')) {
+        const [h, s, l] = colorStr.match(/(\d+(\.\d+)?)/g).map(Number);
+        const s_norm = s / 100;
+        const l_norm = l / 100;
+        if (s_norm === 0) return { r: l_norm * 255, g: l_norm * 255, b: l_norm * 255, a: 1 };
+
+        const c = (1 - Math.abs(2 * l_norm - 1)) * s_norm;
+        const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+        const m = l_norm - c / 2;
+        let r_temp, g_temp, b_temp;
+
+        if (h >= 0 && h < 60) { [r_temp, g_temp, b_temp] = [c, x, 0]; }
+        else if (h >= 60 && h < 120) { [r_temp, g_temp, b_temp] = [x, c, 0]; }
+        else if (h >= 120 && h < 180) { [r_temp, g_temp, b_temp] = [0, c, x]; }
+        else if (h >= 180 && h < 240) { [r_temp, g_temp, b_temp] = [0, x, c]; }
+        else if (h >= 240 && h < 300) { [r_temp, g_temp, b_temp] = [x, 0, c]; }
+        else { [r_temp, g_temp, b_temp] = [c, 0, x]; }
+
+        return {
+            r: Math.round((r_temp + m) * 255),
+            g: Math.round((g_temp + m) * 255),
+            b: Math.round((b_temp + m) * 255),
+            a: 1
+        };
+    }
+    return { r: 0, g: 0, b: 0, a: 1 }; // Fallback
+}
+
 /**
  * Linearly interpolates between two hexadecimal colors.
  * @param {string} a - The starting color in hex format (e.g., "#RRGGBB").
@@ -156,22 +204,19 @@ function drawPixelText(ctx, shape, textToRender) {
  * @param {number} amount - The interpolation amount (0.0 to 1.0).
  * @returns {string} The interpolated color in hex format.
  */
+// Replace the entire lerpColor function with this:
 function lerpColor(a, b, amount) {
     const amt = (typeof amount === 'number' && isFinite(amount)) ? Math.max(0, Math.min(1, amount)) : 0;
 
-    // --- START: New HSL interpolation logic ---
-    // Check if both inputs are HSL strings
-    if (typeof a === 'string' && a.startsWith('hsl') && typeof b === 'string' && b.startsWith('hsl')) {
-        const hslA = a.match(/(\d+(\.\d+)?)/g).map(Number);
-        const hslB = b.match(/(\d+(\.\d+)?)/g).map(Number);
-        const h = hslA[0] + amt * (hslB[0] - hslA[0]);
-        const s = hslA[1] + amt * (hslB[1] - hslA[1]);
-        const l = hslA[2] + amt * (hslB[2] - hslA[2]);
-        return `hsl(${h}, ${s}%, ${l}%)`;
-    }
-    // --- END: New HSL interpolation logic ---
-    const ah = parseInt(String(a).slice(1), 16), ar = ah >> 16, ag = (ah >> 8) & 0xff, ab = ah & 0xff, bh = parseInt(String(b).slice(1), 16), br = bh >> 16, bg = (bh >> 8) & 0xff, bb = bh & 0xff, rr = Math.round(ar + amt * (br - ar)), rg = Math.round(ag + amt * (bg - ag)), rb = Math.round(ab + amt * (bb - ab));
-    return '#' + (rr << 16 | rg << 8 | rb).toString(16).padStart(6, '0');
+    const c1 = parseColorToRgba(a);
+    const c2 = parseColorToRgba(b);
+
+    const r = Math.round(c1.r + amt * (c2.r - c1.r));
+    const g = Math.round(c1.g + amt * (c2.g - c1.g));
+    const b_val = Math.round(c1.b + amt * (c2.b - c1.b)); // Use 'b_val' to avoid conflict
+    const alpha = c1.a + amt * (c2.a - c1.a);
+
+    return `rgba(${r}, ${g}, ${b_val}, ${alpha})`;
 }
 
 /**
@@ -203,8 +248,13 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier }) {
-        // --- ALL properties are assigned here first ---
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, isClosed, polylinePoints, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeAnimationSpeed, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier }) {
+        // --- Polyline properties ---
+        this.polylinePoints = polylinePoints || [{ x: -50, y: -25 }, { x: 50, y: -25 }, { x: 0, y: 50 }];
+        this.isClosed = isClosed !== undefined ? isClosed : false;
+        this.nodeHandleRadius = 6;
+
+        // --- ALL other properties are assigned here ---
         this.dirty = true;
         this.id = id;
         this.name = name || `Object ${id}`;
@@ -215,8 +265,8 @@ class Shape {
         this.width = width || 200;
         this.height = height || 152;
         this.rotation = rotation || 0;
-        this.baseRotation = this.rotation; // Store the original static rotation
-        this.baseAnimationAngle = 0; // Store the original dynamic rotation
+        this.baseRotation = this.rotation;
+        this.baseAnimationAngle = 0;
         this.gradType = gradType || 'solid';
         this.gradient = gradient ? { ...gradient } : { color1: '#000000', color2: '#000000' };
         this.scrollDirection = scrollDirection || 'right';
@@ -228,17 +278,19 @@ class Shape {
         this.hue1 = 0;
         this.hue2 = 90;
         this.scrollOffset = 0;
-        this.enableStroke = enableStroke || false;
+
+        this.enableStroke = enableStroke !== undefined ? enableStroke : (this.shape === 'polyline');
         this.strokeWidth = strokeWidth || 2;
         this.strokeGradType = strokeGradType || 'solid';
         this.strokeGradient = strokeGradient ? { ...strokeGradient } : { color1: '#FFFFFF', color2: '#000000' };
         this.strokeScrollDir = strokeScrollDir || 'right';
         this.strokeCycleColors = strokeCycleColors || false;
-        this.strokeCycleSpeed = strokeCycleSpeed || 0;
         this.strokeAnimationSpeed = strokeAnimationSpeed || 0;
+        this.strokeCycleSpeed = (strokeAnimationSpeed || 0) / 10;
         this.strokeHue1 = 0;
         this.strokeHue2 = 90;
         this.strokeScrollOffset = 0;
+
         this.isReversing = false;
         this.animationState = 'scrolling';
         this.waitTimer = 0;
@@ -248,7 +300,7 @@ class Shape {
         this.rotationSpeed = rotationSpeed || 0;
         this.rotationAngle = 0;
         this.animationAngle = 0;
-        this.wavePhaseAngle = 0; // New property for oscilloscope wave phase
+        this.wavePhaseAngle = 0;
         this.useSharpGradient = useSharpGradient !== undefined ? useSharpGradient : false;
         this.gradientStop = gradientStop !== undefined ? parseFloat(gradientStop) : 50;
         this.locked = locked || false;
@@ -296,7 +348,7 @@ class Shape {
         this.tetrisActiveBlockIndex = 0;
         this.tetrisFadeState = 'in';
         this.sides = sides || 6;
-        this.points = points || 5;
+        this.points = points || 5; // This is for the Star shape
         this.starInnerRadius = starInnerRadius || 50;
         this.fireParticles = [];
         this.fireSpread = fireSpread || 100;
@@ -327,7 +379,6 @@ class Shape {
         this.vizSegmentCount = vizSegmentCount || 16;
         this.vizSegmentSpacing = vizSegmentSpacing || 1;
         this.vizLineWidth = vizLineWidth || 8;
-
         this.enableSensorReactivity = enableSensorReactivity || false;
         this.sensorTarget = sensorTarget || 'Size';
         this.sensorValueSource = sensorValueSource || 'value';
@@ -335,7 +386,6 @@ class Shape {
         this.sensorMeterFill = sensorMeterFill || 0;
         this.timePlotLineThickness = timePlotLineThickness || 1;
         this.timePlotFillArea = timePlotFillArea;
-
         this.baseWidth = this.width;
         this.baseHeight = this.height;
         this.baseRotation = this.rotation;
@@ -350,7 +400,33 @@ class Shape {
         this.gradientSpeedMultiplier = gradientSpeedMultiplier || (1 / 400);
         this.shapeAnimationSpeedMultiplier = shapeAnimationSpeedMultiplier || 0.05;
         this.seismicAnimationSpeedMultiplier = seismicAnimationSpeedMultiplier || 0.015;
+    }
 
+    // Replace the entire _updateBoundsFromPoints method with this version:
+    _updateBoundsFromPoints() {
+        if (!this.polylinePoints || this.polylinePoints.length === 0) {
+            this.width = 0;
+            this.height = 0;
+            return;
+        }
+
+        const minX = Math.min(...this.polylinePoints.map(p => p.x));
+        const maxX = Math.max(...this.polylinePoints.map(p => p.x));
+        const minY = Math.min(...this.polylinePoints.map(p => p.y));
+        const maxY = Math.max(...this.polylinePoints.map(p => p.y));
+
+        this.width = maxX - minX;
+        this.height = maxY - minY;
+        this.x = minX + this.x;
+        this.y = minY + this.y;
+
+        // Finally, shift all points so they are relative to the new origin.
+        const originShiftX = -minX;
+        const originShiftY = -minY;
+        this.polylinePoints = this.polylinePoints.map(p => ({
+            x: p.x + originShiftX,
+            y: p.y + originShiftY
+        }));
     }
 
     _applySensorReactivity(sensorData) {
@@ -659,18 +735,27 @@ class Shape {
 
         const center = this.getCenter();
         const staticAngle = this.rotation * Math.PI / 180;
-        const halfW = this.width / 2;
-        const halfH = this.height / 2;
 
-        // Transform the world mouse coordinates into the shape's local, unrotated space
         const localPoint = {
             x: (px - center.x) * Math.cos(-staticAngle) - (py - center.y) * Math.sin(-staticAngle),
             y: (px - center.x) * Math.sin(-staticAngle) + (py - center.y) * Math.cos(-staticAngle)
         };
 
+        // --- NEW: Check for polyline node handles first ---
+        if (this.shape === 'polyline') {
+            for (let i = 0; i < this.polylinePoints.length; i++) {
+                const p = this.polylinePoints[i];
+                const dist = Math.sqrt(Math.pow(localPoint.x - p.x, 2) + Math.pow(localPoint.y - p.y, 2));
+                if (dist <= this.nodeHandleRadius) {
+                    return { name: `node-${i}`, type: 'node', index: i, cursor: 'crosshair' };
+                }
+            }
+        }
+
+        const halfW = this.width / 2;
+        const halfH = this.height / 2;
         const h2 = this.handleSize / 2;
 
-        // Check for rotation handle first
         const rotHandlePos = this.getRotationHandlePosition();
         const dist = Math.sqrt(Math.pow(localPoint.x - rotHandlePos.x, 2) + Math.pow(localPoint.y - rotHandlePos.y, 2));
 
@@ -678,7 +763,6 @@ class Shape {
             return { name: 'rotate', cursor: 'crosshair', type: 'rotation' };
         }
 
-        // Check for resize handles
         const handlePositions = {
             'top-left': { x: -halfW, y: -halfH }, 'top': { x: 0, y: -halfH }, 'top-right': { x: halfW, y: -halfH },
             'left': { x: -halfW, y: 0 }, 'right': { x: halfW, y: 0 },
@@ -724,23 +808,61 @@ class Shape {
         const halfWidth = this.width / 2;
         const halfHeight = this.height / 2;
 
+        if (this.shape === 'polyline') {
+            if (this.isClosed) {
+                let inside = false;
+                for (let i = 0, j = this.polylinePoints.length - 1; i < this.polylinePoints.length; j = i++) {
+                    const xi = this.polylinePoints[i].x, yi = this.polylinePoints[i].y;
+                    const xj = this.polylinePoints[j].x, yj = this.polylinePoints[j].y;
+                    const intersect = ((yi > localY) !== (yj > localY)) && (localX < (xj - xi) * (localY - yi) / (yj - yi) + xi);
+                    if (intersect) inside = !inside;
+                }
+                return inside;
+            } else {
+                const clickThreshold = this.strokeWidth / 2 + 5;
+                for (let i = 0; i < this.polylinePoints.length - 1; i++) {
+                    const p1 = this.polylinePoints[i];
+                    const p2 = this.polylinePoints[i + 1];
+                    const dx_seg = p2.x - p1.x;
+                    const dy_seg = p2.y - p1.y;
+                    const len_sq = dx_seg * dx_seg + dy_seg * dy_seg;
+                    if (len_sq === 0) continue;
+                    let t = ((localX - p1.x) * dx_seg + (localY - p1.y) * dy_seg) / len_sq;
+                    t = Math.max(0, Math.min(1, t));
+                    const closestX = p1.x + t * dx_seg;
+                    const closestY = p1.y + t * dy_seg;
+                    const dist_sq = (localX - closestX) * (localX - closestX) + (localY - closestY) * (localY - closestY);
+                    if (dist_sq < clickThreshold * clickThreshold) {
+                        return true;
+                    }
+                }
+                // This line was missing, causing the bug.
+                return false;
+            }
+        }
+
         return (localX >= -halfWidth && localX <= halfWidth &&
             localY >= -halfHeight && localY <= halfHeight);
     }
 
+    // Replace the entire update function with this:
     update(props) {
-        // --- Store original state for calculations ---
         const oldWidth = this.width;
         const oldHeight = this.height;
         const oldVizBarCount = this.vizBarCount;
 
-        // --- PRE-UPDATE LOGIC ---
+        if (props.strokeAnimationSpeed !== undefined) {
+            this.strokeAnimationSpeed = props.strokeAnimationSpeed;
+            this.strokeCycleSpeed = props.strokeAnimationSpeed / 10; // Maintain the ratio
+        }
+
         const textChanged = props.text !== undefined && props.text !== this.text;
         const animationChanged = props.textAnimation !== undefined && props.textAnimation !== this.textAnimation;
         if ((textChanged && this.textAnimation === 'typewriter') || (animationChanged && props.textAnimation === 'typewriter')) {
             this.visibleCharCount = 0;
             this.typewriterWaitTimer = 0;
         }
+
         const animationTypeChanged = props.tetrisAnimation !== undefined && props.tetrisAnimation !== this.tetrisAnimation;
         const gradTypeChangedToTetris = (props.gradType !== undefined && props.gradType.startsWith('tetris')) && !this.gradType.startsWith('tetris');
         const blockCountChanged = props.tetrisBlockCount !== undefined && props.tetrisBlockCount !== this.tetrisBlockCount;
@@ -750,16 +872,18 @@ class Shape {
             this.tetrisActiveBlockIndex = 0;
             this.tetrisFadeState = 'in';
         }
+
         if ((textChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave')) || (animationChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave'))) {
             this.scrollOffsetX = 0;
             this.waveAngle = 0;
         }
+
         const oldRows = this.numberOfRows;
         const oldCols = this.numberOfColumns;
 
-        // --- UNIFIED UPDATE LOGIC ---
         for (const key in props) {
             if (props[key] === undefined) continue;
+
             if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
                 if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
                 if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
@@ -780,22 +904,19 @@ class Shape {
             this.y += dHeight / 2;
         }
 
-        // --- Snapshot base properties AFTER updating ---
-        this.baseWidth = this.width;
-        this.baseHeight = this.height;
-        this.baseRotation = this.rotation;
-        this.baseAnimationSpeed = this.animationSpeed;
-        this.baseStrokeWidth = this.strokeWidth;
-        this.baseGradient = { ...this.gradient };
-        this.baseGradientStop = this.gradientStop;
-        this.baseStarInnerRadius = this.starInnerRadius;
-        this.baseInnerDiameter = this.innerDiameter;
-        this.basePulseDepth = this.pulseDepth;
+        if (props.animationSpeed !== undefined) this.baseAnimationSpeed = props.animationSpeed;
+        if (props.strokeWidth !== undefined) this.baseStrokeWidth = props.strokeWidth;
+        if (props.gradient !== undefined) this.baseGradient = { ...this.gradient };
+        if (props.gradientStop !== undefined) this.baseGradientStop = props.gradientStop;
+        if (props.starInnerRadius !== undefined) this.baseStarInnerRadius = props.starInnerRadius;
+        if (props.innerDiameter !== undefined) this.baseInnerDiameter = props.innerDiameter;
+        if (props.pulseDepth !== undefined) this.basePulseDepth = props.pulseDepth;
+        if (props.rotation !== undefined) this.baseRotation = props.rotation;
 
-        // --- POST-UPDATE LOGIC ---
         if (this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols) {
             this._shuffleCellOrder();
         }
+
         if (this.shape === 'text') {
             if (props.height !== undefined && props.height !== oldHeight) {
                 this._updateFontSizeFromHeight();
@@ -803,15 +924,27 @@ class Shape {
             this._updateTextMetrics();
         }
 
-        // --- START: ROBUST VISUALIZER UPDATE ---
         const vizBarCountChanged = this.vizBarCount !== oldVizBarCount;
         if (this.shape === 'audio-visualizer' && (!this.vizBarHeights || vizBarCountChanged)) {
             this.vizBarHeights = new Array(parseInt(this.vizBarCount, 10) || 0).fill(0);
         }
-        // --- END: ROBUST VISUALIZER UPDATE ---
     }
 
     _createLocalStrokeStyle(phase = 0) {
+        // Calculate the true local bounds of the shape's path
+        let bounds = {
+            minX: -this.width / 2, maxX: this.width / 2,
+            minY: -this.height / 2, maxY: this.height / 2,
+        };
+        if (this.shape === 'polyline' && this.polylinePoints && this.polylinePoints.length > 0) {
+            bounds.minX = Math.min(...this.polylinePoints.map(p => p.x));
+            bounds.maxX = Math.max(...this.polylinePoints.map(p => p.x));
+            bounds.minY = Math.min(...this.polylinePoints.map(p => p.y));
+            bounds.maxY = Math.max(...this.polylinePoints.map(p => p.y));
+        }
+        const localWidth = bounds.maxX - bounds.minX;
+        const localHeight = bounds.maxY - bounds.minY;
+
         if (this.colorOverride) {
             return this.colorOverride;
         }
@@ -841,31 +974,19 @@ class Shape {
         let p = (effectiveScrollOffset % 1.0 + 1.0) % 1.0;
 
         if (this.strokeGradType === 'linear') {
-            const halfW = this.width / 2;
-            const halfH = this.height / 2;
             let grad;
-
             switch (this.strokeScrollDir) {
-                case 'up':
-                    grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH);
-                    break;
-                case 'down':
-                    grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH);
-                    break;
-                case 'left':
-                    grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
-                    break;
-                case 'right':
-                default:
-                    grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
-                    break;
+                case 'up': grad = this.ctx.createLinearGradient(0, bounds.maxY, 0, bounds.minY); break;
+                case 'down': grad = this.ctx.createLinearGradient(0, bounds.minY, 0, bounds.maxY); break;
+                case 'left': grad = this.ctx.createLinearGradient(bounds.maxX, 0, bounds.minX, 0); break;
+                case 'right': default: grad = this.ctx.createLinearGradient(bounds.minX, 0, bounds.maxX, 0); break;
             }
 
             if (this.animationMode.includes('bounce')) {
                 grad.addColorStop(0, getPatternColor(0 - p, c1, c2));
                 grad.addColorStop(0.5, getPatternColor(0.5 - p, c1, c2));
                 grad.addColorStop(1, getPatternColor(1 - p, c1, c2));
-            } else { // Loop mode
+            } else {
                 const midPoint = 0.5;
                 const stops = [];
                 const getPatternColorAtTime = (time) => {
@@ -889,38 +1010,33 @@ class Shape {
         }
 
         if (this.strokeGradType === 'radial') {
-            const maxRadius = Math.max(this.width, this.height) / 2;
+            const maxRadius = Math.max(localWidth, localHeight) / 2;
             if (maxRadius <= 0) return 'black';
             const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
 
             if (this.animationMode.includes('bounce')) {
-                // Bounce logic remains a simple pulse from center to edge and back.
                 const wave = 1 - Math.abs(2 * p - 1);
                 const midPoint = 0.5 * wave;
                 grad.addColorStop(0, c1);
                 grad.addColorStop(midPoint, c2);
                 grad.addColorStop(1, c1);
-            } else { // Loop mode
-                const midPoint = 0.5; // Defines a 50/50 color split
+            } else {
+                const midPoint = 0.5;
                 const stops = [];
-                // This function defines the color at any point in the pattern
                 const getPatternColorAtTime = (time) => {
-                    const t = (time % 1.0 + 1.0) % 1.0; // Ensure time is always between 0.0 and 1.0
+                    const t = (time % 1.0 + 1.0) % 1.0;
                     if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
                     return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
                 };
-                // Define the start and end colors based on the animation progress 'p'
                 stops.push({ pos: 0, color: getPatternColorAtTime(0 - p) });
                 stops.push({ pos: 1, color: getPatternColorAtTime(1 - p) });
 
-                // Add intermediate color stops to create a seamless repeating pattern
                 for (let i = -2; i <= 2; i++) {
                     const c1_pos = i + p;
                     const c2_pos = i + midPoint + p;
                     if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
                     if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
                 }
-                // Sort and apply the unique color stops to the gradient
                 const uniqueStops = stops.sort((a, b) => a.pos - b.pos)
                     .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
                 uniqueStops.forEach(stop => grad.addColorStop(stop.pos, stop.color));
@@ -933,26 +1049,15 @@ class Shape {
             let grad;
 
             if (this.strokeGradType === 'rainbow-radial') {
-                const maxRadius = Math.max(this.width, this.height) / 2;
+                const maxRadius = Math.max(localWidth, localHeight) / 2;
                 if (maxRadius <= 0) return 'black';
                 grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
             } else {
-                const halfW = this.width / 2;
-                const halfH = this.height / 2;
                 switch (this.strokeScrollDir) {
-                    case 'up':
-                        grad = this.ctx.createLinearGradient(0, halfH, 0, -halfH);
-                        break;
-                    case 'down':
-                        grad = this.ctx.createLinearGradient(0, -halfH, 0, halfH);
-                        break;
-                    case 'left':
-                        grad = this.ctx.createLinearGradient(halfW, 0, -halfW, 0);
-                        break;
-                    case 'right':
-                    default:
-                        grad = this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
-                        break;
+                    case 'up': grad = this.ctx.createLinearGradient(0, bounds.maxY, 0, bounds.minY); break;
+                    case 'down': grad = this.ctx.createLinearGradient(0, bounds.minY, 0, bounds.maxY); break;
+                    case 'left': grad = this.ctx.createLinearGradient(bounds.maxX, 0, bounds.minX, 0); break;
+                    case 'right': default: grad = this.ctx.createLinearGradient(bounds.minX, 0, bounds.maxX, 0); break;
                 }
             }
 
@@ -973,6 +1078,21 @@ class Shape {
      * @returns {CanvasGradient|string} The generated canvas style.
      */
     _createLocalFillStyle(phase = 0) {
+        // Calculate the true local bounds of the shape's path
+        let bounds = {
+            minX: -this.width / 2, maxX: this.width / 2,
+            minY: -this.height / 2, maxY: this.height / 2,
+        };
+        if (this.shape === 'polyline' && this.polylinePoints && this.polylinePoints.length > 0) {
+            bounds.minX = Math.min(...this.polylinePoints.map(p => p.x));
+            bounds.maxX = Math.max(...this.polylinePoints.map(p => p.x));
+            bounds.minY = Math.min(...this.polylinePoints.map(p => p.y));
+            bounds.maxY = Math.max(...this.polylinePoints.map(p => p.y));
+        }
+        const localWidth = bounds.maxX - bounds.minX;
+        const localHeight = bounds.maxY - bounds.minY;
+
+
         if (this.colorOverride) {
             return this.colorOverride;
         }
@@ -993,22 +1113,110 @@ class Shape {
         const p = this._getAnimationProgress(phaseIndex);
 
         switch (this.gradType) {
-            case 'linear':
-                return this._createLinearGradient(c1, c2, p);
-            case 'radial':
-                return this._createRadialGradient(c1, c2, p);
-            case 'rainbow':
-            case 'rainbow-radial':
-                const hueOffset = (this.scrollOffset * 360) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
-                return this._createRainbowGradient(hueOffset);
-            case 'random':
-                return this._getRandomColorForElement(phase);
+            case 'linear': {
+                // Re-implement _createLinearGradient logic using the correct bounds
+                const gradientStop = (typeof this.gradientStop === 'number' && isFinite(this.gradientStop)) ? this.gradientStop : 50;
+                const progress = (typeof p === 'number' && isFinite(p)) ? p : 0;
+                const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
+
+                const grad = isVertical
+                    ? this.ctx.createLinearGradient(0, bounds.minY, 0, bounds.maxY)
+                    : this.ctx.createLinearGradient(bounds.minX, 0, bounds.maxX, 0);
+
+                if (this.animationSpeed === 0) {
+                    if (this.useSharpGradient) {
+                        const stopPoint = gradientStop / 100.0;
+                        grad.addColorStop(0, c1);
+                        grad.addColorStop(stopPoint, c1);
+                        grad.addColorStop(Math.min(1, stopPoint + 0.001), c2);
+                        grad.addColorStop(1, c2);
+                    } else {
+                        grad.addColorStop(0, c1);
+                        grad.addColorStop(1, c2);
+                    }
+                    return grad;
+                }
+
+                if (this.useSharpGradient) {
+                    let p_bounce = progress;
+                    if (this.animationMode.includes('bounce')) {
+                        const bounce_progress = (progress < 0.5) ? (progress * 2) : ((1 - progress) * 2);
+                        p_bounce = bounce_progress * (1.0 - (gradientStop / 100.0));
+                    }
+                    const stopRatio = gradientStop / 100.0;
+                    const p1 = p_bounce;
+                    const p2 = p1 + stopRatio;
+                    if (p2 > 1.0) {
+                        const wrapped_p2 = p2 - 1.0;
+                        grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
+                        grad.addColorStop(wrapped_p2, c2); grad.addColorStop(p1, c2);
+                        grad.addColorStop(p1, c1); grad.addColorStop(1, c1);
+                    } else {
+                        grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
+                        grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
+                        grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
+                    }
+                } else {
+                    if (this.animationMode.includes('bounce')) {
+                        grad.addColorStop(0, getPatternColor(0 - progress, c1, c2));
+                        grad.addColorStop(0.5, getPatternColor(0.5 - progress, c1, c2));
+                        grad.addColorStop(1, getPatternColor(1 - progress, c1, c2));
+                    } else {
+                        const midPoint = gradientStop / 100.0;
+                        const stops = [];
+                        const getPatternColorAtTime = (time) => {
+                            const t = (time % 1.0 + 1.0) % 1.0;
+                            if (midPoint <= 0.0001) return c2;
+                            if (midPoint >= 0.9999) return c1;
+                            if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
+                            return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
+                        };
+                        stops.push({ pos: 0, color: getPatternColorAtTime(0 - progress) });
+                        stops.push({ pos: 1, color: getPatternColorAtTime(1 - progress) });
+                        for (let i = -2; i <= 2; i++) {
+                            const c1_pos = i + progress;
+                            const c2_pos = i + midPoint + progress;
+                            if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
+                            if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
+                        }
+                        const uniqueStops = stops.sort((a, b) => a.pos - b.pos).filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
+                        uniqueStops.forEach(stop => {
+                            const finalPos = (typeof stop.pos === 'number' && isFinite(stop.pos)) ? stop.pos : 0;
+                            grad.addColorStop(Math.max(0, Math.min(1, finalPos)), stop.color);
+                        });
+                    }
+                }
+                return grad;
+            }
+            case 'radial': {
+                // Re-implement _createRadialGradient logic using the correct bounds
+                const gradientStop = (typeof this.gradientStop === 'number' && isFinite(this.gradientStop)) ? this.gradientStop : 50;
+                const progress = (typeof p === 'number' && isFinite(p)) ? p : 0;
+                const maxRadius = Math.max(localWidth, localHeight) / 2;
+                if (maxRadius <= 0) return 'black';
+                const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
+                const wave = 1 - Math.abs(2 * progress - 1);
+                if (this.useSharpGradient) {
+                    const stopPoint = (gradientStop / 100) * wave;
+                    grad.addColorStop(0, c1);
+                    grad.addColorStop(stopPoint, c1);
+                    grad.addColorStop(Math.min(1, stopPoint + 0.001), c2);
+                    grad.addColorStop(1, c2);
+                } else {
+                    const midPoint = gradientStop / 100.0;
+                    const animatedMidPoint = midPoint * wave;
+                    grad.addColorStop(0, c1);
+                    grad.addColorStop(animatedMidPoint, c2);
+                    grad.addColorStop(1, c1);
+                }
+                return grad;
+            }
             case 'conic':
             case 'rainbow-conic': {
                 if (this._conicPatternCache) {
                     return this._conicPatternCache;
                 }
-                const size = Math.ceil(Math.sqrt(this.width * this.width + this.height * this.height));
+                const size = Math.ceil(Math.sqrt(localWidth * localWidth + localHeight * localHeight));
                 if (size <= 0) return 'black';
                 const tempCanvas = document.createElement('canvas');
                 tempCanvas.width = size;
@@ -1017,15 +1225,15 @@ class Shape {
                 const centerX = size / 2;
                 const centerY = size / 2;
                 const rotationOffset = this.scrollOffset * 2 * Math.PI;
-                const segments = 360; // Higher number means a smoother gradient
+                const segments = 180;
                 for (let i = 0; i < segments; i++) {
                     const startAngle = (i / segments) * 2 * Math.PI + rotationOffset;
-                    const endAngle = ((i + 1.5) / segments) * 2 * Math.PI + rotationOffset; // The +1.5 creates the overlap
+                    const endAngle = ((i + 1.5) / segments) * 2 * Math.PI + rotationOffset;
                     let segmentColor;
                     if (this.gradType === 'rainbow-conic') {
                         const hue = ((i / segments) * 360 + this.hue1) % 360;
                         segmentColor = `hsl(${hue}, 100%, 50%)`;
-                    } else { // 'conic'
+                    } else {
                         const progress = i / segments;
                         if (this.useSharpGradient) {
                             const stopPoint = this.gradientStop / 100.0;
@@ -1047,6 +1255,30 @@ class Shape {
                 this._conicPatternCache = pattern;
                 return pattern;
             }
+            case 'rainbow':
+            case 'rainbow-radial': {
+                const hueOffset = (this.scrollOffset * 360) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
+                let grad;
+                const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
+                if (this.gradType === 'rainbow-radial') {
+                    const maxRadius = Math.max(localWidth, localHeight) / 2;
+                    if (maxRadius <= 0) return 'black';
+                    grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
+                } else {
+                    grad = isVertical
+                        ? this.ctx.createLinearGradient(0, bounds.maxY, 0, bounds.minY)
+                        : this.ctx.createLinearGradient(bounds.maxX, 0, bounds.minX, 0);
+                }
+
+                const numStops = 60;
+                for (let i = 0; i <= numStops; i++) {
+                    const hue = (i * (360 / numStops) + hueOffset) % 360;
+                    grad.addColorStop(i / numStops, `hsl(${hue}, 100%, 50%)`);
+                }
+                return grad;
+            }
+            case 'random':
+                return this._getRandomColorForElement(phase);
             default: // solid
                 return c1 || 'black';
         }
@@ -1238,12 +1470,10 @@ class Shape {
         this._applyAudioReactivity(audioData);
         this._applySensorReactivity(sensorData);
 
-        // Speed values are now scaled by deltaTime for frame-rate independence.
-        // A UI value of 50 now represents a speed of "50 units per second".
         const animSpeed = (this.animationSpeed || 0) * deltaTime;
         const cycleSpeed = (this.cycleSpeed || 0) * deltaTime;
-        const strokeAnimSpeed = (this.strokeAnimationSpeed || 0) * deltaTime;
-        const strokeCycleSpeed = (this.strokeCycleSpeed || 0) * deltaTime;
+        const strokeAnimationSpeed = (this.strokeAnimationSpeed || 0) * deltaTime * 10;
+        const strokeCycleSpeed = (this.strokeCycleSpeed || 0) * deltaTime * 50;
         const oscAnimSpeed = (this.oscAnimationSpeed || 0) * deltaTime;
         const textAnimSpeed = (this.textAnimationSpeed || 0) * deltaTime;
         const rotationSpeed = (this.rotationSpeed || 0) * deltaTime;
@@ -1438,7 +1668,6 @@ class Shape {
                 break;
             case 'typewriter':
                 if (this.typewriterWaitTimer > 0) {
-                    // This line is now correctly time-based
                     this.typewriterWaitTimer -= deltaTime * 60;
                     if (this.typewriterWaitTimer <= 0) {
                         this.visibleCharCount = 0;
@@ -1447,7 +1676,7 @@ class Shape {
                     this.visibleCharCount += textAnimSpeed;
                     if (this.visibleCharCount >= currentText.length) {
                         this.visibleCharCount = currentText.length;
-                        this.typewriterWaitTimer = 50; // Reset wait timer
+                        this.typewriterWaitTimer = 50;
                     }
                 }
                 this.scrollOffsetX = 0;
@@ -1465,7 +1694,7 @@ class Shape {
         }
 
         if (this.strokeGradType !== 'solid' && this.strokeGradType !== 'alternating' && this.strokeGradType !== 'random') {
-            const increment = strokeAnimSpeed * 0.025;
+            const increment = strokeAnimationSpeed * 0.025;
             const directionMultiplier = (this.strokeScrollDir === 'left' || this.strokeScrollDir === 'up') ? -1 : 1;
             this.strokeScrollOffset += increment * directionMultiplier;
         }
@@ -1502,7 +1731,8 @@ class Shape {
                         const maxAge = (Math.random() * 60 + 90);
                         const particleSpeed = (this.height / maxAge) * (Math.random() * 0.2 + 0.8) * 60 * deltaTime;
                         const startSize = (Math.random() * 0.5 + 0.5) * (this.width / 7);
-                        const newParticle = { id: this.nextParticleId++, x: (Math.random() - 0.5) * this.width * 0.9, y: halfH, sizeX: startSize, sizeY: startSize * (Math.random() * 1.5 + 0.5), age: 0, maxAge: maxAge, speed: particleSpeed };
+                        const spreadMultiplier = this.fireSpread / 100.0;
+                        const newParticle = { id: this.nextParticleId++, x: (Math.random() - 0.5) * this.width * spreadMultiplier, y: halfH, sizeX: startSize, sizeY: startSize * (Math.random() * 1.5 + 0.5), age: 0, maxAge: maxAge, speed: particleSpeed };
                         let baseColor;
                         const gradProgress = (newParticle.x + (this.width / 2)) / this.width;
                         if (this.cycleColors) {
@@ -1588,7 +1818,7 @@ class Shape {
             if (this.enableStroke && this.strokeWidth > 0) {
                 this.ctx.save();
                 this.ctx.clip();
-                this.ctx.strokeStyle = this._createLocalStrokeStyle();
+                this.ctx.strokeStyle = this._createLocalStrokeStyle(this.strokeScrollOffset);
                 this.ctx.lineWidth = this.strokeWidth * 2;
                 this.ctx.stroke();
                 this.ctx.restore();
@@ -1603,18 +1833,17 @@ class Shape {
             this.ctx.globalCompositeOperation = 'lighter';
             this.fireParticles.forEach(p => {
                 const lifeRatio = 1.0 - (p.age / p.maxAge);
-                let particleColor;
-                if (p.color.startsWith('hsl')) {
-                    const baseHue = p.color.match(/hsl\((\d+\.?\d*)/)[1];
-                    const lightness = 50 * lifeRatio;
-                    particleColor = `hsl(${baseHue}, 100%, ${lightness}%)`;
-                } else {
-                    particleColor = lerpColor('#000000', p.color, lifeRatio);
-                }
-                const opacity = Math.sin(lifeRatio * Math.PI);
                 this.ctx.beginPath();
-                this.ctx.fillStyle = particleColor;
-                this.ctx.globalAlpha = opacity;
+                const ageOpacity = Math.sin(lifeRatio * Math.PI);
+                if (this.colorOverride && this.flashOpacity > 0) {
+                    this.ctx.fillStyle = this.colorOverride;
+                    this.ctx.globalAlpha = this.flashOpacity * ageOpacity;
+                } else {
+                    const baseColor = parseColorToRgba(p.color);
+                    const finalAlpha = baseColor.a * ageOpacity;
+                    this.ctx.fillStyle = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${finalAlpha})`;
+                    this.ctx.globalAlpha = 1.0;
+                }
                 this.ctx.ellipse(p.x, p.y, p.sizeX * lifeRatio, p.sizeY * lifeRatio, 0, 0, 2 * Math.PI);
                 this.ctx.fill();
             });
@@ -1629,7 +1858,7 @@ class Shape {
                 if (cols === 0) return;
                 const cellWidth = this.width / cols;
                 const cellHeight = this.height / rows;
-                const isGradientFill = this.gradType === 'linear' || this.gradType === 'radial' || this.gradType.startsWith('rainbow');
+                const isGradientFill = this.gradType === 'linear' || this.gradType === 'radial' || this.gradType.startsWith('rainbow') || this.gradType.startsWith('conic');
                 if (isGradientFill) { this.ctx.fillStyle = this._createLocalFillStyle(); }
                 for (let r = 0; r < rows; r++) {
                     for (let c = 0; c < cols; c++) {
@@ -1693,7 +1922,7 @@ class Shape {
                     }
                     if (this.vizDrawStyle === 'Area') {
                         this.ctx.closePath();
-                        this.ctx.fill();
+                        this._drawFill();
                     } else {
                         this.ctx.lineWidth = this.vizLineWidth;
                         this.ctx.stroke();
@@ -1729,9 +1958,10 @@ class Shape {
                                     this.ctx.closePath();
 
                                     if (this.gradType === 'alternating' || this.gradType === 'random') {
-                                        this.ctx.fillStyle = this._createLocalFillStyle(j);
+                                        this._drawFill(j);
+                                    } else {
+                                        this._drawFill();
                                     }
-                                    this.ctx.fill();
                                 }
                             }
                         }
@@ -1753,7 +1983,7 @@ class Shape {
                             this.ctx.arc(centerX, centerY, endRadius, startAngle, endAngle);
                             this.ctx.arc(centerX, centerY, startRadius, endAngle, startAngle, true);
                             this.ctx.closePath();
-                            this.ctx.fill();
+                            this._drawFill();
                         }
                     }
                 }
@@ -1765,12 +1995,8 @@ class Shape {
                     this.ctx.beginPath();
                     const halfW = this.width / 2;
                     const halfH = this.height / 2;
-
-                    // Move to the starting point of the line
                     const firstBarHeight = this.vizBarHeights[0] || 0;
                     this.ctx.moveTo(-halfW, halfH - firstBarHeight);
-
-                    // Draw the line across the top of the bars
                     for (let i = 0; i < barCount; i++) {
                         const barHeight = this.vizBarHeights[i] || 0;
                         const x = -halfW + i * (barWidth + this.vizBarSpacing) + barWidth / 2;
@@ -1779,11 +2005,10 @@ class Shape {
                     }
 
                     if (this.vizDrawStyle === 'Area') {
-                        // This connects the path to the bottom corners to create a fillable shape
                         this.ctx.lineTo(halfW, halfH);
                         this.ctx.lineTo(-halfW, halfH);
                         this.ctx.closePath();
-                        this.ctx.fill();
+                        this._drawFill();
                     } else { // Line
                         this.ctx.lineWidth = this.vizLineWidth;
                         this.ctx.stroke();
@@ -1817,7 +2042,7 @@ class Shape {
                                     this.ctx.fillRect(x, y, barWidth, segmentHeight);
                                 }
                             }
-                        } else { // Solid Bars
+                        } else {
                             let y;
                             switch (this.vizStyle) {
                                 case 'top': y = -this.height / 2; break;
@@ -1898,7 +2123,7 @@ class Shape {
                     const style = this._createLocalFillStyle(i);
                     this.ctx.strokeStyle = style;
                     this.ctx.fillStyle = style;
-                    if (this.fillShape) { this.ctx.fill(); } else { this.ctx.stroke(); }
+                    if (this.fillShape) { this._drawFill(i); } else { this.ctx.stroke(); }
                 }
                 this.ctx.globalAlpha = 1.0;
             } else {
@@ -1928,7 +2153,7 @@ class Shape {
                     this.ctx.lineTo(-halfW, halfH);
                     this.ctx.closePath();
                     this.ctx.fillStyle = this._createLocalFillStyle();
-                    this.ctx.fill();
+                    this._drawFill();
                     this.ctx.restore();
                 }
                 this.ctx.strokeStyle = this._createLocalFillStyle();
@@ -1965,6 +2190,88 @@ class Shape {
                     this.ctx.rect(-this.width / 2 + col * cellW, -this.height / 2 + row * cellH, cellW, cellH);
                     this._drawFill(cellIndex);
                     applyStrokeInside();
+                }
+            }
+        } else if (this.shape === 'polyline') {
+            if (!this.polylinePoints || this.polylinePoints.length < 2) return;
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.polylinePoints[0].x, this.polylinePoints[0].y);
+            for (let i = 1; i < this.polylinePoints.length; i++) {
+                this.ctx.lineTo(this.polylinePoints[i].x, this.polylinePoints[i].y);
+            }
+            if (this.isClosed) {
+                this.ctx.closePath();
+                this._drawFill();
+                applyStrokeInside();
+            } else { // Open path
+                // Use new logic for path-based gradients if stroke is visible
+                if ((this.strokeGradType === 'linear' || this.strokeGradType.startsWith('rainbow')) && this.strokeWidth > 0) {
+                    const points = this.polylinePoints;
+                    const segments = [];
+                    let totalLength = 0;
+
+                    for (let i = 0; i < points.length - 1; i++) {
+                        const p1 = points[i];
+                        const p2 = points[i + 1];
+                        const length = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+                        segments.push({ p1, p2, length });
+                        totalLength += length;
+                    }
+
+                    if (totalLength === 0) return;
+
+                    // Set line styles for smooth joins and caps
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.lineCap = 'round';
+
+                    let cumulativeLength = 0;
+                    const c1 = this.strokeCycleColors ? `hsl(${this.strokeHue1 % 360}, 100%, 50%)` : this.strokeGradient.color1;
+                    const c2 = this.strokeCycleColors ? `hsl(${this.strokeHue2 % 360}, 100%, 50%)` : this.strokeGradient.color2;
+
+                    // Get the animated scroll value for this frame
+                    const p = (this.strokeScrollOffset % 1.0 + 1.0) % 1.0;
+
+                    segments.forEach(seg => {
+                        const startProgress = cumulativeLength / totalLength;
+                        cumulativeLength += seg.length;
+                        const endProgress = cumulativeLength / totalLength;
+
+                        let startColor, endColor;
+
+                        if (this.strokeGradType.startsWith('rainbow')) {
+                            const hueOffset = this.strokeHue1; // Rainbows cycle with hue, not scroll offset
+                            startColor = `hsl(${(hueOffset + startProgress * 360) % 360}, 100%, 50%)`;
+                            endColor = `hsl(${(hueOffset + endProgress * 360) % 360}, 100%, 50%)`;
+                        } else { // Standard linear gradient
+                            startColor = getPatternColor((startProgress + p) % 1.0, c1, c2);
+                            endColor = getPatternColor((endProgress + p) % 1.0, c1, c2);
+                        }
+
+                        const grad = this.ctx.createLinearGradient(seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y);
+                        grad.addColorStop(0, startColor);
+                        grad.addColorStop(1, endColor);
+
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(seg.p1.x, seg.p1.y);
+                        this.ctx.lineTo(seg.p2.x, seg.p2.y);
+                        this.ctx.strokeStyle = grad;
+                        this.ctx.lineWidth = this.strokeWidth;
+                        this.ctx.stroke(); // CRITICAL FIX: The stroke call was missing here.
+                    });
+                } else if (this.strokeWidth > 0) {
+                    // Fallback for Solid, Radial, Conic gradients.
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.polylinePoints[0].x, this.polylinePoints[0].y);
+                    for (let i = 1; i < this.polylinePoints.length; i++) {
+                        this.ctx.lineTo(this.polylinePoints[i].x, this.polylinePoints[i].y);
+                    }
+
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.lineCap = 'round';
+
+                    this.ctx.strokeStyle = this._createLocalStrokeStyle();
+                    this.ctx.lineWidth = this.strokeWidth;
+                    this.ctx.stroke(); // CRITICAL FIX: The stroke call was missing here as well.
                 }
             }
         } else {
@@ -2015,37 +2322,45 @@ class Shape {
         this.ctx.translate(center.x, center.y);
         this.ctx.rotate(staticAngle);
 
-        const halfW = this.width / 2;
-        const halfH = this.height / 2;
+        if (this.shape === 'polyline') {
+            if (!this.locked) {
+                this.ctx.fillStyle = selectionColor;
+                this.polylinePoints.forEach(p => {
+                    this.ctx.fillRect(p.x - this.nodeHandleRadius, p.y - this.nodeHandleRadius, this.nodeHandleRadius * 2, this.nodeHandleRadius * 2);
+                });
+            }
+        } else {
+            const halfW = this.width / 2;
+            const halfH = this.height / 2;
 
-        this.ctx.strokeStyle = selectionColor;
-        this.ctx.lineWidth = 2;
-        this.ctx.setLineDash([6, 4]);
-        this.ctx.strokeRect(-halfW, -halfH, this.width, this.height);
-        this.ctx.setLineDash([]);
+            this.ctx.strokeStyle = selectionColor;
+            this.ctx.lineWidth = 2;
+            this.ctx.setLineDash([6, 4]);
+            this.ctx.strokeRect(-halfW, -halfH, this.width, this.height);
+            this.ctx.setLineDash([]);
 
-        if (!this.locked) {
-            this.ctx.fillStyle = selectionColor;
-            const h2 = this.handleSize / 2;
-            const handlePositions = [
-                { x: -halfW, y: -halfH }, { x: 0, y: -halfH }, { x: halfW, y: -halfH },
-                { x: -halfW, y: 0 }, { x: halfW, y: 0 },
-                { x: -halfW, y: halfH }, { x: 0, y: halfH }, { x: halfW, y: halfH }
-            ];
-            handlePositions.forEach(pos => {
-                this.ctx.fillRect(pos.x - h2, pos.y - h2, this.handleSize, this.handleSize);
-            });
+            if (!this.locked) {
+                this.ctx.fillStyle = selectionColor;
+                const h2 = this.handleSize / 2;
+                const handlePositions = [
+                    { x: -halfW, y: -halfH }, { x: 0, y: -halfH }, { x: halfW, y: -halfH },
+                    { x: -halfW, y: 0 }, { x: halfW, y: 0 },
+                    { x: -halfW, y: halfH }, { x: 0, y: halfH }, { x: halfW, y: halfH }
+                ];
+                handlePositions.forEach(pos => {
+                    this.ctx.fillRect(pos.x - h2, pos.y - h2, this.handleSize, this.handleSize);
+                });
 
-            const rotHandlePos = this.getRotationHandlePosition();
-            const connectionY = (rotHandlePos.y > 0) ? halfH : -halfH;
-
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, connectionY);
-            this.ctx.lineTo(rotHandlePos.x, rotHandlePos.y);
-            this.ctx.stroke();
-            this.ctx.beginPath();
-            this.ctx.arc(rotHandlePos.x, rotHandlePos.y, this.rotationHandleRadius, 0, 2 * Math.PI);
-            this.ctx.fill();
+                const rotHandlePos = this.getRotationHandlePosition();
+                const connectionY = (rotHandlePos.y > 0) ? halfH : -halfH;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, connectionY);
+                this.ctx.lineTo(rotHandlePos.x, rotHandlePos.y);
+                this.ctx.stroke();
+                this.ctx.beginPath();
+                this.ctx.arc(rotHandlePos.x, rotHandlePos.y, this.rotationHandleRadius, 0, 2 * Math.PI);
+                this.ctx.fill();
+            }
         }
 
         this.ctx.restore();
@@ -2053,22 +2368,13 @@ class Shape {
         if (this.locked) {
             this.ctx.save();
             this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-
-            // SVG path data for Bootstrap's 'lock-fill' icon.
             const lockPathData = "M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z";
             const lockIconPath = new Path2D(lockPathData);
-
-            // The original icon is on a 16x16 grid. We'll scale it to 30px.
             const iconSize = 30;
             const scale = iconSize / 16;
-
-            // Translate to the center of the shape, then adjust for the icon's own center.
             this.ctx.translate(center.x - (iconSize / 2), center.y - (iconSize / 2));
             this.ctx.scale(scale, scale);
-
-            // Fill the path to draw the icon.
             this.ctx.fill(lockIconPath);
-
             this.ctx.restore();
         }
     }
