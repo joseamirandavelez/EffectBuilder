@@ -149,6 +149,54 @@ function drawPixelText(ctx, shape, textToRender) {
     ctx.restore();
 }
 
+function parseColorToRgba(colorStr) {
+    if (typeof colorStr !== 'string') colorStr = '#000000';
+
+    if (colorStr.startsWith('#')) {
+        let hex = colorStr.slice(1);
+        if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+        if (hex.length === 4) hex = hex.split('').map(c => c + c).join('');
+
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        const a = hex.length === 8 ? parseInt(hex.substring(6, 8), 16) / 255 : 1;
+        return { r, g, b, a };
+    }
+
+    if (colorStr.startsWith('rgb')) {
+        const parts = colorStr.match(/(\d+(\.\d+)?)/g).map(Number);
+        return { r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1 };
+    }
+
+    if (colorStr.startsWith('hsl')) {
+        const [h, s, l] = colorStr.match(/(\d+(\.\d+)?)/g).map(Number);
+        const s_norm = s / 100;
+        const l_norm = l / 100;
+        if (s_norm === 0) return { r: l_norm * 255, g: l_norm * 255, b: l_norm * 255, a: 1 };
+
+        const c = (1 - Math.abs(2 * l_norm - 1)) * s_norm;
+        const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+        const m = l_norm - c / 2;
+        let r_temp, g_temp, b_temp;
+
+        if (h >= 0 && h < 60) { [r_temp, g_temp, b_temp] = [c, x, 0]; }
+        else if (h >= 60 && h < 120) { [r_temp, g_temp, b_temp] = [x, c, 0]; }
+        else if (h >= 120 && h < 180) { [r_temp, g_temp, b_temp] = [0, c, x]; }
+        else if (h >= 180 && h < 240) { [r_temp, g_temp, b_temp] = [0, x, c]; }
+        else if (h >= 240 && h < 300) { [r_temp, g_temp, b_temp] = [x, 0, c]; }
+        else { [r_temp, g_temp, b_temp] = [c, 0, x]; }
+
+        return {
+            r: Math.round((r_temp + m) * 255),
+            g: Math.round((g_temp + m) * 255),
+            b: Math.round((b_temp + m) * 255),
+            a: 1
+        };
+    }
+    return { r: 0, g: 0, b: 0, a: 1 }; // Fallback
+}
+
 /**
  * Linearly interpolates between two hexadecimal colors.
  * @param {string} a - The starting color in hex format (e.g., "#RRGGBB").
@@ -156,22 +204,19 @@ function drawPixelText(ctx, shape, textToRender) {
  * @param {number} amount - The interpolation amount (0.0 to 1.0).
  * @returns {string} The interpolated color in hex format.
  */
+// Replace the entire lerpColor function with this:
 function lerpColor(a, b, amount) {
     const amt = (typeof amount === 'number' && isFinite(amount)) ? Math.max(0, Math.min(1, amount)) : 0;
 
-    // --- START: New HSL interpolation logic ---
-    // Check if both inputs are HSL strings
-    if (typeof a === 'string' && a.startsWith('hsl') && typeof b === 'string' && b.startsWith('hsl')) {
-        const hslA = a.match(/(\d+(\.\d+)?)/g).map(Number);
-        const hslB = b.match(/(\d+(\.\d+)?)/g).map(Number);
-        const h = hslA[0] + amt * (hslB[0] - hslA[0]);
-        const s = hslA[1] + amt * (hslB[1] - hslA[1]);
-        const l = hslA[2] + amt * (hslB[2] - hslA[2]);
-        return `hsl(${h}, ${s}%, ${l}%)`;
-    }
-    // --- END: New HSL interpolation logic ---
-    const ah = parseInt(String(a).slice(1), 16), ar = ah >> 16, ag = (ah >> 8) & 0xff, ab = ah & 0xff, bh = parseInt(String(b).slice(1), 16), br = bh >> 16, bg = (bh >> 8) & 0xff, bb = bh & 0xff, rr = Math.round(ar + amt * (br - ar)), rg = Math.round(ag + amt * (bg - ag)), rb = Math.round(ab + amt * (bb - ab));
-    return '#' + (rr << 16 | rg << 8 | rb).toString(16).padStart(6, '0');
+    const c1 = parseColorToRgba(a);
+    const c2 = parseColorToRgba(b);
+
+    const r = Math.round(c1.r + amt * (c2.r - c1.r));
+    const g = Math.round(c1.g + amt * (c2.g - c1.g));
+    const b_val = Math.round(c1.b + amt * (c2.b - c1.b)); // Use 'b_val' to avoid conflict
+    const alpha = c1.a + amt * (c2.a - c1.a);
+
+    return `rgba(${r}, ${g}, ${b_val}, ${alpha})`;
 }
 
 /**
@@ -1020,7 +1065,7 @@ class Shape {
                 const segments = 360; // Higher number means a smoother gradient
                 for (let i = 0; i < segments; i++) {
                     const startAngle = (i / segments) * 2 * Math.PI + rotationOffset;
-                    const endAngle = ((i + 1.5) / segments) * 2 * Math.PI + rotationOffset; // The +1.5 creates the overlap
+                    const endAngle = ((i + 1.1) / segments) * 2 * Math.PI + rotationOffset; // The +1.5 creates the overlap
                     let segmentColor;
                     if (this.gradType === 'rainbow-conic') {
                         const hue = ((i / segments) * 360 + this.hue1) % 360;
@@ -1502,7 +1547,8 @@ class Shape {
                         const maxAge = (Math.random() * 60 + 90);
                         const particleSpeed = (this.height / maxAge) * (Math.random() * 0.2 + 0.8) * 60 * deltaTime;
                         const startSize = (Math.random() * 0.5 + 0.5) * (this.width / 7);
-                        const newParticle = { id: this.nextParticleId++, x: (Math.random() - 0.5) * this.width * 0.9, y: halfH, sizeX: startSize, sizeY: startSize * (Math.random() * 1.5 + 0.5), age: 0, maxAge: maxAge, speed: particleSpeed };
+                        const spreadMultiplier = this.fireSpread / 100.0;
+                        const newParticle = { id: this.nextParticleId++, x: (Math.random() - 0.5) * this.width * spreadMultiplier, y: halfH, sizeX: startSize, sizeY: startSize * (Math.random() * 1.5 + 0.5), age: 0, maxAge: maxAge, speed: particleSpeed };
                         let baseColor;
                         const gradProgress = (newParticle.x + (this.width / 2)) / this.width;
                         if (this.cycleColors) {
@@ -1603,18 +1649,24 @@ class Shape {
             this.ctx.globalCompositeOperation = 'lighter';
             this.fireParticles.forEach(p => {
                 const lifeRatio = 1.0 - (p.age / p.maxAge);
-                let particleColor;
-                if (p.color.startsWith('hsl')) {
-                    const baseHue = p.color.match(/hsl\((\d+\.?\d*)/)[1];
-                    const lightness = 50 * lifeRatio;
-                    particleColor = `hsl(${baseHue}, 100%, ${lightness}%)`;
-                } else {
-                    particleColor = lerpColor('#000000', p.color, lifeRatio);
-                }
-                const opacity = Math.sin(lifeRatio * Math.PI);
                 this.ctx.beginPath();
-                this.ctx.fillStyle = particleColor;
-                this.ctx.globalAlpha = opacity;
+
+                const ageOpacity = Math.sin(lifeRatio * Math.PI);
+
+                if (this.colorOverride && this.flashOpacity > 0) {
+                    this.ctx.fillStyle = this.colorOverride;
+                    this.ctx.globalAlpha = this.flashOpacity * ageOpacity;
+                } else {
+                    // Parse the particle's base color, regardless of format (HSL, HEX, etc.)
+                    const baseColor = parseColorToRgba(p.color);
+
+                    // Combine the color's own alpha with the fade-out opacity
+                    const finalAlpha = baseColor.a * ageOpacity;
+
+                    this.ctx.fillStyle = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${finalAlpha})`;
+                    this.ctx.globalAlpha = 1.0; // Reset global alpha since it's now in the fillStyle
+                }
+
                 this.ctx.ellipse(p.x, p.y, p.sizeX * lifeRatio, p.sizeY * lifeRatio, 0, 0, 2 * Math.PI);
                 this.ctx.fill();
             });
