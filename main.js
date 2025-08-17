@@ -3225,6 +3225,243 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    /**
+     * Handles the mousedown event on the canvas to initiate dragging or resizing.
+     * @param {MouseEvent} e - The mousedown event object.
+     */
+    canvasContainer.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const { x, y } = getCanvasCoordinates(e);
+        dragStartX = x;
+        dragStartY = y;
+
+        let activeObject = null;
+        if (selectedObjectIds.length === 1) {
+            activeObject = objects.find(o => o.id === selectedObjectIds[0]);
+        }
+
+        let handle = null;
+        if (activeObject && !activeObject.locked) {
+            handle = activeObject.getHandleAtPoint(x, y);
+        }
+
+        if (handle) {
+            if (handle.type === 'node' && e.altKey) {
+                if (activeObject.polylinePoints.length > 2) {
+                    activeObject.polylinePoints.splice(handle.index, 1);
+                    drawFrame();
+                    recordHistory();
+                }
+                return;
+            }
+
+            if (handle.type === 'rotation') {
+                isRotating = true;
+                activeObject.isBeingManuallyRotated = true;
+                if (activeObject.rotationSpeed !== 0) {
+                    activeObject._pausedRotationSpeed = activeObject.rotationSpeed;
+                    activeObject.rotationSpeed = 0;
+                    activeObject.rotation = activeObject.rotationAngle * 180 / Math.PI;
+                }
+                const center = activeObject.getCenter();
+                const startAngle = Math.atan2(y - center.y, x - center.x);
+                initialDragState = [{
+                    id: activeObject.id,
+                    startAngle: startAngle,
+                    initialObjectAngle: activeObject.getRenderAngle()
+                }];
+            } else { // Catches BOTH standard resize handles and polyline nodes
+                isResizing = true;
+                activeResizeHandle = handle;
+
+                if (handle.type !== 'node') {
+                    const oppositeHandleName = getOppositeHandle(handle.name);
+                    const anchorPoint = activeObject.getWorldCoordsOfCorner(oppositeHandleName);
+                    initialDragState = [{
+                        id: activeObject.id, initialX: activeObject.x, initialY: activeObject.y,
+                        initialWidth: activeObject.width, initialHeight: activeObject.height,
+                        anchorPoint: anchorPoint,
+                        diameterRatio: activeObject.shape === 'ring' ? activeObject.innerDiameter / activeObject.width : 1
+                    }];
+                } else {
+                    initialDragState = [{ id: activeObject.id }];
+                }
+            }
+        } else {
+            const hitObject = objects.find(obj => obj.isPointInside(x, y));
+            if (hitObject) {
+                const isNewlySelected = !selectedObjectIds.includes(hitObject.id);
+
+                if (!selectedObjectIds.includes(hitObject.id)) {
+                    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                        selectedObjectIds.push(hitObject.id);
+                    } else {
+                        selectedObjectIds = [hitObject.id];
+                    }
+                }
+
+                updateToolbarState();
+                syncPanelsWithSelection();
+                drawFrame();
+
+                if (isNewlySelected && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                    const fieldset = form.querySelector(`fieldset[data-object-id="${hitObject.id}"]`);
+                    if (fieldset) {
+                        setTimeout(() => {
+                            fieldset.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }, 200);
+                    }
+                }
+
+                if (!hitObject.locked) {
+                    isDragging = true;
+                    initialDragState = selectedObjectIds.map(id => {
+                        const obj = objects.find(o => o.id === id);
+                        return { id, x: obj.x, y: obj.y };
+                    });
+                }
+            } else {
+                selectedObjectIds = [];
+                updateToolbarState();
+                syncPanelsWithSelection();
+                drawFrame();
+            }
+        }
+
+        const handleMouseMove = (moveEvent) => {
+            if (coordsDisplay) {
+                const { x, y } = getCanvasCoordinates(moveEvent);
+                coordsDisplay.textContent = `${Math.round(x / 4)}, ${Math.round(y / 4)}: (${Math.round(x)}, ${Math.round(y)})`;
+            }
+
+            moveEvent.preventDefault();
+            const { x, y } = getCanvasCoordinates(moveEvent);
+
+            if (isResizing && activeResizeHandle && activeResizeHandle.type === 'node') {
+                const obj = objects.find(o => o.id === selectedObjectIds[0]);
+                if (obj) {
+                    // First, get the current local mouse position relative to the object's origin.
+                    const localMouse = {
+                        x: x - obj.x,
+                        y: y - obj.y
+                    };
+                    obj.polylinePoints[activeResizeHandle.index] = localMouse;
+
+                    // Second, immediately recalculate the bounds and re-center everything.
+                    // This is the crucial step that fixes the drag offset.
+                    obj._updateBoundsFromPoints();
+
+                    // Update the form values in the UI to reflect the change in real-time
+                    isUpdatingFromCanvas = true;
+                    updateFormValuesFromObjects();
+                    isUpdatingFromCanvas = false;
+
+                    drawFrame();
+                }
+            } else if (isRotating) {
+                const initial = initialDragState[0];
+                const obj = objects.find(o => o.id === initial.id);
+                if (obj) {
+                    const center = obj.getCenter();
+                    const currentAngle = Math.atan2(y - center.y, x - center.x);
+                    const angleDelta = currentAngle - initial.startAngle;
+                    obj.rotation = (initial.initialObjectAngle + angleDelta) * 180 / Math.PI;
+                    drawFrame();
+                }
+            } else if (isResizing) {
+                const initial = initialDragState[0];
+                const obj = objects.find(o => o.id === initial.id);
+                if (obj) {
+                    const anchorPoint = initial.anchorPoint;
+                    const resizeAngle = obj.rotation * Math.PI / 180;
+                    const worldVecX = x - anchorPoint.x;
+                    const worldVecY = y - anchorPoint.y;
+                    const localVecX = worldVecX * Math.cos(-resizeAngle) - worldVecY * Math.sin(-resizeAngle);
+                    const localVecY = worldVecX * Math.sin(-resizeAngle) + worldVecY * Math.cos(-resizeAngle);
+                    const handleXSign = activeResizeHandle.name.includes('left') ? -1 : 1;
+                    const handleYSign = activeResizeHandle.name.includes('top') ? -1 : 1;
+                    obj.width = localVecX * handleXSign;
+                    obj.height = localVecY * handleYSign;
+                    const isSideHandle = activeResizeHandle.name === 'top' || activeResizeHandle.name === 'bottom' || activeResizeHandle.name === 'left' || activeResizeHandle.name === 'right';
+                    if (isSideHandle) {
+                        if (activeResizeHandle.name.includes('left') || activeResizeHandle.name.includes('right')) obj.height = initial.initialHeight;
+                        if (activeResizeHandle.name.includes('top') || activeResizeHandle.name.includes('bottom')) obj.width = initial.initialWidth;
+                    }
+                    const worldSizingVecX = (obj.width * handleXSign) * Math.cos(resizeAngle) - (obj.height * handleYSign) * Math.sin(resizeAngle);
+                    const worldSizingVecY = (obj.width * handleXSign) * Math.sin(resizeAngle) + (obj.height * handleYSign) * Math.cos(resizeAngle);
+                    const newCenterX = anchorPoint.x + worldSizingVecX / 2;
+                    const newCenterY = anchorPoint.y + worldSizingVecY / 2;
+                    obj.x = newCenterX - obj.width / 2;
+                    obj.y = newCenterY - obj.height / 2;
+                    if (obj.shape === 'ring') obj.innerDiameter = obj.width * initial.diameterRatio;
+                    drawFrame();
+                }
+            } else if (isDragging) {
+                const dx = x - dragStartX;
+                const dy = y - dragStartY;
+                initialDragState.forEach(state => {
+                    const obj = objects.find(o => o.id === state.id);
+                    if (obj) {
+                        obj.x = state.x + dx;
+                        obj.y = state.y + dy;
+                    }
+                });
+                drawFrame();
+            } else {
+                let cursor = 'default';
+                const topObject = [...objects].reverse().find(obj => obj.isPointInside(x, y));
+                if (topObject) {
+                    cursor = 'pointer';
+                    if (selectedObjectIds.includes(topObject.id)) {
+                        const handle = topObject.getHandleAtPoint(x, y);
+                        if (handle) {
+                            cursor = handle.cursor;
+                        } else if (!topObject.locked) {
+                            cursor = 'move';
+                        }
+                    }
+                }
+                canvasContainer.style.cursor = cursor;
+            }
+        };
+
+        const handleMouseUp = (upEvent) => {
+            upEvent.preventDefault();
+            window.removeEventListener('mousemove', handleMouseMove);
+
+            const wasManipulating = isDragging || isResizing || isRotating;
+            if (wasManipulating) {
+                if (isRotating) {
+                    const obj = objects.find(o => o.id === initialDragState[0].id);
+                    if (obj) {
+                        obj.isBeingManuallyRotated = false;
+                        if (obj._pausedRotationSpeed !== null) {
+                            obj.rotationSpeed = obj._pausedRotationSpeed;
+                            obj.rotationAngle = obj.rotation * Math.PI / 180;
+                            obj._pausedRotationSpeed = null;
+                        }
+                    }
+                }
+
+                isUpdatingFromCanvas = true;
+                updateFormValuesFromObjects();
+                isUpdatingFromCanvas = false;
+
+                recordHistory();
+            }
+
+            isDragging = isResizing = isRotating = false;
+            activeResizeHandle = null;
+            initialDragState = [];
+            snapLines = [];
+            cachedSnapTargets = null;
+            drawFrame();
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp, { once: true });
+    });
+
 
     /**
      * Handles mouse movement over the canvas for dragging, resizing, and cursor updates.

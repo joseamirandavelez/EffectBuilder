@@ -415,18 +415,10 @@ class Shape {
         const minY = Math.min(...this.polylinePoints.map(p => p.y));
         const maxY = Math.max(...this.polylinePoints.map(p => p.y));
 
+        // Only update the width and height based on the points' extents.
+        // Do not move the origin (x, y) or modify the points themselves.
         this.width = maxX - minX;
         this.height = maxY - minY;
-        this.x = minX + this.x;
-        this.y = minY + this.y;
-
-        // Finally, shift all points so they are relative to the new origin.
-        const originShiftX = -minX;
-        const originShiftY = -minY;
-        this.polylinePoints = this.polylinePoints.map(p => ({
-            x: p.x + originShiftX,
-            y: p.y + originShiftY
-        }));
     }
 
     _applySensorReactivity(sensorData) {
