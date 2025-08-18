@@ -156,21 +156,21 @@ let isUpdatingFromCanvas = false;
  * @returns {Array<{x: number, y: number, type: string}>} An array of snap points.
  */
 function getWorldPoints(obj) {
-    const center = obj.getCenter();
     const angle = obj.getRenderAngle();
     const s = Math.sin(angle);
     const c = Math.cos(angle);
 
-    // Helper to convert a local point to world coordinates
-    const toWorld = (p) => {
-        const rotatedX = p.x * c - p.y * s;
-        const rotatedY = p.x * s + p.y * c;
-        return { x: center.x + rotatedX, y: center.y + rotatedY };
-    };
-
-    // --- Special handling for polylines ---
+    // --- CORRECTED: Special handling for polylines ---
     if (obj.shape === 'polyline' && obj.polylinePoints && obj.polylinePoints.length > 0) {
         const snapPoints = [];
+
+        // This helper now correctly rotates points around the polyline's origin (0,0)
+        // and then translates them to the object's world position (obj.x, obj.y).
+        const toWorld = (p) => {
+            const rotatedX = p.x * c - p.y * s;
+            const rotatedY = p.x * s + p.y * c;
+            return { x: obj.x + rotatedX, y: obj.y + rotatedY };
+        };
 
         // 1. Add each node as a snap point
         obj.polylinePoints.forEach(p => {
@@ -187,7 +187,14 @@ function getWorldPoints(obj) {
         return snapPoints;
     }
 
-    // --- Logic for all other shapes ---
+    // --- Logic for all other shapes (unchanged) ---
+    const center = obj.getCenter();
+    const toWorld = (p) => {
+        const rotatedX = p.x * c - p.y * s;
+        const rotatedY = p.x * s + p.y * c;
+        return { x: center.x + rotatedX, y: center.y + rotatedY };
+    };
+
     const halfW = obj.width / 2;
     const halfH = obj.height / 2;
     const localPoints = [
@@ -439,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'polyline': [
             'shape', 'x', 'y', 'rotation', 'isClosed',
             'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors', 'animationSpeed', 'cycleSpeed', 'animationMode', 'scrollDir',
-            'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeScrollDir', 'strokeAnimationSpeed',
+            'strokeWidth', 'strokeGradType', 'strokeTraceLength', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeScrollDir', 'strokeAnimationSpeed',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
         ],
     };
@@ -1154,6 +1161,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 return validPropsForShape.includes(propName);
             });
 
+            // --- START OF FIX ---
+            // This block ensures polyline-specific data is always saved as a JS variable.
+            if (obj.shape === 'polyline') {
+                jsVars += `const obj${obj.id}_isClosed = ${obj.isClosed};\n`;
+                jsVars += `const obj${obj.id}_polylinePoints = ${JSON.stringify(obj.polylinePoints)};\n`;
+                allKeys.push(`obj${obj.id}_isClosed`, `obj${obj.id}_polylinePoints`);
+            }
+            // --- END OF FIX ---
+
             filteredConfigs.forEach(conf => {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
                 const isEssential = essentialProps.includes(propName);
@@ -1173,7 +1189,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 let exportValue = liveValue;
 
-                // `vizSegmentSpacing` and `vizBarSpacing` have been removed from this list.
                 const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
 
                 if (conf.type === 'number') {
@@ -1221,6 +1236,8 @@ document.addEventListener('DOMContentLoaded', function () {
      * Renders the entire controls form based on the current `configStore` and `objects` state.
      * This function is responsible for dynamically building all the UI in the left panel.
      */
+    // In main.js, replace this entire function:
+
     function renderForm() {
         // --- 1. PREPARATION & STATE PRESERVATION ---
         const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -1460,6 +1477,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const tabContent = document.createElement('div');
             tabContent.className = 'tab-content';
             tabContent.id = `object-tab-content-${id}`;
+
+            // --- START OF FIX ---
+            // This object defines which properties appear in which tab.
+            // `strokeTraceLength` is now correctly included in the 'Polyline' tab.
             const controlGroupMap = {
                 'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
                 'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'useSharpGradient', 'gradientStop', 'animationMode', 'animationSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns'], icon: 'bi-palette-fill' },
@@ -1468,12 +1489,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
                 'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'], icon: 'bi-grid-3x3-gap-fill' },
                 'Fire': { props: ['fireSpread'], icon: 'bi-fire' },
-                'Polyline': { props: ['isClosed', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeScrollDir', 'strokeAnimationSpeed'], icon: 'bi-bezier' },
+                'Polyline': { props: ['isClosed', 'strokeWidth', 'strokeGradType', 'strokeTraceLength', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeScrollDir', 'strokeAnimationSpeed'], icon: 'bi-bezier' },
                 'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
                 'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius'], icon: 'bi-bar-chart-line-fill' },
                 'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
                 'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'sensorValueSource', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'], icon: 'bi-cpu-fill' },
             };
+            // --- END OF FIX ---
+
             const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
             let isFirstTab = true;
             let firstTabId = null;
@@ -2322,6 +2345,13 @@ document.addEventListener('DOMContentLoaded', function () {
         createInitialObjects();
 
         if (workspace.objects && workspace.objects.length > 0) {
+            const savedOrder = workspace.objects.map(o => o.id); // e.g., [3, 2, 1] means 3 is on top
+            objects.sort((a, b) => {
+                return savedOrder.indexOf(a.id) - savedOrder.indexOf(b.id);
+            });
+        }
+
+        if (workspace.objects && workspace.objects.length > 0) {
             workspace.objects.forEach(savedObj => {
                 const obj = objects.find(o => o.id === savedObj.id);
                 if (obj) {
@@ -2452,7 +2482,8 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_enableStroke`, label: `Object ${newId}: Enable Stroke`, type: 'boolean', default: 'false', description: 'Enables a stroke (outline) for the shape.' },
             { property: `obj${newId}_strokeWidth`, label: `Object ${newId}: Stroke Width`, type: 'number', default: '2', min: '1', max: '50', description: 'The thickness of the shape\'s stroke.' },
             { property: `obj${newId}_cycleSpeed`, label: `Object ${newId}: Color Cycle Speed`, type: 'number', default: '10', min: '1', max: '50', description: 'The speed at which fill colors cycle through the spectrum if enabled.' },
-            { property: `obj${newId}_strokeGradType`, label: `Object ${newId}: Type`, type: 'combobox', default: 'solid', values: 'solid,linear,radial,rainbow,rainbow-radial', description: 'The type of color fill or gradient to use for the stroke.' },
+            { property: `obj${newId}_strokeGradType`, label: `Object ${newId}: Type`, type: 'combobox', default: 'solid', values: 'solid,linear,radial,rainbow,rainbow-radial,trace', description: 'The type of color fill or gradient to use for the stroke.' },
+            { property: `obj${newId}_strokeTraceLength`, label: `Object ${newId}: Trace Length %`, type: 'number', default: '25', min: '1', max: '100', description: '(Trace) The length of the moving segment as a percentage of the total line length.' },
             { property: `obj${newId}_strokeGradColor1`, label: `Object ${newId}: Color 1`, type: 'color', default: '#FFFFFF', description: 'The starting color for the stroke gradient.' },
             { property: `obj${newId}_strokeGradColor2`, label: `Object ${newId}: Color 2`, type: 'color', default: '#000000', description: 'The ending color for the stroke gradient.' },
             { property: `obj${newId}_strokeCycleColors`, label: `Object ${newId}: Cycle Colors`, type: 'boolean', default: 'false', description: 'Animates the stroke colors by cycling through the color spectrum.' },
@@ -2504,6 +2535,8 @@ document.addEventListener('DOMContentLoaded', function () {
         return 'const ' + varName + ' = ' + JSON.stringify(fontData) + ';';
     }
 
+    // In main.js, replace this entire function:
+
     async function exportFile() {
         const exportButton = document.getElementById('export-btn');
         exportButton.disabled = true;
@@ -2534,11 +2567,14 @@ document.addEventListener('DOMContentLoaded', function () {
     
     ${jsVars}
 
+    // --- START OF FIX ---
+    // This ensures the global speed multipliers are correctly included in the exported file.
     window.gradientSpeedMultiplier = ${window.gradientSpeedMultiplier};
     window.shapeSpeedMultiplier = ${window.shapeSpeedMultiplier};
     window.seismicSpeedMultiplier = ${window.seismicSpeedMultiplier};
     window.tetrisGravityMultiplier = ${window.tetrisGravityMultiplier};
     window.textSpeedMultiplier = ${window.textSpeedMultiplier};
+    // --- END OF FIX ---
 
     const getSensorValue = (sensorName) => {
         try {
@@ -2552,6 +2588,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};
     const lerpColor = ${lerpColor.toString()};
     const getPatternColor = ${getPatternColor.toString()};
+    const getScrollingColor = ${getScrollingColor.toString()};
     const drawPixelText = ${drawPixelText.toString()};
     const getSignalRGBAudioMetrics = ${getSignalRGBAudioMetrics.toString()};
     
@@ -3185,18 +3222,17 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!obj || obj.shape !== 'polyline' || obj.locked) return;
 
         const { x, y } = getCanvasCoordinates(e);
+
+        // This is the CRITICAL FIX: The point's position is now correctly calculated relative to the object's origin.
+        const localClick = {
+            x: x - obj.x,
+            y: y - obj.y
+        };
+
         const handle = obj.getHandleAtPoint(x, y);
 
         // This handler now ONLY adds points. It no longer deletes them.
         if (!handle) {
-            // Add new node if a line segment is double-clicked
-            const center = obj.getCenter();
-            const angle = -obj.getRenderAngle();
-            const localClick = {
-                x: (x - center.x) * Math.cos(angle) - (y - center.y) * Math.sin(angle),
-                y: (x - center.x) * Math.sin(angle) + (y - center.y) * Math.cos(angle)
-            };
-
             let closestSegmentIndex = -1;
             let minDistanceSq = Infinity;
 
@@ -3234,6 +3270,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const { x, y } = getCanvasCoordinates(e);
         dragStartX = x;
         dragStartY = y;
+        isDragging = false;
 
         let activeObject = null;
         if (selectedObjectIds.length === 1) {
@@ -3258,17 +3295,24 @@ document.addEventListener('DOMContentLoaded', function () {
             if (handle.type === 'rotation') {
                 isRotating = true;
                 activeObject.isBeingManuallyRotated = true;
+
+                // Flatten the current total rotation (static + animated) into the static 'rotation' property.
+                const currentTotalRotationDegrees = activeObject.rotation + (activeObject.animationAngle * 180 / Math.PI);
+                activeObject.rotation = currentTotalRotationDegrees;
+                activeObject.animationAngle = 0; // Reset the animation accumulator.
+
+                // Pause the animation speed during the manual drag.
                 if (activeObject.rotationSpeed !== 0) {
                     activeObject._pausedRotationSpeed = activeObject.rotationSpeed;
                     activeObject.rotationSpeed = 0;
-                    activeObject.rotation = activeObject.rotationAngle * 180 / Math.PI;
                 }
+
                 const center = activeObject.getCenter();
-                const startAngle = Math.atan2(y - center.y, x - center.x);
+                const startAngle = Math.atan2(y - center.y, x - center.x); // Mouse angle in radians
                 initialDragState = [{
                     id: activeObject.id,
                     startAngle: startAngle,
-                    initialObjectAngle: activeObject.getRenderAngle()
+                    initialObjectAngle: activeObject.getRenderAngle() // Initial angle for the drag operation
                 }];
             } else { // Catches BOTH standard resize handles and polyline nodes
                 isResizing = true;
@@ -3314,10 +3358,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 if (!hitObject.locked) {
-                    isDragging = true;
                     initialDragState = selectedObjectIds.map(id => {
                         const obj = objects.find(o => o.id === id);
-                        return { id, x: obj.x, y: obj.y };
+                        if (obj.shape === 'polyline') {
+                            return { id, x: obj.x, y: obj.y, initialPoints: obj.polylinePoints.map(p => ({ x: p.x, y: p.y })) };
+                        } else {
+                            return { id, x: obj.x, y: obj.y };
+                        }
                     });
                 }
             } else {
@@ -3329,6 +3376,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const handleMouseMove = (moveEvent) => {
+            const dx = getCanvasCoordinates(moveEvent).x - dragStartX;
+            const dy = getCanvasCoordinates(moveEvent).y - dragStartY;
+            const dragThreshold = 5;
+
+            if (!isDragging && (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold)) {
+                isDragging = true;
+            }
+
             if (coordsDisplay) {
                 const { x, y } = getCanvasCoordinates(moveEvent);
                 coordsDisplay.textContent = `${Math.round(x / 4)}, ${Math.round(y / 4)}: (${Math.round(x)}, ${Math.round(y)})`;
@@ -3340,251 +3395,22 @@ document.addEventListener('DOMContentLoaded', function () {
             if (isResizing && activeResizeHandle && activeResizeHandle.type === 'node') {
                 const obj = objects.find(o => o.id === selectedObjectIds[0]);
                 if (obj) {
-                    // First, get the current local mouse position relative to the object's origin.
-                    const localMouse = {
-                        x: x - obj.x,
-                        y: y - obj.y
-                    };
-                    obj.polylinePoints[activeResizeHandle.index] = localMouse;
+                    // --- START OF FIX ---
+                    // 1. Get the mouse position relative to the polyline's true origin (obj.x, obj.y).
+                    const dx = x - obj.x;
+                    const dy = y - obj.y;
 
-                    // Second, immediately recalculate the bounds and re-center everything.
-                    // This is the crucial step that fixes the drag offset.
-                    obj._updateBoundsFromPoints();
-
-                    // Update the form values in the UI to reflect the change in real-time
-                    isUpdatingFromCanvas = true;
-                    updateFormValuesFromObjects();
-                    isUpdatingFromCanvas = false;
-
-                    drawFrame();
-                }
-            } else if (isRotating) {
-                const initial = initialDragState[0];
-                const obj = objects.find(o => o.id === initial.id);
-                if (obj) {
-                    const center = obj.getCenter();
-                    const currentAngle = Math.atan2(y - center.y, x - center.x);
-                    const angleDelta = currentAngle - initial.startAngle;
-                    obj.rotation = (initial.initialObjectAngle + angleDelta) * 180 / Math.PI;
-                    drawFrame();
-                }
-            } else if (isResizing) {
-                const initial = initialDragState[0];
-                const obj = objects.find(o => o.id === initial.id);
-                if (obj) {
-                    const anchorPoint = initial.anchorPoint;
-                    const resizeAngle = obj.rotation * Math.PI / 180;
-                    const worldVecX = x - anchorPoint.x;
-                    const worldVecY = y - anchorPoint.y;
-                    const localVecX = worldVecX * Math.cos(-resizeAngle) - worldVecY * Math.sin(-resizeAngle);
-                    const localVecY = worldVecX * Math.sin(-resizeAngle) + worldVecY * Math.cos(-resizeAngle);
-                    const handleXSign = activeResizeHandle.name.includes('left') ? -1 : 1;
-                    const handleYSign = activeResizeHandle.name.includes('top') ? -1 : 1;
-                    obj.width = localVecX * handleXSign;
-                    obj.height = localVecY * handleYSign;
-                    const isSideHandle = activeResizeHandle.name === 'top' || activeResizeHandle.name === 'bottom' || activeResizeHandle.name === 'left' || activeResizeHandle.name === 'right';
-                    if (isSideHandle) {
-                        if (activeResizeHandle.name.includes('left') || activeResizeHandle.name.includes('right')) obj.height = initial.initialHeight;
-                        if (activeResizeHandle.name.includes('top') || activeResizeHandle.name.includes('bottom')) obj.width = initial.initialWidth;
-                    }
-                    const worldSizingVecX = (obj.width * handleXSign) * Math.cos(resizeAngle) - (obj.height * handleYSign) * Math.sin(resizeAngle);
-                    const worldSizingVecY = (obj.width * handleXSign) * Math.sin(resizeAngle) + (obj.height * handleYSign) * Math.cos(resizeAngle);
-                    const newCenterX = anchorPoint.x + worldSizingVecX / 2;
-                    const newCenterY = anchorPoint.y + worldSizingVecY / 2;
-                    obj.x = newCenterX - obj.width / 2;
-                    obj.y = newCenterY - obj.height / 2;
-                    if (obj.shape === 'ring') obj.innerDiameter = obj.width * initial.diameterRatio;
-                    drawFrame();
-                }
-            } else if (isDragging) {
-                const dx = x - dragStartX;
-                const dy = y - dragStartY;
-                initialDragState.forEach(state => {
-                    const obj = objects.find(o => o.id === state.id);
-                    if (obj) {
-                        obj.x = state.x + dx;
-                        obj.y = state.y + dy;
-                    }
-                });
-                drawFrame();
-            } else {
-                let cursor = 'default';
-                const topObject = [...objects].reverse().find(obj => obj.isPointInside(x, y));
-                if (topObject) {
-                    cursor = 'pointer';
-                    if (selectedObjectIds.includes(topObject.id)) {
-                        const handle = topObject.getHandleAtPoint(x, y);
-                        if (handle) {
-                            cursor = handle.cursor;
-                        } else if (!topObject.locked) {
-                            cursor = 'move';
-                        }
-                    }
-                }
-                canvasContainer.style.cursor = cursor;
-            }
-        };
-
-        const handleMouseUp = (upEvent) => {
-            upEvent.preventDefault();
-            window.removeEventListener('mousemove', handleMouseMove);
-
-            const wasManipulating = isDragging || isResizing || isRotating;
-            if (wasManipulating) {
-                if (isRotating) {
-                    const obj = objects.find(o => o.id === initialDragState[0].id);
-                    if (obj) {
-                        obj.isBeingManuallyRotated = false;
-                        if (obj._pausedRotationSpeed !== null) {
-                            obj.rotationSpeed = obj._pausedRotationSpeed;
-                            obj.rotationAngle = obj.rotation * Math.PI / 180;
-                            obj._pausedRotationSpeed = null;
-                        }
-                    }
-                }
-
-                isUpdatingFromCanvas = true;
-                updateFormValuesFromObjects();
-                isUpdatingFromCanvas = false;
-
-                recordHistory();
-            }
-
-            isDragging = isResizing = isRotating = false;
-            activeResizeHandle = null;
-            initialDragState = [];
-            snapLines = [];
-            cachedSnapTargets = null;
-            drawFrame();
-        };
-
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp, { once: true });
-    });
-
-
-    /**
-     * Handles mouse movement over the canvas for dragging, resizing, and cursor updates.
-     * @param {MouseEvent} e - The mousemove event object.
-     */
-    canvasContainer.addEventListener('mousedown', e => {
-        e.preventDefault();
-        const { x, y } = getCanvasCoordinates(e);
-        dragStartX = x;
-        dragStartY = y;
-
-        let activeObject = null;
-        if (selectedObjectIds.length === 1) {
-            activeObject = objects.find(o => o.id === selectedObjectIds[0]);
-        }
-
-        let handle = null;
-        if (activeObject && !activeObject.locked) {
-            handle = activeObject.getHandleAtPoint(x, y);
-        }
-
-        if (handle) {
-            if (handle.type === 'node' && e.altKey) {
-                if (activeObject.polylinePoints.length > 2) {
-                    activeObject.polylinePoints.splice(handle.index, 1);
-                    drawFrame();
-                    recordHistory();
-                }
-                return;
-            }
-
-            if (handle.type === 'rotation') {
-                isRotating = true;
-                activeObject.isBeingManuallyRotated = true;
-                if (activeObject.rotationSpeed !== 0) {
-                    activeObject._pausedRotationSpeed = activeObject.rotationSpeed;
-                    activeObject.rotationSpeed = 0;
-                    activeObject.rotation = activeObject.rotationAngle * 180 / Math.PI;
-                }
-                const center = activeObject.getCenter();
-                const startAngle = Math.atan2(y - center.y, x - center.x);
-                initialDragState = [{
-                    id: activeObject.id,
-                    startAngle: startAngle,
-                    initialObjectAngle: activeObject.getRenderAngle()
-                }];
-            } else { // Catches BOTH standard resize handles and polyline nodes
-                isResizing = true;
-                activeResizeHandle = handle;
-
-                if (handle.type !== 'node') {
-                    const oppositeHandleName = getOppositeHandle(handle.name);
-                    const anchorPoint = activeObject.getWorldCoordsOfCorner(oppositeHandleName);
-                    initialDragState = [{
-                        id: activeObject.id, initialX: activeObject.x, initialY: activeObject.y,
-                        initialWidth: activeObject.width, initialHeight: activeObject.height,
-                        anchorPoint: anchorPoint,
-                        diameterRatio: activeObject.shape === 'ring' ? activeObject.innerDiameter / activeObject.width : 1
-                    }];
-                } else {
-                    initialDragState = [{ id: activeObject.id }];
-                }
-            }
-        } else {
-            const hitObject = objects.find(obj => obj.isPointInside(x, y));
-            if (hitObject) {
-                const isNewlySelected = !selectedObjectIds.includes(hitObject.id);
-
-                if (!selectedObjectIds.includes(hitObject.id)) {
-                    if (e.shiftKey || e.ctrlKey || e.metaKey) {
-                        selectedObjectIds.push(hitObject.id);
-                    } else {
-                        selectedObjectIds = [hitObject.id];
-                    }
-                }
-
-                updateToolbarState();
-                syncPanelsWithSelection();
-                drawFrame();
-
-                if (isNewlySelected && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-                    const fieldset = form.querySelector(`fieldset[data-object-id="${hitObject.id}"]`);
-                    if (fieldset) {
-                        setTimeout(() => {
-                            fieldset.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                        }, 200);
-                    }
-                }
-
-                if (!hitObject.locked) {
-                    isDragging = true;
-                    initialDragState = selectedObjectIds.map(id => {
-                        const obj = objects.find(o => o.id === id);
-                        return { id, x: obj.x, y: obj.y };
-                    });
-                }
-            } else {
-                selectedObjectIds = [];
-                updateToolbarState();
-                syncPanelsWithSelection();
-                drawFrame();
-            }
-        }
-
-        const handleMouseMove = (moveEvent) => {
-            if (coordsDisplay) {
-                const { x, y } = getCanvasCoordinates(moveEvent);
-                coordsDisplay.textContent = `${Math.round(x / 4)}, ${Math.round(y / 4)}: (${Math.round(x)}, ${Math.round(y)})`;
-            }
-
-            moveEvent.preventDefault();
-            const { x, y } = getCanvasCoordinates(moveEvent);
-
-            if (isResizing && activeResizeHandle && activeResizeHandle.type === 'node') {
-                const obj = objects.find(o => o.id === selectedObjectIds[0]);
-                if (obj) {
-                    const center = obj.getCenter();
+                    // 2. Apply the inverse rotation to get the mouse position in the polyline's local space.
                     const angle = -obj.getRenderAngle();
                     const localMouse = {
-                        x: (x - center.x) * Math.cos(angle) - (y - center.y) * Math.sin(angle),
-                        y: (x - center.x) * Math.sin(angle) + (y - center.y) * Math.cos(angle)
+                        x: dx * Math.cos(angle) - dy * Math.sin(angle),
+                        y: dx * Math.sin(angle) + dy * Math.cos(angle)
                     };
+
+                    // 3. Update the node with the correctly transformed mouse coordinates.
                     obj.polylinePoints[activeResizeHandle.index] = { x: localMouse.x, y: localMouse.y };
+                    // --- END OF FIX ---
+
                     drawFrame();
                 }
             } else if (isRotating) {
@@ -3597,7 +3423,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     obj.rotation = (initial.initialObjectAngle + angleDelta) * 180 / Math.PI;
                     drawFrame();
                 }
-            } else if (isResizing) {
+            } else if (isResizing && activeResizeHandle && activeResizeHandle.type !== 'node') {
                 const initial = initialDragState[0];
                 const obj = objects.find(o => o.id === initial.id);
                 if (obj) {
@@ -3605,34 +3431,107 @@ document.addEventListener('DOMContentLoaded', function () {
                     const resizeAngle = obj.rotation * Math.PI / 180;
                     const worldVecX = x - anchorPoint.x;
                     const worldVecY = y - anchorPoint.y;
+
+                    // Convert the drag vector from world space to the object's local space
                     const localVecX = worldVecX * Math.cos(-resizeAngle) - worldVecY * Math.sin(-resizeAngle);
                     const localVecY = worldVecX * Math.sin(-resizeAngle) + worldVecY * Math.cos(-resizeAngle);
+
                     const handleXSign = activeResizeHandle.name.includes('left') ? -1 : 1;
                     const handleYSign = activeResizeHandle.name.includes('top') ? -1 : 1;
+
+                    // Tentatively calculate the new width and height
                     obj.width = localVecX * handleXSign;
                     obj.height = localVecY * handleYSign;
+
+                    // Check if a side handle is being dragged
                     const isSideHandle = activeResizeHandle.name === 'top' || activeResizeHandle.name === 'bottom' || activeResizeHandle.name === 'left' || activeResizeHandle.name === 'right';
+
                     if (isSideHandle) {
-                        if (activeResizeHandle.name.includes('left') || activeResizeHandle.name.includes('right')) obj.height = initial.initialHeight;
-                        if (activeResizeHandle.name.includes('top') || activeResizeHandle.name.includes('bottom')) obj.width = initial.initialWidth;
+                        // --- THIS IS THE FIX FOR SIDE-HANDLE REPOSITIONING ---
+
+                        // 1. Constrain the dimension that should not change
+                        if (activeResizeHandle.name.includes('left') || activeResizeHandle.name.includes('right')) {
+                            obj.height = initial.initialHeight;
+                        } else { // 'top' or 'bottom'
+                            obj.width = initial.initialWidth;
+                        }
+
+                        // 2. Calculate how much the size changed
+                        const dw = obj.width - initial.initialWidth;
+                        const dh = obj.height - initial.initialHeight;
+
+                        // 3. Determine the shift of the object's center in its local space
+                        let localShiftX = 0;
+                        let localShiftY = 0;
+                        if (activeResizeHandle.name.includes('right')) localShiftX = dw / 2;
+                        if (activeResizeHandle.name.includes('left')) localShiftX = -dw / 2;
+                        if (activeResizeHandle.name.includes('bottom')) localShiftY = dh / 2;
+                        if (activeResizeHandle.name.includes('top')) localShiftY = -dh / 2;
+
+                        // 4. Rotate that local shift back into world space
+                        const worldShiftX = localShiftX * Math.cos(resizeAngle) - localShiftY * Math.sin(resizeAngle);
+                        const worldShiftY = localShiftX * Math.sin(resizeAngle) + localShiftY * Math.cos(resizeAngle);
+
+                        // 5. Apply the shift to the initial center to get the new center
+                        const initialCenterX = initial.initialX + initial.initialWidth / 2;
+                        const initialCenterY = initial.initialY + initial.initialHeight / 2;
+                        const newCenterX = initialCenterX + worldShiftX;
+                        const newCenterY = initialCenterY + worldShiftY;
+
+                        // 6. Calculate the new top-left position from the new center
+                        obj.x = newCenterX - obj.width / 2;
+                        obj.y = newCenterY - obj.height / 2;
+
+                    } else {
+                        // --- THIS IS THE ORIGINAL LOGIC, WHICH IS CORRECT FOR CORNER DRAGS ---
+                        const worldSizingVecX = (obj.width * handleXSign) * Math.cos(resizeAngle) - (obj.height * handleYSign) * Math.sin(resizeAngle);
+                        const worldSizingVecY = (obj.width * handleXSign) * Math.sin(resizeAngle) + (obj.height * handleYSign) * Math.cos(resizeAngle);
+                        const newCenterX = anchorPoint.x + worldSizingVecX / 2;
+                        const newCenterY = anchorPoint.y + worldSizingVecY / 2;
+                        obj.x = newCenterX - obj.width / 2;
+                        obj.y = newCenterY - obj.height / 2;
                     }
-                    const worldSizingVecX = (obj.width * handleXSign) * Math.cos(resizeAngle) - (obj.height * handleYSign) * Math.sin(resizeAngle);
-                    const worldSizingVecY = (obj.width * handleXSign) * Math.sin(resizeAngle) + (obj.height * handleYSign) * Math.cos(resizeAngle);
-                    const newCenterX = anchorPoint.x + worldSizingVecX / 2;
-                    const newCenterY = anchorPoint.y + worldSizingVecY / 2;
-                    obj.x = newCenterX - obj.width / 2;
-                    obj.y = newCenterY - obj.height / 2;
-                    if (obj.shape === 'ring') obj.innerDiameter = obj.width * initial.diameterRatio;
+
+                    if (obj.shape === 'ring') {
+                        obj.innerDiameter = obj.width * initial.diameterRatio;
+                    }
+
                     drawFrame();
                 }
             } else if (isDragging) {
                 const dx = x - dragStartX;
                 const dy = y - dragStartY;
+
+                if (!cachedSnapTargets) {
+                    cachedSnapTargets = objects.filter(o => !selectedObjectIds.includes(o.id)).flatMap(obj => getWorldPoints(obj));
+                }
+                snapLines = [];
+                const snapThreshold = 10;
+                let snappedX = null;
+                let snappedY = null;
+
                 initialDragState.forEach(state => {
                     const obj = objects.find(o => o.id === state.id);
                     if (obj) {
                         let newX = state.x + dx;
                         let newY = state.y + dy;
+
+                        const currentObjSnapPoints = getWorldPoints(new Shape({ ...obj, x: newX, y: newY }));
+                        for (const snapPoint of currentObjSnapPoints) {
+                            for (const targetPoint of cachedSnapTargets) {
+                                if (Math.abs(snapPoint.x - targetPoint.x) < snapThreshold && snappedX === null) {
+                                    newX += targetPoint.x - snapPoint.x;
+                                    snappedX = newX;
+                                    snapLines.push({ type: 'vertical', x: targetPoint.x, duration: 10 });
+                                }
+                                if (Math.abs(snapPoint.y - targetPoint.y) < snapThreshold && snappedY === null) {
+                                    newY += targetPoint.y - snapPoint.y;
+                                    snappedY = newY;
+                                    snapLines.push({ type: 'horizontal', y: targetPoint.y, duration: 10 });
+                                }
+                            }
+                        }
+
                         if (constrainToCanvas) {
                             const { minX, minY, maxX, maxY } = getBoundingBox(new Shape({ ...obj, x: newX, y: newY }));
                             if (minX < 0) newX -= minX;
@@ -3640,6 +3539,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (minY < 0) newY -= minY;
                             if (maxY > canvas.height) newY -= (maxY - canvas.height);
                         }
+
                         obj.x = newX;
                         obj.y = newY;
                     }
@@ -3673,9 +3573,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     const obj = objects.find(o => o.id === initialDragState[0].id);
                     if (obj) {
                         obj.isBeingManuallyRotated = false;
+
+                        // --- START OF FIX ---
+                        // After a manual rotation, the new angle becomes the new "base" rotation.
+                        obj.baseRotation = obj.rotation;
+                        // --- END OF FIX ---
+
                         if (obj._pausedRotationSpeed !== null) {
                             obj.rotationSpeed = obj._pausedRotationSpeed;
-                            obj.rotationAngle = obj.rotation * Math.PI / 180;
                             obj._pausedRotationSpeed = null;
                         }
                     }
@@ -4339,40 +4244,55 @@ document.addEventListener('DOMContentLoaded', function () {
             const preservedProps = {
                 name: oldObj.name, locked: oldObj.locked,
                 x: oldObj.x, y: oldObj.y, width: oldObj.width, height: oldObj.height, rotation: oldObj.rotation,
-                gradient: { ...oldObj.gradient }, strokeGradient: { ...oldObj.strokeGradient },
+                gradient: { ...oldObj.gradient },
+                strokeGradient: { ...oldObj.strokeGradient },
+                // If the shape we are changing FROM is a polyline, we must preserve its points.
+                polylinePoints: oldObj.shape === 'polyline' ? oldObj.polylinePoints : undefined,
                 enableAudioReactivity: oldObj.enableAudioReactivity, audioTarget: oldObj.audioTarget,
                 audioMetric: oldObj.audioMetric, beatThreshold: oldObj.beatThreshold,
                 audioSensitivity: oldObj.audioSensitivity, audioSmoothing: oldObj.audioSmoothing
             };
 
+            // FIX FOR BUG 1: If the new shape is a polyline, we don't want to inherit
+            // the old stroke colors, which might be invisible.
+            if (newShapeType === 'polyline') {
+                delete preservedProps.strokeGradient;
+            }
+
             configStore = configStore.filter(c => !(c.property && c.property.startsWith(`obj${id}_`)));
             const newConfigs = getDefaultObjectConfig(id);
 
+            // This ensures the new polyline is visible by default
+            if (newShapeType === 'polyline') {
+                const strokeConfig = newConfigs.find(c => c.property === `obj${id}_enableStroke`);
+                if (strokeConfig) strokeConfig.default = 'true';
+                const strokeWidthConfig = newConfigs.find(c => c.property === `obj${id}_strokeWidth`);
+                if (strokeWidthConfig) strokeWidthConfig.default = '4';
+            }
+
+            // Merge the preserved properties into the new default set
             newConfigs.forEach(conf => {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                let valueToSet;
+                let valueToSet = preservedProps[propName];
 
-                if (propName === 'shape') {
-                    valueToSet = newShapeType;
-                } else if (propName.startsWith('gradColor')) {
+                if (propName.startsWith('gradColor') && preservedProps.gradient) {
                     valueToSet = preservedProps.gradient[propName.replace('gradColor', 'color')];
-                } else if (propName.startsWith('strokeGradColor')) {
+                } else if (propName.startsWith('strokeGradColor') && preservedProps.strokeGradient) {
                     valueToSet = preservedProps.strokeGradient[propName.replace('strokeGradColor', 'color')];
-                } else {
-                    valueToSet = preservedProps[propName];
+                } else if (propName === 'shape') {
+                    valueToSet = newShapeType;
                 }
 
                 if (valueToSet !== undefined) {
                     const propsToScaleDown = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
-                    if (propsToScaleDown.includes(propName)) { valueToSet /= 4; }
-                    else if (propName === 'animationSpeed' || propName === 'strokeAnimationSpeed') { valueToSet *= 10; }
-                    else if (propName === 'cycleSpeed' || propName === 'strokeCycleSpeed') { valueToSet *= 50; }
+                    if (propsToScaleDown.includes(propName) && typeof valueToSet === 'number') { valueToSet /= 4; }
                     if (typeof valueToSet === 'boolean') { valueToSet = String(valueToSet); }
                     conf.default = valueToSet;
                 }
                 conf.label = `${preservedProps.name}: ${conf.label.split(':').slice(1).join(':').trim()}`;
             });
 
+            // Splice the updated configs for this object back into the main store
             const nextObjectConfigIndex = configStore.findIndex(c => {
                 const match = (c.property || '').match(/^obj(\d+)_/);
                 return match && parseInt(match[1], 10) > id;
@@ -4380,13 +4300,49 @@ document.addEventListener('DOMContentLoaded', function () {
             const insertionIndex = nextObjectConfigIndex === -1 ? configStore.length : nextObjectConfigIndex;
             configStore.splice(insertionIndex, 0, ...newConfigs);
 
-            createInitialObjects();
-            selectedObjectIds = [id]; // Re-select the object
-            renderForm();
+            // --- FIX FOR BUG 2 ---
+            // Instead of rebuilding all objects, we find the specific one and update it.
+            const objToUpdate = objects.find(o => o.id === id);
+            if (objToUpdate) {
+                // We can just re-create this single object instance with all the correct, merged properties.
+                const newState = { id, ctx };
+                newConfigs.forEach(c => {
+                    const propName = c.property.substring(c.property.indexOf('_') + 1);
+                    let value = (c.type === 'boolean') ? (c.default === 'true') : (c.type === 'number') ? parseFloat(c.default) : c.default;
+                    const propsToScaleUp = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
+                    if (propsToScaleUp.includes(propName) && typeof value === 'number') { value *= 4; }
+
+                    if (propName.startsWith('gradColor')) {
+                        if (!newState.gradient) newState.gradient = {};
+                        newState.gradient[propName.replace('grad', '').toLowerCase()] = value;
+                    } else if (propName.startsWith('strokeGradColor')) {
+                        if (!newState.strokeGradient) newState.strokeGradient = {};
+                        newState.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                    } else {
+                        newState[propName] = value;
+                    }
+                });
+
+                // Carry over non-config properties like name, locked status, and points
+                newState.name = preservedProps.name;
+                newState.locked = preservedProps.locked;
+                if (preservedProps.polylinePoints) {
+                    newState.polylinePoints = preservedProps.polylinePoints;
+                }
+
+                // Replace the old object instance with the new one
+                const objectIndex = objects.findIndex(o => o.id === id);
+                if (objectIndex !== -1) {
+                    objects[objectIndex] = new Shape(newState);
+                }
+            }
+
+            selectedObjectIds = [id];
+            renderForm(); // Re-render the form to show controls for the new shape
             updateFormValuesFromObjects();
             drawFrame();
             debouncedRecordHistory();
-            return;
+            return; // Important: exit the change handler
         }
 
         if (target.name && (
@@ -4402,7 +4358,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         debouncedRecordHistory();
-    });
+    });;
 
 
     // Copy and Paste section
