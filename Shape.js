@@ -1043,9 +1043,14 @@ class Shape {
             case 'radial':
                 return this._createRadialGradient(c1, c2, p);
             case 'rainbow':
-            case 'rainbow-radial':
-                const hueOffset = (this.scrollOffset * 360) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
+            case 'rainbow-radial': {
+                let animProgress = p; // Loop progress (0 -> 1)
+                if (this.animationMode.includes('bounce')) {
+                    animProgress = (p < 0.5) ? (p * 2) : ((1 - p) * 2); // Bounce progress (0 -> 1 -> 0)
+                }
+                const hueOffset = (animProgress * 360) + (phaseIndex * (this.phaseOffset / 100.0) * 360);
                 return this._createRainbowGradient(hueOffset);
+            }
             case 'random':
                 return this._getRandomColorForElement(phase);
             case 'conic':
@@ -1055,22 +1060,28 @@ class Shape {
                 }
                 const size = Math.ceil(Math.sqrt(this.width * this.width + this.height * this.height));
                 if (size <= 0) return 'black';
+
+                let animProgress = p; // Loop progress (0 -> 1)
+                if (this.animationMode.includes('bounce')) {
+                    animProgress = (p < 0.5) ? (p * 2) : ((1 - p) * 2); // Bounce progress (0 -> 1 -> 0)
+                }
+                const rotationOffset = animProgress * 2 * Math.PI;
+
                 const tempCanvas = document.createElement('canvas');
                 tempCanvas.width = size;
                 tempCanvas.height = size;
                 const tempCtx = tempCanvas.getContext('2d');
                 const centerX = size / 2;
                 const centerY = size / 2;
-                const rotationOffset = this.scrollOffset * 2 * Math.PI;
-                const segments = 360; // Higher number means a smoother gradient
+                const segments = 360;
                 for (let i = 0; i < segments; i++) {
                     const startAngle = (i / segments) * 2 * Math.PI + rotationOffset;
-                    const endAngle = ((i + 1.1) / segments) * 2 * Math.PI + rotationOffset; // The +1.5 creates the overlap
+                    const endAngle = ((i + 1.1) / segments) * 2 * Math.PI + rotationOffset;
                     let segmentColor;
                     if (this.gradType === 'rainbow-conic') {
                         const hue = ((i / segments) * 360 + this.hue1) % 360;
                         segmentColor = `hsl(${hue}, 100%, 50%)`;
-                    } else { // 'conic'
+                    } else {
                         const progress = i / segments;
                         if (this.useSharpGradient) {
                             const stopPoint = this.gradientStop / 100.0;
@@ -1149,7 +1160,6 @@ class Shape {
         const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
         const grad = isVertical ? this.ctx.createLinearGradient(0, -halfH, 0, halfH) : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
 
-        // This new block handles static gradients when animation speed is zero.
         if (this.animationSpeed === 0) {
             if (this.useSharpGradient) {
                 const stopPoint = gradientStop / 100.0;
@@ -1164,34 +1174,46 @@ class Shape {
             return grad;
         }
 
-        // The rest of the function handles the existing animation logic
-        if (this.useSharpGradient) {
-            let p_bounce = progress;
-            if (this.animationMode.includes('bounce')) {
-                const bounce_progress = (progress < 0.5) ? (progress * 2) : ((1 - progress) * 2);
-                p_bounce = bounce_progress * (1.0 - (gradientStop / 100.0));
-            }
-            const stopRatio = gradientStop / 100.0;
-            const p1 = p_bounce;
-            const p2 = p1 + stopRatio;
-            if (p2 > 1.0) {
-                const wrapped_p2 = p2 - 1.0;
-                grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
-                grad.addColorStop(wrapped_p2, c2); grad.addColorStop(p1, c2);
-                grad.addColorStop(p1, c1); grad.addColorStop(1, c1);
+        if (this.animationMode.includes('bounce')) {
+            const bounce_progress = (progress < 0.5) ? (progress * 2) : ((1 - progress) * 2);
+            if (this.useSharpGradient) {
+                const stopRatio = gradientStop / 100.0;
+                const p1 = bounce_progress * (1.0 - stopRatio);
+                const p2 = p1 + stopRatio;
+                grad.addColorStop(0, c2);
+                grad.addColorStop(p1, c2);
+                grad.addColorStop(p1, c1);
+                grad.addColorStop(p2, c1);
+                grad.addColorStop(p2, c2);
+                grad.addColorStop(1, c2);
             } else {
-                grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
-                grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
-                grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
-            }
-        } else {
-            if (this.animationMode.includes('bounce')) {
                 grad.addColorStop(0, getPatternColor(0 - progress, c1, c2));
                 grad.addColorStop(0.5, getPatternColor(0.5 - progress, c1, c2));
                 grad.addColorStop(1, getPatternColor(1 - progress, c1, c2));
+            }
+        } else { // Loop mode
+            if (this.useSharpGradient) {
+                const stopRatio = gradientStop / 100.0;
+                const p1 = progress;
+                const p2 = p1 + stopRatio;
+                if (p2 > 1.0) { // Wrapped around
+                    const wrapped_p2 = p2 - 1.0;
+                    grad.addColorStop(0, c1);
+                    grad.addColorStop(wrapped_p2, c1);
+                    grad.addColorStop(wrapped_p2, c2);
+                    grad.addColorStop(p1, c2);
+                    grad.addColorStop(p1, c1);
+                    grad.addColorStop(1, c1);
+                } else {
+                    grad.addColorStop(0, c2);
+                    grad.addColorStop(p1, c2);
+                    grad.addColorStop(p1, c1);
+                    grad.addColorStop(p2, c1);
+                    grad.addColorStop(p2, c2);
+                    grad.addColorStop(1, c2);
+                }
             } else {
                 const midPoint = gradientStop / 100.0;
-                const stops = [];
                 const getPatternColorAtTime = (time) => {
                     const t = (time % 1.0 + 1.0) % 1.0;
                     if (midPoint <= 0.0001) return c2;
@@ -1199,19 +1221,19 @@ class Shape {
                     if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
                     return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
                 };
-                stops.push({ pos: 0, color: getPatternColorAtTime(0 - progress) });
-                stops.push({ pos: 1, color: getPatternColorAtTime(1 - progress) });
+                const stops = [
+                    { pos: 0, color: getPatternColorAtTime(0 - progress) },
+                    { pos: 1, color: getPatternColorAtTime(1 - progress) }
+                ];
                 for (let i = -2; i <= 2; i++) {
                     const c1_pos = i + progress;
                     const c2_pos = i + midPoint + progress;
                     if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
                     if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
                 }
-                const uniqueStops = stops.sort((a, b) => a.pos - b.pos).filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001);
-                uniqueStops.forEach(stop => {
-                    const finalPos = (typeof stop.pos === 'number' && isFinite(stop.pos)) ? stop.pos : 0;
-                    grad.addColorStop(Math.max(0, Math.min(1, finalPos)), stop.color);
-                });
+                stops.sort((a, b) => a.pos - b.pos)
+                    .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001)
+                    .forEach(stop => grad.addColorStop(Math.max(0, Math.min(1, stop.pos)), stop.color));
             }
         }
         return grad;
@@ -1231,19 +1253,59 @@ class Shape {
         const maxRadius = Math.max(this.width, this.height) / 2;
         if (maxRadius <= 0) return 'black';
         const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
-        const wave = 1 - Math.abs(2 * progress - 1);
-        if (this.useSharpGradient) {
-            const stopPoint = (gradientStop / 100) * wave;
-            grad.addColorStop(0, c1);
-            grad.addColorStop(stopPoint, c1);
-            grad.addColorStop(Math.min(1, stopPoint + 0.001), c2);
-            grad.addColorStop(1, c2);
-        } else {
-            const midPoint = gradientStop / 100.0;
-            const animatedMidPoint = midPoint * wave;
-            grad.addColorStop(0, c1);
-            grad.addColorStop(animatedMidPoint, c2);
-            grad.addColorStop(1, c1);
+
+        if (this.animationMode.includes('bounce')) {
+            const wave = 1 - Math.abs(2 * progress - 1); // Bounce progress (0 -> 1 -> 0)
+            if (this.useSharpGradient) {
+                const stopPoint = (gradientStop / 100) * wave;
+                grad.addColorStop(0, c1);
+                grad.addColorStop(Math.min(1, stopPoint), c1);
+                grad.addColorStop(Math.min(1, stopPoint + 0.001), c2);
+                grad.addColorStop(1, c2);
+            } else {
+                const animatedMidPoint = (gradientStop / 100.0) * wave;
+                grad.addColorStop(0, c1);
+                grad.addColorStop(animatedMidPoint, c2);
+                grad.addColorStop(1, c1);
+            }
+        } else { // Loop mode
+            if (this.useSharpGradient) {
+                const stopRatio = gradientStop / 100.0;
+                const p1 = progress;
+                const p2 = p1 + stopRatio;
+                if (p2 > 1.0) { // Wrapped around
+                    const wrapped_p2 = p2 - 1.0;
+                    grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
+                    grad.addColorStop(wrapped_p2, c2); grad.addColorStop(p1, c2);
+                    grad.addColorStop(p1, c1); grad.addColorStop(1, c1);
+                } else {
+                    grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
+                    grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
+                    grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
+                }
+            } else {
+                const midPoint = gradientStop / 100.0;
+                const getPatternColorAtTime = (time) => {
+                    const t = (time % 1.0 + 1.0) % 1.0;
+                    if (midPoint <= 0.0001) return c2;
+                    if (midPoint >= 0.9999) return c1;
+                    if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
+                    return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
+                };
+                const stops = [
+                    { pos: 0, color: getPatternColorAtTime(0 - progress) },
+                    { pos: 1, color: getPatternColorAtTime(1 - progress) }
+                ];
+                for (let i = -2; i <= 2; i++) {
+                    const c1_pos = i + progress;
+                    const c2_pos = i + midPoint + progress;
+                    if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
+                    if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
+                }
+                stops.sort((a, b) => a.pos - b.pos)
+                    .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001)
+                    .forEach(stop => grad.addColorStop(Math.max(0, Math.min(1, stop.pos)), stop.color));
+            }
         }
         return grad;
     }
