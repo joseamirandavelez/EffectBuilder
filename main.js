@@ -1379,12 +1379,12 @@ document.addEventListener('DOMContentLoaded', function () {
             tabContent.id = `object-tab-content-${id}`;
             const controlGroupMap = {
                 'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
-                'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns'], icon: 'bi-palette-fill' },
+                'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'animationSpeed', 'cycleSpeed'], icon: 'bi-palette-fill' },
                 'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir'], icon: 'bi-brush-fill' },
                 'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'], icon: 'bi-fonts' },
                 'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
                 'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'], icon: 'bi-grid-3x3-gap-fill' },
-                'Fire': { props: ['animationSpeed', 'cycleSpeed', 'fireSpread'], icon: 'bi-fire' },
+                'Fire': { props: ['fireSpread'], icon: 'bi-fire' },
                 'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
                 'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius'], icon: 'bi-bar-chart-line-fill' },
                 'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
@@ -2317,9 +2317,10 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100', description: 'For sharp gradients, this is the percentage width of the primary color band.' },
             { property: `obj${newId}_gradColor1`, label: `Object ${newId}: Color 1`, type: 'color', default: '#00ff00', description: 'The starting color for gradients and solid fills.' },
             { property: `obj${newId}_gradColor2`, label: `Object ${newId}: Color 2`, type: 'color', default: '#d400ff', description: 'The ending color for gradients.' },
-            { property: `obj${newId}_cycleColors`, label: `Object ${newId}: Cycle Colors`, type: 'boolean', default: 'false', description: 'Animates the colors by cycling through the color spectrum.' },
             { property: `obj${newId}_animationMode`, label: `Object ${newId}: Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop', description: 'Determines how the gradient animation behaves.' },
             { property: `obj${newId}_animationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '2', min: '0', max: '100', description: 'Master speed for gradient scroll, random color flicker, and oscilloscope movement.' },
+            { property: `obj${newId}_cycleColors`, label: `Object ${newId}: Cycle Colors`, type: 'boolean', default: 'false', description: 'Animates the colors by cycling through the color spectrum.' },
+            { property: `obj${newId}_cycleSpeed`, label: `Object ${newId}: Color Cycle Speed`, type: 'number', default: '10', min: '0', max: '100', description: 'The speed at which colors cycle when "Cycle Colors" is enabled.' },
             { property: `obj${newId}_rotationSpeed`, label: `Object ${newId}: Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100', description: 'The continuous rotation speed of the object. Overrides static rotation.' },
             { property: `obj${newId}_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', values: 'right,left,up,down', default: 'right', description: 'The direction the gradient animation moves.' },
             { property: `obj${newId}_phaseOffset`, label: `Object ${newId}: Phase Offset`, type: 'number', default: '10', min: '0', max: '100', description: 'Offsets the gradient animation for each item in a grid, seismic wave, or Tetris block, creating a cascading effect.' },
@@ -2406,6 +2407,54 @@ document.addEventListener('DOMContentLoaded', function () {
         return 'const ' + varName + ' = ' + JSON.stringify(fontData) + ';';
     }
 
+    function parseColorToRgba(colorStr) {
+        if (typeof colorStr !== 'string') colorStr = '#000000';
+
+        if (colorStr.startsWith('#')) {
+            let hex = colorStr.slice(1);
+            if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+            if (hex.length === 4) hex = hex.split('').map(c => c + c).join('');
+
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            const a = hex.length === 8 ? parseInt(hex.substring(6, 8), 16) / 255 : 1;
+            return { r, g, b, a };
+        }
+
+        if (colorStr.startsWith('rgb')) {
+            const parts = colorStr.match(/(\d+(\.\d+)?)/g).map(Number);
+            return { r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1 };
+        }
+
+        if (colorStr.startsWith('hsl')) {
+            const [h, s, l] = colorStr.match(/(\d+(\.\d+)?)/g).map(Number);
+            const s_norm = s / 100;
+            const l_norm = l / 100;
+            if (s_norm === 0) return { r: l_norm * 255, g: l_norm * 255, b: l_norm * 255, a: 1 };
+
+            const c = (1 - Math.abs(2 * l_norm - 1)) * s_norm;
+            const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+            const m = l_norm - c / 2;
+            let r_temp, g_temp, b_temp;
+
+            if (h >= 0 && h < 60) { [r_temp, g_temp, b_temp] = [c, x, 0]; }
+            else if (h >= 60 && h < 120) { [r_temp, g_temp, b_temp] = [x, c, 0]; }
+            else if (h >= 120 && h < 180) { [r_temp, g_temp, b_temp] = [0, c, x]; }
+            else if (h >= 180 && h < 240) { [r_temp, g_temp, b_temp] = [0, x, c]; }
+            else if (h >= 240 && h < 300) { [r_temp, g_temp, b_temp] = [x, 0, c]; }
+            else { [r_temp, g_temp, b_temp] = [c, 0, x]; }
+
+            return {
+                r: Math.round((r_temp + m) * 255),
+                g: Math.round((g_temp + m) * 255),
+                b: Math.round((b_temp + m) * 255),
+                a: 1
+            };
+        }
+        return { r: 0, g: 0, b: 0, a: 1 }; // Fallback
+    }
+
     async function exportFile() {
         const exportButton = document.getElementById('export-btn');
         exportButton.disabled = true;
@@ -2452,6 +2501,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     const FONT_DATA_4PX = ${JSON.stringify(FONT_DATA_4PX)};
     const FONT_DATA_5PX = ${JSON.stringify(FONT_DATA_5PX)};
+    const parseColorToRgba = ${parseColorToRgba.toString()};
     const lerpColor = ${lerpColor.toString()};
     const getPatternColor = ${getPatternColor.toString()};
     const drawPixelText = ${drawPixelText.toString()};
