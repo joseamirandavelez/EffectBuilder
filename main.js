@@ -277,7 +277,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
             'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
         ],
@@ -285,14 +285,14 @@ document.addEventListener('DOMContentLoaded', function () {
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
             'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
         ],
         ring: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
             'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
         ],
@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'sides',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
             'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
         ],
@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'points', 'starInnerRadius',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir',
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
             'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
         ],
@@ -323,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'animationMode', 'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'scrollDir', 'phaseOffset',
             'lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape',
             'enableWaveAnimation', 'waveStyle', 'waveCount', 'oscAnimationSpeed',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir', ,
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
         ],
         tetris: [
@@ -1377,10 +1377,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const tabContent = document.createElement('div');
             tabContent.className = 'tab-content';
             tabContent.id = `object-tab-content-${id}`;
+
+            // Update this for a new property
             const controlGroupMap = {
                 'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
                 'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'animationSpeed', 'cycleSpeed'], icon: 'bi-palette-fill' },
-                'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeScrollDir'], icon: 'bi-brush-fill' },
+                'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir'], icon: 'bi-brush-fill' },
                 'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'], icon: 'bi-fonts' },
                 'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
                 'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'], icon: 'bi-grid-3x3-gap-fill' },
@@ -2357,13 +2359,24 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_tetrisSpeed`, label: `Object ${newId}: Drop/Fade-in Speed`, type: 'number', default: '5', min: '1', max: '100', description: '(Tetris) The speed of the drop animation.' },
             { property: `obj${newId}_tetrisBounce`, label: `Object ${newId}: Bounce Factor`, type: 'number', default: '50', min: '0', max: '90', description: '(Tetris) How much the blocks bounce on impact. 0 is no bounce.' },
             { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fire-radial) Controls how far the flames spread from the center.' },
+            
+            // Stroke Fill
             { property: `obj${newId}_enableStroke`, label: `Object ${newId}: Enable Stroke`, type: 'boolean', default: 'false', description: 'Enables a stroke (outline) for the shape.' },
             { property: `obj${newId}_strokeWidth`, label: `Object ${newId}: Stroke Width`, type: 'number', default: '2', min: '1', max: '50', description: 'The thickness of the shape\'s stroke.' },
-            { property: `obj${newId}_strokeGradType`, label: `Object ${newId}: Stroke Type`, type: 'combobox', default: 'solid', values: 'solid,linear,radial,rainbow,rainbow-radial', description: 'The type of color fill or gradient to use for the stroke.' },
+            { property: `obj${newId}_strokeGradType`, label: `Object ${newId}: Stroke Type`, type: 'combobox', default: 'solid', values: 'solid,linear,radial,conic,alternating,random,rainbow,rainbow-radial,rainbow-conic', description: 'The type of color fill or gradient to use for the stroke.' },
+            { property: `obj${newId}_strokeUseSharpGradient`, label: `Object ${newId}: Stroke Use Sharp Gradient`, type: 'boolean', default: 'false', description: 'If checked, creates a hard line between colors in the stroke gradient instead of a smooth blend.' },
+            { property: `obj${newId}_strokeGradientStop`, label: `Object ${newId}: Stroke Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100', description: 'For sharp stroke gradients, this is the percentage width of the primary color band.' },
             { property: `obj${newId}_strokeGradColor1`, label: `Object ${newId}: Stroke Color 1`, type: 'color', default: '#FFFFFF', description: 'The starting color for the stroke gradient.' },
             { property: `obj${newId}_strokeGradColor2`, label: `Object ${newId}: Stroke Color 2`, type: 'color', default: '#000000', description: 'The ending color for the stroke gradient.' },
+            { property: `obj${newId}_strokeAnimationMode`, label: `Object ${newId}: Stroke Animation Mode`, type: 'combobox', values: 'loop,bounce,bounce-reversed,bounce-random', default: 'loop', description: 'Determines how the stroke gradient animation behaves.' },
+            { property: `obj${newId}_strokeAnimationSpeed`, label: `Object ${newId}: Stroke Animation Speed`, type: 'number', default: '2', min: '0', max: '100', description: 'Controls the scroll speed of the stroke gradient animation.' },
             { property: `obj${newId}_strokeCycleColors`, label: `Object ${newId}: Cycle Stroke Colors`, type: 'boolean', default: 'false', description: 'Animates the stroke colors by cycling through the color spectrum.' },
+            { property: `obj${newId}_strokeCycleSpeed`, label: `Object ${newId}: Stroke Color Cycle Speed`, type: 'number', default: '10', min: '0', max: '100', description: 'The speed at which stroke colors cycle when "Cycle Stroke Colors" is enabled.' },
+            { property: `obj${newId}_strokeRotationSpeed`, label: `Object ${newId}: Stroke Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100', description: 'The continuous rotation speed of the stroke\'s conic gradient pattern.' },
             { property: `obj${newId}_strokeScrollDir`, label: `Object ${newId}: Stroke Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down', description: 'The direction the stroke gradient animation moves.' },
+            { property: `obj${newId}_strokePhaseOffset`, label: `Object ${newId}: Stroke Phase Offset`, type: 'number', default: '10', min: '0', max: '100', description: 'Offsets the stroke gradient animation for each item in a grid, creating a cascading effect.' },
+
+            //Audiop
             { property: `obj${newId}_enableAudioReactivity`, label: `Object ${newId}: Enable Sound Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sound.' },
             { property: `obj${newId}_audioTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Flash', values: 'none,Flash,Size,Rotation,Volume Meter', description: 'Which property of the object will be affected by the sound.' },
             { property: `obj${newId}_audioMetric`, label: `Object ${newId}: Audio Metric`, type: 'combobox', default: 'volume', values: 'volume,bass,mids,highs', description: 'Which part of the audio spectrum to react to.' },
@@ -2373,6 +2386,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_autoWidth`, label: `Object ${newId}: Auto-Width`, type: 'boolean', default: 'false', description: 'For text objects, automatically sets the object\'s width to the width of the text.' },
             { property: `obj${newId}_pixelArtData`, label: `Object ${newId}: Pixel Art Data`, type: 'textarea', default: '[[1,0,0,1],[0,1,1,0],[0,1,1,0],[1,0,0,1]]', description: '(Pixel Art) Paste your pixel art data array here. Use a tool like the Pixel Art Data Generator for a starting point.' },
 
+            // Audio visualizer specific
             { property: `obj${newId}_vizSmoothing`, label: `Object ${newId}: Smoothing`, type: 'number', default: '60', min: '0', max: '99', description: '(Visualizer) How smoothly the bars react to audio changes. Higher is smoother.' },
             { property: `obj${newId}_vizDrawStyle`, label: `Object ${newId}: Draw Style`, type: 'combobox', default: 'Line', values: 'Bars,Line,Area', description: '(Visualizer) How the frequencies are rendered (as bars or a continuous line).' },
             { property: `obj${newId}_vizLayout`, label: `Object ${newId}: Layout`, type: 'combobox', default: 'Linear', values: 'Linear,Circular', description: '(Visualizer) The overall layout of the visualizer.' },
