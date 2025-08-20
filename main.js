@@ -1847,11 +1847,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 audioData = getAudioMetrics();
             } else {
                 const time = now / 1000;
-                const randomRate = (Math.sin(time * 0.2) + 1.5);
-                const mockVol = (Math.sin(time * 1.8 * randomRate) * 0.5 + Math.sin(time * 0.9 * randomRate) * 0.5) / 2 + 0.5;
-                const mockBass = (Math.sin(time * 2.2 * randomRate) * 0.6 + Math.sin(time * 4.7 * randomRate) * 0.4) / 2 + 0.5;
-                const mockMids = (Math.sin(time * 1.5 * randomRate) * 0.5 + Math.sin(time * 2.8 * randomRate) * 0.5) / 2 + 0.5;
-                const mockHighs = (Math.sin(time * 3.3 * randomRate) * 0.7 + Math.sin(time * 8.2 * randomRate) * 0.3) / 2 + 0.5;
+                const randomRate = (Math.sin(time * 0.1) + 1.2); // Slower rate of change
+                const mockVol = (Math.sin(time * 0.8 * randomRate) * 0.5 + Math.sin(time * 0.5 * randomRate) * 0.5) / 2 + 0.5;
+                const mockBass = (Math.sin(time * 1.0 * randomRate) * 0.6 + Math.sin(time * 2.1 * randomRate) * 0.4) / 2 + 0.5;
+                const mockMids = (Math.sin(time * 0.7 * randomRate) * 0.5 + Math.sin(time * 1.2 * randomRate) * 0.5) / 2 + 0.5;
+                const mockHighs = (Math.sin(time * 1.5 * randomRate) * 0.7 + Math.sin(time * 3.0 * randomRate) * 0.3) / 2 + 0.5;
 
                 const mockFreqData = new Uint8Array(128);
                 for (let i = 0; i < mockFreqData.length; i++) {
@@ -1859,7 +1859,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     const bassEffect = Math.pow(1 - progress, 2) * mockBass;
                     const midEffect = (1 - Math.abs(progress - 0.5) * 2) * mockMids;
                     const highEffect = Math.pow(progress, 2) * mockHighs;
-                    mockFreqData[i] = (bassEffect + midEffect + highEffect) / 3 * 255 * (Math.sin(i * 0.2 + time * 5) * 0.1 + 0.9);
+                    // Reduced the fast ripple from 'time * 5' to 'time * 2'
+                    mockFreqData[i] = (bassEffect + midEffect + highEffect) / 3 * 255 * (Math.sin(i * 0.2 + time * 2) * 0.1 + 0.9);
                 }
 
                 audioData = {
