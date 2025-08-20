@@ -129,7 +129,9 @@ function drawPixelText(ctx, shape, textToRender) {
             let dy = y + pixelSize + lineIndex * (charHeight + lineSpacing) * pixelSize;
 
             if (textAnimation === 'wave') {
-                dy += Math.sin(waveAngle + i * 0.5) * (pixelSize * 2);
+                // The wave is now based on the character's horizontal position (dx),
+                // which creates a proper undulating effect as the text scrolls.
+                dy += Math.sin(waveAngle + dx * 0.05) * (pixelSize * 2);
             }
 
             if (dx > x + width || dx < x - (charWidth * pixelSize)) {
@@ -250,6 +252,7 @@ function getPatternColor(t, c1, c2) {
 class Shape {
     constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier }) {
         // --- ALL properties are assigned here first ---
+        this.lastDeltaTime = 0;
         this.dirty = true;
         this.id = id;
         this.name = name || `Object ${id}`;
@@ -322,6 +325,7 @@ class Shape {
         this.textAnimation = textAnimation || 'none';
         this.textAnimationSpeed = textAnimationSpeed || 10;
         this.scrollOffsetX = 0;
+        this.scrollTimer = 0;
         this.visibleCharCount = 0;
         this.waveAngle = 0;
         this.typewriterWaitTimer = 0;
@@ -613,6 +617,8 @@ class Shape {
         return text;
     }
 
+    // In Shape.js
+
     _getRandomColorForElement(elementIndex) {
         if (this.cycleColors) {
             const hue = (this.hue1 + elementIndex * this.phaseOffset) % 360;
@@ -622,6 +628,7 @@ class Shape {
         if (this.gradType !== 'random') {
             return this.gradient.color1;
         }
+
         if (!this.randomElementState) {
             this.randomElementState = {};
         }
@@ -629,16 +636,21 @@ class Shape {
         if (!this.randomElementState[elementIndex]) {
             this.randomElementState[elementIndex] = {
                 color: Math.random() < 0.5 ? this.gradient.color1 : this.gradient.color2,
-                timer: Math.random() * 10 + 5
+                timer: Math.random() * 5 + 5
             };
         }
 
         const state = this.randomElementState[elementIndex];
-        state.timer -= this.cycleSpeed;
+
+        if (this.lastDeltaTime > 0) {
+            // This now correctly uses animationSpeed instead of cycleSpeed
+            const flickerSpeed = (this.animationSpeed || 0) * this.lastDeltaTime * 60;
+            // state.timer -= flickerSpeed;
+        }
 
         if (state.timer <= 0) {
             state.color = Math.random() < 0.5 ? this.gradient.color1 : this.gradient.color2;
-            state.timer = Math.random() * 10 + 5;
+            state.timer = Math.random() * 5 + 5;
         }
 
         return state.color;
@@ -786,6 +798,9 @@ class Shape {
         const oldWidth = this.width;
         const oldHeight = this.height;
         const oldVizBarCount = this.vizBarCount;
+        const oldRows = this.numberOfRows;
+        const oldCols = this.numberOfColumns;
+        const oldGradType = this.gradType;
 
         // --- PRE-UPDATE LOGIC ---
         const textChanged = props.text !== undefined && props.text !== this.text;
@@ -807,8 +822,6 @@ class Shape {
             this.scrollOffsetX = 0;
             this.waveAngle = 0;
         }
-        const oldRows = this.numberOfRows;
-        const oldCols = this.numberOfColumns;
 
         // --- UNIFIED UPDATE LOGIC ---
         for (const key in props) {
@@ -856,17 +869,25 @@ class Shape {
             this._updateTextMetrics();
         }
 
-        // --- START: ROBUST VISUALIZER UPDATE ---
         const vizBarCountChanged = this.vizBarCount !== oldVizBarCount;
         if (this.shape === 'audio-visualizer' && (!this.vizBarHeights || vizBarCountChanged)) {
             this.vizBarHeights = new Array(parseInt(this.vizBarCount, 10) || 0).fill(0);
         }
-        // --- END: ROBUST VISUALIZER UPDATE ---
+
+        const gradTypeChangedToRandom = this.gradType === 'random' && oldGradType !== 'random';
+        const gridChanged = this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols;
+
+        if (this.gradType === 'random' && (gradTypeChangedToRandom || gridChanged)) {
+            this.randomElementState = {};
+            const totalCells = this.numberOfRows * this.numberOfColumns;
+            for (let i = 0; i < totalCells; i++) {
+                this.randomElementState[i] = {
+                    color: Math.random() < 0.5 ? this.gradient.color1 : this.gradient.color2,
+                    timer: Math.random() * 5 + 5
+                };
+            }
+        }
     }
-
-    // Shape.js
-
-    // Shape.js
 
     _createLocalStrokeStyle(phase = 0) {
         if (this.colorOverride) {
@@ -1564,7 +1585,7 @@ class Shape {
 
         if (this.gradType === 'random' && this.randomElementState) {
             for (const key in this.randomElementState) {
-                this.randomElementState[key].timer -= cycleSpeed * 0.2;
+                this.randomElementState[key].timer -= animSpeed * 1;
             }
         }
 
@@ -1576,18 +1597,35 @@ class Shape {
         const currentText = this.getDisplayText();
         switch (this.textAnimation) {
             case 'marquee':
-            case 'wave':
+            case 'wave': {
                 const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
                 const pixelSize = this.fontSize / 10;
                 const textWidth = currentText.length * (fontData.charWidth + fontData.charSpacing) * pixelSize;
-                this.scrollOffsetX -= textAnimSpeed * 20;
-                if (this.scrollOffsetX < -textWidth) { this.scrollOffsetX = this.width; }
-                if (this.textAnimation === 'wave') { this.waveAngle += textAnimSpeed * 0.5; }
+
+                // This IF statement separates the logic for each animation type
+                if (this.textAnimation === 'marquee') {
+                    // This is the new, correct pixel-by-pixel logic
+                    const scrollInterval = 5 / (this.textAnimationSpeed || 10);
+                    this.scrollTimer += deltaTime;
+                    if (pixelSize > 0 && this.scrollTimer >= scrollInterval) {
+                        const stepsToTake = Math.floor(this.scrollTimer / scrollInterval);
+                        this.scrollOffsetX -= stepsToTake * pixelSize;
+                        this.scrollTimer -= stepsToTake * scrollInterval;
+                    }
+                } else { // 'wave'
+                    // This is the original smooth scroll, now only for the wave animation
+                    this.scrollOffsetX -= textAnimSpeed * 20;
+                }
+
+                if (this.scrollOffsetX < -textWidth) {
+                    this.scrollOffsetX = this.width;
+                }
+
                 this.visibleCharCount = currentText.length;
                 break;
+            }
             case 'typewriter':
                 if (this.typewriterWaitTimer > 0) {
-                    // This line is now correctly time-based
                     this.typewriterWaitTimer -= deltaTime * 60;
                     if (this.typewriterWaitTimer <= 0) {
                         this.visibleCharCount = 0;
@@ -1596,7 +1634,7 @@ class Shape {
                     this.visibleCharCount += textAnimSpeed;
                     if (this.visibleCharCount >= currentText.length) {
                         this.visibleCharCount = currentText.length;
-                        this.typewriterWaitTimer = 50; // Reset wait timer
+                        this.typewriterWaitTimer = 50;
                     }
                 }
                 this.scrollOffsetX = 0;
