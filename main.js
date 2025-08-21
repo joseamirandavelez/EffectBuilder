@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ],
         ring: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
-            'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
+            'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'phaseOffset',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
             'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
@@ -334,12 +334,12 @@ document.addEventListener('DOMContentLoaded', function () {
         ],
         fire: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
-            'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
+            'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread', 'phaseOffset',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         'fire-radial': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
-            'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
+            'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread', 'phaseOffset',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         'pixel-art': [
@@ -351,7 +351,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ],
         'audio-visualizer': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop',
-            'gradColor1', 'gradColor2', 'cycleColors', 'animationSpeed', 'scrollDir',
+            'gradColor1', 'gradColor2', 'cycleColors', 'animationSpeed', 'scrollDir', 'phaseOffset',
             'vizLayout', 'vizDrawStyle', 'vizStyle',
             'vizLineWidth',
             'vizAutoScale', 'vizMaxBarHeight',
@@ -1849,9 +1849,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const time = now / 1000;
                 const randomRate = (Math.sin(time * 0.1) + 1.2); // Slower rate of change
                 const mockVol = (Math.sin(time * 0.8 * randomRate) * 0.5 + Math.sin(time * 0.5 * randomRate) * 0.5) / 2 + 0.5;
-                const mockBass = (Math.sin(time * 1.0 * randomRate) * 0.6 + Math.sin(time * 2.1 * randomRate) * 0.4) / 2 + 0.5;
+                const mockHighs = (Math.sin(time * 1.0 * randomRate) * 0.6 + Math.sin(time * 2.1 * randomRate) * 0.4) / 2 + 0.5;
                 const mockMids = (Math.sin(time * 0.7 * randomRate) * 0.5 + Math.sin(time * 1.2 * randomRate) * 0.5) / 2 + 0.5;
-                const mockHighs = (Math.sin(time * 1.5 * randomRate) * 0.7 + Math.sin(time * 3.0 * randomRate) * 0.3) / 2 + 0.5;
+                const mockBass = (Math.sin(time * 1.5 * randomRate) * 0.7 + Math.sin(time * 3.0 * randomRate) * 0.3) / 2 + 0.5;
 
                 const mockFreqData = new Uint8Array(128);
                 for (let i = 0; i < mockFreqData.length; i++) {
@@ -2360,7 +2360,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_tetrisSpeed`, label: `Object ${newId}: Drop/Fade-in Speed`, type: 'number', default: '5', min: '1', max: '100', description: '(Tetris) The speed of the drop animation.' },
             { property: `obj${newId}_tetrisBounce`, label: `Object ${newId}: Bounce Factor`, type: 'number', default: '50', min: '0', max: '90', description: '(Tetris) How much the blocks bounce on impact. 0 is no bounce.' },
             { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fire-radial) Controls how far the flames spread from the center.' },
-            
+
             // Stroke Fill
             { property: `obj${newId}_enableStroke`, label: `Object ${newId}: Enable Stroke`, type: 'boolean', default: 'false', description: 'Enables a stroke (outline) for the shape.' },
             { property: `obj${newId}_strokeWidth`, label: `Object ${newId}: Stroke Width`, type: 'number', default: '2', min: '1', max: '50', description: 'The thickness of the shape\'s stroke.' },
@@ -4225,7 +4225,20 @@ document.addEventListener('DOMContentLoaded', function () {
             const preservedProps = {
                 name: oldObj.name, locked: oldObj.locked,
                 x: oldObj.x, y: oldObj.y, width: oldObj.width, height: oldObj.height, rotation: oldObj.rotation,
-                gradient: { ...oldObj.gradient }, strokeGradient: { ...oldObj.strokeGradient },
+                gradient: { ...oldObj.gradient },
+                strokeGradient: { ...oldObj.strokeGradient },
+
+                // --- FIX: Preserve all common animation and style properties ---
+                gradType: oldObj.gradType,
+                useSharpGradient: oldObj.useSharpGradient,
+                gradientStop: oldObj.gradientStop,
+                animationMode: oldObj.animationMode,
+                animationSpeed: oldObj.animationSpeed,
+                cycleColors: oldObj.cycleColors,
+                cycleSpeed: oldObj.cycleSpeed,
+                scrollDirection: oldObj.scrollDirection, // Note: Property name on object is 'scrollDirection'
+                phaseOffset: oldObj.phaseOffset,
+
                 enableAudioReactivity: oldObj.enableAudioReactivity, audioTarget: oldObj.audioTarget,
                 audioMetric: oldObj.audioMetric, beatThreshold: oldObj.beatThreshold,
                 audioSensitivity: oldObj.audioSensitivity, audioSmoothing: oldObj.audioSmoothing
@@ -4242,23 +4255,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
                 let valueToSet;
 
-                // Explicitly handle shape type
-                if (propName === 'shape') {
-                    valueToSet = newShapeType;
-                } else if (propName.startsWith('gradColor')) {
-                    valueToSet = preservedProps.gradient[propName.replace('gradColor', 'color')];
-                } else if (propName.startsWith('strokeGradColor')) {
-                    valueToSet = preservedProps.strokeGradient[propName.replace('strokeGradColor', 'color')];
+                // Handle property name difference for scroll direction
+                if (propName === 'scrollDir') {
+                    valueToSet = preservedProps['scrollDirection'];
                 } else {
                     valueToSet = preservedProps[propName];
+                }
+
+                // Explicitly set the new shape type
+                if (propName === 'shape') {
+                    valueToSet = newShapeType;
                 }
 
                 if (valueToSet !== undefined) {
                     // Scale live values back down to UI values for the form's 'default'
                     const propsToScaleDown = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
                     if (propsToScaleDown.includes(propName)) { valueToSet /= 4; }
-                    else if (propName === 'animationSpeed' || propName === 'strokeAnimationSpeed') { valueToSet *= 10; }
-                    else if (propName === 'cycleSpeed' || propName === 'strokeCycleSpeed') { valueToSet *= 50; }
 
                     if (typeof valueToSet === 'boolean') { valueToSet = String(valueToSet); }
                     conf.default = valueToSet;
