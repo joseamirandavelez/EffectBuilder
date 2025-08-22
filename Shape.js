@@ -248,8 +248,9 @@ function getPatternColor(t, c1, c2) {
     }
 }
 
+// Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockHeight, strimerAnimation, strimerDirection, strimerEasing }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -262,8 +263,8 @@ class Shape {
         this.width = width || 200;
         this.height = height || 152;
         this.rotation = rotation || 0;
-        this.baseRotation = this.rotation;
-        this.baseAnimationAngle = 0;
+        this.baseRotation = this.rotation; // Store the original static rotation
+        this.baseAnimationAngle = 0; // Store the original dynamic rotation
         this.gradType = gradType || 'solid';
         this.gradient = gradient ? { ...gradient } : { color1: '#000000', color2: '#000000' };
         this.scrollDirection = scrollDirection || 'right';
@@ -287,7 +288,8 @@ class Shape {
         this.strokeUseSharpGradient = strokeUseSharpGradient || false;
         this.strokeGradientStop = strokeGradientStop || 50;
         this.strokeRotationSpeed = strokeRotationSpeed || 0;
-        this.strokeAnimationAngle = 0;
+        this.strokePhaseOffset = strokePhaseOffset || 10;
+        this.strokeAnimationAngle = 0; // Internal state for rotation
         this.strokeHue1 = 0;
         this.strokeHue2 = 90;
         this.strokeScrollOffset = 0;
@@ -302,12 +304,20 @@ class Shape {
         this.rotationSpeed = rotationSpeed || 0;
         this.rotationAngle = 0;
         this.animationAngle = 0;
-        this.wavePhaseAngle = 0;
+        this.wavePhaseAngle = wavePhaseAngle || 0;
+        this.oscAnimationSpeed = oscAnimationSpeed || 0;
         this.useSharpGradient = useSharpGradient !== undefined ? useSharpGradient : false;
         this.gradientStop = gradientStop !== undefined ? parseFloat(gradientStop) : 50;
         this.locked = locked || false;
         this.numberOfRows = numberOfRows || 1;
         this.numberOfColumns = numberOfColumns || 1;
+        this.phaseOffset = phaseOffset || 10;
+        this.cellOrder = [];
+        this._shuffleCellOrder();
+        this.handleSize = 15;
+        this.rotationHandleOffset = -30;
+        this.rotationHandleRadius = 15;
+        this.handles = [{ name: 'top-left', cursor: 'nwse-resize' }, { name: 'top', cursor: 'ns-resize' }, { name: 'top-right', cursor: 'nesw-resize' }, { name: 'left', cursor: 'ew-resize' }, { name: 'right', cursor: 'ew-resize' }, { name: 'bottom-left', cursor: 'nesw-resize' }, { name: 'bottom', cursor: 'ns-resize' }, { name: 'bottom-right', cursor: 'nwse-resize' }];
         this.randomElementState = null;
         this.text = text || 'Hello';
         this.fontSize = fontSize || 60;
@@ -336,6 +346,7 @@ class Shape {
         this.tetrisBlockCount = tetrisBlockCount || 10;
         this.tetrisAnimation = tetrisAnimation || 'gravity';
         this.tetrisSpeed = tetrisSpeed || 5;
+        this.tetrisBounce = tetrisBounce || 50;
         this.tetrisSpeedDivisor = 10.0;
         this.tetrisBlocks = [];
         this.tetrisSpawnTimer = 0;
@@ -359,16 +370,22 @@ class Shape {
         this.enableAudioReactivity = enableAudioReactivity || false;
         this.audioTarget = audioTarget || 'size';
         this.audioMetric = audioMetric || 'volume';
+        this.audioSensitivity = audioSensitivity || 10;
+        this.audioSmoothing = audioSmoothing;
         this.smoothedAudioValue = 0;
         this.volumeMeterFill = 0;
         this.vizBarCount = vizBarCount || 32;
+        this.vizBarSpacing = vizBarSpacing || 2;
+        this.vizSmoothing = vizSmoothing || 60;
         this.vizStyle = vizStyle || 'bottom';
         this.vizBarHeights = new Array(parseInt(this.vizBarCount, 10)).fill(0);
         this.vizLayout = vizLayout || 'Linear';
         this.vizDrawStyle = vizDrawStyle || 'Bars';
         this.vizUseSegments = vizUseSegments || false;
         this.vizSegmentCount = vizSegmentCount || 16;
+        this.vizSegmentSpacing = vizSegmentSpacing || 1;
         this.vizLineWidth = vizLineWidth || 8;
+
         this.enableSensorReactivity = enableSensorReactivity || false;
         this.sensorTarget = sensorTarget || 'Size';
         this.sensorValueSource = sensorValueSource || 'value';
@@ -376,27 +393,6 @@ class Shape {
         this.sensorMeterFill = sensorMeterFill || 0;
         this.timePlotLineThickness = timePlotLineThickness || 1;
         this.timePlotFillArea = timePlotFillArea;
-
-        // --- FIX: Use strict check for undefined to allow 0 as a valid value ---
-        this.phaseOffset = phaseOffset !== undefined ? phaseOffset : 10;
-        this.strokePhaseOffset = strokePhaseOffset !== undefined ? strokePhaseOffset : 10;
-        this.tetrisBounce = tetrisBounce !== undefined ? tetrisBounce : 50;
-        this.audioSensitivity = audioSensitivity !== undefined ? audioSensitivity : 50;
-        this.audioSmoothing = audioSmoothing !== undefined ? audioSmoothing : 50;
-        this.vizBarSpacing = vizBarSpacing !== undefined ? vizBarSpacing : 2;
-        this.vizSmoothing = vizSmoothing !== undefined ? vizSmoothing : 60;
-        this.vizSegmentSpacing = vizSegmentSpacing !== undefined ? vizSegmentSpacing : 1;
-
-        // --- Properties below were already safe ---
-        this.handleSize = 15;
-        this.rotationHandleOffset = -30;
-        this.rotationHandleRadius = 15;
-        this.handles = [{ name: 'top-left', cursor: 'nwse-resize' }, { name: 'top', cursor: 'ns-resize' }, { name: 'top-right', cursor: 'nesw-resize' }, { name: 'left', cursor: 'ew-resize' }, { name: 'right', cursor: 'ew-resize' }, { name: 'bottom-left', cursor: 'nesw-resize' }, { name: 'bottom', cursor: 'ns-resize' }, { name: 'bottom-right', cursor: 'nwse-resize' }];
-        this.cellOrder = [];
-        this._shuffleCellOrder();
-
-        this.cellStates = []; // For bounce-random independent animations
-        this._initCellStates(); // Initialize the states
 
         this.baseWidth = this.width;
         this.baseHeight = this.height;
@@ -412,6 +408,14 @@ class Shape {
         this.gradientSpeedMultiplier = gradientSpeedMultiplier || (1 / 400);
         this.shapeAnimationSpeedMultiplier = shapeAnimationSpeedMultiplier || 0.05;
         this.seismicAnimationSpeedMultiplier = seismicAnimationSpeedMultiplier || 0.015;
+
+        this.strimerColumns = strimerColumns || 4;
+        this.strimerBlockCount = strimerBlockCount || 3;
+        this.strimerBlockHeight = strimerBlockHeight || 40; // Scaled value (10 * 4)
+        this.strimerAnimation = strimerAnimation || 'Bounce';
+        this.strimerDirection = strimerDirection || 'Random';
+        this.strimerEasing = strimerEasing || 'Linear';
+        this.strimerBlocks = [];
     }
 
     _applySensorReactivity(sensorData) {
@@ -805,6 +809,9 @@ class Shape {
         const oldRows = this.numberOfRows;
         const oldCols = this.numberOfColumns;
         const oldGradType = this.gradType;
+        const oldStrimerColumns = this.strimerColumns;
+        const oldStrimerBlockCount = this.strimerBlockCount;
+        const oldStrimerDirection = this.strimerDirection;
 
         // --- PRE-UPDATE LOGIC ---
         const textChanged = props.text !== undefined && props.text !== this.text;
@@ -863,9 +870,11 @@ class Shape {
         this.basePulseDepth = this.pulseDepth;
 
         // --- POST-UPDATE LOGIC ---
+        if (this.shape === 'strimer' && (this.strimerColumns !== oldStrimerColumns || this.strimerBlockCount !== oldStrimerBlockCount || this.strimerDirection !== oldStrimerDirection)) {
+            this.strimerBlocks = [];
+        }
         if (this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols) {
             this._shuffleCellOrder();
-            this._initCellStates();
         }
         if (this.shape === 'text') {
             if (props.height !== undefined && props.height !== oldHeight) {
@@ -892,51 +901,6 @@ class Shape {
                 };
             }
         }
-    }
-
-    _getTotalCells() {
-        if (this.shape === 'ring') {
-            return this.numberOfSegments || 1;
-        }
-        if (this.shape === 'audio-visualizer') {
-            return this.vizBarCount || 1;
-        }
-        // Default for rectangle, pixel-art, etc.
-        return (this.numberOfRows || 1) * (this.numberOfColumns || 1);
-    }
-
-    _initCellStates() {
-        const totalCells = this._getTotalCells();
-        if (this.cellStates.length !== totalCells) {
-            this.cellStates = Array.from({ length: totalCells }, () => ({
-                progress: 0,
-                state: 'waiting',
-                // Start with a random delay (up to 2 seconds at 60fps)
-                waitTimer: Math.random()
-            }));
-        }
-    }
-
-    /**
-     * Calculates the animation progress value 'p' based on a phase index.
-     * @param {number} phaseIndex - The effective phase index.
-     * @returns {number} The animation progress value, always between 0.0 and 1.0.
-     * @private
-     */
-    _getAnimationProgress(index) {
-        if (this.animationMode === 'bounce-random') {
-            // For bounce-random, return the cell's progress only if it's actively bouncing.
-            if (this.cellStates && this.cellStates[index]) {
-                const cell = this.cellStates[index];
-                return cell.state === 'bouncing' ? cell.progress : 0;
-            }
-            return 0; // Fallback
-        }
-
-        // For all other modes, use the master scrollOffset and phaseOffset
-        const phaseIndex = this._getPhaseIndex(index);
-        const effectiveScrollOffset = this.scrollOffset + phaseIndex * this.phaseOffset / 100.0;
-        return (effectiveScrollOffset % 1.0 + 1.0) % 1.0;
     }
 
     _createLocalStrokeStyle(phase = 0) {
@@ -1149,13 +1113,6 @@ class Shape {
         const p = this._getAnimationProgress(phaseIndex);
 
         switch (this.gradType) {
-            case 'solid':
-                if (this.animationMode === 'bounce-random') {
-                    // This line is now corrected to use 'p' instead of 'progress'
-                    const bounceProgress = (p < 0.5) ? (p * 2) : ((1 - p) * 2);
-                    return bounceProgress > 0.1 ? c2 : c1;
-                }
-                return c1;
             case 'linear':
                 return this._createLinearGradient(c1, c2, p);
             case 'radial':
@@ -1252,6 +1209,26 @@ class Shape {
     }
 
     /**
+     * Calculates the animation progress value 'p' based on a phase index.
+     * @param {number} phaseIndex - The effective phase index.
+     * @returns {number} The animation progress value, always between 0.0 and 1.0.
+     * @private
+     */
+    _getAnimationProgress(phaseIndex) {
+        const effectiveScrollOffset = this.scrollOffset + phaseIndex * this.phaseOffset / 100.0;
+        return (effectiveScrollOffset % 1.0 + 1.0) % 1.0;
+    }
+
+    _applyEasing(t) {
+        switch (this.strimerEasing) {
+            case 'Ease-In': return t * t;
+            case 'Ease-Out': return t * (2 - t);
+            case 'Ease-In-Out': return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            default: return t; // Linear
+        }
+    }
+
+    /**
      * Creates a linear gradient style.
      * @param {string} c1 - The first color.
      * @param {string} c2 - The second color.
@@ -1284,38 +1261,21 @@ class Shape {
 
         if (this.animationMode.includes('bounce')) {
             const bounceProgress = (progress < 0.5) ? (progress * 2) : ((1 - progress) * 2);
-
             if (this.useSharpGradient) {
-                // A band of c1 moves over a background of c2.
-                // p1, the start of the band, travels from completely off-screen-left to completely off-screen-right.
-                const p1 = (bounceProgress * 2) - 1.0;
+                const p1 = bounceProgress * (1.0 - gradientStop);
                 const p2 = p1 + gradientStop;
-
-                if (p2 <= 0 || p1 >= 1) { // Band is completely off-screen
-                    grad.addColorStop(0, c2);
-                    grad.addColorStop(1, c2);
-                } else { // Band is at least partially visible
-                    grad.addColorStop(0, c2);
-                    grad.addColorStop(Math.max(0, p1), c2);
-                    grad.addColorStop(Math.max(0, p1), c1);
-                    grad.addColorStop(Math.min(1, p2), c1);
-                    grad.addColorStop(Math.min(1, p2), c2);
-                    grad.addColorStop(1, c2);
-                }
-            } else { // "wave" bounce logic
-                // The center of the c1 wave travels from off-screen-left to off-screen-right.
-                const extendedRange = 1.0 + gradientStop;
-                const center = bounceProgress * extendedRange - (gradientStop / 2.0);
-
-                const p1 = Math.max(0, center - gradientStop / 2.0);
-                const p2 = Math.min(1, center + gradientStop / 2.0);
-                const clampedCenter = Math.max(0, Math.min(1, center));
-
-                grad.addColorStop(0, c2);      // c2 is background
-                grad.addColorStop(p1, c2);
-                grad.addColorStop(clampedCenter, c1); // c1 is moving wave peak
-                grad.addColorStop(p2, c2);
-                grad.addColorStop(1, c2);
+                grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
+                grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
+                grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
+            } else { // New "wave" bounce logic
+                const center = bounceProgress;
+                const p1 = Math.max(0, center - gradientStop / 2);
+                const p2 = Math.min(1, center + gradientStop / 2);
+                grad.addColorStop(0, c1);
+                grad.addColorStop(p1, c1);
+                grad.addColorStop(center, c2);
+                grad.addColorStop(p2, c1);
+                grad.addColorStop(1, c1);
             }
         } else { // Loop mode
             if (this.useSharpGradient) {
@@ -1377,38 +1337,21 @@ class Shape {
 
         if (this.animationMode.includes('bounce')) {
             const bounceProgress = (progress < 0.5) ? (progress * 2) : ((1 - progress) * 2);
-
             if (this.useSharpGradient) {
-                // A band of c1 moves over a background of c2.
-                // p1, the start of the band, travels from completely off-screen-left to completely off-screen-right.
-                const p1 = (bounceProgress * 2) - 1.0;
+                const p1 = bounceProgress * (1.0 - gradientStop);
                 const p2 = p1 + gradientStop;
-
-                if (p2 <= 0 || p1 >= 1) { // Band is completely off-screen
-                    grad.addColorStop(0, c2);
-                    grad.addColorStop(1, c2);
-                } else { // Band is at least partially visible
-                    grad.addColorStop(0, c2);
-                    grad.addColorStop(Math.max(0, p1), c2);
-                    grad.addColorStop(Math.max(0, p1), c1);
-                    grad.addColorStop(Math.min(1, p2), c1);
-                    grad.addColorStop(Math.min(1, p2), c2);
-                    grad.addColorStop(1, c2);
-                }
-            } else { // "wave" bounce logic
-                // The center of the c1 wave travels from off-screen-left to off-screen-right.
-                const extendedRange = 1.0 + gradientStop;
-                const center = bounceProgress * extendedRange - (gradientStop / 2.0);
-
-                const p1 = Math.max(0, center - gradientStop / 2.0);
-                const p2 = Math.min(1, center + gradientStop / 2.0);
-                const clampedCenter = Math.max(0, Math.min(1, center));
-
-                grad.addColorStop(0, c2);      // c2 is background
-                grad.addColorStop(p1, c2);
-                grad.addColorStop(clampedCenter, c1); // c1 is moving wave peak
-                grad.addColorStop(p2, c2);
-                grad.addColorStop(1, c2);
+                grad.addColorStop(0, c1); grad.addColorStop(p1, c1);
+                grad.addColorStop(p1, c2); grad.addColorStop(p2, c2);
+                grad.addColorStop(p2, c1); grad.addColorStop(1, c1);
+            } else { // New "ripple" bounce logic
+                const center = bounceProgress;
+                const p1 = Math.max(0, center - gradientStop / 2);
+                const p2 = Math.min(1, center + gradientStop / 2);
+                grad.addColorStop(0, c1);
+                grad.addColorStop(p1, c1);
+                grad.addColorStop(center, c2);
+                grad.addColorStop(p2, c1);
+                grad.addColorStop(1, c1);
             }
         } else { // Loop mode
             if (this.useSharpGradient) {
@@ -1487,14 +1430,16 @@ class Shape {
         this._applyAudioReactivity(audioData);
         this._applySensorReactivity(sensorData);
 
+        // Speed values are now scaled by deltaTime for frame-rate independence.
+        // A UI value of 50 now represents a speed of "50 units per second".
         const animSpeed = (this.animationSpeed || 0) * deltaTime;
         const cycleSpeed = (this.cycleSpeed || 0) * deltaTime;
         const strokeAnimSpeed = (this.strokeAnimationSpeed || 0) * deltaTime;
         const strokeCycleSpeed = (this.strokeCycleSpeed || 0) * deltaTime;
-        const oscAnimSpeed = (this.oscAnimationSpeed || 0) * deltaTime;
+        const oscAnimSpeed = (this.oscAnimationSpeed || 0);
         const textAnimSpeed = (this.textAnimationSpeed || 0) * deltaTime;
         const rotationSpeed = (this.rotationSpeed || 0) * deltaTime;
-        const tetrisSpeed = (this.tetrisSpeed || 0) * deltaTime;
+        const tetrisSpeed = (this.tetrisSpeed || 0);
         this.strokeAnimationAngle += (this.strokeRotationSpeed || 0) * deltaTime * 0.06;
 
         if (this.shape === 'audio-visualizer' && audioData && audioData.frequencyData) {
@@ -1558,10 +1503,46 @@ class Shape {
             }
         }
 
+        if (this.shape === 'strimer') {
+            // Initialize blocks if they don't exist
+            if (this.strimerBlocks.length === 0) {
+                for (let i = 0; i < this.strimerColumns; i++) {
+                    for (let j = 0; j < this.strimerBlockCount; j++) {
+                        const direction = this.strimerDirection === 'Random' ? (j % 2 === 0 ? -1 : 1) : (this.strimerDirection === 'Up' ? -1 : 1);
+                        this.strimerBlocks.push({
+                            col: i,
+                            progress: Math.random(),
+                            speed: (Math.random() * 0.5 + 0.5) * 0.01,
+                            direction: direction,
+                            colorIndex: Math.floor(Math.random() * 100)
+                        });
+                    }
+                }
+            }
+
+            // Update block positions
+            this.strimerBlocks.forEach(block => {
+                block.progress += block.speed * (this.animationSpeed / 10) * block.direction * deltaTime * 60;
+
+                if (this.strimerAnimation === 'Bounce') {
+                    if (block.progress >= 1.0) {
+                        block.progress = 1.0;
+                        block.direction = -1;
+                    } else if (block.progress <= 0) {
+                        block.progress = 0;
+                        block.direction = 1;
+                    }
+                } else { // Loop
+                    if (block.progress > 1.0) block.progress -= 1.0;
+                    if (block.progress < 0) block.progress += 1.0;
+                }
+            });
+        }
+
         if (this.shape === 'tetris') {
-            const baseSpeed = tetrisSpeed * 0.2;
+            const baseSpeed = tetrisSpeed;
             if (this.tetrisAnimation === 'fade-in-stack') {
-                const fadeSpeed = baseSpeed * 0.1;
+                const fadeSpeed = baseSpeed * 0.01;
                 if (this.tetrisBlocks.length === 0) {
                     const blockHeight = this.height / this.tetrisBlockCount;
                     for (let i = 0; i < this.tetrisBlockCount; i++) {
@@ -1608,7 +1589,7 @@ class Shape {
                 if (this.tetrisAnimation === 'gravity' || this.tetrisAnimation === 'gravity-fade') {
                     this.tetrisBlocks.forEach((block, index) => {
                         if (block.settled) return;
-                        const gravity = baseSpeed * 30 * deltaTime;
+                        const gravity = baseSpeed * 0.01;
                         const bounceFactor = this.tetrisBounce / 100.0;
                         let bounceBoundaryTop = this.height;
                         this.tetrisBlocks.forEach((other, i) => {
@@ -1636,7 +1617,7 @@ class Shape {
                     if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
                         const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
                         if (!activeBlock.settled) {
-                            const speed = baseSpeed * 100;
+                            const speed = baseSpeed * 0.05;
                             let boundary = (this.tetrisActiveBlockIndex > 0) ? this.tetrisBlocks[this.tetrisActiveBlockIndex - 1].y : this.height;
                             activeBlock.y += speed;
                             if (activeBlock.y + activeBlock.h >= boundary) {
@@ -1680,7 +1661,9 @@ class Shape {
                 const pixelSize = this.fontSize / 10;
                 const textWidth = currentText.length * (fontData.charWidth + fontData.charSpacing) * pixelSize;
 
+                // This IF statement separates the logic for each animation type
                 if (this.textAnimation === 'marquee') {
+                    // This is the new, correct pixel-by-pixel logic
                     const scrollInterval = 5 / (this.textAnimationSpeed || 10);
                     this.scrollTimer += deltaTime;
                     if (pixelSize > 0 && this.scrollTimer >= scrollInterval) {
@@ -1689,6 +1672,7 @@ class Shape {
                         this.scrollTimer -= stepsToTake * scrollInterval;
                     }
                 } else { // 'wave'
+                    // This is the original smooth scroll, now only for the wave animation
                     this.scrollOffsetX -= textAnimSpeed * 20;
                 }
 
@@ -1720,43 +1704,10 @@ class Shape {
                 break;
         }
 
-        if (this.gradType !== 'alternating' && this.gradType !== 'random') {
+        if (this.gradType !== 'solid' && this.gradType !== 'alternating' && this.gradType !== 'random') {
             const increment = animSpeed * 0.025;
             const directionMultiplier = (this.scrollDirection === 'left' || this.scrollDirection === 'up') ? -1 : 1;
-
-            if (this.animationMode === 'bounce-random') {
-                if (this.cellStates) {
-                    const bounceSpeed = animSpeed * 0.025;
-                    // Normalize timer decrement to be frame-rate independent (based on 60fps)
-                    const delayDecrement = deltaTime * 60;
-
-                    this.cellStates.forEach(state => {
-                        if (state.state === 'waiting') {
-                            state.waitTimer -= delayDecrement;
-                            if (state.waitTimer <= 0) {
-                                state.state = 'bouncing';
-                                state.progress = 0;
-                            }
-                        } else if (state.state === 'bouncing') {
-                            state.progress += bounceSpeed;
-                            if (state.progress >= 1.0) {
-                                state.progress = 1.0; // Clamp the value
-                                state.state = 'waiting';
-                                // Set a new random delay for the next bounce (e.g., 1 to 3 seconds)
-                                state.waitTimer = Math.random() * 120;
-                            }
-                        }
-                    });
-                }
-            } else {
-                // For all other modes, we update the master scroll offset
-                this.scrollOffset += increment * directionMultiplier;
-                if (this.animationMode.includes('bounce')) {
-                    const oldProgress = (this.scrollOffset % 1.0 + 1.0) % 1.0;
-                    const newProgress = ((this.scrollOffset + (increment * directionMultiplier)) % 1.0 + 1.0) % 1.0;
-                    this.isReversing = newProgress > 0.5;
-                }
-            }
+            this.scrollOffset += increment * directionMultiplier;
         }
 
         if (this.strokeGradType !== 'solid' && this.strokeGradType !== 'alternating' && this.strokeGradType !== 'random') {
@@ -1768,11 +1719,11 @@ class Shape {
         let shapeIncrement;
         if (this.shape === 'oscilloscope') {
             if (this.oscDisplayMode === 'seismic') {
-                shapeIncrement = oscAnimSpeed * 0.15;
+                shapeIncrement = oscAnimSpeed * this.seismicAnimationSpeedMultiplier * deltaTime;
                 const directionMultiplier = (this.scrollDirection === 'right' || this.scrollDirection === 'down') ? 1 : 1;
                 shapeIncrement *= directionMultiplier;
             } else {
-                shapeIncrement = oscAnimSpeed * 0.5;
+                shapeIncrement = oscAnimSpeed * 0.5 * deltaTime;
             }
         } else {
             shapeIncrement = animSpeed * 0.5;
@@ -1970,6 +1921,20 @@ class Shape {
                 this.ctx.fillRect(Math.round(drawX), Math.round(drawY), Math.ceil(block.w), Math.ceil(block.h));
             });
             this.ctx.globalAlpha = 1.0;
+        } else if (this.shape === 'strimer') {
+            this.ctx.beginPath();
+            this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+            this.ctx.clip();
+
+            const colWidth = this.width / this.strimerColumns;
+            this.strimerBlocks.forEach((block, index) => {
+                const easedProgress = this._applyEasing(block.progress);
+                const yPos = -this.height / 2 - this.strimerBlockHeight + easedProgress * (this.height + this.strimerBlockHeight);
+                const xPos = -this.width / 2 + block.col * colWidth;
+
+                this.ctx.fillStyle = this._createLocalFillStyle(block.colorIndex);
+                this.ctx.fillRect(xPos, yPos, colWidth, this.strimerBlockHeight);
+            });
         } else if (this.shape === 'text') {
             const textToRender = this.getDisplayText();
             const centeredShape = { ...this, x: -this.width / 2, y: -this.height / 2, };

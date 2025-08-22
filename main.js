@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ],
         ring: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
-            'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'phaseOffset',
+            'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
             'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
@@ -334,12 +334,12 @@ document.addEventListener('DOMContentLoaded', function () {
         ],
         fire: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
-            'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread', 'phaseOffset',
+            'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         'fire-radial': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
-            'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread', 'phaseOffset',
+            'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         'pixel-art': [
@@ -351,13 +351,17 @@ document.addEventListener('DOMContentLoaded', function () {
         ],
         'audio-visualizer': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop',
-            'gradColor1', 'gradColor2', 'cycleColors', 'animationSpeed', 'scrollDir', 'phaseOffset',
+            'gradColor1', 'gradColor2', 'cycleColors', 'animationSpeed', 'scrollDir',
             'vizLayout', 'vizDrawStyle', 'vizStyle',
             'vizLineWidth',
             'vizAutoScale', 'vizMaxBarHeight',
             'vizBarCount', 'vizBarSpacing', 'vizSmoothing',
             'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing',
             'vizInnerRadius'
+        ],
+        'strimer': [
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed',
+            'strimerColumns', 'strimerBlockCount', 'strimerBlockHeight', 'strimerAnimation', 'strimerDirection', 'strimerEasing'
         ],
     };
 
@@ -1091,7 +1095,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 let exportValue = liveValue;
 
                 // `vizSegmentSpacing` and `vizBarSpacing` have been removed from this list.
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockHeight'];
 
                 if (conf.type === 'number') {
                     const numValue = parseFloat(liveValue) || 0;
@@ -1391,6 +1395,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius'], icon: 'bi-bar-chart-line-fill' },
                 'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
                 'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'sensorValueSource', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'], icon: 'bi-cpu-fill' },
+                'Strimer': { props: ['strimerColumns', 'strimerBlockCount', 'strimerBlockHeight', 'strimerAnimation', 'strimerDirection', 'strimerEasing'], icon: 'bi-segmented-nav' },
             };
             const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
             let isFirstTab = true;
@@ -1849,9 +1854,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const time = now / 1000;
                 const randomRate = (Math.sin(time * 0.1) + 1.2); // Slower rate of change
                 const mockVol = (Math.sin(time * 0.8 * randomRate) * 0.5 + Math.sin(time * 0.5 * randomRate) * 0.5) / 2 + 0.5;
-                const mockHighs = (Math.sin(time * 1.0 * randomRate) * 0.6 + Math.sin(time * 2.1 * randomRate) * 0.4) / 2 + 0.5;
+                const mockBass = (Math.sin(time * 1.0 * randomRate) * 0.6 + Math.sin(time * 2.1 * randomRate) * 0.4) / 2 + 0.5;
                 const mockMids = (Math.sin(time * 0.7 * randomRate) * 0.5 + Math.sin(time * 1.2 * randomRate) * 0.5) / 2 + 0.5;
-                const mockBass = (Math.sin(time * 1.5 * randomRate) * 0.7 + Math.sin(time * 3.0 * randomRate) * 0.3) / 2 + 0.5;
+                const mockHighs = (Math.sin(time * 1.5 * randomRate) * 0.7 + Math.sin(time * 3.0 * randomRate) * 0.3) / 2 + 0.5;
 
                 const mockFreqData = new Uint8Array(128);
                 for (let i = 0; i < mockFreqData.length; i++) {
@@ -1949,7 +1954,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const values = {};
         const prefix = `obj${id}_`;
         const configs = configStore.filter(c => c.property && c.property.startsWith(prefix));
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockHeight'];
 
         configs.forEach(conf => {
             const key = conf.property.replace(prefix, '');
@@ -2030,7 +2035,7 @@ document.addEventListener('DOMContentLoaded', function () {
      * Reads all properties from the 'objects' array and updates the form inputs to match.
      */
     function updateFormValuesFromObjects() {
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockHeight'];
 
         objects.forEach(obj => {
             const fieldset = form.querySelector(`fieldset[data-object-id="${obj.id}"]`);
@@ -2136,7 +2141,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     value = String(value).replace(/\\n/g, '\n');
                 }
 
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockHeight'];
                 if (propsToScale.includes(key) && typeof value === 'number') {
                     value *= 4;
                 }
@@ -2307,7 +2312,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function getDefaultObjectConfig(newId) {
         return [
             // Geometry & Transform
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art,audio-visualizer', description: 'The basic shape of the object.' },
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art,audio-visualizer,strimer', description: 'The basic shape of the object.' },
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320', description: 'The horizontal position of the object on the canvas.' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200', description: 'The vertical position of the object on the canvas.' },
             { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320', description: 'The width of the object.' },
@@ -2402,13 +2407,20 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_vizSegmentCount`, label: `Object ${newId}: Segment Count`, type: 'number', default: '16', min: '2', max: '64', description: '(Visualizer) The number of vertical LED segments the bar is divided into.' },
             { property: `obj${newId}_vizSegmentSpacing`, label: `Object ${newId}: Segment Spacing`, type: 'number', default: '1', min: '0', max: '10', description: '(Visualizer) The spacing between segments in a bar.' },
 
-
             { property: `obj${newId}_enableSensorReactivity`, label: `Object ${newId}: Enable Sensor Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sensor data.' },
             { property: `obj${newId}_sensorTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Sensor Meter', values: 'Sensor Meter,Time Plot', description: 'Selects the specific effect that the object will perform in response to sensor data.' },
             { property: `obj${newId}_sensorValueSource`, label: `Object ${newId}: Sensor Value`, type: 'combobox', default: 'value', values: 'value,min,max', description: 'The source of the data value to use from the selected sensor (current, min, or max).' },
             { property: `obj${newId}_userSensor`, label: `Object ${newId}: Sensor`, type: 'sensor', default: 'CPU Load', description: 'The hardware sensor to monitor for reactivity.' },
             { property: `obj${newId}_timePlotLineThickness`, label: `Object ${newId}: Line Thickness`, type: 'number', default: '1', min: '1', max: '50', description: '(Time Plot) Sets the thickness of the time-plot line.' },
             { property: `obj${newId}_timePlotFillArea`, label: `Object ${newId}: Fill Area`, type: 'boolean', default: 'false', description: '(Time Plot) Fills the area under the time plot line.' },
+
+            // Strimer
+            { property: `obj${newId}_strimerColumns`, label: `Object ${newId}: Columns`, type: 'number', default: '4', min: '1', max: '50', description: '(Strimer) Number of vertical columns.' },
+            { property: `obj${newId}_strimerBlockCount`, label: `Object ${newId}: Block Count`, type: 'number', default: '3', min: '1', max: '20', description: '(Strimer) Number of animated blocks per column.' },
+            { property: `obj${newId}_strimerBlockHeight`, label: `Object ${newId}: Block Height`, type: 'number', default: '10', min: '1', max: '100', description: '(Strimer) Height of each block in pixels.' },
+            { property: `obj${newId}_strimerAnimation`, label: `Object ${newId}: Animation`, type: 'combobox', default: 'Bounce', values: 'Bounce,Loop', description: '(Strimer) How blocks behave at the edges.' },
+            { property: `obj${newId}_strimerDirection`, label: `Object ${newId}: Direction`, type: 'combobox', default: 'Random', values: 'Up,Down,Random', description: '(Strimer) The initial direction of the blocks.' },
+            { property: `obj${newId}_strimerEasing`, label: `Object ${newId}: Easing`, type: 'combobox', default: 'Linear', values: 'Linear,Ease-In,Ease-Out,Ease-In-Out', description: '(Strimer) The acceleration curve of the block movement.' }
         ];
 
     }
@@ -2494,8 +2506,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const canvas = document.getElementById('signalCanvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    canvas.width = 1280;
-    canvas.height = 800;
+    canvas.width = 320;
+    canvas.height = 200;
     let objects = [];
     
     ${jsVars}
@@ -2538,9 +2550,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const id = parseInt(idString, 10);
             return isNaN(id) ? null : String(id);
         }).filter(id => id !== null))];
-        
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
 
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockHeight'];
+        
         objects = uniqueIds.map(id => {
             const config = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
             const prefix = 'obj' + id + '_';
@@ -2556,9 +2568,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         value *= 4;
                     }
 
-                    if (propName.startsWith('gradColor')) {
+                    // FIX: This logic correctly separates color and alpha properties.
+                    if (propName === 'gradColor1' || propName === 'gradColor2') {
                         config.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                    } else if (propName.startsWith('strokeGradColor')) {
+                    } else if (propName === 'strokeGradColor1' || propName === 'strokeGradColor2') {
                         config.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
                     } else if (propName === 'scrollDir') {
                         config.scrollDirection = value;
@@ -2590,8 +2603,6 @@ document.addEventListener('DOMContentLoaded', function () {
             sensorData[obj.userSensor] = getSensorValue(obj.userSensor);
         });
 
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
-
         objects.forEach(obj => {
             const prefix = 'obj' + obj.id + '_';
             const propsToUpdate = { gradient: {}, strokeGradient: {} };
@@ -2603,13 +2614,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (value === "true") value = true;
                     if (value === "false") value = false;
                     
-                    if (propsToScale.includes(propName) && typeof value === 'number') {
-                        value *= 4;
-                    }
-
-                    if (propName.startsWith('gradColor')) {
+                    // FIX: This logic correctly separates color and alpha properties for live updates.
+                    if (propName === 'gradColor1' || propName === 'gradColor2') {
                         propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                    } else if (propName.startsWith('strokeGradColor')) {
+                    } else if (propName === 'strokeGradColor1' || propName === 'strokeGradColor2') {
                         propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
                     } else if (propName === 'scrollDir') {
                         propsToUpdate.scrollDirection = value;
@@ -2621,7 +2629,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 } catch (e) {}
             });
 
-            obj.update(propsToUpdate);
+            // FIX: Replaces the dangerous obj.update() call with safe, direct assignment.
+            for (const key in propsToUpdate) {
+                if (propsToUpdate[key] === undefined) continue;
+                if (key === 'gradient') {
+                    if(!obj.gradient) obj.gradient = {};
+                    if(!obj.baseGradient) obj.baseGradient = {};
+                    Object.assign(obj.gradient, propsToUpdate.gradient);
+                    Object.assign(obj.baseGradient, propsToUpdate.gradient);
+                } else if (key === 'strokeGradient') {
+                    if(!obj.strokeGradient) obj.strokeGradient = {};
+                    Object.assign(obj.strokeGradient, propsToUpdate.strokeGradient);
+                } else {
+                    obj[key] = propsToUpdate[key];
+                    if (key === 'rotation') {
+                        obj.baseRotation = propsToUpdate[key];
+                    }
+                }
+            }
 
             if (shouldAnimate) {
                 obj.updateAnimationState(audioData, sensorData, deltaTime);
@@ -2735,7 +2760,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // MODIFIED - Added Ctrl+C and Ctrl+V keyboard shortcuts for copy/paste
     document.addEventListener('keydown', (e) => {
-        // Handle Undo, Redo, Copy, and Paste first, as these should work even when an input is focused.
+        const target = e.target;
+        const isInputFocused = target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.isContentEditable;
+
         if (e.ctrlKey || e.metaKey) {
             if (e.key.toLowerCase() === 'z') {
                 e.preventDefault();
@@ -2748,6 +2777,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 applyHistoryState(state);
                 return;
             } else if (e.key.toLowerCase() === 'c') {
+                if (isInputFocused) {
+                    return;
+                }
                 e.preventDefault();
                 if (selectedObjectIds.length > 0) {
                     // Trigger the same logic as the copy button click
@@ -2755,6 +2787,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 return;
             } else if (e.key.toLowerCase() === 'v') {
+                if (isInputFocused) {
+                    return;
+                }
                 e.preventDefault();
                 if (propertyClipboard && selectedObjectIds.length > 0) {
                     // Trigger the same logic as the paste button click
@@ -2763,11 +2798,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
         }
-
-        const target = e.target;
-        const isInputFocused = target.tagName === 'INPUT' ||
-            target.tagName === 'TEXTAREA' ||
-            target.isContentEditable;
 
         // Block other application-specific hotkeys if an input is focused.
         if (isInputFocused) {
@@ -4225,20 +4255,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const preservedProps = {
                 name: oldObj.name, locked: oldObj.locked,
                 x: oldObj.x, y: oldObj.y, width: oldObj.width, height: oldObj.height, rotation: oldObj.rotation,
-                gradient: { ...oldObj.gradient },
-                strokeGradient: { ...oldObj.strokeGradient },
-
-                // --- FIX: Preserve all common animation and style properties ---
-                gradType: oldObj.gradType,
-                useSharpGradient: oldObj.useSharpGradient,
-                gradientStop: oldObj.gradientStop,
-                animationMode: oldObj.animationMode,
-                animationSpeed: oldObj.animationSpeed,
-                cycleColors: oldObj.cycleColors,
-                cycleSpeed: oldObj.cycleSpeed,
-                scrollDirection: oldObj.scrollDirection, // Note: Property name on object is 'scrollDirection'
-                phaseOffset: oldObj.phaseOffset,
-
+                gradient: { ...oldObj.gradient }, strokeGradient: { ...oldObj.strokeGradient },
                 enableAudioReactivity: oldObj.enableAudioReactivity, audioTarget: oldObj.audioTarget,
                 audioMetric: oldObj.audioMetric, beatThreshold: oldObj.beatThreshold,
                 audioSensitivity: oldObj.audioSensitivity, audioSmoothing: oldObj.audioSmoothing
@@ -4255,22 +4272,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
                 let valueToSet;
 
-                // Handle property name difference for scroll direction
-                if (propName === 'scrollDir') {
-                    valueToSet = preservedProps['scrollDirection'];
-                } else {
-                    valueToSet = preservedProps[propName];
-                }
-
-                // Explicitly set the new shape type
+                // Explicitly handle shape type
                 if (propName === 'shape') {
                     valueToSet = newShapeType;
+                } else if (propName.startsWith('gradColor')) {
+                    valueToSet = preservedProps.gradient[propName.replace('gradColor', 'color')];
+                } else if (propName.startsWith('strokeGradColor')) {
+                    valueToSet = preservedProps.strokeGradient[propName.replace('strokeGradColor', 'color')];
+                } else {
+                    valueToSet = preservedProps[propName];
                 }
 
                 if (valueToSet !== undefined) {
                     // Scale live values back down to UI values for the form's 'default'
                     const propsToScaleDown = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth'];
                     if (propsToScaleDown.includes(propName)) { valueToSet /= 4; }
+                    else if (propName === 'animationSpeed' || propName === 'strokeAnimationSpeed') { valueToSet *= 10; }
+                    else if (propName === 'cycleSpeed' || propName === 'strokeCycleSpeed') { valueToSet *= 50; }
 
                     if (typeof valueToSet === 'boolean') { valueToSet = String(valueToSet); }
                     conf.default = valueToSet;
@@ -4384,7 +4402,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     'tetris': ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'],
                     'fire-radial': ['fireSpread'],
                     'pixel-art': ['pixelArtData'],
-                    'audio-visualizer': ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius']
+                    'audio-visualizer': ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius'],
+                    'strimer': ['strimerColumns', 'strimerBlockCount', 'strimerBlockHeight', 'strimerAnimation', 'strimerDirection', 'strimerEasing']
                 };
                 if (shapeSpecificMap[sourceObject.shape]) {
                     copyProps(shapeSpecificMap[sourceObject.shape]);
