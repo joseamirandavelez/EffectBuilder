@@ -250,7 +250,7 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockHeight, strimerAnimation, strimerDirection, strimerEasing }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockHeight, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -385,6 +385,8 @@ class Shape {
         this.vizSegmentCount = vizSegmentCount || 16;
         this.vizSegmentSpacing = vizSegmentSpacing || 1;
         this.vizLineWidth = vizLineWidth || 8;
+        this.vizBassLevel = vizBassLevel || 50;
+        this.vizTrebleBoost = vizTrebleBoost || 125;
 
         this.enableSensorReactivity = enableSensorReactivity || false;
         this.sensorTarget = sensorTarget || 'Size';
@@ -416,6 +418,14 @@ class Shape {
         this.strimerDirection = strimerDirection || 'Random';
         this.strimerEasing = strimerEasing || 'Linear';
         this.strimerBlocks = [];
+        this.strimerBlockSpacing = strimerBlockSpacing || 20; // 5 * 4
+        this.strimerGlitchFrequency = strimerGlitchFrequency || 0;
+        this.strimerPulseSync = strimerPulseSync || true;
+        this.strimerPulseSpeed = strimerPulseSpeed || 0;
+        this.pulseProgress = 0; // For pulse animation
+        this.strimerAudioSensitivity = strimerAudioSensitivity || 100;
+        this.strimerBassLevel = strimerBassLevel || 50;
+        this.strimerTrebleBoost = strimerTrebleBoost || 150;
     }
 
     _applySensorReactivity(sensorData) {
@@ -812,6 +822,7 @@ class Shape {
         const oldStrimerColumns = this.strimerColumns;
         const oldStrimerBlockCount = this.strimerBlockCount;
         const oldStrimerDirection = this.strimerDirection;
+        const oldStrimerAnimation = this.strimerAnimation;
 
         // --- PRE-UPDATE LOGIC ---
         const textChanged = props.text !== undefined && props.text !== this.text;
@@ -870,8 +881,9 @@ class Shape {
         this.basePulseDepth = this.pulseDepth;
 
         // --- POST-UPDATE LOGIC ---
-        if (this.shape === 'strimer' && (this.strimerColumns !== oldStrimerColumns || this.strimerBlockCount !== oldStrimerBlockCount || this.strimerDirection !== oldStrimerDirection)) {
+        if (this.shape === 'strimer' && (this.strimerColumns !== oldStrimerColumns || this.strimerBlockCount !== oldStrimerBlockCount || this.strimerDirection !== oldStrimerDirection || this.strimerAnimation !== oldStrimerAnimation)) {
             this.strimerBlocks = [];
+            this.strimerMeterHeights = [];
         }
         if (this.numberOfRows !== oldRows || this.numberOfColumns !== oldCols) {
             this._shuffleCellOrder();
@@ -1483,6 +1495,11 @@ class Shape {
             for (let i = 0; i < barCount; i++) {
                 let targetHeight;
                 const normalizedAvg = normalizedAvgs[i];
+
+                // Apply a perceptual weighting curve to boost higher frequencies
+                const boost = 0.5 + (i / barCount) * 2.0;
+                const finalAvg = normalizedAvg * boost;
+
                 if (this.vizAutoScale !== false) {
                     let shapeMaxHeight;
                     if (this.vizLayout === 'Circular') {
@@ -1493,7 +1510,7 @@ class Shape {
                         shapeMaxHeight = this.height;
                     }
                     const scaleFactor = (peakNormalizedValue > 0) ? (1.0 / peakNormalizedValue) : 0;
-                    targetHeight = Math.max(0, normalizedAvg * scaleFactor * shapeMaxHeight);
+                    targetHeight = Math.max(0, finalAvg * scaleFactor * shapeMaxHeight);
                 } else {
                     const availableSpace = this.vizLayout === 'Circular' ? (Math.min(this.width, this.height) / 2) : this.height;
                     const maxBarHeight = ((this.vizMaxBarHeight || 30) / 100.0) * availableSpace;
@@ -1504,39 +1521,64 @@ class Shape {
         }
 
         if (this.shape === 'strimer') {
-            // Initialize blocks if they don't exist
-            if (this.strimerBlocks.length === 0) {
+            const needsInitialization = this.strimerBlocks.length === 0 || this.strimerBlocks.length !== (this.strimerColumns * this.strimerBlockCount);
+            if (needsInitialization) {
+                this.strimerBlocks = [];
                 for (let i = 0; i < this.strimerColumns; i++) {
                     for (let j = 0; j < this.strimerBlockCount; j++) {
                         const direction = this.strimerDirection === 'Random' ? (j % 2 === 0 ? -1 : 1) : (this.strimerDirection === 'Up' ? -1 : 1);
                         this.strimerBlocks.push({
                             col: i,
-                            progress: Math.random(),
+                            progress: this.strimerAnimation === 'Cascade' ? (j / this.strimerBlockCount) : Math.random(),
                             speed: (Math.random() * 0.5 + 0.5) * 0.01,
                             direction: direction,
-                            colorIndex: Math.floor(Math.random() * 100)
+                            colorIndex: Math.floor(Math.random() * 100),
+                            glitchTimer: 0,
+                            isGlitched: false
                         });
                     }
                 }
             }
 
-            // Update block positions
-            this.strimerBlocks.forEach(block => {
-                block.progress += block.speed * (this.animationSpeed / 10) * block.direction * deltaTime * 60;
+            if (this.strimerPulseSpeed > 0) {
+                const pulseSpeed = (this.strimerPulseSpeed / 10) * 0.05;
+                this.pulseProgress = (this.pulseProgress + pulseSpeed * deltaTime * 60) % (2 * Math.PI);
+            }
 
-                if (this.strimerAnimation === 'Bounce') {
-                    if (block.progress >= 1.0) {
-                        block.progress = 1.0;
-                        block.direction = -1;
-                    } else if (block.progress <= 0) {
-                        block.progress = 0;
-                        block.direction = 1;
-                    }
-                } else { // Loop
-                    if (block.progress > 1.0) block.progress -= 1.0;
-                    if (block.progress < 0) block.progress += 1.0;
-                }
-            });
+            // Update animation based on style
+            switch (this.strimerAnimation) {
+                case 'Audio Meter':
+                    // Logic is handled in the draw method based on audioData
+                    break;
+
+                default: // Bounce, Loop, Cascade
+                    this.strimerBlocks.forEach(block => {
+                        if (this.strimerGlitchFrequency > 0) {
+                            if (block.glitchTimer > 0) {
+                                block.glitchTimer -= deltaTime * 60;
+                                if (block.glitchTimer <= 0) {
+                                    block.isGlitched = false;
+                                }
+                            } else if (Math.random() < (this.strimerGlitchFrequency / 5000)) {
+                                block.isGlitched = true;
+                                block.glitchTimer = Math.random() * 10 + 5;
+                            }
+                        }
+
+                        if (block.isGlitched) return;
+
+                        block.progress += block.speed * (this.animationSpeed / 10) * block.direction * deltaTime * 60;
+
+                        if (this.strimerAnimation === 'Bounce') {
+                            if (block.progress >= 1.0) { block.progress = 1.0; block.direction *= -1; }
+                            else if (block.progress <= 0) { block.progress = 0; block.direction *= -1; }
+                        } else { // Loop or Cascade
+                            if (block.progress > 1.0) block.progress -= 1.0;
+                            if (block.progress < 0) block.progress += 1.0;
+                        }
+                    });
+                    break;
+            }
         }
 
         if (this.shape === 'tetris') {
@@ -1817,7 +1859,7 @@ class Shape {
         }
     }
 
-    draw(isSelected) {
+    draw(isSelected, audioData = {}) {
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
         const angleToUse = this.getRenderAngle();
@@ -1927,14 +1969,76 @@ class Shape {
             this.ctx.clip();
 
             const colWidth = this.width / this.strimerColumns;
-            this.strimerBlocks.forEach((block, index) => {
-                const easedProgress = this._applyEasing(block.progress);
-                const yPos = -this.height / 2 - this.strimerBlockHeight + easedProgress * (this.height + this.strimerBlockHeight);
-                const xPos = -this.width / 2 + block.col * colWidth;
 
-                this.ctx.fillStyle = this._createLocalFillStyle(block.colorIndex);
-                this.ctx.fillRect(xPos, yPos, colWidth, this.strimerBlockHeight);
-            });
+            if (this.strimerAnimation === 'Audio Meter') {
+                // Initialize meter heights if needed
+                if (!this.strimerMeterHeights || this.strimerMeterHeights.length !== this.strimerColumns) {
+                    this.strimerMeterHeights = new Array(this.strimerColumns).fill(0);
+                }
+
+                const metrics = ['bass', 'mids', 'highs', 'volume'];
+                const smoothingFactor = (this.strimerAudioSmoothing || 0) / 100.0;
+
+                for (let i = 0; i < this.strimerColumns; i++) {
+                    const metricName = metrics[i % metrics.length];
+                    let audioValue = (audioData && audioData[metricName]) ? audioData[metricName].avg : 0;
+
+                    // Apply controllable bass/treble boost across the columns
+                    const startPoint = (this.strimerBassLevel || 50) / 400.0;
+                    const endPoint = (this.strimerTrebleBoost || 150) / 10.0;
+                    const boost = startPoint + (i / (this.strimerColumns - 1 || 1)) * (endPoint - startPoint);
+                    audioValue *= boost;
+
+                    const targetHeight = Math.min(this.height, audioValue * (this.strimerAudioSensitivity / 5000.0) * this.height);
+
+                    // Apply smoothing
+                    this.strimerMeterHeights[i] = smoothingFactor * this.strimerMeterHeights[i] + (1.0 - smoothingFactor) * targetHeight;
+
+                    const fillHeight = this.strimerMeterHeights[i];
+                    const xPos = -this.width / 2 + i * colWidth;
+                    const yPos = this.height / 2 - fillHeight;
+
+                    let alpha = 1.0;
+                    if (this.strimerPulseSpeed > 0) {
+                        const phaseOffset = this.strimerPulseSync ? 0 : block.col * (2 * Math.PI / this.strimerColumns);
+                        alpha = (Math.sin(this.pulseProgress + phaseOffset) + 1) / 2;
+                    }
+                    this.ctx.globalAlpha = alpha;
+
+                    this.ctx.fillStyle = this._createLocalFillStyle(i);
+                    this.ctx.fillRect(xPos, yPos, colWidth, fillHeight);
+                }
+            } else {
+                this.strimerBlocks.forEach((block, index) => {
+                    if (block.isGlitched) return;
+
+                    let yPos, blockHeight = this.strimerBlockHeight;
+                    let alpha = 1.0;
+
+                    // Apply pulse as a modifier if enabled
+                    if (this.strimerPulseSpeed > 0) {
+                        const phaseOffset = this.strimerPulseSync ? 0 : block.col * (2 * Math.PI / this.strimerColumns);
+                        alpha = (Math.sin(this.pulseProgress + phaseOffset) + 1) / 2;
+                    }
+
+                    if (this.strimerAnimation === 'Cascade') {
+                        const totalSpacing = this.strimerBlockCount * this.strimerBlockSpacing;
+                        const totalBlockHeight = this.strimerBlockCount * blockHeight;
+                        const totalTravel = this.height + totalSpacing + totalBlockHeight;
+                        yPos = -this.height / 2 - totalBlockHeight + block.progress * totalTravel;
+                    } else { // Bounce or Loop
+                        const easedProgress = this._applyEasing(block.progress);
+                        yPos = -this.height / 2 - blockHeight + easedProgress * (this.height + blockHeight);
+                    }
+
+                    const xPos = -this.width / 2 + block.col * colWidth;
+
+                    this.ctx.globalAlpha = alpha;
+                    this.ctx.fillStyle = this._createLocalFillStyle(block.colorIndex);
+                    this.ctx.fillRect(xPos, yPos, colWidth, blockHeight);
+                    this.ctx.globalAlpha = 1.0;
+                });
+            }
         } else if (this.shape === 'text') {
             const textToRender = this.getDisplayText();
             const centeredShape = { ...this, x: -this.width / 2, y: -this.height / 2, };

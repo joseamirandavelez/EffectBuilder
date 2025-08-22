@@ -349,19 +349,21 @@ document.addEventListener('DOMContentLoaded', function () {
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
             'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
         ],
-        'audio-visualizer': [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop',
+        'audio-visualizer': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationSpeed', 'scrollDir',
             'vizLayout', 'vizDrawStyle', 'vizStyle',
             'vizLineWidth',
             'vizAutoScale', 'vizMaxBarHeight',
             'vizBarCount', 'vizBarSpacing', 'vizSmoothing',
             'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing',
-            'vizInnerRadius'
+            'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost'
         ],
         'strimer': [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed',
-            'strimerColumns', 'strimerBlockCount', 'strimerBlockHeight', 'strimerAnimation', 'strimerDirection', 'strimerEasing'
+            'shape', 'x', 'y', 'width', 'height', 'rotation',
+            'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2',
+            'cycleColors', 'cycleSpeed', 'animationSpeed', 'scrollDir', 'phaseOffset',
+            'strimerColumns', 'strimerBlockCount', 'strimerBlockHeight', 'strimerAnimation', 'strimerDirection', 'strimerEasing',
+            'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerPulseSync', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed'
         ],
     };
 
@@ -1392,10 +1394,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'], icon: 'bi-grid-3x3-gap-fill' },
                 'Fire': { props: ['fireSpread'], icon: 'bi-fire' },
                 'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
-                'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius'], icon: 'bi-bar-chart-line-fill' },
+                'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost'], icon: 'bi-bar-chart-line-fill' },
                 'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
                 'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'sensorValueSource', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'], icon: 'bi-cpu-fill' },
-                'Strimer': { props: ['strimerColumns', 'strimerBlockCount', 'strimerBlockHeight', 'strimerAnimation', 'strimerDirection', 'strimerEasing'], icon: 'bi-segmented-nav' },
+                'Strimer': { props: ['strimerColumns', 'strimerBlockCount', 'strimerBlockHeight', 'strimerAnimation', 'strimerDirection', 'strimerEasing', 'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed'], icon: 'bi-segmented-nav' },
             };
             const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
             let isFirstTab = true;
@@ -1817,7 +1819,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const obj = objects[i];
             // This now correctly passes deltaTime to the object for time-based animation
             obj.updateAnimationState(audioData, sensorData, deltaTime);
-            obj.draw(selectedObjectIds.includes(obj.id));
+            obj.draw(selectedObjectIds.includes(obj.id), audioData);
             obj.dirty = false;
         }
 
@@ -1847,42 +1849,33 @@ document.addEventListener('DOMContentLoaded', function () {
         let audioData = {};
         let sensorData = {};
 
-        if (soundEnabled) {
-            if (isAudioSetup) {
-                audioData = getAudioMetrics();
-            } else {
-                const time = now / 1000;
-                const randomRate = (Math.sin(time * 0.1) + 1.2); // Slower rate of change
-                const mockVol = (Math.sin(time * 0.8 * randomRate) * 0.5 + Math.sin(time * 0.5 * randomRate) * 0.5) / 2 + 0.5;
-                const mockBass = (Math.sin(time * 1.0 * randomRate) * 0.6 + Math.sin(time * 2.1 * randomRate) * 0.4) / 2 + 0.5;
-                const mockMids = (Math.sin(time * 0.7 * randomRate) * 0.5 + Math.sin(time * 1.2 * randomRate) * 0.5) / 2 + 0.5;
-                const mockHighs = (Math.sin(time * 1.5 * randomRate) * 0.7 + Math.sin(time * 3.0 * randomRate) * 0.3) / 2 + 0.5;
-
-                const mockFreqData = new Uint8Array(128);
-                for (let i = 0; i < mockFreqData.length; i++) {
-                    const progress = i / mockFreqData.length;
-                    const bassEffect = Math.pow(1 - progress, 2) * mockBass;
-                    const midEffect = (1 - Math.abs(progress - 0.5) * 2) * mockMids;
-                    const highEffect = Math.pow(progress, 2) * mockHighs;
-                    // Reduced the fast ripple from 'time * 5' to 'time * 2'
-                    mockFreqData[i] = (bassEffect + midEffect + highEffect) / 3 * 255 * (Math.sin(i * 0.2 + time * 2) * 0.1 + 0.9);
-                }
-
-                audioData = {
-                    bass: { avg: mockBass, peak: mockBass },
-                    mids: { avg: mockMids, peak: mockMids },
-                    highs: { avg: mockHighs, peak: mockHighs },
-                    volume: { avg: mockVol, peak: mockVol },
-                    frequencyData: mockFreqData
-                };
-            }
+        if (isAudioSetup && soundEnabled) {
+            // Case 1: Real audio is connected and enabled. Use it.
+            audioData = getAudioMetrics();
         } else {
+            // Case 2: In all other situations (no real audio, or sound is disabled), generate the mock preview data.
+            const time = now / 1000;
+            const randomRate = (Math.sin(time * 0.1) + 1.2); // Slower rate of change
+            const mockVol = (Math.sin(time * 0.8 * randomRate) * 0.5 + Math.sin(time * 0.5 * randomRate) * 0.5) / 2 + 0.5;
+            const mockBass = (Math.sin(time * 1.0 * randomRate) * 0.6 + Math.sin(time * 2.1 * randomRate) * 0.4) / 2 + 0.5;
+            const mockMids = (Math.sin(time * 0.7 * randomRate) * 0.5 + Math.sin(time * 1.2 * randomRate) * 0.5) / 2 + 0.5;
+            const mockHighs = (Math.sin(time * 1.5 * randomRate) * 0.7 + Math.sin(time * 3.0 * randomRate) * 0.3) / 2 + 0.5;
+
+            const mockFreqData = new Uint8Array(128);
+            for (let i = 0; i < mockFreqData.length; i++) {
+                const progress = i / mockFreqData.length;
+                const bassEffect = Math.pow(1 - progress, 2) * mockBass;
+                const midEffect = (1 - Math.abs(progress - 0.5) * 2) * mockMids;
+                const highEffect = Math.pow(progress, 2) * mockHighs;
+                mockFreqData[i] = (bassEffect + midEffect + highEffect) / 3 * 255 * (Math.sin(i * 0.2 + time * 2) * 0.1 + 0.9);
+            }
+
             audioData = {
-                bass: { avg: 0, peak: 0 },
-                mids: { avg: 0, peak: 0 },
-                highs: { avg: 0, peak: 0 },
-                volume: { avg: 0, peak: 0 },
-                frequencyData: new Uint8Array(128).fill(0)
+                bass: { avg: mockBass, peak: mockBass },
+                mids: { avg: mockMids, peak: mockMids },
+                highs: { avg: mockHighs, peak: mockHighs },
+                volume: { avg: mockVol, peak: mockVol },
+                frequencyData: mockFreqData
             };
         }
 
@@ -2406,6 +2399,8 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_vizUseSegments`, label: `Object ${newId}: Use LED Segments`, type: 'boolean', default: 'false', description: '(Visualizer) Renders bars as discrete segments instead of solid blocks.' },
             { property: `obj${newId}_vizSegmentCount`, label: `Object ${newId}: Segment Count`, type: 'number', default: '16', min: '2', max: '64', description: '(Visualizer) The number of vertical LED segments the bar is divided into.' },
             { property: `obj${newId}_vizSegmentSpacing`, label: `Object ${newId}: Segment Spacing`, type: 'number', default: '1', min: '0', max: '10', description: '(Visualizer) The spacing between segments in a bar.' },
+            { property: `obj${newId}_vizBassLevel`, label: `Object ${newId}: Bass Level`, type: 'number', default: '50', min: '0', max: '200', description: '(Visualizer) Multiplier for the lowest frequency bars. 100 is normal.' },
+            { property: `obj${newId}_vizTrebleBoost`, label: `Object ${newId}: Treble Boost`, type: 'number', default: '125', min: '0', max: '200', description: '(Visualizer) Multiplier for the highest frequency bars.' },
 
             { property: `obj${newId}_enableSensorReactivity`, label: `Object ${newId}: Enable Sensor Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sensor data.' },
             { property: `obj${newId}_sensorTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Sensor Meter', values: 'Sensor Meter,Time Plot', description: 'Selects the specific effect that the object will perform in response to sensor data.' },
@@ -2418,9 +2413,17 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_strimerColumns`, label: `Object ${newId}: Columns`, type: 'number', default: '4', min: '1', max: '50', description: '(Strimer) Number of vertical columns.' },
             { property: `obj${newId}_strimerBlockCount`, label: `Object ${newId}: Block Count`, type: 'number', default: '3', min: '1', max: '20', description: '(Strimer) Number of animated blocks per column.' },
             { property: `obj${newId}_strimerBlockHeight`, label: `Object ${newId}: Block Height`, type: 'number', default: '10', min: '1', max: '100', description: '(Strimer) Height of each block in pixels.' },
-            { property: `obj${newId}_strimerAnimation`, label: `Object ${newId}: Animation`, type: 'combobox', default: 'Bounce', values: 'Bounce,Loop', description: '(Strimer) How blocks behave at the edges.' },
+            { property: `obj${newId}_strimerAnimation`, label: `Object ${newId}: Animation`, type: 'combobox', default: 'Bounce', values: 'Bounce,Loop,Cascade,Audio Meter', description: '(Strimer) The primary animation style for the blocks.' },
             { property: `obj${newId}_strimerDirection`, label: `Object ${newId}: Direction`, type: 'combobox', default: 'Random', values: 'Up,Down,Random', description: '(Strimer) The initial direction of the blocks.' },
-            { property: `obj${newId}_strimerEasing`, label: `Object ${newId}: Easing`, type: 'combobox', default: 'Linear', values: 'Linear,Ease-In,Ease-Out,Ease-In-Out', description: '(Strimer) The acceleration curve of the block movement.' }
+            { property: `obj${newId}_strimerEasing`, label: `Object ${newId}: Easing`, type: 'combobox', default: 'Linear', values: 'Linear,Ease-In,Ease-Out,Ease-In-Out', description: '(Strimer) The acceleration curve of the block movement.' },
+            { property: `obj${newId}_strimerBlockSpacing`, label: `Object ${newId}: Block Spacing`, type: 'number', default: '5', min: '0', max: '50', description: '(Cascade) The vertical spacing between blocks in a cascade.' },
+            { property: `obj${newId}_strimerGlitchFrequency`, label: `Object ${newId}: Glitch Frequency`, type: 'number', default: '0', min: '0', max: '100', description: '(Glitch) How often blocks stutter or disappear. 0 is off.' },
+            { property: `obj${newId}_strimerPulseSync`, label: `Object ${newId}: Sync Columns`, type: 'boolean', default: 'true', description: '(Pulse) If checked, all columns pulse together. If unchecked, they pulse sequentially.' },
+            { property: `obj${newId}_strimerAudioSensitivity`, label: `Object ${newId}: Audio Sensitivity`, type: 'number', default: '100', min: '0', max: '200', description: '(Audio Meter) Multiplies the height of the audio bars. 100 is normal.' },
+            { property: `obj${newId}_strimerBassLevel`, label: `Object ${newId}: Bass Level`, type: 'number', default: '50', min: '0', max: '200', description: '(Audio Meter) Multiplier for the bass column(s). 100 is normal.' },
+            { property: `obj${newId}_strimerTrebleBoost`, label: `Object ${newId}: Treble Boost`, type: 'number', default: '150', min: '0', max: '200', description: '(Audio Meter) Multiplier for the treble/volume columns.' },
+            { property: `obj${newId}_strimerAudioSmoothing`, label: `Object ${newId}: Audio Smoothing`, type: 'number', default: '60', min: '0', max: '99', description: '(Audio Meter) Smooths out the bar movement. Higher is smoother.' },
+            { property: `obj${newId}_strimerPulseSpeed`, label: `Object ${newId}: Pulse Speed`, type: 'number', default: '0', min: '0', max: '100', description: '(Modifier) Speed of the breathing/pulse effect. Applied on top of other animations. 0 is off.' }
         ];
 
     }
@@ -2654,7 +2657,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         for (let i = objects.length - 1; i >= 0; i--) {
-            objects[i].draw(false);
+            objects[i].draw(false, audioData);
         }
     }
 
@@ -3789,7 +3792,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const docRef = await window.addDoc(window.collection(window.db, "projects"), shareableData);
-            const shareUrl = `${window.location.origin}${window.location.pathname} ? effectId = ${docRef.id}`;
+            const shareUrl = `${window.location.origin}${window.location.pathname}?effectId=${docRef.id}`;
             navigator.clipboard.writeText(shareUrl)
                 .then(() => showToast("Share link copied to clipboard!", 'success'))
                 .catch(() => prompt("Copy this link:", shareUrl));
@@ -4117,7 +4120,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // If saved, populate the input and show the modal
-        const shareUrl = `${window.location.origin}${window.location.pathname} ? effectId = ${currentProjectDocId}`;
+        const shareUrl = `${window.location.origin}${window.location.pathname}?effectId=${currentProjectDocId}`;
         const shareLinkInput = document.getElementById('share-link-input');
         shareLinkInput.value = shareUrl;
 
@@ -4392,6 +4395,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (copyPropsForm.elements['copy-shape-type'].checked) copyProps(['shape']);
 
             if (copyPropsForm.elements['copy-shape-specific'].checked) {
+                // Update this
                 const shapeSpecificMap = {
                     'ring': ['innerDiameter', 'numberOfSegments', 'angularWidth'],
                     'oscilloscope': ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'],
@@ -4402,7 +4406,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     'tetris': ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'],
                     'fire-radial': ['fireSpread'],
                     'pixel-art': ['pixelArtData'],
-                    'audio-visualizer': ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius'],
+                    'audio-visualizer': ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost'],
                     'strimer': ['strimerColumns', 'strimerBlockCount', 'strimerBlockHeight', 'strimerAnimation', 'strimerDirection', 'strimerEasing']
                 };
                 if (shapeSpecificMap[sourceObject.shape]) {
