@@ -250,7 +250,7 @@
                                     <li><strong>Duplicate/Delete:</strong> Use the menu button (<i class="bi bi-list"></i>) to access options for duplicating or deleting an object.</li>
                                 </ul>
                             </li>
-                            <li><strong>Shape-Specific Settings:</strong> The real power of the builder lies in its specialized shapes. When you change an object's <strong>Shape</strong> property, different settings will appear for shapes like Text, Oscilloscope, Strimer, and more.
+                            <li><strong class="text-warning">Shape-Specific Settings:</strong> The real power of the builder lies in its specialized shapes. When you change an object's <strong>Shape</strong> property, different settings will appear for shapes like Text, Oscilloscope, Strimer, and more.
                             </li>
                         </ul>
 
@@ -310,11 +310,38 @@
                         <h6 class="text-info mt-4">Using the Strimer Shape (New!)</h6>
                         <p>This shape is designed to simulate the animated lighting effects of PC cable strimers. It features multiple blocks of light moving vertically within columns.</p>
                         <ul>
-                            <li><strong>Columns:</strong> Sets the number of vertical channels for the animation.</li>
-                            <li><strong>Block Count:</strong> Determines how many animated blocks appear within each column.</li>
-                            <li><strong>Animation:</strong> Choose between <code>Bounce</code> (blocks rebound at the top and bottom) and <code>Loop</code> (blocks wrap around).</li>
-                            <li><strong>Direction:</strong> Set blocks to move <code>Up</code>, <code>Down</code>, or <code>Random</code>. When set to Random, blocks will alternate directions within each column for a balanced effect.</li>
-                            <li><strong>Easing:</strong> Controls the acceleration of the blocks, allowing for more dynamic motion like <code>Ease-In</code> (starts slow, ends fast) or <code>Ease-Out</code> (starts fast, ends slow).</li>
+                            <li><strong>Animation Style:</strong>
+                                <ul>
+                                    <li><code>Bounce</code> / <code>Loop</code>: Blocks move up and down, either rebounding at the edges or wrapping around.</li>
+                                    <li><code>Cascade</code>: Creates a continuous "waterfall" of light as blocks spawn sequentially.</li>
+                                    <li><code>Audio Meter</code>: Turns the columns into a real-time audio visualizer. The columns will represent different frequency bands (bass, mids, highs).</li>
+                                </ul>
+                            </li>
+                            <li><strong>Pulse Effect (Modifier):</strong>
+                                <ul>
+                                    <li><code>Pulse Speed</code>: This slider makes the blocks gently fade their brightness in and out, creating a "breathing" effect. This can be layered on top of any other animation style. Set to 0 to disable.</li>
+                                    <li><code>Sync Columns</code>: A toggle to make all columns pulse together or have them pulse sequentially for a wave-like effect.</li>
+                                </ul>
+                            </li>
+                            <li><strong>Movement Controls:</strong>
+                                <ul>
+                                    <li><code>Direction</code>: Set blocks to move <code>Up</code>, <code>Down</code>, or <code>Random</code>. When set to Random, blocks will alternate directions within each column for a balanced effect.</li>
+                                    <li><code>Easing</code>: Controls the acceleration of the blocks for more dynamic motion.</li>
+                                </ul>
+                            </li>
+                            <li><strong>Audio Controls (For Audio Meter):</strong>
+                                <ul>
+                                    <li><code>Audio Smoothing</code>: Smooths out the bar movement to prevent flickering.</li>
+                                    <li><code>Audio Sensitivity</code>: A general multiplier for the height of the audio bars.</li>
+                                    <li><code>Bass Level</code> / <code>Treble Boost</code>: Fine-tune the EQ curve by reducing bass or boosting treble frequencies.</li>
+                                </ul>
+                            </li>
+                            <li><strong>Other Controls:</strong>
+                                <ul>
+                                    <li><code>Glitch Frequency</code>: Makes blocks occasionally stutter or disappear for a high-tech look. A value of 0 is off.</li>
+                                    <li><code>Block Spacing</code>: Sets the vertical distance between blocks in the Cascade animation.</li>
+                                </ul>
+                            </li>
                         </ul>
 
                         <h6 class="text-info mt-4">How to Install the Effect in SignalRGB</h6>
