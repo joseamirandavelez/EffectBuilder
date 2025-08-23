@@ -250,7 +250,7 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockHeight, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerSnakeProgress, strimerSnakeDirection }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -411,9 +411,10 @@ class Shape {
         this.shapeAnimationSpeedMultiplier = shapeAnimationSpeedMultiplier || 0.05;
         this.seismicAnimationSpeedMultiplier = seismicAnimationSpeedMultiplier || 0.015;
 
+        this.strimerRows = 27;
         this.strimerColumns = strimerColumns || 4;
         this.strimerBlockCount = strimerBlockCount || 3;
-        this.strimerBlockHeight = strimerBlockHeight || 40; // Scaled value (10 * 4)
+        this.strimerBlockSize = strimerBlockSize || 40; // Scaled value (10 * 4)
         this.strimerAnimation = strimerAnimation || 'Bounce';
         this.strimerDirection = strimerDirection || 'Random';
         this.strimerEasing = strimerEasing || 'Linear';
@@ -426,6 +427,11 @@ class Shape {
         this.strimerAudioSensitivity = strimerAudioSensitivity || 100;
         this.strimerBassLevel = strimerBassLevel || 50;
         this.strimerTrebleBoost = strimerTrebleBoost || 150;
+        this.strimerSnakeIndex = 0; // The index of the current block in the snake's path
+        this.strimerSnakeDirection = 'Vertical'; // Default to current vertical zig-zag
+        
+        this.strimerAnimationSpeed = 20; // Default value
+        this.strimerSnakeProgress = 0; // Default value
     }
 
     _applySensorReactivity(sensorData) {
@@ -1550,6 +1556,25 @@ class Shape {
                 case 'Audio Meter':
                     // Logic is handled in the draw method based on audioData
                     break;
+                case 'Snake':
+                    // Define the total number of blocks in the path
+                    const totalBlocks = this.strimerColumns * this.strimerRows;
+
+                    // Use a speed based on the animationSpeed property
+                    const animationSpeed = (this.animationSpeed / 10) * deltaTime;
+
+                    // Increment the progress of the snake's head
+                    this.strimerSnakeProgress += animationSpeed;
+
+                    // If the head has reached the end of its block, move to the next block
+                    if (this.strimerSnakeProgress >= 1.0) {
+                        this.strimerSnakeProgress -= 1.0;
+                        this.strimerSnakeIndex++;
+                        if (this.strimerSnakeIndex >= totalBlocks) {
+                            this.strimerSnakeIndex = 0;
+                        }
+                    }
+                    break;
 
                 default: // Bounce, Loop, Cascade
                     this.strimerBlocks.forEach(block => {
@@ -2008,11 +2033,63 @@ class Shape {
                     this.ctx.fillStyle = this._createLocalFillStyle(i);
                     this.ctx.fillRect(xPos, yPos, colWidth, fillHeight);
                 }
+            } else if (this.strimerAnimation === 'Snake') {
+                const colWidth = this.width / this.strimerColumns;
+                const rowHeight = this.height / this.strimerRows;
+                const totalPath = this.strimerSnakeDirection === 'Horizontal' ? this.strimerRows : this.strimerColumns;
+                const snakeHeadIndex = Math.floor(this.strimerSnakeIndex % totalPath);
+                const snakeHeadProgress = this.strimerSnakeProgress;
+                const headPos = snakeHeadIndex + snakeHeadProgress;
+                const step = this.strimerBlockSize / (this.strimerSnakeDirection === 'Horizontal' ? (this.width - this.strimerBlockSize) : (this.height - this.strimerBlockSize));
+
+                this.ctx.save();
+                this.ctx.translate(-this.width / 2, -this.height / 2);
+
+                for (let i = 0; i < this.strimerBlockCount+1; i++) {
+                    let xPos, yPos, segmentPos, index, progress;
+
+                    segmentPos = (headPos - i * step + totalPath) % totalPath;
+                    index = Math.floor(segmentPos);
+                    progress = segmentPos - index;
+
+                    if (this.strimerSnakeDirection === 'Horizontal') {
+                        // Horizontal zig-zag across rows
+                        if (index % 2 === 1) {
+                            progress = 1 - progress;
+                        }
+                        const easedProgress = this._applyEasing(progress);
+                        xPos = easedProgress * this.width;
+                        yPos = index * rowHeight;
+                        const blockWidth = this.strimerBlockSize; // Use height as width for horizontal blocks
+                        const blockHeight = rowHeight;
+                        this.ctx.fillRect(xPos, yPos, blockWidth, blockHeight);
+                    } else {
+                        // Vertical zig-zag across columns
+                        if (index % 2 === 1) {
+                            progress = 1 - progress;
+                        }
+                        const easedProgress = this._applyEasing(progress);
+                        xPos = index * colWidth;
+                        yPos = easedProgress * this.height;
+                        const blockWidth = colWidth;
+                        const blockHeight = this.strimerBlockSize;
+                        this.ctx.fillRect(xPos, yPos, blockWidth, blockHeight);
+                    }
+
+                    const alpha = 1.0 - (i / this.strimerBlockCount) * 0.5;
+                    this.ctx.globalAlpha = alpha;
+
+                    this.ctx.fillStyle = this._createLocalFillStyle(i % 2);
+
+                    this.ctx.globalAlpha = 1.0;
+                }
+
+                this.ctx.restore();
             } else {
                 this.strimerBlocks.forEach((block, index) => {
                     if (block.isGlitched) return;
 
-                    let yPos, blockHeight = this.strimerBlockHeight;
+                    let yPos, blockHeight = this.strimerBlockSize;
                     let alpha = 1.0;
 
                     // Apply pulse as a modifier if enabled
