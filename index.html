@@ -218,7 +218,10 @@
             <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="helpModalLabel"><i class="bi bi-question-circle me-2"></i>How to Use the Effect Builder</h5>
+                        <div class="d-flex align-items-center">
+                            <h5 class="modal-title" id="helpModalLabel"><i class="bi bi-question-circle me-2"></i>How to Use the Effect Builder</h5>
+                            <a href="./?show=help" class="text-body-secondary ms-2" id="help-modal-share-btn" title="Permalink" data-bs-toggle="tooltip"><i class="bi bi-share-fill fs-5"></i></a>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -368,7 +371,10 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="aboutModalLabel"><i class="bi bi-info-circle me-2"></i>About This Tool</h5>
+                        <div class="d-flex align-items-center">
+                            <h5 class="modal-title" id="aboutModalLabel"><i class="bi bi-info-circle me-2"></i>About This Tool</h5>
+                            <a href="./?show=about" class="text-body-secondary ms-2" id="about-modal-share-btn" title="Permalink" data-bs-toggle="tooltip"><i class="bi bi-share-fill fs-5"></i></a>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -390,6 +396,8 @@
                             </ul>
                         </div>
                         <hr>
+
+                        <p id="about-share-url-container" class="small d-none"></p>
 
                         <div class="d-flex justify-content-between align-items-center">
                             <p class="mb-0"><strong>Developer:</strong> Jose Miranda</p>

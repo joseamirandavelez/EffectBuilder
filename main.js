@@ -152,6 +152,65 @@ let analyser;
 let frequencyData;
 let isAudioSetup = false;
 
+function handleURLParameters() {
+    const params = new URLSearchParams(window.location.search);
+    const modalToShow = params.get('show');
+
+    if (!modalToShow) {
+        return; // No parameter found, do nothing.
+    }
+
+    let modalEl = null;
+    if (modalToShow.toLowerCase() === 'about') {
+        modalEl = document.getElementById('about-modal');
+    } else if (modalToShow.toLowerCase() === 'help') {
+        modalEl = document.getElementById('help-modal');
+    }
+
+    if (modalEl) {
+        // Now we can create and show the modal immediately.
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+function setupModalShareLinks() {
+    const aboutModalEl = document.getElementById('about-modal');
+    const helpModalEl = document.getElementById('help-modal');
+    const baseURL = window.location.origin + window.location.pathname;
+
+    if (aboutModalEl) {
+        aboutModalEl.addEventListener('show.bs.modal', () => {
+            const shareBtn = aboutModalEl.querySelector('#about-modal-share-btn');
+            if (shareBtn) {
+                const shareURL = `${baseURL}?show=about`;
+                // Use onclick to easily set the action each time the modal opens
+                shareBtn.onclick = (e) => {
+                    e.preventDefault();
+                    navigator.clipboard.writeText(shareURL).then(() => {
+                        showToast("Share link copied to clipboard!", 'success');
+                    });
+                };
+            }
+        });
+    }
+
+    if (helpModalEl) {
+        helpModalEl.addEventListener('show.bs.modal', () => {
+            const shareBtn = helpModalEl.querySelector('#help-modal-share-btn');
+            if (shareBtn) {
+                const shareURL = `${baseURL}?show=help`;
+                shareBtn.onclick = (e) => {
+                    e.preventDefault();
+                    navigator.clipboard.writeText(shareURL).then(() => {
+                        showToast("Share link copied to clipboard!", 'success');
+                    });
+                };
+            }
+        });
+    }
+}
+
 function updateColorControls() {
     const values = getControlValues();
     const paletteEnabled = values.enablePalette;
@@ -3730,6 +3789,7 @@ document.addEventListener('DOMContentLoaded', function () {
      * initializes tooltips, starts the animation loop, and sets up the resizable panels.
      */
     async function init() {
+        handleURLParameters();
         const constrainBtn = document.getElementById('constrain-btn');
         constrainBtn.classList.remove('btn-secondary', 'btn-outline-secondary');
         if (constrainToCanvas) {
@@ -4017,19 +4077,20 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function showToast(message, type = 'info') {
         const toastEl = document.getElementById('app-toast');
+        if (!toastEl) {
+            console.error('Toast element #app-toast not found in HTML!');
+            return;
+        }
         const toastHeader = document.getElementById('app-toast-header');
         const toastTitle = document.getElementById('app-toast-title');
         const toastBody = document.getElementById('app-toast-body');
         const toastIcon = document.getElementById('app-toast-icon');
 
-        // Replace newline characters with HTML break tags for correct rendering.
         toastBody.innerHTML = message.replace(/\n/g, '<br>');
 
-        // Remove old color and icon classes
         toastHeader.classList.remove('bg-success', 'bg-danger', 'bg-primary');
-        toastIcon.className = 'bi me-2'; // Reset icon classes
+        toastIcon.className = 'bi me-2';
 
-        // Add new color class, title, and icon based on type
         switch (type) {
             case 'success':
                 toastHeader.classList.add('bg-success');
@@ -4048,7 +4109,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
         }
 
-        const toast = new bootstrap.Toast(toastEl);
+        // Use Bootstrap's recommended 'getOrCreateInstance' method, which is more robust.
+        const toast = bootstrap.Toast.getOrCreateInstance(toastEl);
         toast.show();
     }
 
