@@ -91,6 +91,7 @@
                         <a class="nav-link" href="#shape-visualizer">Audio Visualizer</a>
                         <a class="nav-link" href="#shape-tetris">Tetris</a>
                         <a class="nav-link" href="#shape-pixelart">Pixel Art</a>
+                        <a class="nav-link" href="#shape-strimer">Strimer</a>
                     </div>
                 </div>
             </nav>
@@ -113,6 +114,10 @@
                                 <tbody>
                                     <tr><td><code>enableAnimation</code></td><td>Enable Animation</td><td><code>boolean</code></td><td>A global toggle for all time-based animations, including gradients, rotations, and shape movements.</td></tr>
                                     <tr><td><code>enableSound</code></td><td>Enable Sound Reactivity</td><td><code>boolean</code></td><td>A global toggle for all audio-reactive properties on all objects.</td></tr>
+                                    <tr class="table-group-divider"><th colspan="4" class="table-group-header">Global Color Palette</th></tr>
+                                    <tr><td><code>enablePalette</code></td><td>Enable Global Color Palette</td><td><code>boolean</code></td><td>If true, overrides the individual <code>Color 1</code> and <code>Color 2</code> settings for all objects with the global palette colors defined below.</td></tr>
+                                    <tr><td><code>paletteColor1</code></td><td>Palette Color 1</td><td><code>color</code></td><td>The global color to be used for all <code>Color 1</code> properties when the palette is enabled.</td></tr>
+                                    <tr><td><code>paletteColor2</code></td><td>Palette Color 2</td><td><code>color</code></td><td>The global color to be used for all <code>Color 2</code> properties when the palette is enabled.</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -159,8 +164,8 @@
                                             </ul>
                                         </td>
                                     </tr>
-                                    <tr><td><code>gradColor1</code></td><td>Color 1</td><td><code>color</code></td><td>The primary color for solid fills or the starting color for gradients.</td></tr>
-                                    <tr><td><code>gradColor2</code></td><td>Color 2</td><td><code>color</code></td><td>The secondary color used as the end point for gradients.</td></tr>
+                                    <tr><td><code>gradColor1</code></td><td>Color 1</td><td><code>color</code></td><td>The primary color for solid fills or the starting color for gradients. Can be overridden by the Global Color Palette.</td></tr>
+                                    <tr><td><code>gradColor2</code></td><td>Color 2</td><td><code>color</code></td><td>The secondary color used as the end point for gradients. Can be overridden by the Global Color Palette.</td></tr>
                                     <tr><td><code>cycleColors</code></td><td>Cycle Colors</td><td><code>boolean</code></td><td>If true, smoothly animates <code>gradColor1</code> and <code>gradColor2</code> through the entire color spectrum (hue wheel).</td></tr>
                                     <tr><td><code>cycleSpeed</code></td><td>Color Cycle Speed</td><td><code>number</code></td><td>Controls the speed of hue animation. <em>Only has an effect when <code>cycleColors</code> is set to <code>true</code>.</em></td></tr>
                                     <tr><td><code>animationSpeed</code></td><td>Animation Speed</td><td><code>number</code></td><td>A master speed control for the object's primary animation, such as gradient scrolling or fire particle movement.</td></tr>
@@ -196,8 +201,8 @@
                                     <tr><td><code>enableStroke</code></td><td>Enable Stroke</td><td><code>boolean</code></td><td>A master switch to render the object's outline.</td></tr>
                                     <tr><td><code>strokeWidth</code></td><td>Stroke Width</td><td><code>number</code></td><td>The thickness of the outline in pixels.</td></tr>
                                     <tr><td><code>strokeGradType</code></td><td>Stroke Type</td><td><code>combobox</code></td><td>The fill style for the stroke.</td></tr>
-                                    <tr><td><code>strokeGradColor1</code></td><td>Stroke Color 1</td><td><code>color</code></td><td>The primary color for the stroke.</td></tr>
-                                    <tr><td><code>strokeGradColor2</code></td><td>Stroke Color 2</td><td><code>color</code></td><td>The secondary color for stroke gradients.</td></tr>
+                                    <tr><td><code>strokeGradColor1</code></td><td>Stroke Color 1</td><td><code>color</code></td><td>The primary color for the stroke. Can be overridden by the Global Color Palette.</td></tr>
+                                    <tr><td><code>strokeGradColor2</code></td><td>Stroke Color 2</td><td><code>color</code></td><td>The secondary color for stroke gradients. Can be overridden by the Global Color Palette.</td></tr>
                                     <tr><td><code>strokeCycleColors</code></td><td>Cycle Stroke Colors</td><td><code>boolean</code></td><td>If true, the stroke colors will animate through the hue spectrum.</td></tr>
                                     <tr><td><code>strokeScrollDir</code></td><td>Stroke Scroll Direction</td><td><code>combobox</code></td><td>The direction for animated linear stroke gradients.</td></tr>
                                 </tbody>
@@ -386,9 +391,10 @@
                                 <thead><tr><th>Property</th><th>Label</th><th>Type</th><th>Description & Values</th></tr></thead>
                                 <tbody>
                                     <tr><td><code>tetrisBlockCount</code></td><td>Block Count</td><td><code>number</code></td><td>The number of blocks to drop in a single animation cycle. Range: <code>1</code> to <code>50</code>.</td></tr>
-                                    <tr><td><code>tetrisAnimation</code></td><td>Drop Physics</td><td><code>combobox</code></td><td>The physics governing block movement (<code>linear</code>, <code>gravity</code>, etc.).</td></tr>
+                                    <tr><td><code>tetrisAnimation</code></td><td>Drop Physics</td><td><code>combobox</code></td><td>The physics governing block movement. Values: <code>linear</code>, <code>gravity</code>, <code>gravity-fade</code>, <code>fade-in-stack</code>, <code>fade-in-out</code>.</td></tr>
                                     <tr><td><code>tetrisSpeed</code></td><td>Drop/Fade-in Speed</td><td><code>number</code></td><td>Controls the speed of the animation. Range: <code>1</code> to <code>100</code>.</td></tr>
                                     <tr><td><code>tetrisBounce</code></td><td>Bounce Factor %</td><td><code>number</code></td><td>How much blocks bounce on impact. Range: <code>0</code> to <code>90</code>. <em>Only affects `gravity` physics.</em></td></tr>
+                                    <tr><td><code>tetrisHoldTime</code></td><td>Hold Time</td><td><code>number</code></td><td>For the <code>fade-in-out</code> animation, this sets how long the fully stacked blocks remain visible before fading out.</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -404,6 +410,41 @@
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <h3 id="shape-strimer" class="mt-5">Strimer</h3>
+                        <p>A specialized shape that simulates the animated lighting effects of PC cable strimers, featuring multiple columns of moving light blocks.</p>
+                        <div class="alert alert-info small"><b>Applicable General Properties:</b> <a href="#core">Core</a>, <a href="#fill">Fill & Animation</a></div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered">
+                                <thead><tr><th>Property</th><th>Label</th><th>Type</th><th>Description & Values</th></tr></thead>
+                                <tbody>
+                                    <tr class="table-group-header"><th colspan="4">General & Layout</th></tr>
+                                    <tr><td><code>strimerColumns</code></td><td>Columns</td><td><code>number</code></td><td>The number of vertical columns. Range: <code>1</code> to <code>50</code>.</td></tr>
+                                    <tr><td><code>strimerBlockCount</code></td><td>Block Count</td><td><code>number</code></td><td>The number of animated blocks per column. Range: <code>1</code> to <code>100</code>.</td></tr>
+                                    <tr><td><code>strimerBlockSize</code></td><td>Block Size</td><td><code>number</code></td><td>The height of each individual light block.</td></tr>
+                                    <tr><td><code>strimerBlockSpacing</code></td><td>Block Spacing</td><td><code>number</code></td><td>For <code>Cascade</code> animation, this sets the vertical distance between blocks.</td></tr>
+                        
+                                    <tr class="table-group-header"><th colspan="4">Animation & Movement</th></tr>
+                                    <tr><td><code>strimerAnimation</code></td><td>Animation</td><td><code>combobox</code></td><td>The primary animation style for the blocks. Values: <code>Bounce</code>, <code>Loop</code>, <code>Cascade</code>, <code>Audio Meter</code>, <code>Snake</code>.</td></tr>
+                                    <tr><td><code>strimerAnimationSpeed</code></td><td>Animation Speed</td><td><code>number</code></td><td>Controls the speed of the block movement, independent of the fill animation speed. Range: <code>0</code> to <code>100</code>.</td></tr>
+                                    <tr><td><code>strimerDirection</code></td><td>Direction</td><td><code>combobox</code></td><td>The initial movement direction for blocks in <code>Bounce</code> and <code>Loop</code> modes. Values: <code>Up</code>, <code>Down</code>, <code>Random</code>.</td></tr>
+                                    <tr><td><code>strimerEasing</code></td><td>Easing</td><td><code>combobox</code></td><td>Controls the acceleration curve of the block movement for more dynamic motion.</td></tr>
+                                    <tr><td><code>strimerSnakeDirection</code></td><td>Snake Direction</td><td><code>combobox</code></td><td>For <code>Snake</code> animation, sets the path to be vertical (along columns) or horizontal (across rows).</td></tr>
+                        
+                                    <tr class="table-group-header"><th colspan="4">Effects & Modifiers</th></tr>
+                                    <tr><td><code>strimerPulseSpeed</code></td><td>Pulse Speed</td><td><code>number</code></td><td>A modifier that creates a "breathing" effect by fading blocks in and out. This is layered on top of the primary animation. Set to <code>0</code> to disable.</td></tr>
+                                    <tr><td><code>strimerPulseSync</code></td><td>Sync Columns</td><td><code>boolean</code></td><td>If true, all columns pulse together. If false, they pulse sequentially for a wave-like effect.</td></tr>
+                                    <tr><td><code>strimerGlitchFrequency</code></td><td>Glitch Frequency</td><td><code>number</code></td><td>Makes blocks occasionally stutter or disappear for a high-tech look. Set to <code>0</code> to disable.</td></tr>
+                                    
+                                    <tr class="table-group-header"><th colspan="4">Audio Meter Controls</th></tr>
+                                    <tr><td><code>strimerAudioSensitivity</code></td><td>Audio Sensitivity</td><td><code>number</code></td><td>A general multiplier for the height of the audio bars.</td></tr>
+                                    <tr><td><code>strimerAudioSmoothing</code></td><td>Audio Smoothing</td><td><code>number</code></td><td>Smooths out the bar movement to prevent flickering.</td></tr>
+                                    <tr><td><code>strimerBassLevel</code></td><td>Bass Level</td><td><code>number</code></td><td>Multiplier for the bass column(s). <code>100</code> is normal.</td></tr>
+                                    <tr><td><code>strimerTrebleBoost</code></td><td>Treble Boost</td><td><code>number</code></td><td>Multiplier for the treble/volume columns.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
                     </div>
                 </div>
             </main>
