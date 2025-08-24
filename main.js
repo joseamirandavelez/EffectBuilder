@@ -50,6 +50,10 @@ const INITIAL_CONFIG_TEMPLATE = `
         <meta property="obj1_beatThreshold" label="Small Clock: Beat Threshold" min="1" max="100" type="number" default="30" />
         <meta property="obj1_audioSensitivity" label="Small Clock: Sensitivity" min="0" max="200" type="number" default="50" />
         <meta property="obj1_audioSmoothing" label="Small Clock: Smoothing" min="0" max="99" type="number" default="50" />
+        <meta property="enablePalette" label="Enable Global Color Palette" type="boolean" default="false" />
+        <meta property="paletteColor1" label="Palette Color 1" type="color" default="#FF8F00" />
+        <meta property="paletteColor2" label="Palette Color 2" type="color" default="#00BFFF" />
+
 
         <meta property="obj2_shape" label="Large Text: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
         <meta property="obj2_x" label="Large Text: X Position" type="number" min="0" max="320" default="-3" />
@@ -148,7 +152,40 @@ let analyser;
 let frequencyData;
 let isAudioSetup = false;
 
+function updateColorControls() {
+    const values = getControlValues();
+    const paletteEnabled = values.enablePalette;
+    const pColor1 = values.paletteColor1;
+    const pColor2 = values.paletteColor2;
 
+    const colorControlNames = ['gradColor1', 'gradColor2', 'strokeGradColor1', 'strokeGradColor2'];
+
+    objects.forEach(obj => {
+        colorControlNames.forEach(name => {
+            const input = form.querySelector(`[name="obj${obj.id}_${name}"]`);
+            if (input) {
+                const hexInput = form.querySelector(`[name="obj${obj.id}_${name}_hex"]`);
+                const isColor1 = name.endsWith('1');
+
+                input.disabled = paletteEnabled;
+                if (hexInput) hexInput.disabled = paletteEnabled;
+
+                if (paletteEnabled) {
+                    const paletteColor = isColor1 ? pColor1 : pColor2;
+                    input.value = paletteColor;
+                    if (hexInput) hexInput.value = paletteColor;
+                } else {
+                    // Restore the object's actual color
+                    const originalColor = isColor1
+                        ? (name.startsWith('stroke') ? obj.strokeGradient.color1 : obj.gradient.color1)
+                        : (name.startsWith('stroke') ? obj.strokeGradient.color2 : obj.gradient.color2);
+                    input.value = originalColor;
+                    if (hexInput) hexInput.value = originalColor;
+                }
+            }
+        });
+    });
+}
 
 function getBoundingBox(obj) {
     const corners = [
@@ -1818,7 +1855,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // In main.js, find the drawFrame function and replace it
 
-    function drawFrame(audioData = {}, sensorData = {}, deltaTime = 0) {
+    function drawFrame(audioData = {}, sensorData = {}, deltaTime = 0, palette = {}) {
         if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#000';
@@ -1826,9 +1863,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         for (let i = objects.length - 1; i >= 0; i--) {
             const obj = objects[i];
-            // This now correctly passes deltaTime to the object for time-based animation
             obj.updateAnimationState(audioData, sensorData, deltaTime);
-            obj.draw(selectedObjectIds.includes(obj.id), audioData);
+            obj.draw(selectedObjectIds.includes(obj.id), audioData, palette); // Pass palette here
             obj.dirty = false;
         }
 
@@ -1908,8 +1944,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         sensorData = mockSensorData;
 
-        // Pass deltaTime to the drawFrame function
-        drawFrame(audioData, sensorData, isAnimating ? deltaTime : 0);
+        // Pass deltaTime and palette info to the drawFrame function
+        const paletteProps = {
+            enablePalette: generalValues.enablePalette,
+            paletteColor1: generalValues.paletteColor1,
+            paletteColor2: generalValues.paletteColor2
+        };
+        drawFrame(audioData, sensorData, isAnimating ? deltaTime : 0, paletteProps);
     }
 
     /**
@@ -2621,6 +2662,16 @@ document.addEventListener('DOMContentLoaded', function () {
             sensorData[obj.userSensor] = getSensorValue(obj.userSensor);
         });
 
+        // Read the global palette properties from the effect's controls
+        const palette = {};
+        try {
+            palette.enablePalette = eval('enablePalette');
+            palette.paletteColor1 = eval('paletteColor1');
+            palette.paletteColor2 = eval('paletteColor2');
+        } catch (e) {
+            palette.enablePalette = false;
+        }
+
         objects.forEach(obj => {
             const prefix = 'obj' + obj.id + '_';
             const propsToUpdate = { gradient: {}, strokeGradient: {} };
@@ -2646,7 +2697,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 } catch (e) {}
             });
             
-            // Store the old values of critical Strimer properties before updating
             const oldStrimerState = {
                 animation: obj.strimerAnimation,
                 direction: obj.strimerDirection,
@@ -2654,7 +2704,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 blockCount: obj.strimerBlockCount
             };
 
-            // Apply the live property updates from SignalRGB's UI
             for (const key in propsToUpdate) {
                 if (propsToUpdate[key] === undefined) continue;
                 if (key === 'gradient') {
@@ -2673,7 +2722,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            // If any critical Strimer property has changed, clear the blocks to force re-initialization
             if (obj.shape === 'strimer' && (
                 obj.strimerAnimation !== oldStrimerState.animation ||
                 obj.strimerDirection !== oldStrimerState.direction ||
@@ -2690,7 +2738,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         for (let i = objects.length - 1; i >= 0; i--) {
-            objects[i].draw(false, audioData);
+            // Pass the palette object to each shape's draw method
+            objects[i].draw(false, audioData, palette);
         }
     }
 
@@ -2754,6 +2803,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const target = e.target;
         if (target.name) {
             dirtyProperties.add(target.name);
+        }
+
+        if (['enablePalette', 'paletteColor1', 'paletteColor2'].includes(target.name)) {
+            updateColorControls();
         }
 
         // Sync number inputs with their corresponding range sliders

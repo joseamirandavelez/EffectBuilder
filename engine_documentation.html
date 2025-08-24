@@ -114,6 +114,10 @@
                                 <tbody>
                                     <tr><td><code>enableAnimation</code></td><td>Enable Animation</td><td><code>boolean</code></td><td>A global toggle for all time-based animations, including gradients, rotations, and shape movements.</td></tr>
                                     <tr><td><code>enableSound</code></td><td>Enable Sound Reactivity</td><td><code>boolean</code></td><td>A global toggle for all audio-reactive properties on all objects.</td></tr>
+                                    <tr class="table-group-divider"><th colspan="4" class="table-group-header">Global Color Palette</th></tr>
+                                    <tr><td><code>enablePalette</code></td><td>Enable Global Color Palette</td><td><code>boolean</code></td><td>If true, overrides the individual <code>Color 1</code> and <code>Color 2</code> settings for all objects with the global palette colors defined below.</td></tr>
+                                    <tr><td><code>paletteColor1</code></td><td>Palette Color 1</td><td><code>color</code></td><td>The global color to be used for all <code>Color 1</code> properties when the palette is enabled.</td></tr>
+                                    <tr><td><code>paletteColor2</code></td><td>Palette Color 2</td><td><code>color</code></td><td>The global color to be used for all <code>Color 2</code> properties when the palette is enabled.</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -160,8 +164,8 @@
                                             </ul>
                                         </td>
                                     </tr>
-                                    <tr><td><code>gradColor1</code></td><td>Color 1</td><td><code>color</code></td><td>The primary color for solid fills or the starting color for gradients.</td></tr>
-                                    <tr><td><code>gradColor2</code></td><td>Color 2</td><td><code>color</code></td><td>The secondary color used as the end point for gradients.</td></tr>
+                                    <tr><td><code>gradColor1</code></td><td>Color 1</td><td><code>color</code></td><td>The primary color for solid fills or the starting color for gradients. Can be overridden by the Global Color Palette.</td></tr>
+                                    <tr><td><code>gradColor2</code></td><td>Color 2</td><td><code>color</code></td><td>The secondary color used as the end point for gradients. Can be overridden by the Global Color Palette.</td></tr>
                                     <tr><td><code>cycleColors</code></td><td>Cycle Colors</td><td><code>boolean</code></td><td>If true, smoothly animates <code>gradColor1</code> and <code>gradColor2</code> through the entire color spectrum (hue wheel).</td></tr>
                                     <tr><td><code>cycleSpeed</code></td><td>Color Cycle Speed</td><td><code>number</code></td><td>Controls the speed of hue animation. <em>Only has an effect when <code>cycleColors</code> is set to <code>true</code>.</em></td></tr>
                                     <tr><td><code>animationSpeed</code></td><td>Animation Speed</td><td><code>number</code></td><td>A master speed control for the object's primary animation, such as gradient scrolling or fire particle movement.</td></tr>
@@ -197,8 +201,8 @@
                                     <tr><td><code>enableStroke</code></td><td>Enable Stroke</td><td><code>boolean</code></td><td>A master switch to render the object's outline.</td></tr>
                                     <tr><td><code>strokeWidth</code></td><td>Stroke Width</td><td><code>number</code></td><td>The thickness of the outline in pixels.</td></tr>
                                     <tr><td><code>strokeGradType</code></td><td>Stroke Type</td><td><code>combobox</code></td><td>The fill style for the stroke.</td></tr>
-                                    <tr><td><code>strokeGradColor1</code></td><td>Stroke Color 1</td><td><code>color</code></td><td>The primary color for the stroke.</td></tr>
-                                    <tr><td><code>strokeGradColor2</code></td><td>Stroke Color 2</td><td><code>color</code></td><td>The secondary color for stroke gradients.</td></tr>
+                                    <tr><td><code>strokeGradColor1</code></td><td>Stroke Color 1</td><td><code>color</code></td><td>The primary color for the stroke. Can be overridden by the Global Color Palette.</td></tr>
+                                    <tr><td><code>strokeGradColor2</code></td><td>Stroke Color 2</td><td><code>color</code></td><td>The secondary color for stroke gradients. Can be overridden by the Global Color Palette.</td></tr>
                                     <tr><td><code>strokeCycleColors</code></td><td>Cycle Stroke Colors</td><td><code>boolean</code></td><td>If true, the stroke colors will animate through the hue spectrum.</td></tr>
                                     <tr><td><code>strokeScrollDir</code></td><td>Stroke Scroll Direction</td><td><code>combobox</code></td><td>The direction for animated linear stroke gradients.</td></tr>
                                 </tbody>
@@ -387,9 +391,10 @@
                                 <thead><tr><th>Property</th><th>Label</th><th>Type</th><th>Description & Values</th></tr></thead>
                                 <tbody>
                                     <tr><td><code>tetrisBlockCount</code></td><td>Block Count</td><td><code>number</code></td><td>The number of blocks to drop in a single animation cycle. Range: <code>1</code> to <code>50</code>.</td></tr>
-                                    <tr><td><code>tetrisAnimation</code></td><td>Drop Physics</td><td><code>combobox</code></td><td>The physics governing block movement (<code>linear</code>, <code>gravity</code>, etc.).</td></tr>
+                                    <tr><td><code>tetrisAnimation</code></td><td>Drop Physics</td><td><code>combobox</code></td><td>The physics governing block movement. Values: <code>linear</code>, <code>gravity</code>, <code>gravity-fade</code>, <code>fade-in-stack</code>, <code>fade-in-out</code>.</td></tr>
                                     <tr><td><code>tetrisSpeed</code></td><td>Drop/Fade-in Speed</td><td><code>number</code></td><td>Controls the speed of the animation. Range: <code>1</code> to <code>100</code>.</td></tr>
                                     <tr><td><code>tetrisBounce</code></td><td>Bounce Factor %</td><td><code>number</code></td><td>How much blocks bounce on impact. Range: <code>0</code> to <code>90</code>. <em>Only affects `gravity` physics.</em></td></tr>
+                                    <tr><td><code>tetrisHoldTime</code></td><td>Hold Time</td><td><code>number</code></td><td>For the <code>fade-in-out</code> animation, this sets how long the fully stacked blocks remain visible before fading out.</td></tr>
                                 </tbody>
                             </table>
                         </div>

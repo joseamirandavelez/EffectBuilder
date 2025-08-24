@@ -240,7 +240,7 @@
                         <h6 class="text-info mt-4">The Controls Panel (Left)</h6>
                         <p>This is where you manage all the objects and global settings for your effect.</p>
                         <ul>
-                            <li><strong>General Settings:</strong> This panel contains properties for your entire effect, such as its Title and Description.</li>
+                            <li><strong>General Settings:</strong> This panel contains properties for your entire effect, such as its Title, Description, and the new Global Color Palette.</li>
                             <li><strong>Add New Object:</strong> Use the green button at the bottom to add a new shape to the canvas.</li>
                             <li><strong>Object Panels:</strong> Each object gets its own collapsible panel. You can perform several actions here:
                                 <ul>
@@ -250,7 +250,7 @@
                                     <li><strong>Duplicate/Delete:</strong> Use the menu button (<i class="bi bi-list"></i>) to access options for duplicating or deleting an object.</li>
                                 </ul>
                             </li>
-                            <li><strong class="text-warning">Shape-Specific Settings:</strong> The real power of the builder lies in its specialized shapes. When you change an object's <strong>Shape</strong> property, different settings will appear for shapes like Text, Oscilloscope, Strimer, and more.
+                            <li><strong class="text-warning">Shape-Specific Settings:</strong> The real power of the builder lies in its specialized shapes. When you change an object's <strong>Shape</strong> property, different settings will appear for shapes like Text, Oscilloscope, Strimer, Tetris, and more.
                             </li>
                         </ul>
 
@@ -277,16 +277,12 @@
                             </li>
                         </ul>
 
-                        <h6 class="text-info mt-4">The Navbar (Top)</h6>
-                        <p>This toolbar contains actions for project management, sharing, and exporting. Most cloud-based actions require you to be signed in.</p>
-                        <ul class="list-unstyled">
-                            <li><strong class="text-primary-emphasis"><i class="bi bi-cloud-arrow-up me-1"></i> Save:</strong> Saves your current workspace to your personal cloud storage.</li>
-                            <li><strong class="text-secondary-emphasis"><i class="bi bi-folder2-open me-1"></i> Open:</strong> Opens a side panel showing all the effects you have saved to the cloud.</li>
-                            <li><strong class="text-warning-emphasis"><i class="bi bi-view-list me-1"></i> Community Gallery:</strong> Browse public effects created by all users.</li>
-                            <li><strong class="text-info-emphasis"><i class="bi bi-share me-1"></i> Share:</strong> After saving, this button provides a unique, shareable URL for your effect that anyone can view.</li>
-                            <li><strong class="text-success-emphasis"><i class="bi bi-download me-1"></i> Export:</strong> Prepares and downloads your effect as a `.zip` file, ready for use in SignalRGB.</li>
-                            <li><strong class="text-secondary-emphasis"><i class="bi bi-github me-1"></i> Feedback:</strong> Opens the project's GitHub page where you can report a bug or request a new feature.</li>
-                            <li><strong class="text-secondary-emphasis"><i class="bi bi-moon-stars-fill"></i> Theme:</strong> Cycles through Light, Dark, and Auto theme modes.</li>
+                        <h6 class="text-info mt-4">Using the Global Color Palette</h6>
+                        <p>To create a unified color scheme, you can use the Global Color Palette found in the <strong>General Settings</strong> panel at the top of the controls list.</p>
+                        <ul>
+                            <li>Check the <strong>Enable Global Color Palette</strong> box.</li>
+                            <li>When enabled, the two <strong>Palette Color</strong> pickers will override the individual <code>Color 1</code> and <code>Color 2</code> settings for every object in your scene.</li>
+                            <li>This is a fast and easy way to test different color combinations for your entire effect at once. The individual color pickers on each object will be disabled while the global palette is active.</li>
                         </ul>
 
                         <h6 class="text-info mt-4">Using Sound Reactivity</h6>
@@ -307,40 +303,47 @@
                             <li><strong>Configuration:</strong> Select a shape, go to the <strong>Sensor</strong> tab in its control panel, enable sensor reactivity, and choose a sensor to monitor.</li>
                         </ul>
 
-                        <h6 class="text-info mt-4">Using the Strimer Shape (New!)</h6>
+                        <h6 class="text-info mt-4">Using the Strimer Shape</h6>
                         <p>This shape is designed to simulate the animated lighting effects of PC cable strimers. It features multiple blocks of light moving vertically within columns.</p>
                         <ul>
                             <li><strong>Animation Style:</strong>
                                 <ul>
                                     <li><code>Bounce</code> / <code>Loop</code>: Blocks move up and down, either rebounding at the edges or wrapping around.</li>
                                     <li><code>Cascade</code>: Creates a continuous "waterfall" of light as blocks spawn sequentially.</li>
-                                    <li><code>Audio Meter</code>: Turns the columns into a real-time audio visualizer. The columns will represent different frequency bands (bass, mids, highs).</li>
-                                    <li><code>Snake</code>: Creates a single "snake" of light that travels in a zig-zag pattern through the columns. Use <strong>Snake Direction</strong> to control its path.</li>
+                                    <li><code>Audio Meter</code>: Turns the columns into a real-time audio visualizer.</li>
+                                    <li><code>Snake</code>: Creates a single "snake" of light that travels in a zig-zag pattern.</li>
                                 </ul>
                             </li>
                             <li><strong>Pulse Effect (Modifier):</strong>
                                 <ul>
-                                    <li><code>Pulse Speed</code>: This slider makes the blocks gently fade their brightness in and out, creating a "breathing" effect. This can be layered on top of any other animation style. Set to 0 to disable.</li>
-                                    <li><code>Sync Columns</code>: A toggle to make all columns pulse together or have them pulse sequentially for a wave-like effect.</li>
+                                    <li><code>Pulse Speed</code>: This slider makes the blocks gently fade their brightness in and out, creating a "breathing" effect that can be layered on top of any other animation style.</li>
                                 </ul>
                             </li>
                             <li><strong>Movement Controls:</strong>
                                 <ul>
-                                    <li><code>Direction</code>: Set blocks to move <code>Up</code>, <code>Down</code>, or <code>Random</code>. When set to Random, blocks will alternate directions within each column for a balanced effect.</li>
+                                    <li><code>Animation Speed</code>: Controls the speed of block movement, independent of the fill/gradient animation.</li>
+                                    <li><code>Direction</code>: Set blocks to move <code>Up</code>, <code>Down</code>, or <code>Random</code>.</li>
                                     <li><code>Easing</code>: Controls the acceleration of the blocks for more dynamic motion.</li>
                                 </ul>
                             </li>
-                            <li><strong>Audio Controls (For Audio Meter):</strong>
+                        </ul>
+
+                        <h6 class="text-info mt-4">Using the Tetris Shape</h6>
+                        <p>This shape creates an animation of falling and stacking blocks that fill the object's bounds.</p>
+                        <ul>
+                            <li><strong>Drop Physics (Animation Style):</strong>
                                 <ul>
-                                    <li><code>Audio Smoothing</code>: Smooths out the bar movement to prevent flickering.</li>
-                                    <li><code>Audio Sensitivity</code>: A general multiplier for the height of the audio bars.</li>
-                                    <li><code>Bass Level</code> / <code>Treble Boost</code>: Fine-tune the EQ curve by reducing bass or boosting treble frequencies.</li>
+                                    <li><code>Gravity</code> / <code>Linear</code>: Blocks fall one by one with either realistic or constant speed.</li>
+                                    <li><code>Gravity-Fade</code>: Blocks fall with gravity and then fade out after settling.</li>
+                                    <li><code>Fade-in-Stack</code>: Blocks fade in sequentially from the bottom up, then fade out all at once.</li>
+                                    <li><code>Fade-in-Out</code>: Blocks fade in from the bottom, hold for a set duration, and then fade out from the bottom.</li>
                                 </ul>
                             </li>
-                            <li><strong>Other Controls:</strong>
+                            <li><strong>Controls:</strong>
                                 <ul>
-                                    <li><code>Glitch Frequency</code>: Makes blocks occasionally stutter or disappear for a high-tech look. A value of 0 is off.</li>
-                                    <li><code>Block Spacing</code>: Sets the vertical distance between blocks in the Cascade animation.</li>
+                                    <li><code>Drop Speed</code>: Controls the speed of falling or fading blocks.</li>
+                                    <li><code>Bounce Factor</code>: For <code>Gravity</code> physics, controls how much blocks bounce on impact.</li>
+                                    <li><code>Hold Time</code>: For the <code>Fade-in-Out</code> animation, sets how long the fully stacked blocks remain visible before starting to fade out.</li>
                                 </ul>
                             </li>
                         </ul>

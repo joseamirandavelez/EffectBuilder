@@ -1952,7 +1952,21 @@ class Shape {
         }
     }
 
-    draw(isSelected, audioData = {}) {
+    draw(isSelected, audioData = {}, palette = {}) {
+        // Store original colors
+        const originalGradient = { ...this.gradient };
+        const originalStrokeGradient = { ...this.strokeGradient };
+
+        // Apply palette override if enabled
+        if (palette.enablePalette) {
+            const pColor1 = palette.paletteColor1 || '#000000';
+            const pColor2 = palette.paletteColor2 || '#000000';
+            this.gradient.color1 = pColor1;
+            this.gradient.color2 = pColor2;
+            this.strokeGradient.color1 = pColor1;
+            this.strokeGradient.color2 = pColor2;
+        }
+
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
         const angleToUse = this.getRenderAngle();
