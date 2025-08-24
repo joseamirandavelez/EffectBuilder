@@ -1615,8 +1615,7 @@ class Shape {
                             if (block.progress >= 1.0) { block.progress = 1.0; block.direction *= -1; }
                             else if (block.progress <= 0) { block.progress = 0; block.direction *= -1; }
                         } else { // Loop or Cascade
-                            if (block.progress > 1.0) block.progress -= 1.0;
-                            if (block.progress < 0) block.progress += 1.0;
+                            block.progress = (block.progress % 1.0 + 1.0) % 1.0;
                         }
                     });
                     break;
