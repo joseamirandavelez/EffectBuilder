@@ -1946,6 +1946,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const deltaTime = (now - then) / 1000.0; // deltaTime in seconds
         then = now;
 
+        if (deltaTime > 0.1) {
+            deltaTime = 0.1;
+        }
+
         const generalValues = getControlValues();
         const soundEnabled = generalValues.enableSound !== false;
         const isAnimating = generalValues.enableAnimation !== false;
@@ -2806,6 +2810,9 @@ document.addEventListener('DOMContentLoaded', function () {
         requestAnimationFrame(animate);
         const now = timestamp;
         const deltaTime = (now - (then || now)) / 1000.0;
+        if (deltaTime > 0.1) {
+            deltaTime = 0.1;
+        }
         then = now;
         
         drawFrame(deltaTime);
