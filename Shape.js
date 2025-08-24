@@ -250,7 +250,7 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerSnakeProgress, strimerSnakeDirection }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -347,6 +347,8 @@ class Shape {
         this.tetrisAnimation = tetrisAnimation || 'gravity';
         this.tetrisSpeed = tetrisSpeed || 5;
         this.tetrisBounce = tetrisBounce || 50;
+        this.tetrisHoldTime = tetrisHoldTime || 50;
+        this.tetrisHoldTimer = 0;
         this.tetrisSpeedDivisor = 10.0;
         this.tetrisBlocks = [];
         this.tetrisSpawnTimer = 0;
@@ -411,7 +413,7 @@ class Shape {
         this.shapeAnimationSpeedMultiplier = shapeAnimationSpeedMultiplier || 0.05;
         this.seismicAnimationSpeedMultiplier = seismicAnimationSpeedMultiplier || 0.015;
 
-        this.strimerRows = 27;
+        this.strimerMeterHeights = [];
         this.strimerColumns = strimerColumns || 4;
         this.strimerBlockCount = strimerBlockCount || 3;
         this.strimerBlockSize = strimerBlockSize || 40; // Scaled value (10 * 4)
@@ -427,11 +429,10 @@ class Shape {
         this.strimerAudioSensitivity = strimerAudioSensitivity || 100;
         this.strimerBassLevel = strimerBassLevel || 50;
         this.strimerTrebleBoost = strimerTrebleBoost || 150;
-        this.strimerSnakeIndex = 0; // The index of the current block in the snake's path
+        this.strimerSnakeIndex = strimerSnakeIndex || 0; // The index of the current block in the snake's path
         this.strimerSnakeDirection = 'Vertical'; // Default to current vertical zig-zag
-        
-        this.strimerAnimationSpeed = 20; // Default value
-        this.strimerSnakeProgress = 0; // Default value
+        this.strimerAnimationSpeed = strimerAnimationSpeed || 20;
+        this.strimerSnakeProgress = strimerSnakeProgress || 0; // Default value
     }
 
     _applySensorReactivity(sensorData) {
@@ -845,6 +846,7 @@ class Shape {
             this.tetrisSpawnTimer = 0;
             this.tetrisActiveBlockIndex = 0;
             this.tetrisFadeState = 'in';
+            this.tetrisHoldTimer = 0;
         }
         if ((textChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave')) || (animationChanged && (this.textAnimation === 'marquee' || this.textAnimation === 'wave'))) {
             this.scrollOffsetX = 0;
@@ -1554,14 +1556,29 @@ class Shape {
             // Update animation based on style
             switch (this.strimerAnimation) {
                 case 'Audio Meter':
-                    // Logic is handled in the draw method based on audioData
+                    // Add this entire block
+                    if (!this.strimerMeterHeights || this.strimerMeterHeights.length !== this.strimerColumns) {
+                        this.strimerMeterHeights = new Array(this.strimerColumns).fill(0);
+                    }
+                    const metrics = ['bass', 'mids', 'highs', 'volume'];
+                    const smoothingFactor = (this.strimerAudioSmoothing || 0) / 100.0;
+                    for (let i = 0; i < this.strimerColumns; i++) {
+                        const metricName = metrics[i % metrics.length];
+                        let audioValue = (audioData && audioData[metricName]) ? audioData[metricName].avg : 0;
+                        const startPoint = (this.strimerBassLevel || 50) / 400.0;
+                        const endPoint = (this.strimerTrebleBoost || 150) / 10.0;
+                        const boost = startPoint + (i / (this.strimerColumns - 1 || 1)) * (endPoint - startPoint);
+                        audioValue *= boost;
+                        const targetHeight = Math.min(this.height, audioValue * (this.strimerAudioSensitivity / 5000.0) * this.height);
+                        this.strimerMeterHeights[i] = smoothingFactor * this.strimerMeterHeights[i] + (1.0 - smoothingFactor) * targetHeight;
+                    }
                     break;
                 case 'Snake':
                     // Define the total number of blocks in the path
                     const totalBlocks = this.strimerColumns * this.strimerRows;
 
                     // Use a speed based on the animationSpeed property
-                    const animationSpeed = (this.animationSpeed / 10) * deltaTime;
+                    const animationSpeed = (this.strimerAnimationSpeed / 10) * deltaTime;
 
                     // Increment the progress of the snake's head
                     this.strimerSnakeProgress += animationSpeed;
@@ -1592,7 +1609,7 @@ class Shape {
 
                         if (block.isGlitched) return;
 
-                        block.progress += block.speed * (this.animationSpeed / 10) * block.direction * deltaTime * 60;
+                        block.progress += block.speed * (this.strimerAnimationSpeed / 10) * block.direction * deltaTime * 60;
 
                         if (this.strimerAnimation === 'Bounce') {
                             if (block.progress >= 1.0) { block.progress = 1.0; block.direction *= -1; }
@@ -1608,7 +1625,58 @@ class Shape {
 
         if (this.shape === 'tetris') {
             const baseSpeed = tetrisSpeed;
-            if (this.tetrisAnimation === 'fade-in-stack') {
+            if (this.tetrisAnimation === 'fade-in-out') {
+                const fadeSpeed = baseSpeed * 0.01;
+
+                // Phase 0: Initialization (runs only once per cycle)
+                if (this.tetrisBlocks.length === 0 && this.tetrisFadeState !== 'out') {
+                    const blockHeight = this.height / this.tetrisBlockCount;
+                    for (let i = 0; i < this.tetrisBlockCount; i++) {
+                        this.tetrisBlocks.push({ w: this.width, h: blockHeight, x: 0, y: this.height - (i + 1) * blockHeight, life: 0, settled: true });
+                    }
+                    this.tetrisActiveBlockIndex = 0;
+                    this.tetrisFadeState = 'in';
+                    this.tetrisHoldTimer = this.tetrisHoldTime;
+                }
+
+                // Phase 1: Fading In
+                if (this.tetrisFadeState === 'in') {
+                    if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
+                        const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
+                        activeBlock.life += fadeSpeed * deltaTime * 60;
+                        if (activeBlock.life >= 1.0) {
+                            activeBlock.life = 1.0;
+                            this.tetrisActiveBlockIndex++;
+                        }
+                    } else {
+                        // All blocks are visible, transition to hold phase
+                        this.tetrisFadeState = 'hold';
+                    }
+                }
+                // Phase 2: Holding
+                else if (this.tetrisFadeState === 'hold') {
+                    this.tetrisHoldTimer -= deltaTime * 60;
+                    if (this.tetrisHoldTimer <= 0) {
+                        this.tetrisFadeState = 'out';
+                        this.tetrisActiveBlockIndex = 0; // Reset index to fade out from the bottom
+                    }
+                }
+                // Phase 3: Fading Out
+                else if (this.tetrisFadeState === 'out') {
+                    if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
+                        const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
+                        activeBlock.life -= fadeSpeed * deltaTime * 60;
+                        if (activeBlock.life <= 0) {
+                            activeBlock.life = 0;
+                            this.tetrisActiveBlockIndex++;
+                        }
+                    } else {
+                        // All blocks faded out, clear array to restart the cycle on the next frame
+                        this.tetrisBlocks = [];
+                        this.tetrisFadeState = 'in';
+                    }
+                }
+            } else if (this.tetrisAnimation === 'fade-in-stack') {
                 const fadeSpeed = baseSpeed * 0.01;
                 if (this.tetrisBlocks.length === 0) {
                     const blockHeight = this.height / this.tetrisBlockCount;
@@ -1621,7 +1689,7 @@ class Shape {
                 if (this.tetrisFadeState === 'in') {
                     if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
                         const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
-                        activeBlock.life += fadeSpeed;
+                        activeBlock.life += fadeSpeed * deltaTime * 60;
                         if (activeBlock.life >= 1.0) {
                             activeBlock.life = 1.0;
                             this.tetrisActiveBlockIndex++;
@@ -1632,7 +1700,7 @@ class Shape {
                 } else {
                     let allFadedOut = true;
                     this.tetrisBlocks.forEach(block => {
-                        block.life -= fadeSpeed;
+                        block.life -= fadeSpeed * deltaTime * 60;
                         if (block.life > 0) { allFadedOut = false; } else { block.life = 0; }
                     });
                     if (allFadedOut) { this.tetrisBlocks = []; }
@@ -1996,40 +2064,10 @@ class Shape {
             const colWidth = this.width / this.strimerColumns;
 
             if (this.strimerAnimation === 'Audio Meter') {
-                // Initialize meter heights if needed
-                if (!this.strimerMeterHeights || this.strimerMeterHeights.length !== this.strimerColumns) {
-                    this.strimerMeterHeights = new Array(this.strimerColumns).fill(0);
-                }
-
-                const metrics = ['bass', 'mids', 'highs', 'volume'];
-                const smoothingFactor = (this.strimerAudioSmoothing || 0) / 100.0;
-
                 for (let i = 0; i < this.strimerColumns; i++) {
-                    const metricName = metrics[i % metrics.length];
-                    let audioValue = (audioData && audioData[metricName]) ? audioData[metricName].avg : 0;
-
-                    // Apply controllable bass/treble boost across the columns
-                    const startPoint = (this.strimerBassLevel || 50) / 400.0;
-                    const endPoint = (this.strimerTrebleBoost || 150) / 10.0;
-                    const boost = startPoint + (i / (this.strimerColumns - 1 || 1)) * (endPoint - startPoint);
-                    audioValue *= boost;
-
-                    const targetHeight = Math.min(this.height, audioValue * (this.strimerAudioSensitivity / 5000.0) * this.height);
-
-                    // Apply smoothing
-                    this.strimerMeterHeights[i] = smoothingFactor * this.strimerMeterHeights[i] + (1.0 - smoothingFactor) * targetHeight;
-
-                    const fillHeight = this.strimerMeterHeights[i];
+                    const fillHeight = this.strimerMeterHeights[i] || 0;
                     const xPos = -this.width / 2 + i * colWidth;
                     const yPos = this.height / 2 - fillHeight;
-
-                    let alpha = 1.0;
-                    if (this.strimerPulseSpeed > 0) {
-                        const phaseOffset = this.strimerPulseSync ? 0 : block.col * (2 * Math.PI / this.strimerColumns);
-                        alpha = (Math.sin(this.pulseProgress + phaseOffset) + 1) / 2;
-                    }
-                    this.ctx.globalAlpha = alpha;
-
                     this.ctx.fillStyle = this._createLocalFillStyle(i);
                     this.ctx.fillRect(xPos, yPos, colWidth, fillHeight);
                 }
@@ -2045,7 +2083,7 @@ class Shape {
                 this.ctx.save();
                 this.ctx.translate(-this.width / 2, -this.height / 2);
 
-                for (let i = 0; i < this.strimerBlockCount+1; i++) {
+                for (let i = 0; i < this.strimerBlockCount + 1; i++) {
                     let xPos, yPos, segmentPos, index, progress;
 
                     segmentPos = (headPos - i * step + totalPath) % totalPath;
