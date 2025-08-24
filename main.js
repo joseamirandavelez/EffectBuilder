@@ -108,6 +108,7 @@ const INITIAL_CONFIG_TEMPLATE = `
 `;
 
 // --- State Management ---
+let baselineStateForURL = {};
 let loadedStateSnapshot = null;
 let dirtyProperties = new Set();
 let leftPanelPixelWidth = 0;
@@ -176,40 +177,42 @@ document.addEventListener('DOMContentLoaded', function () {
         const baseUrl = `https://go.signalrgb.com/app/effect/apply/${urlSafeTitle}`;
 
         let params = [];
+        const currentState = getControlValues();
 
-        // Loop through every property and append it to the params array.
-        for (const key in allProps) {
-            if (!allProps.hasOwnProperty(key)) {
+        for (const key in currentState) {
+            if (!currentState.hasOwnProperty(key)) {
                 continue;
             }
 
-            // --- NEW: Check if the property was touched during this session ---
-            if (!dirtyProperties.has(key) && key !== 'title') {
-                continue; // Skip properties that were never changed (but always process title)
-            }
+            const isDifferentFromBaseline = !baselineStateForURL.hasOwnProperty(key) || String(currentState[key]) !== String(baselineStateForURL[key]);
 
-            let value = allProps[key];
+            // Compare the current value to the baseline value.
+            // If the baseline doesn't have the key, or if the values are different, it's a change.
+            if (isDifferentFromBaseline || dirtyProperties.has(key)) {
 
-            // Filter out metadata that shouldn't be in the link's query string.
-            if (key === 'title' || key === 'description' || key === 'publisher') {
-                continue;
-            }
-
-            if (typeof value === 'boolean') {
-                value = value ? 'true' : 'false';
-            }
-            else if (typeof value === 'number') {
-                value = String(value);
-            }
-
-            if (typeof value === 'string') {
-                if (value.startsWith('#')) {
-                    value = `%23${value.substring(1)}`;
+                // Filter out metadata that shouldn't be in the link's query string.
+                if (key === 'title' || key === 'description' || key === 'publisher') {
+                    continue;
                 }
-                value = value.replace(/ /g, '%20');
-            }
 
-            params.push(`${key}=${value}`);
+                let value = currentState[key];
+
+                // Format the value for the URL.
+                if (typeof value === 'boolean') {
+                    value = value ? 'true' : 'false';
+                } else if (typeof value === 'number') {
+                    value = String(value);
+                }
+
+                if (typeof value === 'string') {
+                    if (value.startsWith('#')) {
+                        value = `%23${value.substring(1)}`;
+                    }
+                    value = value.replace(/ /g, '%20');
+                }
+
+                params.push(`${key}=${value}`);
+            }
         }
 
         const queryString = params.join('&');
@@ -326,10 +329,10 @@ document.addEventListener('DOMContentLoaded', function () {
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
         ],
-        tetris: [
+        'tetris': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed', 'phaseOffset',
-            'tetrisAnimation', 'tetrisBlockCount', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce',
+            'tetrisAnimation', 'tetrisBlockCount', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce', 'tetrisHoldTime', // <-- Add 'tetrisHoldTime' here
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
         ],
         fire: [
@@ -362,7 +365,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'shape', 'x', 'y', 'width', 'height', 'rotation',
             'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2',
             'cycleColors', 'cycleSpeed', 'animationSpeed', 'scrollDir', 'phaseOffset',
-            'strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerDirection', 'strimerEasing',
+            'strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerDirection', 'strimerEasing', 'strimerAnimationSpeed', // <-- Add it here
             'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerPulseSync', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection'
         ],
     };
@@ -489,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         loadedStateSnapshot = null;
         dirtyProperties.clear();
-
+        baselineStateForURL = getControlValues();
         showToast("New workspace created.", "info");
     }
 
@@ -1140,6 +1143,267 @@ document.addEventListener('DOMContentLoaded', function () {
         return { metaTags: scriptHTML.trim(), jsVars: jsVars.trim(), allKeys: allKeys };
     }
 
+    function createObjectPanel(obj, objectConfigs, activeCollapseStates, activeTabStates) {
+        const id = obj.id;
+        const objectName = obj.name || `Object ${id}`;
+        const fieldset = document.createElement('fieldset');
+        fieldset.className = 'border p-2 mb-3 rounded bg-body-tertiary';
+        fieldset.dataset.objectId = id;
+        const headerBar = document.createElement('div');
+        headerBar.className = 'd-flex justify-content-between align-items-center w-100 px-2 py-1';
+        const collapseId = `collapse-obj-${id}`;
+        const showObject = activeCollapseStates[id] === true || selectedObjectIds.includes(id);
+        headerBar.style.cursor = 'pointer';
+        headerBar.dataset.bsToggle = 'collapse';
+        headerBar.dataset.bsTarget = `#${collapseId}`;
+        headerBar.setAttribute('aria-expanded', showObject);
+        headerBar.setAttribute('aria-controls', collapseId);
+        const stopPropagation = (e) => e.stopPropagation();
+        const leftGroup = document.createElement('div');
+        leftGroup.className = 'd-flex align-items-center';
+        leftGroup.addEventListener('click', stopPropagation);
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle me-2 text-body-secondary';
+        dragHandle.style.cursor = 'grab';
+        dragHandle.innerHTML = '<i class="bi bi-grip-vertical"></i>';
+        leftGroup.appendChild(dragHandle);
+        const editableArea = document.createElement('div');
+        editableArea.className = 'editable-name-area d-flex align-items-center';
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'object-name fs-5 fw-semibold';
+        nameSpan.style.minWidth = '0';
+        nameSpan.contentEditable = true;
+        nameSpan.dataset.id = id;
+        nameSpan.textContent = objectName;
+        editableArea.appendChild(nameSpan);
+        const pencilIcon = document.createElement('i');
+        pencilIcon.className = 'bi bi-pencil-fill ms-2';
+        pencilIcon.addEventListener('click', (e) => {
+            nameSpan.focus();
+            const range = document.createRange();
+            const selection = window.getSelection();
+            range.selectNodeContents(nameSpan);
+            range.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        });
+        editableArea.appendChild(pencilIcon);
+        leftGroup.appendChild(editableArea);
+        headerBar.appendChild(leftGroup);
+        const controlsGroup = document.createElement('div');
+        controlsGroup.className = 'd-flex align-items-center flex-shrink-0';
+        controlsGroup.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const lockBtn = e.target.closest('.btn-lock');
+            const deleteBtn = e.target.closest('.btn-delete');
+            const duplicateBtn = e.target.closest('.btn-duplicate');
+            if (lockBtn) {
+                const id = parseInt(lockBtn.dataset.id, 10);
+                const obj = objects.find(o => o.id === id);
+                if (obj) {
+                    obj.locked = !obj.locked;
+                    const icon = lockBtn.querySelector('i');
+                    lockBtn.classList.toggle('btn-warning', obj.locked);
+                    lockBtn.classList.toggle('btn-outline-secondary', !obj.locked);
+                    icon.className = `bi ${obj.locked ? 'bi-lock-fill' : 'bi-unlock-fill'}`;
+                    const tooltip = bootstrap.Tooltip.getInstance(lockBtn);
+                    if (tooltip) {
+                        tooltip.setContent({ '.tooltip-inner': obj.locked ? 'Unlock Object' : 'Lock Object' });
+                    }
+                    drawFrame();
+                }
+            }
+            if (deleteBtn) {
+                e.preventDefault();
+                const idToDelete = parseInt(deleteBtn.dataset.id, 10);
+                deleteObjects([idToDelete]);
+            }
+            if (duplicateBtn) {
+                e.preventDefault();
+                const idToCopy = parseInt(duplicateBtn.dataset.id, 10);
+                const objectToCopy = objects.find(o => o.id === idToCopy);
+                if (!objectToCopy) return;
+                const newState = JSON.parse(JSON.stringify(objectToCopy, (key, value) => {
+                    if (key === 'ctx') return undefined;
+                    return value;
+                }));
+                const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
+                newState.id = newId;
+                newState.name = `${objectToCopy.name} Copy`;
+                newState.x += 20;
+                newState.y += 20;
+                const newShape = new Shape({ ...newState, ctx, canvasWidth: canvas.width });
+                objects.push(newShape);
+                const oldConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${idToCopy}_`));
+                const newConfigs = oldConfigs.map(oldConf => {
+                    const newConf = { ...oldConf };
+                    const propName = oldConf.property.substring(oldConf.property.indexOf('_') + 1);
+                    newConf.property = `obj${newId}_${propName}`;
+                    newConf.label = `${newState.name}:${oldConf.label.split(':')[1]}`;
+                    let liveValue = newShape[propName];
+                    if (propName.startsWith('gradColor')) {
+                        liveValue = newShape.gradient[propName.replace('gradColor', 'color')];
+                    } else if (propName === 'scrollDir') {
+                        liveValue = newShape.scrollDirection;
+                    }
+                    const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+                    if (propsToScale.includes(propName)) {
+                        liveValue /= 4;
+                    } else if (propName === 'animationSpeed') {
+                        liveValue *= 10;
+                    } else if (propName === 'cycleSpeed') {
+                        liveValue *= 50;
+                    }
+                    newConf.default = liveValue;
+                    return newConf;
+                });
+                configStore.push(...newConfigs);
+                selectedObjectIds = [newId];
+                renderForm();
+                syncPanelsWithSelection();
+                drawFrame();
+                recordHistory();
+            }
+        });
+        const lockButton = document.createElement('button');
+        const isLocked = obj.locked || false;
+        lockButton.className = `btn btn-sm btn-lock ${isLocked ? 'btn-warning' : 'btn-outline-secondary'} d-flex align-items-center justify-content-center px-2 ms-2`;
+        lockButton.style.height = '28px';
+        lockButton.style.width = '28px';
+        lockButton.type = 'button';
+        lockButton.dataset.id = id;
+        lockButton.dataset.bsToggle = 'tooltip';
+        lockButton.title = isLocked ? 'Unlock Object' : 'Lock Object';
+        lockButton.innerHTML = `<i class="bi ${isLocked ? 'bi-lock-fill' : 'bi-unlock-fill'}"></i>`;
+        controlsGroup.appendChild(lockButton);
+        const dropdown = document.createElement('div');
+        dropdown.className = 'dropdown';
+        dropdown.innerHTML = `<button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center px-2 ms-2" style="height: 28px;" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-list fs-5"></i></button><ul class="dropdown-menu dropdown-menu-dark"><li><a class="dropdown-item btn-duplicate" href="#" data-id="${id}"><i class="bi bi-copy me-2"></i>Duplicate</a></li><li><a class="dropdown-item btn-delete text-danger" href="#" data-id="${id}"><i class="bi bi-trash me-2"></i>Delete</a></li></ul>`;
+        controlsGroup.appendChild(dropdown);
+        const collapseIcon = document.createElement('span');
+        collapseIcon.className = `legend-button ${showObject ? '' : 'collapsed'} ms-2`;
+        collapseIcon.innerHTML = `<i class="bi bi-chevron-up"></i>`;
+        controlsGroup.appendChild(collapseIcon);
+        headerBar.appendChild(controlsGroup);
+        const collapseWrapper = document.createElement('div');
+        collapseWrapper.id = collapseId;
+        collapseWrapper.className = `collapse p-3 ${showObject ? 'show' : ''}`;
+        collapseWrapper.appendChild(document.createElement('hr'));
+
+        // --- 4. TABBED INTERFACE CREATION ---
+        const tabNav = document.createElement('ul');
+        tabNav.className = 'nav nav-tabs';
+        tabNav.id = `object-tabs-${id}`;
+        tabNav.setAttribute('role', 'tablist');
+        const tabContent = document.createElement('div');
+        tabContent.className = 'tab-content';
+        tabContent.id = `object-tab-content-${id}`;
+
+        // Update this for a new property
+        const controlGroupMap = {
+            'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
+            'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'animationSpeed', 'cycleSpeed'], icon: 'bi-palette-fill' },
+            'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir'], icon: 'bi-brush-fill' },
+            'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'], icon: 'bi-fonts' },
+            'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
+            'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'], icon: 'bi-grid-3x3-gap-fill' },
+            'Fire': { props: ['fireSpread'], icon: 'bi-fire' },
+            'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
+            'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost'], icon: 'bi-bar-chart-line-fill' },
+            'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
+            'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'sensorValueSource', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'], icon: 'bi-cpu-fill' },
+            'Strimer': { props: ['strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerAnimationSpeed', 'strimerDirection', 'strimerEasing', 'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection'], icon: 'bi-segmented-nav' },
+        };
+        const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
+        let isFirstTab = true;
+        let firstTabId = null;
+        for (const groupName in controlGroupMap) {
+            const groupProps = controlGroupMap[groupName].props;
+            const relevantProps = objectConfigs.filter(conf => {
+                const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+                if (propName === 'shape' && groupName === 'Geometry') {
+                    return true;
+                }
+                return groupProps.includes(propName) && validPropsForShape.includes(propName);
+            });
+            if (relevantProps.length > 0) {
+                const safeGroupName = groupName.replace(/[\s&]/g, '-');
+                const tabId = `tab-${id}-${safeGroupName}`;
+                if (isFirstTab) {
+                    firstTabId = tabId;
+                }
+                const paneId = `pane-${id}-${safeGroupName}`;
+                const tabItem = document.createElement('li');
+                tabItem.className = 'nav-item';
+                tabItem.setAttribute('role', 'presentation');
+                const tabButton = document.createElement('button');
+                tabButton.className = `nav-link`;
+                tabButton.id = tabId;
+                tabButton.dataset.bsToggle = 'tab';
+                tabButton.dataset.bsTarget = `#${paneId}`;
+                tabButton.type = 'button';
+                tabButton.setAttribute('role', 'tab');
+                tabButton.setAttribute('aria-controls', paneId);
+                const icon = document.createElement('i');
+                icon.className = `bi ${controlGroupMap[groupName].icon} me-2`;
+                tabButton.appendChild(icon);
+                tabButton.appendChild(document.createTextNode(groupName.replace(/-/g, ' & ')));
+                tabItem.appendChild(tabButton);
+                tabNav.appendChild(tabItem);
+                const pane = document.createElement('div');
+                pane.className = `tab-pane fade`;
+                pane.id = paneId;
+                pane.setAttribute('role', 'tabpanel');
+                pane.setAttribute('aria-labelledby', tabId);
+                const groupCard = document.createElement('div');
+                groupCard.className = 'card card-body bg-body mb-3';
+                const groupHeader = document.createElement('h6');
+                groupHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
+                groupHeader.textContent = groupName.replace(/-/g, ' & ');
+                groupCard.appendChild(groupHeader);
+                relevantProps.forEach(conf => {
+                    groupCard.appendChild(createFormControl(conf));
+                });
+                pane.appendChild(groupCard);
+                tabContent.appendChild(pane);
+                isFirstTab = false;
+            }
+        }
+        collapseWrapper.appendChild(tabNav);
+        collapseWrapper.appendChild(tabContent);
+        fieldset.appendChild(headerBar);
+        fieldset.appendChild(collapseWrapper);
+        form.appendChild(fieldset);
+
+        const savedTabId = activeTabStates[id] || firstTabId;
+        if (savedTabId) {
+            const tabToActivate = document.getElementById(savedTabId);
+            if (tabToActivate) {
+                const paneId = tabToActivate.dataset.bsTarget;
+                const paneToActivate = document.querySelector(paneId);
+                tabToActivate.classList.add('active');
+                tabToActivate.setAttribute('aria-selected', 'true');
+                if (paneToActivate) {
+                    paneToActivate.classList.add('show', 'active');
+                }
+            } else {
+                const firstTabButton = fieldset.querySelector('.nav-tabs .nav-link');
+                if (firstTabButton) {
+                    const paneId = firstTabButton.dataset.bsTarget;
+                    const paneToActivate = document.querySelector(paneId);
+
+                    if (paneToActivate) {
+                        firstTabButton.classList.add('active');
+                        firstTabButton.setAttribute('aria-selected', 'true');
+                        paneToActivate.classList.add('show', 'active');
+                    }
+                }
+            }
+        }
+
+        return fieldset;
+    }
+
     /**
      * Renders the entire controls form based on the current `configStore` and `objects` state.
      * This function is responsible for dynamically building all the UI in the left panel.
@@ -1227,264 +1491,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // --- 3. OBJECT PANELS CREATION (Main Loop) ---
         objects.forEach(obj => {
-            const id = obj.id;
-            const objectConfigs = grouped.objects[id] || [];
-            if (!objectConfigs) return;
-            const objectName = obj.name || `Object ${id}`;
-            const fieldset = document.createElement('fieldset');
-            fieldset.className = 'border p-2 mb-3 rounded bg-body-tertiary';
-            fieldset.dataset.objectId = id;
-            const headerBar = document.createElement('div');
-            headerBar.className = 'd-flex justify-content-between align-items-center w-100 px-2 py-1';
-            const collapseId = `collapse-obj-${id}`;
-            const showObject = activeCollapseStates[id] === true || selectedObjectIds.includes(id);
-            headerBar.style.cursor = 'pointer';
-            headerBar.dataset.bsToggle = 'collapse';
-            headerBar.dataset.bsTarget = `#${collapseId}`;
-            headerBar.setAttribute('aria-expanded', showObject);
-            headerBar.setAttribute('aria-controls', collapseId);
-            const stopPropagation = (e) => e.stopPropagation();
-            const leftGroup = document.createElement('div');
-            leftGroup.className = 'd-flex align-items-center';
-            leftGroup.addEventListener('click', stopPropagation);
-            const dragHandle = document.createElement('div');
-            dragHandle.className = 'drag-handle me-2 text-body-secondary';
-            dragHandle.style.cursor = 'grab';
-            dragHandle.innerHTML = '<i class="bi bi-grip-vertical"></i>';
-            leftGroup.appendChild(dragHandle);
-            const editableArea = document.createElement('div');
-            editableArea.className = 'editable-name-area d-flex align-items-center';
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'object-name fs-5 fw-semibold';
-            nameSpan.style.minWidth = '0';
-            nameSpan.contentEditable = true;
-            nameSpan.dataset.id = id;
-            nameSpan.textContent = objectName;
-            editableArea.appendChild(nameSpan);
-            const pencilIcon = document.createElement('i');
-            pencilIcon.className = 'bi bi-pencil-fill ms-2';
-            pencilIcon.addEventListener('click', (e) => {
-                nameSpan.focus();
-                const range = document.createRange();
-                const selection = window.getSelection();
-                range.selectNodeContents(nameSpan);
-                range.collapse(false);
-                selection.removeAllRanges();
-                selection.addRange(range);
-            });
-            editableArea.appendChild(pencilIcon);
-            leftGroup.appendChild(editableArea);
-            headerBar.appendChild(leftGroup);
-            const controlsGroup = document.createElement('div');
-            controlsGroup.className = 'd-flex align-items-center flex-shrink-0';
-            controlsGroup.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const lockBtn = e.target.closest('.btn-lock');
-                const deleteBtn = e.target.closest('.btn-delete');
-                const duplicateBtn = e.target.closest('.btn-duplicate');
-                if (lockBtn) {
-                    const id = parseInt(lockBtn.dataset.id, 10);
-                    const obj = objects.find(o => o.id === id);
-                    if (obj) {
-                        obj.locked = !obj.locked;
-                        const icon = lockBtn.querySelector('i');
-                        lockBtn.classList.toggle('btn-warning', obj.locked);
-                        lockBtn.classList.toggle('btn-outline-secondary', !obj.locked);
-                        icon.className = `bi ${obj.locked ? 'bi-lock-fill' : 'bi-unlock-fill'}`;
-                        const tooltip = bootstrap.Tooltip.getInstance(lockBtn);
-                        if (tooltip) {
-                            tooltip.setContent({ '.tooltip-inner': obj.locked ? 'Unlock Object' : 'Lock Object' });
-                        }
-                        drawFrame();
-                    }
-                }
-                if (deleteBtn) {
-                    e.preventDefault();
-                    const idToDelete = parseInt(deleteBtn.dataset.id, 10);
-                    deleteObjects([idToDelete]);
-                }
-                if (duplicateBtn) {
-                    e.preventDefault();
-                    const idToCopy = parseInt(duplicateBtn.dataset.id, 10);
-                    const objectToCopy = objects.find(o => o.id === idToCopy);
-                    if (!objectToCopy) return;
-                    const newState = JSON.parse(JSON.stringify(objectToCopy, (key, value) => {
-                        if (key === 'ctx') return undefined;
-                        return value;
-                    }));
-                    const newId = (objects.reduce((maxId, o) => Math.max(maxId, o.id), 0)) + 1;
-                    newState.id = newId;
-                    newState.name = `${objectToCopy.name} Copy`;
-                    newState.x += 20;
-                    newState.y += 20;
-                    const newShape = new Shape({ ...newState, ctx, canvasWidth: canvas.width });
-                    objects.push(newShape);
-                    const oldConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${idToCopy}_`));
-                    const newConfigs = oldConfigs.map(oldConf => {
-                        const newConf = { ...oldConf };
-                        const propName = oldConf.property.substring(oldConf.property.indexOf('_') + 1);
-                        newConf.property = `obj${newId}_${propName}`;
-                        newConf.label = `${newState.name}:${oldConf.label.split(':')[1]}`;
-                        let liveValue = newShape[propName];
-                        if (propName.startsWith('gradColor')) {
-                            liveValue = newShape.gradient[propName.replace('gradColor', 'color')];
-                        } else if (propName === 'scrollDir') {
-                            liveValue = newShape.scrollDirection;
-                        }
-                        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
-                        if (propsToScale.includes(propName)) {
-                            liveValue /= 4;
-                        } else if (propName === 'animationSpeed') {
-                            liveValue *= 10;
-                        } else if (propName === 'cycleSpeed') {
-                            liveValue *= 50;
-                        }
-                        newConf.default = liveValue;
-                        return newConf;
-                    });
-                    configStore.push(...newConfigs);
-                    selectedObjectIds = [newId];
-                    renderForm();
-                    syncPanelsWithSelection();
-                    drawFrame();
-                    recordHistory();
-                }
-            });
-            const lockButton = document.createElement('button');
-            const isLocked = obj.locked || false;
-            lockButton.className = `btn btn-sm btn-lock ${isLocked ? 'btn-warning' : 'btn-outline-secondary'} d-flex align-items-center justify-content-center px-2 ms-2`;
-            lockButton.style.height = '28px';
-            lockButton.style.width = '28px';
-            lockButton.type = 'button';
-            lockButton.dataset.id = id;
-            lockButton.dataset.bsToggle = 'tooltip';
-            lockButton.title = isLocked ? 'Unlock Object' : 'Lock Object';
-            lockButton.innerHTML = `<i class="bi ${isLocked ? 'bi-lock-fill' : 'bi-unlock-fill'}"></i>`;
-            controlsGroup.appendChild(lockButton);
-            const dropdown = document.createElement('div');
-            dropdown.className = 'dropdown';
-            dropdown.innerHTML = `<button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center px-2 ms-2" style="height: 28px;" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-list fs-5"></i></button><ul class="dropdown-menu dropdown-menu-dark"><li><a class="dropdown-item btn-duplicate" href="#" data-id="${id}"><i class="bi bi-copy me-2"></i>Duplicate</a></li><li><a class="dropdown-item btn-delete text-danger" href="#" data-id="${id}"><i class="bi bi-trash me-2"></i>Delete</a></li></ul>`;
-            controlsGroup.appendChild(dropdown);
-            const collapseIcon = document.createElement('span');
-            collapseIcon.className = `legend-button ${showObject ? '' : 'collapsed'} ms-2`;
-            collapseIcon.innerHTML = `<i class="bi bi-chevron-up"></i>`;
-            controlsGroup.appendChild(collapseIcon);
-            headerBar.appendChild(controlsGroup);
-            const collapseWrapper = document.createElement('div');
-            collapseWrapper.id = collapseId;
-            collapseWrapper.className = `collapse p-3 ${showObject ? 'show' : ''}`;
-            collapseWrapper.appendChild(document.createElement('hr'));
-
-            // --- 4. TABBED INTERFACE CREATION ---
-            const tabNav = document.createElement('ul');
-            tabNav.className = 'nav nav-tabs';
-            tabNav.id = `object-tabs-${id}`;
-            tabNav.setAttribute('role', 'tablist');
-            const tabContent = document.createElement('div');
-            tabContent.className = 'tab-content';
-            tabContent.id = `object-tab-content-${id}`;
-
-            // Update this for a new property
-            const controlGroupMap = {
-                'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
-                'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'animationSpeed', 'cycleSpeed'], icon: 'bi-palette-fill' },
-                'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir'], icon: 'bi-brush-fill' },
-                'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'], icon: 'bi-fonts' },
-                'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
-                'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'], icon: 'bi-grid-3x3-gap-fill' },
-                'Fire': { props: ['fireSpread'], icon: 'bi-fire' },
-                'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
-                'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost'], icon: 'bi-bar-chart-line-fill' },
-                'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
-                'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'sensorValueSource', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'], icon: 'bi-cpu-fill' },
-                'Strimer': { props: ['strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerDirection', 'strimerEasing', 'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection'], icon: 'bi-segmented-nav' },
-            };
-            const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
-            let isFirstTab = true;
-            let firstTabId = null;
-            for (const groupName in controlGroupMap) {
-                const groupProps = controlGroupMap[groupName].props;
-                const relevantProps = objectConfigs.filter(conf => {
-                    const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                    if (propName === 'shape' && groupName === 'Geometry') {
-                        return true;
-                    }
-                    return groupProps.includes(propName) && validPropsForShape.includes(propName);
-                });
-                if (relevantProps.length > 0) {
-                    const safeGroupName = groupName.replace(/[\s&]/g, '-');
-                    const tabId = `tab-${id}-${safeGroupName}`;
-                    if (isFirstTab) {
-                        firstTabId = tabId;
-                    }
-                    const paneId = `pane-${id}-${safeGroupName}`;
-                    const tabItem = document.createElement('li');
-                    tabItem.className = 'nav-item';
-                    tabItem.setAttribute('role', 'presentation');
-                    const tabButton = document.createElement('button');
-                    tabButton.className = `nav-link`;
-                    tabButton.id = tabId;
-                    tabButton.dataset.bsToggle = 'tab';
-                    tabButton.dataset.bsTarget = `#${paneId}`;
-                    tabButton.type = 'button';
-                    tabButton.setAttribute('role', 'tab');
-                    tabButton.setAttribute('aria-controls', paneId);
-                    const icon = document.createElement('i');
-                    icon.className = `bi ${controlGroupMap[groupName].icon} me-2`;
-                    tabButton.appendChild(icon);
-                    tabButton.appendChild(document.createTextNode(groupName.replace(/-/g, ' & ')));
-                    tabItem.appendChild(tabButton);
-                    tabNav.appendChild(tabItem);
-                    const pane = document.createElement('div');
-                    pane.className = `tab-pane fade`;
-                    pane.id = paneId;
-                    pane.setAttribute('role', 'tabpanel');
-                    pane.setAttribute('aria-labelledby', tabId);
-                    const groupCard = document.createElement('div');
-                    groupCard.className = 'card card-body bg-body mb-3';
-                    const groupHeader = document.createElement('h6');
-                    groupHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
-                    groupHeader.textContent = groupName.replace(/-/g, ' & ');
-                    groupCard.appendChild(groupHeader);
-                    relevantProps.forEach(conf => {
-                        groupCard.appendChild(createFormControl(conf));
-                    });
-                    pane.appendChild(groupCard);
-                    tabContent.appendChild(pane);
-                    isFirstTab = false;
-                }
-            }
-            collapseWrapper.appendChild(tabNav);
-            collapseWrapper.appendChild(tabContent);
-            fieldset.appendChild(headerBar);
-            fieldset.appendChild(collapseWrapper);
-            form.appendChild(fieldset);
-
-            const savedTabId = activeTabStates[id] || firstTabId;
-            if (savedTabId) {
-                const tabToActivate = document.getElementById(savedTabId);
-                if (tabToActivate) {
-                    const paneId = tabToActivate.dataset.bsTarget;
-                    const paneToActivate = document.querySelector(paneId);
-                    tabToActivate.classList.add('active');
-                    tabToActivate.setAttribute('aria-selected', 'true');
-                    if (paneToActivate) {
-                        paneToActivate.classList.add('show', 'active');
-                    }
-                } else {
-                    const firstTabButton = fieldset.querySelector('.nav-tabs .nav-link');
-                    if (firstTabButton) {
-                        const paneId = firstTabButton.dataset.bsTarget;
-                        const paneToActivate = document.querySelector(paneId);
-
-                        if (paneToActivate) {
-                            firstTabButton.classList.add('active');
-                            firstTabButton.setAttribute('aria-selected', 'true');
-                            paneToActivate.classList.add('show', 'active');
-                        }
-                    }
-                }
-            }
+            const objectConfigs = grouped.objects[obj.id] || [];
+            const panel = createObjectPanel(obj, objectConfigs, activeCollapseStates, activeTabStates);
+            form.appendChild(panel);
         });
 
         // --- 5. FINALIZATION ---
@@ -2274,6 +2283,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         loadedStateSnapshot = getControlValues(); // Take a snapshot of the loaded state
         dirtyProperties.clear();
+        baselineStateForURL = getControlValues();
     }
 
     /**
@@ -2354,9 +2364,10 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_waveStyle`, label: `Object ${newId}: Seismic Wave Style`, type: 'combobox', default: 'wavy', values: 'wavy,round', description: '(Oscilloscope) The style of the seismic wave.' },
             { property: `obj${newId}_waveCount`, label: `Object ${newId}: Seismic Wave Count`, type: 'number', default: '5', min: '1', max: '20', description: '(Oscilloscope) The number of seismic waves to display.' },
             { property: `obj${newId}_tetrisBlockCount`, label: `Object ${newId}: Block Count`, type: 'number', default: '10', min: '1', max: '50', description: '(Tetris) The number of blocks in the animation cycle.' },
-            { property: `obj${newId}_tetrisAnimation`, label: `Object ${newId}: Drop Physics`, type: 'combobox', values: 'gravity,linear,gravity-fade,fade-in-stack', default: 'gravity', description: '(Tetris) The physics governing how the blocks fall. Gravity-fade removes blocks as they settle.' },
+            { property: `obj${newId}_tetrisAnimation`, label: `Object ${newId}: Drop Physics`, type: 'combobox', values: 'gravity,linear,gravity-fade,fade-in-stack,fade-in-out', default: 'gravity', description: '(Tetris) The physics governing how the blocks fall. Gravity-fade removes blocks as they settle.' },
             { property: `obj${newId}_tetrisSpeed`, label: `Object ${newId}: Drop/Fade-in Speed`, type: 'number', default: '5', min: '1', max: '100', description: '(Tetris) The speed of the drop animation.' },
             { property: `obj${newId}_tetrisBounce`, label: `Object ${newId}: Bounce Factor`, type: 'number', default: '50', min: '0', max: '90', description: '(Tetris) How much the blocks bounce on impact. 0 is no bounce.' },
+            { property: `obj${newId}_tetrisHoldTime`, label: `Object ${newId}: Hold Time`, type: 'number', default: '50', min: '0', max: '200', description: '(Tetris) For fade-in-out, the time blocks remain visible before fading out.' }, // <-- Add this new object
             { property: `obj${newId}_fireSpread`, label: `Object ${newId}: Fire Spread %`, type: 'number', default: '100', min: '1', max: '100', description: '(fire-radial) Controls how far the flames spread from the center.' },
 
             // Stroke Fill
@@ -2417,6 +2428,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_strimerAnimation`, label: `Object ${newId}: Animation`, type: 'combobox', default: 'Bounce', values: 'Bounce,Loop,Cascade,Audio Meter,Snake', description: '(Strimer) The primary animation style for the blocks.' },
             { property: `obj${newId}_strimerDirection`, label: `Object ${newId}: Direction`, type: 'combobox', default: 'Random', values: 'Up,Down,Random', description: '(Strimer) The initial direction of the blocks.' },
             { property: `obj${newId}_strimerEasing`, label: `Object ${newId}: Easing`, type: 'combobox', default: 'Linear', values: 'Linear,Ease-In,Ease-Out,Ease-In-Out', description: '(Strimer) The acceleration curve of the block movement.' },
+            { property: `obj${newId}_strimerAnimationSpeed`, label: `Object ${newId}: Animation Speed`, type: 'number', default: '20', min: '0', max: '100', description: '(Strimer) The speed of the block movement, independent of the fill animation.' },
             { property: `obj${newId}_strimerSnakeDirection`, label: `Object ${newId}: Snake Direction`, type: 'combobox', default: 'Vertical', values: 'Horizontal,Vertical', description: '(Strimer) The direction of the snake. Vertical (along the colum), Horizontal (across the columns).' },
             { property: `obj${newId}_strimerBlockSpacing`, label: `Object ${newId}: Block Spacing`, type: 'number', default: '5', min: '0', max: '50', description: '(Cascade) The vertical spacing between blocks in a cascade.' },
             { property: `obj${newId}_strimerGlitchFrequency`, label: `Object ${newId}: Glitch Frequency`, type: 'number', default: '0', min: '0', max: '100', description: '(Glitch) How often blocks stutter or disappear. 0 is off.' },
@@ -2592,6 +2604,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // In main.js, inside the exportedScript template string
     function drawFrame(deltaTime = 0) {
         if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2619,7 +2632,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (value === "true") value = true;
                     if (value === "false") value = false;
                     
-                    // FIX: This logic correctly separates color and alpha properties for live updates.
                     if (propName === 'gradColor1' || propName === 'gradColor2') {
                         propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
                     } else if (propName === 'strokeGradColor1' || propName === 'strokeGradColor2') {
@@ -2633,8 +2645,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 } catch (e) {}
             });
+            
+            // Store the old values of critical Strimer properties before updating
+            const oldStrimerState = {
+                animation: obj.strimerAnimation,
+                direction: obj.strimerDirection,
+                columns: obj.strimerColumns,
+                blockCount: obj.strimerBlockCount
+            };
 
-            // FIX: Replaces the dangerous obj.update() call with safe, direct assignment.
+            // Apply the live property updates from SignalRGB's UI
             for (const key in propsToUpdate) {
                 if (propsToUpdate[key] === undefined) continue;
                 if (key === 'gradient') {
@@ -2651,6 +2671,17 @@ document.addEventListener('DOMContentLoaded', function () {
                         obj.baseRotation = propsToUpdate[key];
                     }
                 }
+            }
+
+            // If any critical Strimer property has changed, clear the blocks to force re-initialization
+            if (obj.shape === 'strimer' && (
+                obj.strimerAnimation !== oldStrimerState.animation ||
+                obj.strimerDirection !== oldStrimerState.direction ||
+                obj.strimerColumns !== oldStrimerState.columns ||
+                obj.strimerBlockCount !== oldStrimerState.blockCount
+            )) {
+                obj.strimerBlocks = [];
+                obj.strimerMeterHeights = [];
             }
 
             if (shouldAnimate) {
@@ -3328,6 +3359,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 
+    const debouncedUpdateForm = debounce(updateFormValuesFromObjects, 10);
+
     /**
      * Handles mouse movement over the canvas for dragging, resizing, and cursor updates.
      * @param {MouseEvent} e - The mousemove event object.
@@ -3374,6 +3407,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     o.isBeingManuallyRotated = true;
                 }
             });
+            debouncedUpdateForm();
             needsRedraw = true;
 
         } else if (isResizing) {
@@ -3538,6 +3572,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     innerDiameter: obj.shape === 'ring' ? Math.round(obj.width * initial.diameterRatio) : undefined
                 });
 
+                debouncedUpdateForm();
                 needsRedraw = true;
             }
         } else if (isDragging) {
@@ -3614,6 +3649,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     obj.y = newY;
                 }
             });
+            debouncedUpdateForm();
             needsRedraw = true;
         } else {
             let cursor = 'default';
@@ -3768,10 +3804,11 @@ document.addEventListener('DOMContentLoaded', function () {
             lastUpdatedSpan.textContent = `Current as of: ${formattedDate}, ${formattedTime}`;
         }
 
-        fixLeftPanelWidth
+        fixLeftPanelWidth();
         initializeSortable();
         recordHistory();
         updateUndoRedoButtons();
+        baselineStateForURL = getControlValues();
     }
 
     // --- SHARE BUTTON LOGIC ---
@@ -4245,6 +4282,10 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('change', (e) => {
         const target = e.target;
 
+        if (target.name) {
+            dirtyProperties.add(target.name); // <-- Add this line
+        }
+
         // --- START: NEW, CORRECTED LOGIC FOR SHAPE CHANGES ---
         if (target.name && target.name.includes('_shape')) {
             const idMatch = target.name.match(/^obj(\d+)_/);
@@ -4317,6 +4358,10 @@ document.addEventListener('DOMContentLoaded', function () {
             updateFormValuesFromObjects();
             drawFrame();
             debouncedRecordHistory();
+
+            dirtyProperties.clear();
+            dirtyProperties.add(target.name); // Re-add the shape property itself, as it was the source of the change.
+
             return;
         }
         // --- END: NEW, CORRECTED LOGIC FOR SHAPE CHANGES ---
@@ -4328,7 +4373,8 @@ document.addEventListener('DOMContentLoaded', function () {
             target.name.includes('_gradType') ||
             target.name.includes('_numberOfRows') ||
             target.name.includes('_numberOfColumns') ||
-            target.name.includes('_oscDisplayMode')
+            target.name.includes('_oscDisplayMode') ||
+            target.name.includes('_strimerAnimation')
         )) {
             updateObjectsFromForm();
             renderForm();

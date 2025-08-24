@@ -91,6 +91,7 @@
                         <a class="nav-link" href="#shape-visualizer">Audio Visualizer</a>
                         <a class="nav-link" href="#shape-tetris">Tetris</a>
                         <a class="nav-link" href="#shape-pixelart">Pixel Art</a>
+                        <a class="nav-link" href="#shape-strimer">Strimer</a>
                     </div>
                 </div>
             </nav>
@@ -404,6 +405,41 @@
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <h3 id="shape-strimer" class="mt-5">Strimer</h3>
+                        <p>A specialized shape that simulates the animated lighting effects of PC cable strimers, featuring multiple columns of moving light blocks.</p>
+                        <div class="alert alert-info small"><b>Applicable General Properties:</b> <a href="#core">Core</a>, <a href="#fill">Fill & Animation</a></div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered">
+                                <thead><tr><th>Property</th><th>Label</th><th>Type</th><th>Description & Values</th></tr></thead>
+                                <tbody>
+                                    <tr class="table-group-header"><th colspan="4">General & Layout</th></tr>
+                                    <tr><td><code>strimerColumns</code></td><td>Columns</td><td><code>number</code></td><td>The number of vertical columns. Range: <code>1</code> to <code>50</code>.</td></tr>
+                                    <tr><td><code>strimerBlockCount</code></td><td>Block Count</td><td><code>number</code></td><td>The number of animated blocks per column. Range: <code>1</code> to <code>100</code>.</td></tr>
+                                    <tr><td><code>strimerBlockSize</code></td><td>Block Size</td><td><code>number</code></td><td>The height of each individual light block.</td></tr>
+                                    <tr><td><code>strimerBlockSpacing</code></td><td>Block Spacing</td><td><code>number</code></td><td>For <code>Cascade</code> animation, this sets the vertical distance between blocks.</td></tr>
+                        
+                                    <tr class="table-group-header"><th colspan="4">Animation & Movement</th></tr>
+                                    <tr><td><code>strimerAnimation</code></td><td>Animation</td><td><code>combobox</code></td><td>The primary animation style for the blocks. Values: <code>Bounce</code>, <code>Loop</code>, <code>Cascade</code>, <code>Audio Meter</code>, <code>Snake</code>.</td></tr>
+                                    <tr><td><code>strimerAnimationSpeed</code></td><td>Animation Speed</td><td><code>number</code></td><td>Controls the speed of the block movement, independent of the fill animation speed. Range: <code>0</code> to <code>100</code>.</td></tr>
+                                    <tr><td><code>strimerDirection</code></td><td>Direction</td><td><code>combobox</code></td><td>The initial movement direction for blocks in <code>Bounce</code> and <code>Loop</code> modes. Values: <code>Up</code>, <code>Down</code>, <code>Random</code>.</td></tr>
+                                    <tr><td><code>strimerEasing</code></td><td>Easing</td><td><code>combobox</code></td><td>Controls the acceleration curve of the block movement for more dynamic motion.</td></tr>
+                                    <tr><td><code>strimerSnakeDirection</code></td><td>Snake Direction</td><td><code>combobox</code></td><td>For <code>Snake</code> animation, sets the path to be vertical (along columns) or horizontal (across rows).</td></tr>
+                        
+                                    <tr class="table-group-header"><th colspan="4">Effects & Modifiers</th></tr>
+                                    <tr><td><code>strimerPulseSpeed</code></td><td>Pulse Speed</td><td><code>number</code></td><td>A modifier that creates a "breathing" effect by fading blocks in and out. This is layered on top of the primary animation. Set to <code>0</code> to disable.</td></tr>
+                                    <tr><td><code>strimerPulseSync</code></td><td>Sync Columns</td><td><code>boolean</code></td><td>If true, all columns pulse together. If false, they pulse sequentially for a wave-like effect.</td></tr>
+                                    <tr><td><code>strimerGlitchFrequency</code></td><td>Glitch Frequency</td><td><code>number</code></td><td>Makes blocks occasionally stutter or disappear for a high-tech look. Set to <code>0</code> to disable.</td></tr>
+                                    
+                                    <tr class="table-group-header"><th colspan="4">Audio Meter Controls</th></tr>
+                                    <tr><td><code>strimerAudioSensitivity</code></td><td>Audio Sensitivity</td><td><code>number</code></td><td>A general multiplier for the height of the audio bars.</td></tr>
+                                    <tr><td><code>strimerAudioSmoothing</code></td><td>Audio Smoothing</td><td><code>number</code></td><td>Smooths out the bar movement to prevent flickering.</td></tr>
+                                    <tr><td><code>strimerBassLevel</code></td><td>Bass Level</td><td><code>number</code></td><td>Multiplier for the bass column(s). <code>100</code> is normal.</td></tr>
+                                    <tr><td><code>strimerTrebleBoost</code></td><td>Treble Boost</td><td><code>number</code></td><td>Multiplier for the treble/volume columns.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
                     </div>
                 </div>
             </main>
