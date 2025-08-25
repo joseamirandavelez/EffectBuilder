@@ -1723,7 +1723,7 @@ class Shape {
                 if (this.tetrisAnimation === 'gravity' || this.tetrisAnimation === 'gravity-fade') {
                     this.tetrisBlocks.forEach((block, index) => {
                         if (block.settled) return;
-                        const gravity = baseSpeed * 0.01;
+                        const gravity = baseSpeed * 0.01 * window.tetrisGravityMultiplier * deltaTime * 60;
                         const bounceFactor = this.tetrisBounce / 100.0;
                         let bounceBoundaryTop = this.height;
                         this.tetrisBlocks.forEach((other, i) => {
@@ -1751,7 +1751,7 @@ class Shape {
                     if (this.tetrisActiveBlockIndex < this.tetrisBlocks.length) {
                         const activeBlock = this.tetrisBlocks[this.tetrisActiveBlockIndex];
                         if (!activeBlock.settled) {
-                            const speed = baseSpeed * 0.05;
+                            const speed = baseSpeed * 0.05 * deltaTime * 60;
                             let boundary = (this.tetrisActiveBlockIndex > 0) ? this.tetrisBlocks[this.tetrisActiveBlockIndex - 1].y : this.height;
                             activeBlock.y += speed;
                             if (activeBlock.y + activeBlock.h >= boundary) {
@@ -1956,7 +1956,7 @@ class Shape {
         const originalGradient = { ...this.gradient };
         const originalStrokeGradient = { ...this.strokeGradient };
 
-        // Apply palette override if enabled
+        // Apply Global Color Palette override if enabled
         if (palette.enablePalette) {
             const pColor1 = palette.paletteColor1 || '#000000';
             const pColor2 = palette.paletteColor2 || '#000000';
@@ -1965,6 +1965,12 @@ class Shape {
             this.strokeGradient.color1 = pColor1;
             this.strokeGradient.color2 = pColor2;
         }
+
+        // Apply Global Color Cycle override if enabled
+        // if (globalCycle.enable) {
+        //     this.cycleColors = true;
+        //     this.cycleSpeed = globalCycle.speed;
+        // }
 
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
@@ -2512,6 +2518,10 @@ class Shape {
                 applyStrokeInside();
             }
         }
+
+        this.gradient = originalGradient;
+        this.strokeGradient = originalStrokeGradient;
+
         this.ctx.restore();
     }
 

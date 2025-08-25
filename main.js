@@ -2,113 +2,116 @@
 window.gradientSpeedMultiplier = 1;
 window.shapeSpeedMultiplier = 1;
 window.seismicSpeedMultiplier = 1;
-window.tetrisGravityMultiplier = 2;
+window.tetrisGravityMultiplier = 4;
 window.textSpeedMultiplier = 1;
 
 const INITIAL_CONFIG_TEMPLATE = `
-    <meta title="Text Test" />
-        <meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
-        <meta publisher="Jose Miranda" />
-        <meta property="enableAnimation" label="Enable Animation" type="boolean" default="true" />
-        <meta property="enableSound" label="Enable Sound" type="boolean" default="true" />
+    <meta title="Untitled Efffect" />
+    <meta description="Built with Effect Builder (https://joseamirandavelez.github.io/EffectBuilder/), by Jose Miranda" />
+    <meta publisher="SRGB Interactive Effect Builder" />
+    <meta property="enableAnimation" label="Enable Animation" type="boolean" default="true" />
+    <meta property="enableSound" label="Enable Sound" type="boolean" default="false" />
 
-        <meta property="obj1_shape" label="Small Clock: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
-        <meta property="obj1_x" label="Small Clock: X Position" type="number" min="0" max="320" default="0" />
-        <meta property="obj1_y" label="Small Clock: Y Position" type="number" min="0" max="200" default="35" />
-        <meta property="obj1_width" label="Small Clock: Width/Outer Diameter" type="number" min="2" max="320" default="130" />
-        <meta property="obj1_height" label="Small Clock: Height" type="number" min="2" max="200" default="17" />
-        <meta property="obj1_rotation" label="Small Clock: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj1_innerDiameter" label="Small Clock: Inner Diameter" type="number" min="1" max="318" default="50" />
-        <meta property="obj1_numberOfSegments" label="Small Clock: Segments" type="number" min="1" max="50" default="8" />
-        <meta property="obj1_angularWidth" label="Small Clock: Segment Angle" type="number" min="1" max="360" default="20" />
-        <meta property="obj1_rotationSpeed" label="Small Clock: Rotation Speed" type="number" min="-100" max="100" default="0" />
-        <meta property="obj1_animationSpeed" label="Small Clock: Animation Speed" type="number" min="1" max="50" default="50" />
-        <meta property="obj1_animationMode" label="Small Clock: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
-        <meta property="obj1_scrollDir" label="Small Clock: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
-        <meta property="obj1_gradType" label="Small Clock: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
-        <meta property="obj1_useSharpGradient" label="Small Clock: Use Sharp Gradient" type="boolean" default="true" />
-        <meta property="obj1_gradientStop" label="Small Clock: Gradient Stop %" type="number" min="0" max="100" default="72" />
-        <meta property="obj1_gradColor1" label="Small Clock: Color 1" type="color" default="#00ff00" />
-        <meta property="obj1_gradColor2" label="Small Clock: Color 2" type="color" default="#d400ff" />
-        <meta property="obj1_cycleColors" label="Small Clock: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj1_cycleSpeed" label="Small Clock: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj1_numberOfRows" label="Small Clock: Number of Rows" type="number" min="1" max="100" default="2" />
-        <meta property="obj1_numberOfColumns" label="Small Clock: Number of Columns" type="number" min="1" max="100" default="1" />
-        <meta property="obj1_phaseOffset" label="Small Clock: Phase Offset" type="number" min="0" max="100" default="100" />
-        <meta property="obj1_text" label="Small Clock: Text" type="textfield" default="Jose Miranda" />
-        <meta property="obj1_fontSize" label="Small Clock: Font Size" type="number" min="2" max="100" default="42" />
-        <meta property="obj1_textAlign" label="Small Clock: Justification" type="combobox" values="left,center,right" default="center" />
-        <meta property="obj1_pixelFont" label="Small Clock: Pixel Font Style" type="combobox" values="small,large" default="small" />
-        <meta property="obj1_textAnimation" label="Small Clock: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
-        <meta property="obj1_textAnimationSpeed" label="Small Clock: Text Scroll Speed" type="number" min="1" max="100" default="10" />
-        <meta property="obj1_showTime" label="Small Clock: Show Current Time" type="boolean" default="true" />
-        <meta property="obj1_showDate" label="Small Clock: Show Current Date" type="boolean" default="false" />
-        <meta property="obj1_autoWidth" label="Small Clock: Auto-Width" type="boolean" default="true" />
-        <meta property="obj1_enableAudioReactivity" label="Small Clock: Enable Sound Reactivity" type="boolean" default="true" />
-        <meta property="obj1_audioTarget" label="Small Clock: Reactive Property" values="none,Flash,Size,Rotation,Volume Meter" type="combobox" default="Size" />
-        <meta property="obj1_audioMetric" label="Small Clock: Audio Metric" values="volume,bass,mids,highs" type="combobox" default="volume" />
-        <meta property="obj1_beatThreshold" label="Small Clock: Beat Threshold" min="1" max="100" type="number" default="30" />
-        <meta property="obj1_audioSensitivity" label="Small Clock: Sensitivity" min="0" max="200" type="number" default="50" />
-        <meta property="obj1_audioSmoothing" label="Small Clock: Smoothing" min="0" max="99" type="number" default="50" />
-        <meta property="enablePalette" label="Enable Global Color Palette" type="boolean" default="false" />
-        <meta property="paletteColor1" label="Palette Color 1" type="color" default="#FF8F00" />
-        <meta property="paletteColor2" label="Palette Color 2" type="color" default="#00BFFF" />
+    <meta property="obj1_shape" label="Small Clock: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
+    <meta property="obj1_x" label="Small Clock: X Position" type="number" min="0" max="320" default="0" />
+    <meta property="obj1_y" label="Small Clock: Y Position" type="number" min="0" max="200" default="35" />
+    <meta property="obj1_width" label="Small Clock: Width/Outer Diameter" type="number" min="2" max="320" default="130" />
+    <meta property="obj1_height" label="Small Clock: Height" type="number" min="2" max="200" default="17" />
+    <meta property="obj1_rotation" label="Small Clock: Rotation" type="number" min="-360" max="360" default="0" />
+    <meta property="obj1_innerDiameter" label="Small Clock: Inner Diameter" type="number" min="1" max="318" default="50" />
+    <meta property="obj1_numberOfSegments" label="Small Clock: Segments" type="number" min="1" max="50" default="8" />
+    <meta property="obj1_angularWidth" label="Small Clock: Segment Angle" type="number" min="1" max="360" default="20" />
+    <meta property="obj1_rotationSpeed" label="Small Clock: Rotation Speed" type="number" min="-100" max="100" default="0" />
+    <meta property="obj1_animationSpeed" label="Small Clock: Animation Speed" type="number" min="1" max="50" default="50" />
+    <meta property="obj1_animationMode" label="Small Clock: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
+    <meta property="obj1_scrollDir" label="Small Clock: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
+    <meta property="obj1_gradType" label="Small Clock: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
+    <meta property="obj1_useSharpGradient" label="Small Clock: Use Sharp Gradient" type="boolean" default="true" />
+    <meta property="obj1_gradientStop" label="Small Clock: Gradient Stop %" type="number" min="0" max="100" default="72" />
+    <meta property="obj1_gradColor1" label="Small Clock: Color 1" type="color" default="#00ff00" />
+    <meta property="obj1_gradColor2" label="Small Clock: Color 2" type="color" default="#d400ff" />
+    <meta property="obj1_cycleColors" label="Small Clock: Cycle Colors" type="boolean" default="false" />
+    <meta property="obj1_cycleSpeed" label="Small Clock: Color Cycle Speed" type="number" min="1" max="10" default="10" />
+    <meta property="obj1_numberOfRows" label="Small Clock: Number of Rows" type="number" min="1" max="100" default="2" />
+    <meta property="obj1_numberOfColumns" label="Small Clock: Number of Columns" type="number" min="1" max="100" default="1" />
+    <meta property="obj1_phaseOffset" label="Small Clock: Phase Offset" type="number" min="0" max="100" default="100" />
+    <meta property="obj1_text" label="Small Clock: Text" type="textfield" default="Jose Miranda" />
+    <meta property="obj1_fontSize" label="Small Clock: Font Size" type="number" min="2" max="100" default="42" />
+    <meta property="obj1_textAlign" label="Small Clock: Justification" type="combobox" values="left,center,right" default="center" />
+    <meta property="obj1_pixelFont" label="Small Clock: Pixel Font Style" type="combobox" values="small,large" default="small" />
+    <meta property="obj1_textAnimation" label="Small Clock: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="none" />
+    <meta property="obj1_textAnimationSpeed" label="Small Clock: Text Scroll Speed" type="number" min="1" max="100" default="10" />
+    <meta property="obj1_showTime" label="Small Clock: Show Current Time" type="boolean" default="true" />
+    <meta property="obj1_showDate" label="Small Clock: Show Current Date" type="boolean" default="false" />
+    <meta property="obj1_autoWidth" label="Small Clock: Auto-Width" type="boolean" default="true" />
+    <meta property="obj1_enableAudioReactivity" label="Small Clock: Enable Sound Reactivity" type="boolean" default="true" />
+    <meta property="obj1_audioTarget" label="Small Clock: Reactive Property" values="none,Flash,Size,Rotation,Volume Meter" type="combobox" default="Size" />
+    <meta property="obj1_audioMetric" label="Small Clock: Audio Metric" values="volume,bass,mids,highs" type="combobox" default="volume" />
+    <meta property="obj1_beatThreshold" label="Small Clock: Beat Threshold" min="1" max="100" type="number" default="30" />
+    <meta property="obj1_audioSensitivity" label="Small Clock: Sensitivity" min="0" max="200" type="number" default="50" />
+    <meta property="obj1_audioSmoothing" label="Small Clock: Smoothing" min="0" max="99" type="number" default="50" />
+    <meta property="enablePalette" label="Enable Global Color Palette" type="boolean" default="false" />
+    <meta property="paletteColor1" label="Palette Color 1" type="color" default="#FF8F00" />
+    <meta property="paletteColor2" label="Palette Color 2" type="color" default="#00BFFF" />
+    <meta property="enableGlobalCycle" label="Enable Global Color Cycle" type="boolean" default="false" />
+    <meta property="globalCycleSpeed" label="Global Color Cycle Speed" type="number" default="10" min="0" max="100" />
 
 
-        <meta property="obj2_shape" label="Large Text: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
-        <meta property="obj2_x" label="Large Text: X Position" type="number" min="0" max="320" default="-3" />
-        <meta property="obj2_y" label="Large Text: Y Position" type="number" min="0" max="200" default="0" />
-        <meta property="obj2_width" label="Large Text: Width/Outer Diameter" type="number" min="2" max="320" default="237" />
-        <meta property="obj2_height" label="Large Text: Height" type="number" min="2" max="200" default="30" />
-        <meta property="obj2_rotation" label="Large Text: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj2_innerDiameter" label="Large Text: Inner Diameter" type="number" min="1" max="318" default="50" />
-        <meta property="obj2_numberOfSegments" label="Large Text: Segments" type="number" min="1" max="50" default="8" />
-        <meta property="obj2_angularWidth" label="Large Text: Segment Angle" type="number" min="1" max="360" default="20" />
-        <meta property="obj2_rotationSpeed" label="Large Text: Rotation Speed" type="number" min="-100" max="100" default="0" />
-        <meta property="obj2_animationSpeed" label="Large Text: Animation Speed" type="number" min="1" max="50" default="50" />
-        <meta property="obj2_animationMode" label="Large Text: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
-        <meta property="obj2_scrollDir" label="Large Text: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
-        <meta property="obj2_gradType" label="Large Text: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
-        <meta property="obj2_useSharpGradient" label="Large Text: Use Sharp Gradient" type="boolean" default="true" />
-        <meta property="obj2_gradientStop" label="Large Text: Gradient Stop %" type="number" min="0" max="100" default="72" />
-        <meta property="obj2_gradColor1" label="Large Text: Color 1" type="color" default="#00ff00" />
-        <meta property="obj2_gradColor2" label="Large Text: Color 2" type="color" default="#d400ff" />
-        <meta property="obj2_cycleColors" label="Large Text: Cycle Colors" type="boolean" default="false" />
-        <meta property="obj2_cycleSpeed" label="Large Text: Color Cycle Speed" type="number" min="1" max="10" default="10" />
-        <meta property="obj2_numberOfRows" label="Large Text: Number of Rows" type="number" min="1" max="100" default="2" />
-        <meta property="obj2_numberOfColumns" label="Large Text: Number of Columns" type="number" min="1" max="100" default="1" />
-        <meta property="obj2_phaseOffset" label="Large Text: Phase Offset" type="number" min="0" max="100" default="100" />
-        <meta property="obj2_text" label="Large Text: Text" type="textfield" default="Interactive Effect Builder" />
-        <meta property="obj2_fontSize" label="Large Text: Font Size" type="number" min="2" max="100" default="60" />
-        <meta property="obj2_textAlign" label="Large Text: Justification" type="combobox" values="left,center,right" default="left" />
-        <meta property="obj2_pixelFont" label="Large Text: Pixel Font Style" type="combobox" values="small,large" default="large" />
-        <meta property="obj2_textAnimation" label="Large Text: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="marquee" />
-        <meta property="obj2_textAnimationSpeed" label="Large Text: Text Scroll Speed" type="number" min="1" max="100" default="29" />
-        <meta property="obj2_showTime" label="Large Text: Show Current Time" type="boolean" default="false" />
-        <meta property="obj2_showDate" label="Large Text: Show Current Date" type="boolean" default="false" />
-        <meta property="obj2_autoWidth" label="Large Text: Auto-Width" type="boolean" default="false" />
-        <meta property="obj2_enableAudioReactivity" label="Large Text: Enable Sound Reactivity" type="boolean" default="true" />
-        <meta property="obj2_audioTarget" label="Large Text: Reactive Property" values="none,Flash,Size,Rotation,Volume Meter" type="combobox" default="Size" />
-        <meta property="obj2_audioMetric" label="Large Text: Audio Metric" values="volume,bass,mids,highs" type="combobox" default="volume" />
-        <meta property="obj2_beatThreshold" label="Large Text: Beat Threshold" min="1" max="100" type="number" default="30" />
-        <meta property="obj2_audioSensitivity" label="Large Text: Sensitivity" min="0" max="200" type="number" default="50" />
-        <meta property="obj2_audioSmoothing" label="Large Text: Smoothing" min="0" max="99" type="number" default="50" />
 
-        <meta property="obj3_shape" label="Visualizer: Shape" type="combobox" values="rectangle,circle,ring,text,audio-visualizer" default="audio-visualizer" />
-        <meta property="obj3_x" label="Visualizer: X Position" type="number" min="0" max="320" default="10" />
-        <meta property="obj3_y" label="Visualizer: Y Position" type="number" min="0" max="200" default="50" />
-        <meta property="obj3_width" label="Visualizer: Width/Outer Diameter" type="number" min="2" max="320" default="300" />
-        <meta property="obj3_height" label="Visualizer: Height" type="number" min="2" max="200" default="100" />
-        <meta property="obj3_rotation" label="Visualizer: Rotation" type="number" min="-360" max="360" default="0" />
-        <meta property="obj3_gradType" label="Visualizer: Fill Type" type="combobox" values="solid,linear,radial,alternating,random,rainbow" default="rainbow" />
-        <meta property="obj3_gradColor1" label="Visualizer: Color 1" type="color" default="#00ff00" />
-        <meta property="obj3_gradColor2" label="Visualizer: Color 2" type="color" default="#d400ff" />
-        <meta property="obj3_animationSpeed" label="Visualizer: Animation Speed" type="number" min="1" max="50" default="10" />
-        <meta property="obj3_vizLayout" label="Visualizer: Layout" type="combobox" default="Linear" values="Linear,Circular" />
-        <meta property="obj3_vizDrawStyle" label="Visualizer: Draw Style" type="combobox" default="Line" values="Bars,Line,Area" />
-        <meta property="obj3_vizBarCount" label="Visualizer: Bar Count" type="number" default="64" min="2" max="200" />
-        <meta property="obj3_vizBarSpacing" label="Visualizer: Bar Spacing" type="number" default="2" min="0" max="20" />
-        <meta property="obj3_vizSmoothing" label="Visualizer: Smoothing" type="number" default="60" min="0" max="99" />
+    <meta property="obj2_shape" label="Large Text: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
+    <meta property="obj2_x" label="Large Text: X Position" type="number" min="0" max="320" default="-3" />
+    <meta property="obj2_y" label="Large Text: Y Position" type="number" min="0" max="200" default="0" />
+    <meta property="obj2_width" label="Large Text: Width/Outer Diameter" type="number" min="2" max="320" default="237" />
+    <meta property="obj2_height" label="Large Text: Height" type="number" min="2" max="200" default="30" />
+    <meta property="obj2_rotation" label="Large Text: Rotation" type="number" min="-360" max="360" default="0" />
+    <meta property="obj2_innerDiameter" label="Large Text: Inner Diameter" type="number" min="1" max="318" default="50" />
+    <meta property="obj2_numberOfSegments" label="Large Text: Segments" type="number" min="1" max="50" default="8" />
+    <meta property="obj2_angularWidth" label="Large Text: Segment Angle" type="number" min="1" max="360" default="20" />
+    <meta property="obj2_rotationSpeed" label="Large Text: Rotation Speed" type="number" min="-100" max="100" default="0" />
+    <meta property="obj2_animationSpeed" label="Large Text: Animation Speed" type="number" min="1" max="50" default="50" />
+    <meta property="obj2_animationMode" label="Large Text: Animation Mode" type="combobox" values="loop,bounce,bounce-reversed,bounce-random" default="bounce-random" />
+    <meta property="obj2_scrollDir" label="Large Text: Scroll Direction" type="combobox" values="right,left,up,down" default="right" />
+    <meta property="obj2_gradType" label="Large Text: Fill Type" type="combobox" values="solid,linear,radial,alternating,random" default="linear" />
+    <meta property="obj2_useSharpGradient" label="Large Text: Use Sharp Gradient" type="boolean" default="true" />
+    <meta property="obj2_gradientStop" label="Large Text: Gradient Stop %" type="number" min="0" max="100" default="72" />
+    <meta property="obj2_gradColor1" label="Large Text: Color 1" type="color" default="#00ff00" />
+    <meta property="obj2_gradColor2" label="Large Text: Color 2" type="color" default="#d400ff" />
+    <meta property="obj2_cycleColors" label="Large Text: Cycle Colors" type="boolean" default="false" />
+    <meta property="obj2_cycleSpeed" label="Large Text: Color Cycle Speed" type="number" min="1" max="10" default="10" />
+    <meta property="obj2_numberOfRows" label="Large Text: Number of Rows" type="number" min="1" max="100" default="2" />
+    <meta property="obj2_numberOfColumns" label="Large Text: Number of Columns" type="number" min="1" max="100" default="1" />
+    <meta property="obj2_phaseOffset" label="Large Text: Phase Offset" type="number" min="0" max="100" default="100" />
+    <meta property="obj2_text" label="Large Text: Text" type="textfield" default="Interactive Effect Builder" />
+    <meta property="obj2_fontSize" label="Large Text: Font Size" type="number" min="2" max="100" default="60" />
+    <meta property="obj2_textAlign" label="Large Text: Justification" type="combobox" values="left,center,right" default="left" />
+    <meta property="obj2_pixelFont" label="Large Text: Pixel Font Style" type="combobox" values="small,large" default="large" />
+    <meta property="obj2_textAnimation" label="Large Text: Text Animation" type="combobox" values="none,marquee,typewriter,wave" default="marquee" />
+    <meta property="obj2_textAnimationSpeed" label="Large Text: Text Scroll Speed" type="number" min="1" max="100" default="29" />
+    <meta property="obj2_showTime" label="Large Text: Show Current Time" type="boolean" default="false" />
+    <meta property="obj2_showDate" label="Large Text: Show Current Date" type="boolean" default="false" />
+    <meta property="obj2_autoWidth" label="Large Text: Auto-Width" type="boolean" default="false" />
+    <meta property="obj2_enableAudioReactivity" label="Large Text: Enable Sound Reactivity" type="boolean" default="true" />
+    <meta property="obj2_audioTarget" label="Large Text: Reactive Property" values="none,Flash,Size,Rotation,Volume Meter" type="combobox" default="Size" />
+    <meta property="obj2_audioMetric" label="Large Text: Audio Metric" values="volume,bass,mids,highs" type="combobox" default="volume" />
+    <meta property="obj2_beatThreshold" label="Large Text: Beat Threshold" min="1" max="100" type="number" default="30" />
+    <meta property="obj2_audioSensitivity" label="Large Text: Sensitivity" min="0" max="200" type="number" default="50" />
+    <meta property="obj2_audioSmoothing" label="Large Text: Smoothing" min="0" max="99" type="number" default="50" />
+
+    <meta property="obj3_shape" label="Visualizer: Shape" type="combobox" values="rectangle,circle,ring,text,audio-visualizer" default="audio-visualizer" />
+    <meta property="obj3_x" label="Visualizer: X Position" type="number" min="0" max="320" default="10" />
+    <meta property="obj3_y" label="Visualizer: Y Position" type="number" min="0" max="200" default="50" />
+    <meta property="obj3_width" label="Visualizer: Width/Outer Diameter" type="number" min="2" max="320" default="300" />
+    <meta property="obj3_height" label="Visualizer: Height" type="number" min="2" max="200" default="100" />
+    <meta property="obj3_rotation" label="Visualizer: Rotation" type="number" min="-360" max="360" default="0" />
+    <meta property="obj3_gradType" label="Visualizer: Fill Type" type="combobox" values="solid,linear,radial,alternating,random,rainbow" default="rainbow" />
+    <meta property="obj3_gradColor1" label="Visualizer: Color 1" type="color" default="#00ff00" />
+    <meta property="obj3_gradColor2" label="Visualizer: Color 2" type="color" default="#d400ff" />
+    <meta property="obj3_animationSpeed" label="Visualizer: Animation Speed" type="number" min="1" max="50" default="10" />
+    <meta property="obj3_vizLayout" label="Visualizer: Layout" type="combobox" default="Linear" values="Linear,Circular" />
+    <meta property="obj3_vizDrawStyle" label="Visualizer: Draw Style" type="combobox" default="Line" values="Bars,Line,Area" />
+    <meta property="obj3_vizBarCount" label="Visualizer: Bar Count" type="number" default="64" min="2" max="200" />
+    <meta property="obj3_vizBarSpacing" label="Visualizer: Bar Spacing" type="number" default="2" min="0" max="20" />
+    <meta property="obj3_vizSmoothing" label="Visualizer: Smoothing" type="number" default="60" min="0" max="99" />
 `;
 
 // --- State Management ---
@@ -174,43 +177,6 @@ function handleURLParameters() {
     }
 }
 
-function setupModalShareLinks() {
-    const aboutModalEl = document.getElementById('about-modal');
-    const helpModalEl = document.getElementById('help-modal');
-    const baseURL = window.location.origin + window.location.pathname;
-
-    if (aboutModalEl) {
-        aboutModalEl.addEventListener('show.bs.modal', () => {
-            const shareBtn = aboutModalEl.querySelector('#about-modal-share-btn');
-            if (shareBtn) {
-                const shareURL = `${baseURL}?show=about`;
-                // Use onclick to easily set the action each time the modal opens
-                shareBtn.onclick = (e) => {
-                    e.preventDefault();
-                    navigator.clipboard.writeText(shareURL).then(() => {
-                        showToast("Share link copied to clipboard!", 'success');
-                    });
-                };
-            }
-        });
-    }
-
-    if (helpModalEl) {
-        helpModalEl.addEventListener('show.bs.modal', () => {
-            const shareBtn = helpModalEl.querySelector('#help-modal-share-btn');
-            if (shareBtn) {
-                const shareURL = `${baseURL}?show=help`;
-                shareBtn.onclick = (e) => {
-                    e.preventDefault();
-                    navigator.clipboard.writeText(shareURL).then(() => {
-                        showToast("Share link copied to clipboard!", 'success');
-                    });
-                };
-            }
-        });
-    }
-}
-
 function updateColorControls() {
     const values = getControlValues();
     const paletteEnabled = values.enablePalette;
@@ -260,6 +226,8 @@ function getBoundingBox(obj) {
         maxY: Math.max(...corners.map(c => c.y)),
     };
 }
+
+
 
 document.addEventListener('DOMContentLoaded', function () {
     const srgbLinkBtn = document.getElementById('generate-srgb-link-btn');
@@ -322,11 +290,6 @@ document.addEventListener('DOMContentLoaded', function () {
         navigator.clipboard.writeText(finalUrl).catch(err => {
             console.error('Failed to copy text: ', err);
         });
-    });
-
-    const buttonsWithTitles = document.querySelectorAll('button[title]');
-    buttonsWithTitles.forEach(btn => {
-        new bootstrap.Tooltip(btn);
     });
 
     document.getElementById('startAudioBtn').addEventListener('click', setupAudio);
@@ -570,12 +533,27 @@ document.addEventListener('DOMContentLoaded', function () {
         appHistory.stack = [];
         appHistory.index = -1;
 
-        // Reset the project title
-        const titleInput = form.elements['title'];
-        if (titleInput) titleInput.value = 'Untitled Effect';
+        // Get the current user and set new default values
+        const user = window.auth.currentUser;
+        const newTitle = (user && user.displayName) ? user.displayName : "SRGB Interactive Effect Builder";
+        const newPublisher = (user && user.displayName) ? user.displayName : "Anonymous";
+        const newDescription = "";
 
-        // Update the entire UI
+        // Find and update the global settings in the central configStore
+        const titleConf = configStore.find(c => c.name === 'title');
+        if (titleConf) titleConf.default = newTitle;
+
+        const descConf = configStore.find(c => c.name === 'description');
+        if (descConf) descConf.default = newDescription;
+
+        const pubConf = configStore.find(c => c.name === 'publisher');
+        if (pubConf) pubConf.default = newPublisher;
+
+        // Temporarily set the isRestoring flag to prevent state preservation during the render
+        isRestoring = true;
         renderForm();
+        isRestoring = false;
+
         drawFrame();
         updateUndoRedoButtons();
 
@@ -589,11 +567,9 @@ document.addEventListener('DOMContentLoaded', function () {
         loadedStateSnapshot = null;
         dirtyProperties.clear();
         baselineStateForURL = getControlValues();
+
         showToast("New workspace created.", "info");
     }
-
-
-
 
     /**
      * Updates the enabled/disabled state of the share button.
@@ -1022,6 +998,7 @@ document.addEventListener('DOMContentLoaded', function () {
             formGroup.appendChild(input);
         } else if (type === 'combobox') {
             const vals = values.split(',');
+            vals.sort(); // Sort the options alphabetically
             const select = document.createElement('select');
             select.id = controlId;
             select.className = 'form-select';
@@ -1120,65 +1097,48 @@ document.addEventListener('DOMContentLoaded', function () {
         return formGroup;
     }
 
+    /**
+ * Generates the meta tags and JavaScript variables for the final exported HTML file.
+ * This is where the "Minimize Properties" logic is applied.
+ */
     function generateOutputScript() {
         let scriptHTML = '';
         let jsVars = '';
         let allKeys = [];
 
-        const minimizeCheckbox = document.getElementById('minimize-props-export');
-        const minimize = minimizeCheckbox ? minimizeCheckbox.checked : false;
-
-        const essentialProps = [
-            'gradType', 'gradColor1', 'gradColor2', 'animationSpeed', 'strokeGradType', 'strokeGradColor1', 'strokeGradColor2', 'strokeAnimationSpeed',
-            'title', 'description', 'publisher', 'enableAnimation', 'enableSound',
-            'enableAudioReactivity', 'audioMetric', 'beatThreshold', 'audioSensitivity',
-            'vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount',
-            'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius'
-        ];
-
+        const minimize = document.getElementById('minimize-props-export')?.checked || false;
         const generalValues = getControlValues();
 
-        configStore.filter(conf => {
+        // Process General (Global) properties
+        configStore.filter(conf => !(conf.property || conf.name).startsWith('obj')).forEach(conf => {
             const key = conf.property || conf.name;
-            return key && !key.startsWith('obj');
-        }).forEach(conf => {
-            const key = conf.property || conf.name;
-            const isEssential = essentialProps.includes(key);
             if (generalValues[key] !== undefined) {
                 allKeys.push(key);
                 let exportValue = generalValues[key];
-                const isEditable = !minimize || isEssential;
 
-                if (isEditable) {
-                    if (conf.name && !conf.property) {
-                        scriptHTML += `<meta ${key}="${exportValue}" />\n`;
-                    } else {
-                        const attrs = [`property="${conf.property}"`, `label="${conf.label}"`, `type="${conf.type}"`];
-                        if (conf.values) attrs.push(`values="${conf.values}"`);
-                        if (conf.min) attrs.push(`min="${conf.min}"`);
-                        if (conf.max) attrs.push(`max="${conf.max}"`);
-                        scriptHTML += `<meta ${attrs.join(' ')} default="${exportValue}" />\n`;
-                    }
+                if (conf.name && !conf.property) {
+                    scriptHTML += `<meta ${key}="${exportValue}" />\n`;
                 } else {
-                    jsVars += `const ${key} = ${JSON.stringify(exportValue)};\n`;
+                    const attrs = [`property="${conf.property}"`, `label="${conf.label}"`, `type="${conf.type}"`];
+                    if (conf.values) {
+                        const sortedValues = conf.values.split(',').sort().join(',');
+                        attrs.push(`values="${sortedValues}"`);
+                    }
+                    if (conf.min) attrs.push(`min="${conf.min}"`);
+                    if (conf.max) attrs.push(`max="${conf.max}"`);
+                    scriptHTML += `<meta ${attrs.join(' ')} default="${exportValue}" />\n`;
                 }
             }
         });
 
+        // Process Object-specific properties
         objects.forEach(obj => {
             const name = obj.name || `Object ${obj.id}`;
             const objectConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${obj.id}_`));
-            const commonProps = shapePropertyMap['rectangle'];
-            const validPropsForShape = shapePropertyMap[obj.shape] || commonProps;
+            const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
 
-            const filteredConfigs = objectConfigs.filter(conf => {
+            objectConfigs.forEach(conf => {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                return validPropsForShape.includes(propName);
-            });
-
-            filteredConfigs.forEach(conf => {
-                const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                const isEssential = essentialProps.includes(propName);
                 let liveValue;
 
                 if (propName.startsWith('gradColor')) {
@@ -1193,43 +1153,49 @@ document.addEventListener('DOMContentLoaded', function () {
                     liveValue = obj[propName];
                 }
 
-                let exportValue = liveValue;
-
-                // `vizSegmentSpacing` and `vizBarSpacing` have been removed from this list.
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize'];
-
-                if (conf.type === 'number') {
-                    const numValue = parseFloat(liveValue) || 0;
-                    if (propsToScale.includes(propName)) {
-                        exportValue = Math.round(numValue / 4);
-                    } else {
-                        exportValue = Math.round(numValue);
-                    }
-                } else if (typeof liveValue === 'boolean') {
-                    exportValue = String(liveValue);
-                } else if (conf.type === 'textfield' && typeof liveValue === 'string') {
-                    exportValue = liveValue.replace(/\n/g, '\\n');
+                if (liveValue === undefined) {
+                    liveValue = conf.default;
+                    if (conf.type === 'boolean') liveValue = (liveValue === 'true');
                 }
 
-                if (exportValue === undefined) return;
                 allKeys.push(conf.property);
-                const isEditable = !minimize || isEssential;
+                let exportValue = liveValue;
 
-                if (isEditable) {
-                    conf.label = `${name}: ${conf.label.split(':').slice(1).join(':').trim()}`;
-                    if (propName === 'width' && (obj.shape === 'circle' || obj.shape === 'ring')) {
-                        conf.label = `${name}: Width/Outer Diameter`;
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize'];
+                if (conf.type === 'number' && typeof liveValue === 'number') {
+                    exportValue = propsToScale.includes(propName) ? Math.round(liveValue / 4) : Math.round(liveValue);
+                } else if (typeof liveValue === 'boolean') {
+                    exportValue = String(liveValue);
+                }
+
+                // --- The Final, Corrected Decision Logic ---
+                const isApplicable = validPropsForShape.includes(propName);
+                let writeAsMeta;
+
+                if (!minimize) {
+                    // When Minimize is OFF, EVERYTHING is a meta tag.
+                    writeAsMeta = true;
+                } else {
+                    // When Minimize is ON...
+                    if (propName === 'shape' || propName === 'x' || propName === 'y' || propName === 'width' || propName === 'height' || propName === 'rotation' || !isApplicable) {
+                        // ...the 'shape' property and any non-applicable properties are consts.
+                        writeAsMeta = false;
+                    } else {
+                        // ...only applicable properties are meta tags.
+                        writeAsMeta = true;
                     }
-                    const attrs = [`property="${conf.property}"`, `label="${conf.label}"`];
-                    if (conf.values) attrs.push(`values="${conf.values}"`);
+                }
+
+                if (writeAsMeta) {
+                    conf.label = `${name}: ${conf.label.split(':').slice(1).join(':').trim()}`;
+                    const attrs = [`property="${conf.property}"`, `label="${conf.label}"`, `type="${conf.type}"`];
+                    if (conf.values) {
+                        const sortedValues = conf.values.split(',').sort().join(',');
+                        attrs.push(`values="${sortedValues}"`);
+                    }
                     if (conf.min) attrs.push(`min="${conf.min}"`);
                     if (conf.max) attrs.push(`max="${conf.max}"`);
-
-                    if (conf.type === 'sensor') {
-                        scriptHTML += `<meta property="${conf.property}" label="${conf.label}" type="sensor" default="${exportValue}" />\n`;
-                    } else {
-                        scriptHTML += `<meta ${attrs.join(' ')} type="${conf.type}" default="${exportValue}" />\n`;
-                    }
+                    scriptHTML += `<meta ${attrs.join(' ')} default="${exportValue}" />\n`;
                 } else {
                     jsVars += `const ${conf.property} = ${JSON.stringify(exportValue)};\n`;
                 }
@@ -1504,6 +1470,10 @@ document.addEventListener('DOMContentLoaded', function () {
      * Renders the entire controls form based on the current `configStore` and `objects` state.
      * This function is responsible for dynamically building all the UI in the left panel.
      */
+    /**
+ * Renders the entire controls form based on the current `configStore` and `objects` state.
+ * This function is responsible for dynamically building all the UI in the left panel.
+ */
     function renderForm() {
         // --- 1. PREPARATION & STATE PRESERVATION ---
         const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -1580,34 +1550,67 @@ document.addEventListener('DOMContentLoaded', function () {
         generalCollapseWrapper.id = generalCollapseId;
         generalCollapseWrapper.className = `collapse p-3 ${showGeneral ? 'show' : ''}`;
         generalCollapseWrapper.innerHTML = '<hr class="mt-2 mb-3">';
-        grouped.general.forEach(conf => generalCollapseWrapper.appendChild(createFormControl(conf)));
+
+        // --- NEW LOGIC: Separate standard controls from override controls ---
+        const overrideControlKeys = ['enablePalette', 'paletteColor1', 'paletteColor2', 'enableGlobalCycle', 'globalCycleSpeed'];
+        const standardGeneralConfigs = grouped.general.filter(conf => !overrideControlKeys.includes(conf.property || conf.name));
+        const overrideGeneralConfigs = grouped.general.filter(conf => overrideControlKeys.includes(conf.property || conf.name));
+
+        // 1. Add standard controls (Title, Description, etc.)
+        standardGeneralConfigs.forEach(conf => generalCollapseWrapper.appendChild(createFormControl(conf)));
+
+        // 2. Build and add the collapsible "Overrides" section
+        if (overrideGeneralConfigs.length > 0) {
+            generalCollapseWrapper.appendChild(document.createElement('hr'));
+
+            const overridesHeader = document.createElement('div');
+            overridesHeader.className = 'd-flex justify-content-between align-items-center w-100 py-1';
+            overridesHeader.style.cursor = 'pointer';
+            overridesHeader.dataset.bsToggle = 'collapse';
+            overridesHeader.dataset.bsTarget = '#collapse-overrides';
+            overridesHeader.setAttribute('aria-expanded', 'false'); // Start collapsed
+            overridesHeader.innerHTML = `
+            <span class="fs-6 fw-semibold">Global Overrides</span>
+            <span class="legend-button collapsed"><i class="bi bi-chevron-up"></i></span>
+        `;
+            generalCollapseWrapper.appendChild(overridesHeader);
+
+            const overridesCollapseWrapper = document.createElement('div');
+            overridesCollapseWrapper.id = 'collapse-overrides';
+            overridesCollapseWrapper.className = 'collapse p-3 border-start border-end border-bottom rounded-bottom';
+
+            overrideGeneralConfigs.forEach(conf => overridesCollapseWrapper.appendChild(createFormControl(conf)));
+            generalCollapseWrapper.appendChild(overridesCollapseWrapper);
+        }
+        // --- END NEW LOGIC ---
+
         generalFieldset.appendChild(generalHeaderBar);
         generalFieldset.appendChild(generalCollapseWrapper);
         form.appendChild(generalFieldset);
 
         // --- 3. OBJECT PANELS CREATION (Main Loop) ---
         objects.forEach(obj => {
-            const objectConfigs = grouped.objects[obj.id] || [];
-            const panel = createObjectPanel(obj, objectConfigs, activeCollapseStates, activeTabStates);
-            form.appendChild(panel);
+            const fieldset = createObjectPanel(obj, grouped.objects[obj.id] || [], activeCollapseStates, activeTabStates);
+            if (fieldset) {
+                form.appendChild(fieldset);
+            }
         });
 
         // --- 5. FINALIZATION ---
-        for (const key in generalSettingsValues) {
-            const el = form.elements[key];
-            if (el) {
-                if (el.type === 'checkbox') {
-                    el.checked = generalSettingsValues[key];
-                } else {
-                    el.value = generalSettingsValues[key];
+        if (!isRestoring) {
+            for (const key in generalSettingsValues) {
+                const el = form.elements[key];
+                if (el) {
+                    if (el.type === 'checkbox') {
+                        el.checked = generalSettingsValues[key];
+                    } else {
+                        el.value = generalSettingsValues[key];
+                    }
                 }
             }
         }
+
         updateFormValuesFromObjects();
-        new bootstrap.Tooltip(document.body, {
-            selector: "[data-bs-toggle='tooltip']",
-            trigger: 'hover'
-        });
     }
 
     /**
@@ -1914,7 +1917,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // In main.js, find the drawFrame function and replace it
 
-    function drawFrame(audioData = {}, sensorData = {}, deltaTime = 0, palette = {}) {
+    function drawFrame(audioData = {}, sensorData = {}, deltaTime = 0, palette = {}, globalCycle = {}) {
         if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#000';
@@ -1922,8 +1925,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
         for (let i = objects.length - 1; i >= 0; i--) {
             const obj = objects[i];
+
+            // Store original properties before any overrides
+            const originalCycleColors = obj.cycleColors;
+            const originalCycleSpeed = obj.cycleSpeed;
+
+            // Apply Global Color Cycle override if enabled
+            if (globalCycle.enable) {
+                obj.cycleColors = true;
+                // Scale the UI value (0-100) to the internal value used by the animation logic
+                obj.cycleSpeed = (globalCycle.speed || 0) / 50.0;
+            }
+
+            // Now, update the animation state using the potentially overridden values
             obj.updateAnimationState(audioData, sensorData, deltaTime);
-            obj.draw(selectedObjectIds.includes(obj.id), audioData, palette); // Pass palette here
+
+            // Draw the object
+            obj.draw(selectedObjectIds.includes(obj.id), audioData, palette);
+
+            // Restore original properties so the object's true state is preserved
+            obj.cycleColors = originalCycleColors;
+            obj.cycleSpeed = originalCycleSpeed;
+
             obj.dirty = false;
         }
 
@@ -2007,13 +2030,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
         sensorData = mockSensorData;
 
-        // Pass deltaTime and palette info to the drawFrame function
         const paletteProps = {
             enablePalette: generalValues.enablePalette,
             paletteColor1: generalValues.paletteColor1,
             paletteColor2: generalValues.paletteColor2
         };
-        drawFrame(audioData, sensorData, isAnimating ? deltaTime : 0, paletteProps);
+
+        const globalCycleProps = {
+            enable: generalValues.enableGlobalCycle,
+            speed: generalValues.globalCycleSpeed
+        };
+
+        drawFrame(audioData, sensorData, isAnimating ? deltaTime : 0, paletteProps, globalCycleProps);
     }
 
     /**
@@ -2505,7 +2533,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_vizDrawStyle`, label: `Object ${newId}: Draw Style`, type: 'combobox', default: 'Line', values: 'Bars,Line,Area', description: '(Visualizer) How the frequencies are rendered (as bars or a continuous line).' },
             { property: `obj${newId}_vizLayout`, label: `Object ${newId}: Layout`, type: 'combobox', default: 'Linear', values: 'Linear,Circular', description: '(Visualizer) The overall layout of the visualizer.' },
             { property: `obj${newId}_vizStyle`, label: `Object ${newId}: Style`, type: 'combobox', default: 'bottom', values: 'bottom,center,top', description: '(Visualizer) The alignment of the visualizer bars.' },
-            { property: `obj${newId}_vizInnerRadiu/s`, label: `Object ${newId}: Inner Radius`, type: 'number', default: '40', min: '0', max: '95', description: '(Visualizer) Sets the radius of the empty inner circle, as a percentage of the total size.' },
+            { property: `obj${newId}_vizInnerRadius`, label: `Object ${newId}: Inner Radius`, type: 'number', default: '40', min: '0', max: '95', description: '(Visualizer) Sets the radius of the empty inner circle, as a percentage of the total size.' },
             { property: `obj${newId}_vizLineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20', description: '(Visualizer) The thickness of the line for the Line/Area draw styles.' },
             { property: `obj${newId}_vizAutoScale`, label: `Object ${newId}: Auto-Scale Height`, type: 'boolean', default: 'true', description: '(Visualizer) If checked, the tallest bar will always reach the top of the shape.' },
             { property: `obj${newId}_vizBarCount`, label: `Object ${newId}: Bar Count`, type: 'number', default: '12', min: '2', max: '200', description: '(Visualizer) The number of frequency bars to display.' },
@@ -2708,7 +2736,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // In main.js, inside the exportedScript template string
     function drawFrame(deltaTime = 0) {
         if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2719,26 +2746,26 @@ document.addEventListener('DOMContentLoaded', function () {
         try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
         
         const audioData = getSignalRGBAudioMetrics();
-        const objectsWithSensors = objects.filter(obj => obj.enableSensorReactivity);
-        const sensorData = {};
-        objectsWithSensors.forEach(obj => {
-            sensorData[obj.userSensor] = getSensorValue(obj.userSensor);
-        });
+        const sensorData = {}; // Sensor logic is editor-only
 
-        // Read the global palette properties from the effect's controls
-        const palette = {};
-        try {
-            palette.enablePalette = eval('enablePalette');
-            palette.paletteColor1 = eval('paletteColor1');
-            palette.paletteColor2 = eval('paletteColor2');
-        } catch (e) {
-            palette.enablePalette = false;
-        }
+        // Read global properties from the effect's controls at the start of the frame
+        const palette = {
+            enablePalette: eval('enablePalette'),
+            paletteColor1: eval('paletteColor1'),
+            paletteColor2: eval('paletteColor2')
+        };
+        const globalCycle = {
+            enable: eval('enableGlobalCycle'),
+            speed: eval('globalCycleSpeed')
+        };
 
-        objects.forEach(obj => {
+        // Use a single loop to update and draw all objects
+        for (let i = objects.length - 1; i >= 0; i--) {
+            const obj = objects[i];
+            
+            // --- 1. Read and apply live property updates from SignalRGB UI ---
             const prefix = 'obj' + obj.id + '_';
             const propsToUpdate = { gradient: {}, strokeGradient: {} };
-
             allPropKeys.filter(p => p.startsWith(prefix)).forEach(key => {
                 const propName = key.substring(prefix.length);
                 try {
@@ -2746,10 +2773,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (value === "true") value = true;
                     if (value === "false") value = false;
                     
-                    if (propName === 'gradColor1' || propName === 'gradColor2') {
-                        propsToUpdate.gradient[propName.replace('grad', '').toLowerCase()] = value;
-                    } else if (propName === 'strokeGradColor1' || propName === 'strokeGradColor2') {
-                        propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                    if (propName.startsWith('gradColor')) {
+                        propsToUpdate.gradient[propName.replace('gradColor', 'color')] = value;
+                    } else if (propName.startsWith('strokeGradColor')) {
+                        propsToUpdate.strokeGradient[propName.replace('strokeGradColor', 'color')] = value;
                     } else if (propName === 'scrollDir') {
                         propsToUpdate.scrollDirection = value;
                     } else if (propName === 'strokeScrollDir') {
@@ -2784,7 +2811,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             }
-
+            
+            // --- 2. Handle state resets for shapes like Strimer if properties changed ---
             if (obj.shape === 'strimer' && (
                 obj.strimerAnimation !== oldStrimerState.animation ||
                 obj.strimerDirection !== oldStrimerState.direction ||
@@ -2795,21 +2823,32 @@ document.addEventListener('DOMContentLoaded', function () {
                 obj.strimerMeterHeights = [];
             }
 
+            // --- 3. Apply Global Overrides ---
+            const originalCycleColors = obj.cycleColors;
+            const originalCycleSpeed = obj.cycleSpeed;
+            if (globalCycle.enable) {
+                obj.cycleColors = true;
+                obj.cycleSpeed = (globalCycle.speed || 0) / 50.0;
+            }
+
+            // --- 4. Update Animation State ---
             if (shouldAnimate) {
                 obj.updateAnimationState(audioData, sensorData, deltaTime);
             }
-        });
+            
+            // --- 5. Draw the object ---
+            obj.draw(false, audioData, palette);
 
-        for (let i = objects.length - 1; i >= 0; i--) {
-            // Pass the palette object to each shape's draw method
-            objects[i].draw(false, audioData, palette);
+            // --- 6. Restore Overridden Properties ---
+            obj.cycleColors = originalCycleColors;
+            obj.cycleSpeed = originalCycleSpeed;
         }
     }
 
     function animate(timestamp) {
         requestAnimationFrame(animate);
         const now = timestamp;
-        const deltaTime = (now - (then || now)) / 1000.0;
+        let deltaTime = (now - (then || now)) / 1000.0;
         if (deltaTime > 0.1) {
             deltaTime = 0.1;
         }
@@ -2852,9 +2891,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 imageExtension: 'png',
                 exportDate: new Date()
             };
-
-            const exportModal = new bootstrap.Modal(document.getElementById('export-options-modal'));
-            exportModal.show();
 
         } catch (error) {
             console.error('Export preparation failed:', error);
@@ -3027,13 +3063,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    document.getElementById('export-copy-btn').addEventListener('click', async () => {
+        // Run the export process now, with the latest checkbox value
+        await exportFile();
 
-    document.getElementById('export-copy-btn').addEventListener('click', () => {
         if (exportPayload.finalHtml) {
             navigator.clipboard.writeText(exportPayload.finalHtml).then(() => {
                 showToast("HTML code copied to clipboard!", 'success');
                 const exportModal = bootstrap.Modal.getInstance(document.getElementById('export-options-modal'));
-                exportModal.hide();
+                if (exportModal) exportModal.hide();
             }).catch(err => {
                 console.error('Failed to copy text: ', err);
                 showToast("Could not copy code. See console for details.", 'danger');
@@ -3042,17 +3080,18 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('export-download-btn').addEventListener('click', async () => {
+        // Run the export process now, with the latest checkbox value
+        await exportFile();
+
         const { safeFilename, finalHtml, thumbnailDataUrl, imageExtension, exportDate } = exportPayload;
         if (!finalHtml) return;
 
         try {
             const zip = new JSZip();
             zip.file(`${safeFilename}.html`, finalHtml, { date: exportDate });
-
             const imageResponse = await fetch(thumbnailDataUrl);
             const imageBlob = await imageResponse.blob();
             zip.file(`${safeFilename}.${imageExtension}`, imageBlob, { date: exportDate });
-
             const zipBlob = await zip.generateAsync({ type: "blob" });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(zipBlob);
@@ -3063,9 +3102,8 @@ document.addEventListener('DOMContentLoaded', function () {
             URL.revokeObjectURL(link.href);
 
             const exportModal = bootstrap.Modal.getInstance(document.getElementById('export-options-modal'));
-            exportModal.hide();
+            if (exportModal) exportModal.hide();
             showToast("Zip file download started.", 'info');
-
         } catch (error) {
             console.error('Zip creation failed:', error);
             showToast('Failed to create .zip file.', 'danger');
@@ -3825,11 +3863,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // updateObjectsFromForm();
-
-        new bootstrap.Tooltip(document.body, {
-            selector: "[data-bs-toggle='tooltip']",
-            trigger: 'hover'
-        });
         updateToolbarState();
 
         fpsInterval = 1000 / fps;
@@ -3886,32 +3919,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }, 200);
 
-        const generalCollapseWrapper = document.querySelector('#collapse-general .p-3');
-        if (generalCollapseWrapper) {
-            const minimizeFormGroup = document.createElement('div');
-            minimizeFormGroup.className = 'form-check form-switch my-3';
-
-            const checkbox = document.createElement('input');
-            checkbox.className = 'form-check-input';
-            checkbox.type = 'checkbox';
-            checkbox.id = 'minimize-props-export';
-            checkbox.checked = true; // Default to ON
-
-            const label = document.createElement('label');
-            label.className = 'form-check-label';
-            label.htmlFor = 'minimize-props-export';
-            label.textContent = 'Minimize Properties for Export';
-
-            const helpText = document.createElement('div');
-            helpText.className = 'form-text mt-1';
-            helpText.textContent = 'Reduces editable properties to only the essentials (colors, speeds, text), writing all others as fixed variables in the script. This can improve load times.';
-
-            minimizeFormGroup.appendChild(checkbox);
-            minimizeFormGroup.appendChild(label);
-            minimizeFormGroup.appendChild(helpText);
-            generalCollapseWrapper.appendChild(minimizeFormGroup);
-        }
-
         const lastUpdatedSpan = document.getElementById('last-updated-span');
         if (lastUpdatedSpan) {
             const now = new Date();
@@ -3929,6 +3936,7 @@ document.addEventListener('DOMContentLoaded', function () {
         recordHistory();
         updateUndoRedoButtons();
         baselineStateForURL = getControlValues();
+        initializeTooltips();
     }
 
     // --- SHARE BUTTON LOGIC ---
@@ -4949,6 +4957,50 @@ document.addEventListener('DOMContentLoaded', function () {
     if (rightPanelTop) {
         canvasResizeObserver.observe(rightPanelTop);
     }
+
+    function initializeTooltips() {
+        const tooltipTriggerList = document.querySelectorAll('[title]');
+        tooltipTriggerList.forEach(tooltipTriggerEl => {
+            // Only initialize if it doesn't already have one
+            if (!bootstrap.Tooltip.getInstance(tooltipTriggerEl)) {
+                new bootstrap.Tooltip(tooltipTriggerEl);
+            }
+        });
+    }
+
+    /**
+     * Finds and completely disposes of all tooltip instances on the page.
+     */
+    function disposeTooltips() {
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"], .tooltip');
+        tooltipTriggerList.forEach(tooltipTriggerEl => {
+            const tooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
+            if (tooltip) {
+                tooltip.dispose();
+            }
+        });
+        // Also remove any orphaned tooltip elements from the DOM
+        document.querySelectorAll('.tooltip').forEach(el => el.remove());
+    }
+
+    // When a modal or offcanvas starts to open, destroy all tooltips.
+    const allModals = document.querySelectorAll('.modal');
+    allModals.forEach(modal => {
+        modal.addEventListener('show.bs.modal', disposeTooltips);
+    });
+    const allOffcanvases = document.querySelectorAll('.offcanvas');
+    allOffcanvases.forEach(offcanvas => {
+        offcanvas.addEventListener('show.bs.offcanvas', disposeTooltips);
+    });
+
+    // When a modal or offcanvas has finished closing, re-create all tooltips from scratch.
+    allModals.forEach(modal => {
+        modal.addEventListener('hidden.bs.modal', initializeTooltips);
+    });
+    allOffcanvases.forEach(offcanvas => {
+        offcanvas.addEventListener('hidden.bs.offcanvas', initializeTooltips);
+    });
+
 
     // Start the application.
     init();
