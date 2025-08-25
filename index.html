@@ -42,7 +42,7 @@
                     <button class="btn btn-outline-secondary" id="load-ws-btn" data-bs-toggle="offcanvas" data-bs-target="#gallery-offcanvas" aria-controls="gallery-offcanvas" title="Load one of your saved projects" disabled><i class="bi bi-folder2-open me-1"></i> Open</button>
                     <button class="btn btn-outline-warning" id="browse-btn" data-bs-toggle="offcanvas" data-bs-target="#gallery-offcanvas" aria-controls="gallery-offcanvas" title="Browse the Community Gallery"><i class="bi bi-view-list me-1"></i> Community Gallery</button>
                     <button class="btn btn-outline-info" id="share-btn" data-bs-toggle="tooltip" title="Get a shareable link to this effect" disabled><i class="bi bi-share me-1"></i> Share</button>
-                    <button class="btn btn-outline-success" id="export-btn" data-bs-toggle="tooltip" title="Download complete HTML file"><i class="bi bi-download me-1"></i> Export</button>
+                    <button class="btn btn-outline-success" id="export-btn" data-bs-toggle="modal" data-bs-target="#export-options-modal" title="Download complete HTML file"><i class="bi bi-download me-1"></i> Export</button>
                     <button class="btn btn-outline-success" id="generate-srgb-link-btn" data-bs-toggle="tooltip" title="Generate SignalRGB Link. Only works if the effect is already installed."><i class="bi bi-link-45deg"></i>Import to SignalRGB</button>
                 </div>
 
@@ -218,10 +218,8 @@
             <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <div class="d-flex align-items-center">
-                            <h5 class="modal-title" id="helpModalLabel"><i class="bi bi-question-circle me-2"></i>How to Use the Effect Builder</h5>
-                            <a href="./?show=help" class="text-body-secondary ms-2" id="help-modal-share-btn" title="Permalink" data-bs-toggle="tooltip"><i class="bi bi-share-fill fs-5"></i></a>
-                        </div>
+                        <h5 class="modal-title me-auto" id="helpModalLabel"><i class="bi bi-question-circle me-2"></i>How to Use the Effect Builder</h5>
+                        <a href="#" class="text-body-secondary ms-2" id="help-modal-share-btn" title="Copy share link" data-bs-toggle="tooltip"><i class="bi bi-share-fill fs-5"></i></a>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -243,7 +241,7 @@
                         <h6 class="text-info mt-4">The Controls Panel (Left)</h6>
                         <p>This is where you manage all the objects and global settings for your effect.</p>
                         <ul>
-                            <li><strong>General Settings:</strong> This panel contains properties for your entire effect, such as its Title, Description, and the new Global Color Palette.</li>
+                            <li><strong>General Settings:</strong> This panel contains properties for your entire effect, such as its Title, Description, and the Global Overrides.</li>
                             <li><strong>Add New Object:</strong> Use the green button at the bottom to add a new shape to the canvas.</li>
                             <li><strong>Object Panels:</strong> Each object gets its own collapsible panel. You can perform several actions here:
                                 <ul>
@@ -280,12 +278,11 @@
                             </li>
                         </ul>
 
-                        <h6 class="text-info mt-4">Using the Global Color Palette</h6>
-                        <p>To create a unified color scheme, you can use the Global Color Palette found in the <strong>General Settings</strong> panel at the top of the controls list.</p>
+                        <h6 class="text-info mt-4">Using Global Overrides</h6>
+                        <p>To quickly apply a consistent style across all objects, you can use the Global Overrides found in the <strong>General Settings</strong> panel. These are located in their own collapsible section.</p>
                         <ul>
-                            <li>Check the <strong>Enable Global Color Palette</strong> box.</li>
-                            <li>When enabled, the two <strong>Palette Color</strong> pickers will override the individual <code>Color 1</code> and <code>Color 2</code> settings for every object in your scene.</li>
-                            <li>This is a fast and easy way to test different color combinations for your entire effect at once. The individual color pickers on each object will be disabled while the global palette is active.</li>
+                            <li>The <strong>Global Color Palette</strong> allows you to set a master <code>Color 1</code> and <code>Color 2</code>. When enabled, it overrides the individual color settings for every object.</li>
+                            <li>The <strong>Global Color Cycle</strong> forces all objects to cycle through the color spectrum. When enabled, it overrides the individual "Cycle Colors" setting on every object and uses the <code>Global Color Cycle Speed</code> slider.</li>
                         </ul>
 
                         <h6 class="text-info mt-4">Using Sound Reactivity</h6>
@@ -351,13 +348,13 @@
                             </li>
                         </ul>
 
-                        <h6 class="text-info mt-4">How to Install the Effect in SignalRGB</h6>
+                        <h6 class="text-info mt-4">Exporting and Installing Your Effect</h6>
+                        <p>When you click the <strong><i class="bi bi-download me-1"></i> Export</strong> button, a dialog will appear with several options. One key option is <strong>Minimize Properties for Export</strong>. Checking this box will optimize the exported file by only including essential or shape-relevant controls (like colors and speeds) in the SignalRGB UI. All other properties will be "baked in" to the effect as fixed values. This is great for sharing a clean, easy-to-use version of your effect with others.</p>
                         <ul class="list-unstyled">
-                            <li>1. Click the <strong><i class="bi bi-download me-1"></i> Export</strong> button.</li>
-                            <li>2. From the options that appear, click <strong>Download .zip File</strong>.</li>
-                            <li>3. Find the downloaded `.zip` file and extract its contents into your SignalRGB effects folder, which is typically located at:<br><code>Documents\WhirlwindFX\Effects</code></li>
-                            <li>4. For better organization, it is recommended to place the effect files inside a new subfolder (e.g., <code>Effects\My Custom Effects</code>).</li>
-                            <li>5. Restart the SignalRGB application. Your new effect will now appear in the effects list.</li>
+                            <li>1. Click <strong>Download .zip File</strong>.</li>
+                            <li>2. Find the downloaded `.zip` file and extract its contents into your SignalRGB effects folder, which is typically located at:<br><code>Documents\WhirlwindFX\Effects</code></li>
+                            <li>3. For better organization, it is recommended to place the effect files inside a new subfolder for your effect (e.g., <code>Documents\WhirlwindFX\Effects\MyEffect</code>).</li>
+                            <li>4. Restart the SignalRGB application. Your new effect will now appear in the effects list.</li>
                         </ul>
                     </div>
                     <div class="modal-footer">
@@ -512,6 +509,12 @@
                     </div>
                     <div class="modal-body">
                         <p>Your effect is ready. How would you like to export it?</p>
+                        <hr>
+                        <div class="form-check form-switch my-3">
+                            <input class="form-check-input" type="checkbox" id="minimize-props-export">
+                            <label class="form-check-label" for="minimize-props-export">Minimize Properties for Export</label>
+                            <div class="form-text mt-1">Reduces editable properties to only the essentials, improving load times.</div>
+                        </div>
                     </div>
                     <div class="modal-footer justify-content-center">
                         <button type="button" class="btn btn-success" id="export-download-btn"><i class="bi bi-file-earmark-zip-fill me-2"></i>Download .zip File</button>
