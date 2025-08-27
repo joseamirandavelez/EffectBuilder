@@ -1101,6 +1101,10 @@ document.addEventListener('DOMContentLoaded', function () {
  * Generates the meta tags and JavaScript variables for the final exported HTML file.
  * This is where the "Minimize Properties" logic is applied.
  */
+    /**
+ * Generates the meta tags and JavaScript variables for the final exported HTML file.
+ * This is where the "Minimize Properties" logic is applied.
+ */
     function generateOutputScript() {
         let scriptHTML = '';
         let jsVars = '';
@@ -1168,20 +1172,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     exportValue = String(liveValue);
                 }
 
-                // --- The Final, Corrected Decision Logic ---
                 const isApplicable = validPropsForShape.includes(propName);
                 let writeAsMeta;
 
                 if (!minimize) {
-                    // When Minimize is OFF, EVERYTHING is a meta tag.
                     writeAsMeta = true;
                 } else {
-                    // When Minimize is ON...
                     if (propName === 'shape' || propName === 'x' || propName === 'y' || propName === 'width' || propName === 'height' || propName === 'rotation' || !isApplicable) {
-                        // ...the 'shape' property and any non-applicable properties are consts.
                         writeAsMeta = false;
                     } else {
-                        // ...only applicable properties are meta tags.
                         writeAsMeta = true;
                     }
                 }
@@ -2536,7 +2535,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_vizInnerRadius`, label: `Object ${newId}: Inner Radius`, type: 'number', default: '40', min: '0', max: '95', description: '(Visualizer) Sets the radius of the empty inner circle, as a percentage of the total size.' },
             { property: `obj${newId}_vizLineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20', description: '(Visualizer) The thickness of the line for the Line/Area draw styles.' },
             { property: `obj${newId}_vizAutoScale`, label: `Object ${newId}: Auto-Scale Height`, type: 'boolean', default: 'true', description: '(Visualizer) If checked, the tallest bar will always reach the top of the shape.' },
-            { property: `obj${newId}_vizBarCount`, label: `Object ${newId}: Bar Count`, type: 'number', default: '12', min: '2', max: '200', description: '(Visualizer) The number of frequency bars to display.' },
+            { property: `obj${newId}_vizBarCount`, label: `Object ${newId}: Bar Count`, type: 'number', default: '12', min: '1', max: '200', description: '(Visualizer) The number of frequency bars to display.' },
             { property: `obj${newId}_vizBarSpacing`, label: `Object ${newId}: Bar Spacing`, type: 'number', default: '2', min: '0', max: '20', description: '(Visualizer) The space between each bar in pixels.' },
             { property: `obj${newId}_vizMaxBarHeight`, label: `Object ${newId}: Max Bar Height`, type: 'number', default: '30', min: '5', max: '100', description: '(Visualizer) Sets the maximum possible length for any visualizer bar, as a percentage of the available space.' },
             { property: `obj${newId}_vizUseSegments`, label: `Object ${newId}: Use LED Segments`, type: 'boolean', default: 'false', description: '(Visualizer) Renders bars as discrete segments instead of solid blocks.' },

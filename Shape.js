@@ -579,7 +579,7 @@ class Shape {
                 break;
             case 'Volume Meter':
                 const volumeSensitivity = 1.0 + (this.audioSensitivity / 100.0) * 2.0;
-                this.volumeMeterFill = Math.min(1.0, this.smoothedAudioValue * volumeSensitivity);
+                this.volumeMeterFill = Math.min(0.1, this.smoothedAudioValue * volumeSensitivity);
                 break;
         }
     }
