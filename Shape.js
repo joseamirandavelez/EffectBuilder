@@ -586,7 +586,22 @@ class Shape {
 
     _drawFill(phase = 0) {
         if (this.audioTarget === 'Volume Meter' && this.volumeMeterFill > 0) {
-            // ... existing volume meter logic
+            this.ctx.save();
+            this.ctx.clip(); // Use the shape's path as a clipping mask
+
+            // Draw the "empty" part of the meter as a semi-transparent background
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+
+            // Calculate the height and position for the "filled" part of the meter
+            const fillHeight = this.height * this.volumeMeterFill;
+            const fillY = this.height / 2 - fillHeight; // Positioned from the bottom up
+
+            // Draw the filled part using the object's current style
+            this.ctx.fillStyle = this._createLocalFillStyle(phase);
+            this.ctx.fillRect(-this.width / 2, fillY, this.width, fillHeight);
+
+            this.ctx.restore(); // Remove the clipping mask
         } else if (this.sensorTarget === 'Sensor Meter' && this.sensorMeterFill > 0) {
             this.ctx.save();
             this.ctx.clip();
@@ -1464,67 +1479,82 @@ class Shape {
 
         if (this.shape === 'audio-visualizer' && audioData && audioData.frequencyData) {
             const fullFreqData = audioData.frequencyData;
-            const smoothingFactor = this.vizSmoothing / 100.0;
+            const smoothingFactor = (this.vizSmoothing || 0) / 100.0;
             const barCount = parseInt(this.vizBarCount, 10);
-            const maxFreqIndex = Math.round((20000 / 22050) * fullFreqData.length);
-            const freqData = fullFreqData.slice(0, maxFreqIndex);
+
             if (!this.vizBarHeights || this.vizBarHeights.length !== barCount) {
                 this.vizBarHeights = new Array(barCount).fill(0);
             }
-            let minFreq = 255;
-            let maxFreq = 0;
-            for (let i = 0; i < freqData.length; i++) {
-                if (freqData[i] < minFreq) minFreq = freqData[i];
-                if (freqData[i] > maxFreq) maxFreq = freqData[i];
-            }
-            const freqRange = maxFreq > minFreq ? maxFreq - minFreq : 1;
-            if (freqData.length === 0) return;
-            const logMax = Math.log(freqData.length);
-            const normalizedAvgs = [];
-            let peakNormalizedValue = 0;
+
+            const logMapping = (index, total) => {
+                const minHz = 20;
+                const maxHz = 22050;
+                const minLog = Math.log(minHz);
+                const maxLog = Math.log(maxHz);
+                const scale = (maxLog - minLog) / total;
+                const hz = Math.exp(minLog + scale * index);
+                const normalizedIndex = Math.round(hz / maxHz * fullFreqData.length);
+                return normalizedIndex;
+            };
+
+            const mappedData = [];
             for (let i = 0; i < barCount; i++) {
-                const startRatio = i / barCount;
-                const endRatio = (i + 1) / barCount;
-                const startFreqIndex = Math.max(0, Math.floor(Math.exp(startRatio * logMax)) - 1);
-                const endFreqIndex = Math.max(0, Math.floor(Math.exp(endRatio * logMax)) - 1);
+                const startFreqIndex = logMapping(i, barCount);
+                const endFreqIndex = Math.max(logMapping(i + 1, barCount), startFreqIndex + 1);
                 let sum = 0;
                 let count = 0;
-                for (let j = startFreqIndex; j <= endFreqIndex && j < freqData.length; j++) {
-                    sum += freqData[j];
+
+                for (let j = startFreqIndex; j < endFreqIndex && j < fullFreqData.length; j++) {
+                    let value = fullFreqData[j];
+                    const bassBoostFactor = (this.vizBassLevel || 50) / 100.0;
+                    const trebleBoostFactor = (this.vizTrebleBoost || 125) / 100.0;
+                    const boostFactor = bassBoostFactor + (i / barCount) * (trebleBoostFactor - bassBoostFactor);
+                    value *= boostFactor;
+
+                    sum += value;
                     count++;
                 }
                 const avg = count > 0 ? sum / count : 0;
-                const normalizedAvg = (avg - minFreq) / freqRange;
-                normalizedAvgs.push(normalizedAvg);
-                if (normalizedAvg > peakNormalizedValue) {
-                    peakNormalizedValue = normalizedAvg;
-                }
+                mappedData.push(avg);
             }
+
+            let peakValue = Math.max(...mappedData);
+            if (peakValue <= 0) peakValue = 1;
+
             for (let i = 0; i < barCount; i++) {
+                const normalizedValue = mappedData[i];
                 let targetHeight;
-                const normalizedAvg = normalizedAvgs[i];
 
-                // Apply a perceptual weighting curve to boost higher frequencies
-                const boost = 0.5 + (i / barCount) * 2.0;
-                const finalAvg = normalizedAvg * boost;
-
-                if (this.vizAutoScale !== false) {
-                    let shapeMaxHeight;
-                    if (this.vizLayout === 'Circular') {
-                        const outerRadius = Math.min(this.width, this.height) / 2;
-                        const innerRadiusRatio = (this.vizInnerRadius || 0) / 100.0;
-                        shapeMaxHeight = outerRadius * (1.0 - innerRadiusRatio);
-                    } else {
-                        shapeMaxHeight = this.height;
-                    }
-                    const scaleFactor = (peakNormalizedValue > 0) ? (1.0 / peakNormalizedValue) : 0;
-                    targetHeight = Math.max(0, finalAvg * scaleFactor * shapeMaxHeight);
+                if (this.vizAutoScale && barCount > 1) {
+                    let scaleFactor = (255 / peakValue);
+                    targetHeight = normalizedValue * scaleFactor;
                 } else {
-                    const availableSpace = this.vizLayout === 'Circular' ? (Math.min(this.width, this.height) / 2) : this.height;
-                    const maxBarHeight = ((this.vizMaxBarHeight || 30) / 100.0) * availableSpace;
-                    targetHeight = Math.max(0, normalizedAvg * maxBarHeight);
+                    // For a single bar or when not auto-scaling, we use the raw normalized value.
+                    targetHeight = normalizedValue;
                 }
-                this.vizBarHeights[i] = smoothingFactor * this.vizBarHeights[i] + (1.0 - smoothingFactor) * targetHeight;
+
+                let shapeMaxHeight;
+                if (this.vizLayout === 'Circular') {
+                    const outerRadius = Math.min(this.width, this.height) / 2;
+                    const innerRadiusRatio = (this.vizInnerRadius || 0) / 100.0;
+                    shapeMaxHeight = outerRadius * (1.0 - innerRadiusRatio);
+                } else {
+                    shapeMaxHeight = this.height;
+                }
+
+                // This is the main fix: Use the audio's average volume for a single bar.
+                let finalHeight;
+                if (barCount === 1) {
+                    const sensitivityMultiplier = (this.vizAudioSensitivity || 100) / 100.0;
+                    const audioVolume = (audioData.volume.avg || 0) * sensitivityMultiplier;
+                    finalHeight = Math.min(1, audioVolume) * shapeMaxHeight;
+                } else {
+                    const sensitivityMultiplier = (this.vizAudioSensitivity || 100) / 100.0;
+                    const audioValue = (targetHeight / 255) * sensitivityMultiplier;
+                    finalHeight = Math.min(1, audioValue) * shapeMaxHeight;
+                }
+
+                this.vizBarHeights[i] = smoothingFactor * this.vizBarHeights[i] + (1.0 - smoothingFactor) * finalHeight;
             }
         }
 
