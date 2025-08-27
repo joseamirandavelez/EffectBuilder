@@ -1,9 +1,192 @@
+// --- State Management ---
+let baselineStateForURL = {};
+let loadedStateSnapshot = null;
+let dirtyProperties = new Set();
+let leftPanelPixelWidth = 0;
+let isRestoring = false;
+let configStore = [];
+var objects = [];
+var selectedObjectIds = [];
+let oldSelection = [];
+let needsRedraw = false;
+let constrainToCanvas = true;
+let verticalSplit, horizontalSplit;
+let lastHSizes, lastVSizes;
+let fps = 50;
+let fpsInterval;
+let then;
+let galleryListener = null;
+let lastVisibleDoc = null;
+let isLoadingMore = false;
+let currentGalleryQuery = null;
+let currentProjectDocId = null;
+let confirmActionCallback = null;
+let exportPayload = {};
+let propertyClipboard = null;
+let sourceObjectId = null;
+
+let cachedSnapTargets = null;
+let snapLines = [];
+let isDragging = false;
+let isResizing = false;
+let isRotating = false;
+let activeResizeHandle = null;
+let initialDragState = [];
+let dragStartX = 0;
+let dragStartY = 0;
+let audioContext;
+let analyser;
+let frequencyData;
+let isAudioSetup = false;
+
+let masterTime = 0;
+
+const canvas = document.getElementById('signalCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 1280;
+canvas.height = 800;
+
+const form = document.getElementById('controls-form');
+const ADMIN_UID = 'zMj8mtfMjXeFMt072027JT7Jc7i1';
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
+
+canvas.width = 1280;
+canvas.height = 800;
+const canvasContainer = document.getElementById('canvas-container');
+
+const toolbar = document.getElementById('toolbar');
+const constrainBtn = document.getElementById('constrain-btn');
+const exportBtn = document.getElementById('export-btn');
+const shareBtn = document.getElementById('share-btn');
+const addObjectBtn = document.getElementById('add-object-btn');
+const confirmImportBtn = document.getElementById('confirm-import-btn');
+const confirmBtn = document.getElementById('confirm-overwrite-btn');
+const coordsDisplay = document.getElementById('coords-display');
+
+const srgbLinkBtn = document.getElementById('generate-srgb-link-btn');
+const timelineModalEl = document.getElementById('timeline-modal');
+const openTimelineBtn = document.getElementById('open-timeline-btn');
+
+// Update this for a new property
+const shapePropertyMap = {
+    rectangle: [
+        'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+        'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
+        'cycleSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns',
+        'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+        'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+        'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    circle: [
+        'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+        'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
+        'cycleSpeed', 'scrollDir', 'phaseOffset',
+        'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+        'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+        'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    ring: [
+        'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
+        'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
+        'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+        'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+        'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    polygon: [
+        'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+        'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
+        'cycleSpeed', 'scrollDir', 'phaseOffset', 'sides',
+        'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+        'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+        'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    star: [
+        'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+        'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
+        'cycleSpeed', 'scrollDir', 'phaseOffset', 'points', 'starInnerRadius',
+        'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+        'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+        'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    text: [
+        'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
+        'animationSpeed', 'text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation',
+        'textAnimationSpeed', 'showTime', 'showDate',
+        'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',,
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    oscilloscope: [
+        'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
+        'animationMode', 'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'scrollDir', 'phaseOffset',
+        'lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape',
+        'enableWaveAnimation', 'waveStyle', 'waveCount', 'oscAnimationSpeed',
+        'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+        'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    'tetris': [
+        'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+        'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed', 'phaseOffset',
+        'tetrisAnimation', 'tetrisBlockCount', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce', 'tetrisHoldTime', // <-- Add 'tetrisHoldTime' here
+        'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    fire: [
+        'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
+        'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
+        'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    'fire-radial': [
+        'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
+        'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
+        'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    'pixel-art': [
+        'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+        'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
+        'cycleSpeed', 'scrollDir', 'phaseOffset', 'pixelArtData',
+        'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+        'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    'audio-visualizer': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop',
+        'gradColor1', 'gradColor2', 'cycleColors', 'animationSpeed', 'scrollDir',
+        'vizLayout', 'vizDrawStyle', 'vizStyle',
+        'vizLineWidth',
+        'vizAutoScale', 'vizMaxBarHeight',
+        'vizBarCount', 'vizBarSpacing', 'vizSmoothing',
+        'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing',
+        'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+    'strimer': [
+        'shape', 'x', 'y', 'width', 'height', 'rotation',
+        'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2',
+        'cycleColors', 'cycleSpeed', 'animationSpeed', 'scrollDir', 'phaseOffset',
+        'strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerDirection', 'strimerEasing', 'strimerAnimationSpeed', // <-- Add it here
+        'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerPulseSync', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection',
+        'startTime', 'duration', 'hideWhenInactive'
+    ],
+};
+
+const galleryOffcanvasEl = document.getElementById('gallery-offcanvas');
+const galleryList = document.getElementById('gallery-project-list');
+const galleryBody = galleryOffcanvasEl.querySelector('.offcanvas-body');
+
 // Global speed multipliers (adjust these to change animation speeds across the board)
-window.gradientSpeedMultiplier = 1;
-window.shapeSpeedMultiplier = 1;
-window.seismicSpeedMultiplier = 1;
-window.tetrisGravityMultiplier = 4;
-window.textSpeedMultiplier = 1;
+const gradientSpeedMultiplier = 1;
+const shapeSpeedMultiplier = 1;
+const seismicSpeedMultiplier = 1;
+const tetrisGravityMultiplier = 4;
+const textSpeedMultiplier = 1;
 
 const INITIAL_CONFIG_TEMPLATE = `
     <meta title="Untitled Efffect" />
@@ -55,8 +238,6 @@ const INITIAL_CONFIG_TEMPLATE = `
     <meta property="paletteColor2" label="Palette Color 2" type="color" default="#00BFFF" />
     <meta property="enableGlobalCycle" label="Enable Global Color Cycle" type="boolean" default="false" />
     <meta property="globalCycleSpeed" label="Global Color Cycle Speed" type="number" default="10" min="0" max="100" />
-
-
 
     <meta property="obj2_shape" label="Large Text: Shape" type="combobox" values="rectangle,circle,ring,text" default="text" />
     <meta property="obj2_x" label="Large Text: X Position" type="number" min="0" max="320" default="-3" />
@@ -114,123 +295,270 @@ const INITIAL_CONFIG_TEMPLATE = `
     <meta property="obj3_vizSmoothing" label="Visualizer: Smoothing" type="number" default="60" min="0" max="99" />
 `;
 
-// --- State Management ---
-let baselineStateForURL = {};
-let loadedStateSnapshot = null;
-let dirtyProperties = new Set();
-let leftPanelPixelWidth = 0;
-let isRestoring = false;
-let configStore = [];
-let objects = [];
-let selectedObjectIds = [];
-let oldSelection = [];
-let needsRedraw = false;
-let constrainToCanvas = true;
-let verticalSplit, horizontalSplit;
-let lastHSizes, lastVSizes;
-let fps = 50;
-let fpsInterval;
-let then;
-let galleryListener = null;
-let lastVisibleDoc = null;
-let isLoadingMore = false;
-let currentGalleryQuery = null;
-let currentProjectDocId = null;
-let confirmActionCallback = null;
-let exportPayload = {};
-let propertyClipboard = null;
-let sourceObjectId = null;
-
-let cachedSnapTargets = null;
-let snapLines = [];
-let isDragging = false;
-let isResizing = false;
-let isRotating = false;
-let activeResizeHandle = null;
-let initialDragState = [];
-let dragStartX = 0;
-let dragStartY = 0;
-let audioContext;
-let analyser;
-let frequencyData;
-let isAudioSetup = false;
-
-function handleURLParameters() {
-    const params = new URLSearchParams(window.location.search);
-    const modalToShow = params.get('show');
-
-    if (!modalToShow) {
-        return; // No parameter found, do nothing.
-    }
-
-    let modalEl = null;
-    if (modalToShow.toLowerCase() === 'about') {
-        modalEl = document.getElementById('about-modal');
-    } else if (modalToShow.toLowerCase() === 'help') {
-        modalEl = document.getElementById('help-modal');
-    }
-
-    if (modalEl) {
-        // Now we can create and show the modal immediately.
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
-    }
-}
-
-function updateColorControls() {
-    const values = getControlValues();
-    const paletteEnabled = values.enablePalette;
-    const pColor1 = values.paletteColor1;
-    const pColor2 = values.paletteColor2;
-
-    const colorControlNames = ['gradColor1', 'gradColor2', 'strokeGradColor1', 'strokeGradColor2'];
-
-    objects.forEach(obj => {
-        colorControlNames.forEach(name => {
-            const input = form.querySelector(`[name="obj${obj.id}_${name}"]`);
-            if (input) {
-                const hexInput = form.querySelector(`[name="obj${obj.id}_${name}_hex"]`);
-                const isColor1 = name.endsWith('1');
-
-                input.disabled = paletteEnabled;
-                if (hexInput) hexInput.disabled = paletteEnabled;
-
-                if (paletteEnabled) {
-                    const paletteColor = isColor1 ? pColor1 : pColor2;
-                    input.value = paletteColor;
-                    if (hexInput) hexInput.value = paletteColor;
-                } else {
-                    // Restore the object's actual color
-                    const originalColor = isColor1
-                        ? (name.startsWith('stroke') ? obj.strokeGradient.color1 : obj.gradient.color1)
-                        : (name.startsWith('stroke') ? obj.strokeGradient.color2 : obj.gradient.color2);
-                    input.value = originalColor;
-                    if (hexInput) hexInput.value = originalColor;
-                }
-            }
-        });
-    });
-}
-
-function getBoundingBox(obj) {
-    const corners = [
-        obj.getWorldCoordsOfCorner('top-left'),
-        obj.getWorldCoordsOfCorner('top-right'),
-        obj.getWorldCoordsOfCorner('bottom-right'),
-        obj.getWorldCoordsOfCorner('bottom-left')
-    ];
-    return {
-        minX: Math.min(...corners.map(c => c.x)),
-        minY: Math.min(...corners.map(c => c.y)),
-        maxX: Math.max(...corners.map(c => c.x)),
-        maxY: Math.max(...corners.map(c => c.y)),
-    };
-}
-
-
-
 document.addEventListener('DOMContentLoaded', function () {
-    const srgbLinkBtn = document.getElementById('generate-srgb-link-btn');
+    // --- Timeline Functions ---
+    function renderTimeline() {
+        const timelineContainer = document.getElementById('timeline-container');
+        // The ruler header is now just for decoration, not for markers.
+        const timelineRulerHeader = document.getElementById('timeline-ruler');
+        timelineContainer.innerHTML = '';
+        timelineRulerHeader.innerHTML = '';
+
+        if (objects.length === 0) {
+            timelineContainer.innerHTML = '<p class="text-center text-body-secondary mt-4">No objects in the scene.</p>';
+            return;
+        }
+
+        const labelsColumn = document.createElement('div');
+        labelsColumn.className = 'timeline-labels';
+        const tracksColumn = document.createElement('div');
+        tracksColumn.className = 'timeline-tracks';
+
+        const maxEndTime = objects.reduce((max, obj) => Math.max(max, (obj.startTime || 0) + (obj.duration || 0)), 30);
+        // The calculation no longer needs to subtract the label width.
+        const pixelsPerSecond = 20; // Use a fixed pixel scale for consistency.
+        const totalPixelWidth = maxEndTime * pixelsPerSecond;
+        tracksColumn.style.minWidth = `${totalPixelWidth}px`;
+
+        // Add time markers directly to the scrolling tracks column.
+        for (let i = 0; i <= maxEndTime; i += 5) {
+            if (i === 0) continue; // Skip the 0s marker to avoid clutter.
+            const marker = document.createElement('div');
+            marker.className = 'ruler-marker';
+            marker.style.left = `${i * pixelsPerSecond}px`;
+            marker.textContent = `${i}s`;
+            tracksColumn.appendChild(marker);
+        }
+
+        objects.forEach(obj => {
+            const label = document.createElement('div');
+            label.className = 'track-label';
+            label.textContent = obj.name;
+            labelsColumn.appendChild(label);
+
+            const track = document.createElement('div');
+            track.className = 'timeline-track';
+
+            const clipVisual = document.createElement('div');
+            clipVisual.className = 'timeline-clip-visual';
+            clipVisual.style.left = `${(obj.startTime || 0) * pixelsPerSecond}px`;
+            clipVisual.style.width = `${(obj.duration || 10) * pixelsPerSecond}px`;
+            clipVisual.textContent = `${(obj.duration || 10).toFixed(1)}s`;
+            track.appendChild(clipVisual);
+
+            const clipInteractive = document.createElement('div');
+            clipInteractive.className = 'timeline-clip-interactive';
+            clipInteractive.dataset.id = obj.id;
+            clipInteractive.style.left = `${(obj.startTime || 0) * pixelsPerSecond}px`;
+            clipInteractive.style.width = `${(obj.duration || 10) * pixelsPerSecond}px`;
+
+            const handleLeft = document.createElement('div');
+            handleLeft.className = 'resize-handle resize-handle-left';
+            const handleRight = document.createElement('div');
+            handleRight.className = 'resize-handle resize-handle-right';
+
+            clipInteractive.appendChild(handleLeft);
+            clipInteractive.appendChild(handleRight);
+            track.appendChild(clipInteractive);
+
+            tracksColumn.appendChild(track);
+
+            addClipInteractivity(clipInteractive, clipVisual, pixelsPerSecond);
+        });
+
+        timelineContainer.appendChild(labelsColumn);
+        timelineContainer.appendChild(tracksColumn);
+    }
+
+    function addClipInteractivity(interactiveEl, visualEl, pixelsPerSecond) {
+        const id = parseInt(interactiveEl.dataset.id, 10);
+        const obj = objects.find(o => o.id === id);
+        if (!obj) return;
+
+        let isDragging = false, isResizing = null;
+        let initialMouseX, initialStart, initialDuration;
+
+        const onMouseDown = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            initialMouseX = e.clientX;
+            initialStart = (typeof obj.startTime === 'number' && !isNaN(obj.startTime)) ? obj.startTime : 0;
+            initialDuration = (typeof obj.duration === 'number' && !isNaN(obj.duration)) ? obj.duration : 10;
+
+            if (e.target.classList.contains('resize-handle-left')) isResizing = 'left';
+            else if (e.target.classList.contains('resize-handle-right')) isResizing = 'right';
+            else isDragging = true;
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp, { once: true });
+        };
+
+        const onMouseMove = (e) => {
+            const deltaX = e.clientX - initialMouseX;
+            const timeDelta = deltaX / pixelsPerSecond;
+
+            if (isDragging) {
+                obj.startTime = Math.max(0, initialStart + timeDelta);
+            } else if (isResizing === 'right') {
+                obj.duration = Math.max(0.5, initialDuration + timeDelta);
+            } else if (isResizing === 'left') {
+                const newStart = Math.max(0, initialStart + timeDelta);
+                const startDifference = newStart - initialStart;
+                const newDuration = Math.max(0.5, initialDuration - startDifference);
+                obj.startTime = newStart;
+                obj.duration = newDuration;
+            }
+
+            const newLeft = `${obj.startTime * pixelsPerSecond}px`;
+            const newWidth = `${obj.duration * pixelsPerSecond}px`;
+            interactiveEl.style.left = newLeft;
+            interactiveEl.style.width = newWidth;
+            visualEl.style.left = newLeft;
+            visualEl.style.width = newWidth;
+            visualEl.textContent = `${obj.duration.toFixed(1)}s`;
+        };
+
+        const onMouseUp = () => {
+            isDragging = false;
+            isResizing = null;
+            document.removeEventListener('mousemove', onMouseMove);
+            updateFormValuesFromObjects();
+            recordHistory();
+        };
+
+        interactiveEl.addEventListener('mousedown', onMouseDown);
+    }
+
+    function addClipInteractivity(interactiveEl, visualEl, pixelsPerSecond) {
+        const id = parseInt(interactiveEl.dataset.id, 10);
+        const obj = objects.find(o => o.id === id);
+        if (!obj) return;
+
+        let isDragging = false, isResizing = null;
+        let initialMouseX, initialStart, initialDuration;
+
+        const onMouseDown = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            initialMouseX = e.clientX;
+            initialStart = (typeof obj.startTime === 'number' && !isNaN(obj.startTime)) ? obj.startTime : 0;
+            initialDuration = (typeof obj.duration === 'number' && !isNaN(obj.duration)) ? obj.duration : 10;
+
+            if (e.target.classList.contains('resize-handle-left')) isResizing = 'left';
+            else if (e.target.classList.contains('resize-handle-right')) isResizing = 'right';
+            else isDragging = true;
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp, { once: true });
+        };
+
+        const onMouseMove = (e) => {
+            const deltaX = e.clientX - initialMouseX;
+            const timeDelta = deltaX / pixelsPerSecond;
+
+            if (isDragging) {
+                obj.startTime = Math.max(0, initialStart + timeDelta);
+            } else if (isResizing === 'right') {
+                obj.duration = Math.max(0.5, initialDuration + timeDelta);
+            } else if (isResizing === 'left') {
+                const newStart = Math.max(0, initialStart + timeDelta);
+                const startDifference = newStart - initialStart;
+                const newDuration = Math.max(0.5, initialDuration - startDifference);
+                obj.startTime = newStart;
+                obj.duration = newDuration;
+            }
+
+            const newLeft = `${obj.startTime * pixelsPerSecond}px`;
+            const newWidth = `${obj.duration * pixelsPerSecond}px`;
+            interactiveEl.style.left = newLeft; // Correctly targets the interactive element
+            interactiveEl.style.width = newWidth;
+            visualEl.style.left = newLeft;      // Correctly targets the visual element
+            visualEl.style.width = newWidth;
+            visualEl.textContent = `${obj.duration.toFixed(1)}s`;
+        };
+
+        const onMouseUp = () => {
+            isDragging = false;
+            isResizing = null;
+            document.removeEventListener('mousemove', onMouseMove);
+            updateFormValuesFromObjects();
+            recordHistory();
+        };
+
+        interactiveEl.addEventListener('mousedown', onMouseDown);
+    }
+
+    function handleURLParameters() {
+        const params = new URLSearchParams(window.location.search);
+        const modalToShow = params.get('show');
+
+        if (!modalToShow) {
+            return; // No parameter found, do nothing.
+        }
+
+        let modalEl = null;
+        if (modalToShow.toLowerCase() === 'about') {
+            modalEl = document.getElementById('about-modal');
+        } else if (modalToShow.toLowerCase() === 'help') {
+            modalEl = document.getElementById('help-modal');
+        }
+
+        if (modalEl) {
+            // Now we can create and show the modal immediately.
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    }
+
+    function updateColorControls() {
+        const values = getControlValues();
+        const paletteEnabled = values.enablePalette;
+        const pColor1 = values.paletteColor1;
+        const pColor2 = values.paletteColor2;
+
+        const colorControlNames = ['gradColor1', 'gradColor2', 'strokeGradColor1', 'strokeGradColor2'];
+
+        objects.forEach(obj => {
+            colorControlNames.forEach(name => {
+                const input = form.querySelector(`[name="obj${obj.id}_${name}"]`);
+                if (input) {
+                    const hexInput = form.querySelector(`[name="obj${obj.id}_${name}_hex"]`);
+                    const isColor1 = name.endsWith('1');
+
+                    input.disabled = paletteEnabled;
+                    if (hexInput) hexInput.disabled = paletteEnabled;
+
+                    if (paletteEnabled) {
+                        const paletteColor = isColor1 ? pColor1 : pColor2;
+                        input.value = paletteColor;
+                        if (hexInput) hexInput.value = paletteColor;
+                    } else {
+                        // Restore the object's actual color
+                        const originalColor = isColor1
+                            ? (name.startsWith('stroke') ? obj.strokeGradient.color1 : obj.gradient.color1)
+                            : (name.startsWith('stroke') ? obj.strokeGradient.color2 : obj.gradient.color2);
+                        input.value = originalColor;
+                        if (hexInput) hexInput.value = originalColor;
+                    }
+                }
+            });
+        });
+    }
+
+    function getBoundingBox(obj) {
+        const corners = [
+            obj.getWorldCoordsOfCorner('top-left'),
+            obj.getWorldCoordsOfCorner('top-right'),
+            obj.getWorldCoordsOfCorner('bottom-right'),
+            obj.getWorldCoordsOfCorner('bottom-left')
+        ];
+        return {
+            minX: Math.min(...corners.map(c => c.x)),
+            minY: Math.min(...corners.map(c => c.y)),
+            maxX: Math.max(...corners.map(c => c.x)),
+            maxY: Math.max(...corners.map(c => c.y)),
+        };
+    }
 
     srgbLinkBtn.addEventListener('click', (event) => {
         event.preventDefault();
@@ -305,133 +633,6 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem('termsAccepted', 'true');
     });
 
-    // --- DOM Element References ---
-    const ADMIN_UID = 'zMj8mtfMjXeFMt072027JT7Jc7i1';
-    const undoBtn = document.getElementById('undo-btn');
-    const redoBtn = document.getElementById('redo-btn');
-    const canvas = document.getElementById('signalCanvas');
-
-    if (!canvas) {
-        console.error('Canvas element not found');
-        return;
-    }
-    canvas.width = 1280;
-    canvas.height = 800;
-    const canvasContainer = document.getElementById('canvas-container');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-        console.error('Failed to get 2D context');
-        return;
-    }
-    const form = document.getElementById('controls-form');
-    const toolbar = document.getElementById('toolbar');
-    const constrainBtn = document.getElementById('constrain-btn');
-    const exportBtn = document.getElementById('export-btn');
-    const shareBtn = document.getElementById('share-btn');
-    const addObjectBtn = document.getElementById('add-object-btn');
-    const confirmImportBtn = document.getElementById('confirm-import-btn');
-    const confirmBtn = document.getElementById('confirm-overwrite-btn');
-    const coordsDisplay = document.getElementById('coords-display');
-
-    // Update this for a new property
-    const shapePropertyMap = {
-        rectangle: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
-            'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
-            'cycleSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
-        ],
-        circle: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
-            'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
-            'cycleSpeed', 'scrollDir', 'phaseOffset',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
-        ],
-        ring: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
-            'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
-        ],
-        polygon: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
-            'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
-            'cycleSpeed', 'scrollDir', 'phaseOffset', 'sides',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
-        ],
-        star: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
-            'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
-            'cycleSpeed', 'scrollDir', 'phaseOffset', 'points', 'starInnerRadius',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
-        ],
-        text: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
-            'animationSpeed', 'text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation',
-            'textAnimationSpeed', 'showTime', 'showDate',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-        ],
-        oscilloscope: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
-            'animationMode', 'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'scrollDir', 'phaseOffset',
-            'lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape',
-            'enableWaveAnimation', 'waveStyle', 'waveCount', 'oscAnimationSpeed',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-        ],
-        'tetris': [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
-            'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed', 'phaseOffset',
-            'tetrisAnimation', 'tetrisBlockCount', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce', 'tetrisHoldTime', // <-- Add 'tetrisHoldTime' here
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-        ],
-        fire: [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
-            'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
-        ],
-        'fire-radial': [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
-            'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
-        ],
-        'pixel-art': [
-            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
-            'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
-            'cycleSpeed', 'scrollDir', 'phaseOffset', 'pixelArtData',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
-        ],
-        'audio-visualizer': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop',
-            'gradColor1', 'gradColor2', 'cycleColors', 'animationSpeed', 'scrollDir',
-            'vizLayout', 'vizDrawStyle', 'vizStyle',
-            'vizLineWidth',
-            'vizAutoScale', 'vizMaxBarHeight',
-            'vizBarCount', 'vizBarSpacing', 'vizSmoothing',
-            'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing',
-            'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost'
-        ],
-        'strimer': [
-            'shape', 'x', 'y', 'width', 'height', 'rotation',
-            'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2',
-            'cycleColors', 'cycleSpeed', 'animationSpeed', 'scrollDir', 'phaseOffset',
-            'strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerDirection', 'strimerEasing', 'strimerAnimationSpeed', // <-- Add it here
-            'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerPulseSync', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection'
-        ],
-    };
-
-    const galleryOffcanvasEl = document.getElementById('gallery-offcanvas');
-    const galleryList = document.getElementById('gallery-project-list');
-    const galleryBody = galleryOffcanvasEl.querySelector('.offcanvas-body');
 
 
 
@@ -988,6 +1189,33 @@ document.addEventListener('DOMContentLoaded', function () {
             inputGroup.appendChild(input);
             inputGroup.appendChild(slider);
             formGroup.appendChild(inputGroup);
+
+            if (controlId.endsWith('_duration')) {
+                const calcButton = document.createElement('button');
+                calcButton.type = 'button';
+                calcButton.className = 'btn btn-sm btn-outline-secondary ms-2';
+                calcButton.innerHTML = '<i class="bi bi-calculator"></i>';
+                calcButton.title = 'Calculate Loop Duration';
+                calcButton.dataset.bsToggle = 'tooltip';
+
+                calcButton.onclick = () => {
+                    const objectId = parseInt(controlId.match(/obj(\d+)_/)[1], 10);
+                    const obj = objects.find(o => o.id === objectId);
+                    if (obj) {
+                        const calculatedDuration = obj.calculateLoopDuration();
+                        input.value = calculatedDuration.toFixed(2);
+                        slider.value = calculatedDuration.toFixed(2);
+
+                        // Trigger events to apply the change
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+
+                        // Redraw the timeline to show the new length
+                        renderTimeline();
+                    }
+                };
+                inputGroup.appendChild(calcButton);
+            }
         } else if (type === 'text') {
             const input = document.createElement('input');
             input.id = controlId;
@@ -1363,7 +1591,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Update this for a new property
         const controlGroupMap = {
-            'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
+            'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius', 'startTime', 'duration', 'hideWhenInactive'], icon: 'bi-box-fill' },
             'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'animationSpeed', 'cycleSpeed'], icon: 'bi-palette-fill' },
             'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir'], icon: 'bi-brush-fill' },
             'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'], icon: 'bi-fonts' },
@@ -1915,67 +2143,24 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.restore();
     }
 
-    // In main.js, find the drawFrame function and replace it
-
-    function drawFrame(audioData = {}, sensorData = {}, deltaTime = 0, palette = {}, globalCycle = {}) {
-        if (!ctx) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        for (let i = objects.length - 1; i >= 0; i--) {
-            const obj = objects[i];
-
-            // Store original properties before any overrides
-            const originalCycleColors = obj.cycleColors;
-            const originalCycleSpeed = obj.cycleSpeed;
-
-            // Apply Global Color Cycle override if enabled
-            if (globalCycle.enable) {
-                obj.cycleColors = true;
-                // Scale the UI value (0-100) to the internal value used by the animation logic
-                obj.cycleSpeed = (globalCycle.speed || 0) / 50.0;
-            }
-
-            // Now, update the animation state using the potentially overridden values
-            obj.updateAnimationState(audioData, sensorData, deltaTime);
-
-            // Draw the object
-            obj.draw(selectedObjectIds.includes(obj.id), audioData, palette);
-
-            // Restore original properties so the object's true state is preserved
-            obj.cycleColors = originalCycleColors;
-            obj.cycleSpeed = originalCycleSpeed;
-
-            obj.dirty = false;
-        }
-
-        if (selectedObjectIds.length > 0) {
-            selectedObjectIds.forEach(id => {
-                const obj = objects.find(o => o.id === id);
-                if (obj && obj instanceof Shape) {
-                    obj.drawSelectionUI();
-                }
-            });
-        }
-        drawSnapLines(snapLines);
-    }
-
-    // MODIFIED - A new, time-based animation loop using delta time
     function animate(timestamp) {
         requestAnimationFrame(animate);
-
         const now = timestamp;
-        const deltaTime = (now - then) / 1000.0; // deltaTime in seconds
+        if (!then) then = now;
+        let deltaTime = (now - then) / 1000.0;
         then = now;
-
-        if (deltaTime > 0.1) {
-            deltaTime = 0.1;
-        }
+        if (deltaTime > 0.1) deltaTime = 0.1;
 
         const generalValues = getControlValues();
-        const soundEnabled = generalValues.enableSound !== false;
         const isAnimating = generalValues.enableAnimation !== false;
+
+        if (isAnimating) {
+            masterTime += deltaTime;
+            const timelineDuration = 60;
+            if (masterTime > timelineDuration) {
+                masterTime = 0;
+            }
+        }
 
         let audioData = {};
         let sensorData = {};
@@ -2040,8 +2225,45 @@ document.addEventListener('DOMContentLoaded', function () {
             enable: generalValues.enableGlobalCycle,
             speed: generalValues.globalCycleSpeed
         };
+        drawFrame(audioData, sensorData, isAnimating ? deltaTime : 0, paletteProps, globalCycleProps, masterTime);
+    }
 
-        drawFrame(audioData, sensorData, isAnimating ? deltaTime : 0, paletteProps, globalCycleProps);
+    function drawFrame(audioData = {}, sensorData = {}, deltaTime = 0, palette = {}, globalCycle = {}, masterTime = 0) {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = objects.length - 1; i >= 0; i--) {
+            const obj = objects[i];
+
+            const originalCycleColors = obj.cycleColors;
+            const originalCycleSpeed = obj.cycleSpeed;
+
+            if (globalCycle.enable) {
+                obj.cycleColors = true;
+                obj.cycleSpeed = (globalCycle.speed || 0) / 50.0;
+            }
+
+            // Pass masterTime to the object's update function
+            obj.updateAnimationState(audioData, sensorData, deltaTime, masterTime);
+
+            obj.draw(selectedObjectIds.includes(obj.id), audioData, palette);
+
+            obj.cycleColors = originalCycleColors;
+            obj.cycleSpeed = originalCycleSpeed;
+            obj.dirty = false;
+        }
+
+        if (selectedObjectIds.length > 0) {
+            selectedObjectIds.forEach(id => {
+                const obj = objects.find(o => o.id === id);
+                if (obj && obj instanceof Shape) {
+                    obj.drawSelectionUI();
+                }
+            });
+        }
+        drawSnapLines(snapLines);
     }
 
     /**
@@ -2210,6 +2432,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         updateField(key, obj[key]);
                     }
                 }
+                updateField('startTime', obj.startTime.toFixed(2));
+                updateField('duration', obj.duration.toFixed(2));
             });
         });
         generateOutputScript();
@@ -2260,20 +2484,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const initialStates = uniqueIds.map(id => {
             const configForThisObject = { id: parseInt(id), gradient: {}, strokeGradient: {} };
             const objectConfigs = groupConfigs(configStore).objects[id];
-
             if (!objectConfigs) return null;
 
             objectConfigs.forEach(conf => {
                 const key = conf.property.replace(`obj${id}_`, '');
                 let value = conf.default;
 
-                if (conf.type === 'number') {
-                    value = parseFloat(value);
-                } else if (conf.type === 'boolean') {
-                    value = (String(value).toLowerCase() === 'true' || value === 1);
-                } else if (conf.type === 'textfield' || conf.type === 'textarea') {
-                    value = String(value).replace(/\\n/g, '\n');
-                }
+                if (conf.type === 'number') value = parseFloat(value);
+                else if (conf.type === 'boolean') value = (String(value).toLowerCase() === 'true' || value === 1);
+                else if (conf.type === 'textfield' || conf.type === 'textarea') value = String(value).replace(/\\n/g, '\n');
 
                 const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize'];
                 if (propsToScale.includes(key) && typeof value === 'number') {
@@ -2292,15 +2511,37 @@ document.addEventListener('DOMContentLoaded', function () {
                     configForThisObject[key] = value;
                 }
             });
-
-            if (configForThisObject.shape === 'ring') {
-                configForThisObject.height = configForThisObject.width;
-            }
-
             return configForThisObject;
         }).filter(Boolean);
 
         objects = initialStates.map(state => new Shape({ ...state, ctx, canvasWidth: canvas.width }));
+
+        // This ensures timeline controls are added even to old effects
+        const timelineProps = ['startTime', 'duration', 'hideWhenInactive'];
+        objects.forEach(obj => {
+            timelineProps.forEach(propName => {
+                const propKey = `obj${obj.id}_${propName}`;
+                const existsInStore = configStore.some(c => c.property === propKey);
+                if (!existsInStore) {
+                    const defaultConfig = getDefaultObjectConfig(obj.id).find(c => c.property === propKey);
+                    if (defaultConfig) {
+                        // Find the right place to insert the new config
+                        let lastIndexForThisObject = -1;
+                        for (let i = configStore.length - 1; i >= 0; i--) {
+                            if (configStore[i].property && configStore[i].property.startsWith(`obj${obj.id}_`)) {
+                                lastIndexForThisObject = i;
+                                break;
+                            }
+                        }
+                        if (lastIndexForThisObject !== -1) {
+                            configStore.splice(lastIndexForThisObject + 1, 0, defaultConfig);
+                        } else {
+                            configStore.push(defaultConfig);
+                        }
+                    }
+                }
+            });
+        });
     }
 
     /**
@@ -2453,6 +2694,9 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320', description: 'The width of the object.' },
             { property: `obj${newId}_height`, label: `Object ${newId}: Height`, type: 'number', default: '38', min: '2', max: '200', description: 'The height of the object.' },
             { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360', description: 'The static rotation of the object in degrees.' },
+            { property: `obj${newId}_startTime`, label: `Object ${newId}: Start Time (s)`, type: 'number', default: '0', min: '0', max: '600' },
+            { property: `obj${newId}_duration`, label: `Object ${newId}: Duration (s)`, type: 'number', default: '10', min: '1', max: '600' },
+            { property: `obj${newId}_hideWhenInactive`, label: `Object ${newId}: Hide When Inactive`, type: 'boolean', default: 'true' },
 
             // Fill Style & Animation
             { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,conic,alternating,random,rainbow,rainbow-radial,rainbow-conic', description: 'The type of color fill or gradient to use.' },
@@ -2570,6 +2814,11 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_strimerTrebleBoost`, label: `Object ${newId}: Treble Boost`, type: 'number', default: '150', min: '0', max: '200', description: '(Audio Meter) Multiplier for the treble/volume columns.' },
             { property: `obj${newId}_strimerAudioSmoothing`, label: `Object ${newId}: Audio Smoothing`, type: 'number', default: '60', min: '0', max: '99', description: '(Audio Meter) Smooths out the bar movement. Higher is smoother.' },
             { property: `obj${newId}_strimerPulseSpeed`, label: `Object ${newId}: Pulse Speed`, type: 'number', default: '0', min: '0', max: '100', description: '(Modifier) Speed of the breathing/pulse effect. Applied on top of other animations. 0 is off.' },
+
+            // Timeline
+            { property: `obj${newId}_startTime`, label: `Object ${newId}: Start Time (s)`, type: 'number', default: '0', min: '0', max: '600' },
+            { property: `obj${newId}_duration`, label: `Object ${newId}: Duration (s)`, type: 'number', default: '10', min: '1', max: '600' },
+            { property: `obj${newId}_hideWhenInactive`, label: `Object ${newId}: Hide When Inactive`, type: 'boolean', default: 'true' }
         ];
 
     }
@@ -4372,6 +4621,17 @@ document.addEventListener('DOMContentLoaded', function () {
         // Add the new shape to the beginning of the objects array to place it on the top layer.
         objects.unshift(newShape);
 
+        // Calculate the initial duration based on the new shape's default settings.
+        const initialDuration = newShape.calculateLoopDuration();
+
+        // Update the new shape's duration property.
+        newShape.duration = initialDuration;
+
+        // Also update the configuration so the form shows the correct value.
+        const durationConf = newConfigs.find(c => c.property.endsWith('_duration'));
+        if (durationConf) {
+            durationConf.default = initialDuration.toFixed(2);
+        }
 
         renderForm();
         updateFormValuesFromObjects();
@@ -5001,6 +5261,11 @@ document.addEventListener('DOMContentLoaded', function () {
         offcanvas.addEventListener('hidden.bs.offcanvas', initializeTooltips);
     });
 
+    window.renderTimeline = renderTimeline;
+
+    if (timelineModalEl) {
+        timelineModalEl.addEventListener('shown.bs.modal', renderTimeline);
+    }
 
     // Start the application.
     init();

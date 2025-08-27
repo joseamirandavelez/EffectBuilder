@@ -204,4 +204,8 @@ function restoreState(state) {
     updateToolbarState();
     updateUndoRedoButtons();
     isRestoring = false;
+
+    if (window.renderTimeline) {
+        window.renderTimeline();
+    }
 }

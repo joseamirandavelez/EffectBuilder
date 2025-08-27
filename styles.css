@@ -17,7 +17,8 @@ body {
 #canvas-container {
     position: relative;
     cursor: default;
-    flex-shrink: 0; /* Prevent the container from being squished */
+    flex-shrink: 0;
+    /* Prevent the container from being squished */
 }
 
 #signalCanvas {
@@ -116,7 +117,7 @@ body {
     transition: opacity 0.2s ease-in-out;
 }
 
-.editable-name-area:hover .bi-pencil-fill {
+.editable-name-area:hover .editable-name-area .bi-pencil-fill {
     opacity: 1;
 }
 
@@ -145,3 +146,99 @@ body {
     border-color: var(--bs-primary);
     color: var(--bs-light);
 }
+
+#timeline-container {
+    display: flex;
+    position: relative;
+    width: 100%;
+    background-color: var(--bs-dark-bg-subtle);
+    border-radius: 5px;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.timeline-labels {
+    flex-shrink: 0;
+    width: 150px;
+    border-right: 1px solid var(--bs-border-color);
+    border-top: 1px solid var(--bs-border-color);
+    margin-top:20px;
+}
+
+.timeline-tracks {
+    flex-grow: 1;
+    position: relative;
+    overflow-x: auto;
+    min-height: 200px;
+    padding-top: 20px;
+    background-image: repeating-linear-gradient(90deg, 
+        transparent, 
+        transparent 49px,
+        var(--bs-border-color-translucent) 50px);
+}
+
+.ruler-marker {
+    position: absolute;
+    top: 0px;
+    height: 20px;
+    color: var(--bs-secondary-color);
+    font-size: 0.8em;
+    transform: translateX(-50%);
+}
+
+/* This new shared rule guarantees perfect vertical alignment */
+.track-label, .timeline-track {
+    height: 41px;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.track-label {
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.timeline-track {
+    position: relative;
+}
+
+.timeline-clip-visual {
+    position: absolute;
+    height: 30px;
+    top: 5px; /* This centers the 30px clip inside the 41px track */
+    background-color: var(--bs-info);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bs-light);
+    font-size: 0.8em;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.timeline-clip-interactive {
+    position: absolute;
+    height: 41px; /* Match the full track height for easier grabbing */
+    top: 0;
+    cursor: grab;
+    z-index: 5;
+    user-select: none;
+}
+
+.resize-handle {
+    position: absolute;
+    width: 10px; /* Make handles easier to grab */
+    height: 100%;
+    top: 0;
+    cursor: ew-resize;
+    z-index: 15;
+}
+
+.resize-handle-left { left: 0; }
+.resize-handle-right { right: 0; }

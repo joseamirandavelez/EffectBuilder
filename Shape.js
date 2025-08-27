@@ -250,7 +250,7 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection, startTime, duration, hideWhenInactive }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -433,6 +433,74 @@ class Shape {
         this.strimerSnakeDirection = 'Vertical'; // Default to current vertical zig-zag
         this.strimerAnimationSpeed = strimerAnimationSpeed || 20;
         this.strimerSnakeProgress = strimerSnakeProgress || 0; // Default value
+
+        // Timeline
+        this.startTime = startTime || 0;
+        this.duration = duration || 10;
+        this.hideWhenInactive = hideWhenInactive !== undefined ? hideWhenInactive : true;
+        this.isActive = false;
+    }
+
+    calculateLoopDuration() {
+        let duration = 10.0; // Default duration if no animation is active
+
+        // First, check for the global color cycle animation, as it often overrides others.
+        if (this.cycleColors && this.cycleSpeed > 0) {
+            // A full color cycle (360 degrees) takes 18 seconds at a speed of 1.
+            duration = 18.0 / this.cycleSpeed;
+        } else {
+            // If no color cycle, check for shape-specific animations
+            switch (this.shape) {
+                case 'text':
+                    if ((this.textAnimation === 'marquee' || this.textAnimation === 'wave') && this.textAnimationSpeed > 0 && this.fontSize > 0) {
+                        // Calculate the time it takes for the text to scroll completely off screen
+                        const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
+                        const pixelSize = this.fontSize / 10;
+                        const textWidth = (this.text || '').length * (fontData.charWidth + fontData.charSpacing) * pixelSize;
+                        const totalDistance = textWidth + this.width;
+                        const speedInPixelsPerSecond = this.textAnimationSpeed * 2; // Approximate speed
+                        duration = totalDistance / speedInPixelsPerSecond;
+                    } else if (this.animationSpeed > 0) {
+                        // Fallback for text objects using a gradient animation
+                        duration = 40.0 / this.animationSpeed;
+                    }
+                    break;
+
+                case 'oscilloscope':
+                    if (this.enableWaveAnimation && this.oscAnimationSpeed > 0) {
+                        // Time for a full 2*PI phase shift
+                        duration = (2 * Math.PI) / (this.oscAnimationSpeed * 0.5);
+                    } else if (this.animationSpeed > 0) {
+                        duration = 40.0 / this.animationSpeed;
+                    }
+                    break;
+
+                case 'ring':
+                    if (this.rotationSpeed !== 0) {
+                        // Time for a full 360-degree rotation
+                        const speedInRadPerSec = Math.abs(this.rotationSpeed * 0.06);
+                        if (speedInRadPerSec > 0) {
+                            duration = (2 * Math.PI) / speedInRadPerSec;
+                        }
+                    } else if (this.animationSpeed > 0) {
+                        duration = 40.0 / this.animationSpeed;
+                    }
+                    break;
+
+                // For most other shapes, the primary loop is the gradient animation
+                default:
+                    if (this.animationSpeed > 0) {
+                        duration = 40.0 / this.animationSpeed;
+                    }
+                    break;
+            }
+        }
+
+        // Clamp the duration to a reasonable range and ensure it's a valid number.
+        // if (!isFinite(duration) || duration <= 0) {
+        //     return 10.0;
+        // }
+        return Math.max(1, Math.min(300, duration));
     }
 
     _applySensorReactivity(sensorData) {
@@ -1444,9 +1512,17 @@ class Shape {
         return grad;
     }
 
-    updateAnimationState(audioData, sensorData, deltaTime = 0) {
+    updateAnimationState(audioData, sensorData, deltaTime = 0, masterTime = 0) {
         this._conicPatternCache = null;
         this._strokeConicPatternCache = null;
+
+        // --- Timeline Activation Check ---
+        const endTime = this.startTime + this.duration;
+        this.isActive = (masterTime >= this.startTime && masterTime < endTime);
+        if (!this.isActive) {
+            return;
+        }
+
         this._applyAudioReactivity(audioData);
         this._applySensorReactivity(sensorData);
 
@@ -1952,6 +2028,10 @@ class Shape {
     }
 
     draw(isSelected, audioData = {}, palette = {}) {
+        if (this.hideWhenInactive && !this.isActive) {
+            return; // Don't draw if inactive
+        }
+
         // Store original colors
         const originalGradient = { ...this.gradient };
         const originalStrokeGradient = { ...this.strokeGradient };
