@@ -235,7 +235,7 @@
                         <p>The builder is divided into two main, resizable columns:</p>
                         <ul>
                             <li>The <strong>Controls Panel</strong> on the left is where you manage all the objects and global settings for your effect.</li>
-                            <li>The <strong>Canvas Panel</strong> on the right contains the visual editor where you can directly manipulate your objects. The <strong>Toolbar</strong> with alignment and property tools is located just above the canvas.</li>
+                            <li>The <strong>Canvas Panel</strong> on the right contains the visual editor where you can directly manipulate your objects. The <strong>Toolbar</strong> with alignment, property, and history tools is located just above the canvas.</li>
                         </ul>
 
                         <h6 class="text-info mt-4">The Controls Panel (Left)</h6>
@@ -243,7 +243,7 @@
                         <ul>
                             <li><strong>General Settings:</strong> This panel contains properties for your entire effect, such as its Title, Description, and the Global Overrides.</li>
                             <li><strong>Add New Object:</strong> Use the green button at the bottom to add a new shape to the canvas.</li>
-                            <li><strong>Object Panels:</strong> Each object gets its own collapsible panel. You can perform several actions here:
+                            <li><strong>Object Panels:</strong> Each object gets its own collapsible panel, which contains tabbed sections for different property groups (e.g., Geometry, Fill-Animation, Stroke). You can perform several actions here:
                                 <ul>
                                     <li><strong>Rename:</strong> Click the object's name (e.g., "Object 1") to edit it.</li>
                                     <li><strong>Reorder:</strong> Click and drag the <i class="bi bi-grip-vertical"></i> icon to change the rendering order (layers). Objects at the top of the list are drawn last (on top).</li>
@@ -251,12 +251,12 @@
                                     <li><strong>Duplicate/Delete:</strong> Use the menu button (<i class="bi bi-list"></i>) to access options for duplicating or deleting an object.</li>
                                 </ul>
                             </li>
-                            <li><strong class="text-warning">Shape-Specific Settings:</strong> The real power of the builder lies in its specialized shapes. When you change an object's <strong>Shape</strong> property, different settings will appear for shapes like Text, Oscilloscope, Strimer, Tetris, and more.
-                            </li>
+                            <li><strong class="text-warning">Shape-Specific Settings:</strong> The real power of the builder lies in its specialized shapes. When you change an object's <strong>Shape</strong> property, different settings will appear for shapes like Text, Oscilloscope, Strimer, Tetris, and more.</li>
+                            <li><strong>Strokes:</strong> You can add an outline to most shapes by enabling it in the <strong>Stroke</strong> tab within an object's panel. You can customize its color, thickness, and even apply its own independent animations.</li>
                         </ul>
 
-                        <h6 class="text-info mt-4">The Canvas (Right Panel)</h6>
-                        <p>This is your visual workspace where you can directly manipulate objects.</p>
+                        <h6 class="text-info mt-4">The Canvas & Toolbar (Right Panel)</h6>
+                        <p>This is your visual workspace where you can directly manipulate objects using the mouse, keyboard, or the toolbar buttons above the canvas.</p>
                         <ul>
                             <li><strong>Select:</strong> Click an object to select it. Hold <kbd>Shift</kbd> or <kbd>Ctrl</kbd> while clicking to select multiple objects. Clicking on an empty area will deselect everything.</li>
                             <li><strong>Manipulate:</strong> With an object selected, you can:
@@ -266,6 +266,15 @@
                                     <li>Drag the circular handle at the top to <strong>rotate</strong> it.</li>
                                 </ul>
                             </li>
+                            <li><strong>Toolbar Actions:</strong>
+                                <ul>
+                                    <li><strong>History:</strong> Use the <i class="bi bi-arrow-counterclockwise"></i> Undo and <i class="bi bi-arrow-clockwise"></i> Redo buttons to step through your recent changes.</li>
+                                    <li><strong>Copy/Paste Properties:</strong> Use <i class="bi bi-clipboard-plus"></i> to copy property groups (like size, color, animation) from one object and <i class="bi bi-clipboard-check"></i> to paste them onto others.</li>
+                                    <li><strong>Alignment:</strong> Align selected objects to the screen edges or center.</li>
+                                    <li><strong>Matching:</strong> With multiple objects selected, match the width, height, or size of the others to the first one you selected.</li>
+                                    <li><strong>Fit to Canvas:</strong> Instantly resize an object to fill the entire canvas area.</li>
+                                </ul>
+                            </li>
                             <li><strong>Keyboard Shortcuts:</strong>
                                 <ul>
                                     <li><kbd>Arrow Keys</kbd>: Nudge selected objects by a small amount.</li>
@@ -273,6 +282,8 @@
                                     <li><kbd>Delete</kbd> / <kbd>Backspace</kbd>: Delete all selected objects.</li>
                                     <li><kbd>Ctrl</kbd>+<kbd>Z</kbd>: Undo the last action.</li>
                                     <li><kbd>Ctrl</kbd>+<kbd>Y</kbd>: Redo the last undone action.</li>
+                                    <li><kbd>Ctrl</kbd>+<kbd>C</kbd>: Copy properties from the selected object.</li>
+                                    <li><kbd>Ctrl</kbd>+<kbd>V</kbd>: Paste copied properties to the selected object(s).</li>
                                     <li><kbd>Escape</kbd>: Deselect all objects.</li>
                                 </ul>
                             </li>
@@ -296,11 +307,10 @@
                         <p class="small text-body-secondary">Once connected, your audio-reactive shapes will begin responding to the real sound. If no audio is connected, shapes will react to a default preview animation for design purposes. <strong>Please note:</strong> This feature is a preview tool, and the audio response may differ slightly from the final effect in SignalRGB's native audio engine.</p>
 
                         <h6 class="text-info mt-4">Using Sensor Reactivity</h6>
-                        <p>Create animations that react to real-time hardware data like CPU load or temperature.</p>
+                        <p>Create animations that react to real-time hardware data like CPU load or temperature. To use this, select an object, go to its <strong>Sensor</strong> tab, and enable reactivity.</p>
                         <ul>
-                            <li><strong>Sensor Meter:</strong> Displays a vertical bar that fills up based on a sensor's current value.</li>
-                            <li><strong>Time Plot:</strong> Generates a line graph showing the recent history of a sensor's value over time. You can also fill the area under the curve.</li>
-                            <li><strong>Configuration:</strong> Select a shape, go to the <strong>Sensor</strong> tab in its control panel, enable sensor reactivity, and choose a sensor to monitor.</li>
+                            <li><strong>Sensor Meter:</strong> Changes the object into a vertical bar that fills up based on a sensor's current value (from its minimum to maximum). You can also have it display the numeric value as text.</li>
+                            <li><strong>Time Plot:</strong> Turns the object into a real-time line graph showing the recent history of a sensor's value. You can customize the time scale and fill the area under the curve.</li>
                         </ul>
 
                         <h6 class="text-info mt-4">Using the Strimer Shape</h6>

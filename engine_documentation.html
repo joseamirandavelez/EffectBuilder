@@ -193,17 +193,18 @@
                 <div id="stroke" class="card section-card mb-4">
                     <div class="card-header"><h2 class="h3 mb-0">Stroke (Outline)</h2></div>
                     <div class="card-body">
-                         <p class="text-body-secondary">Defines an optional border for an object.</p>
+                         <p class="text-body-secondary">Defines an optional border for an object. Most shapes support strokes.</p>
                         <div class="table-responsive">
                             <table class="table table-striped table-bordered">
                                 <thead><tr><th>Property</th><th>Label</th><th>Type</th><th>Description & Values</th></tr></thead>
                                 <tbody>
                                     <tr><td><code>enableStroke</code></td><td>Enable Stroke</td><td><code>boolean</code></td><td>A master switch to render the object's outline.</td></tr>
                                     <tr><td><code>strokeWidth</code></td><td>Stroke Width</td><td><code>number</code></td><td>The thickness of the outline in pixels.</td></tr>
-                                    <tr><td><code>strokeGradType</code></td><td>Stroke Type</td><td><code>combobox</code></td><td>The fill style for the stroke.</td></tr>
+                                    <tr><td><code>strokeGradType</code></td><td>Stroke Type</td><td><code>combobox</code></td><td>The fill style for the stroke. Supports all the same gradient and animation types as the main object fill.</td></tr>
                                     <tr><td><code>strokeGradColor1</code></td><td>Stroke Color 1</td><td><code>color</code></td><td>The primary color for the stroke. Can be overridden by the Global Color Palette.</td></tr>
                                     <tr><td><code>strokeGradColor2</code></td><td>Stroke Color 2</td><td><code>color</code></td><td>The secondary color for stroke gradients. Can be overridden by the Global Color Palette.</td></tr>
-                                    <tr><td><code>strokeCycleColors</code></td><td>Cycle Stroke Colors</td><td><code>boolean</code></td><td>If true, the stroke colors will animate through the hue spectrum.</td></tr>
+                                    <tr><td><code>strokeCycleColors</code></td><td>Cycle Stroke Colors</td><td><code>boolean</code></td><td>If true, the stroke colors will animate through the hue spectrum, independent of the main fill.</td></tr>
+                                    <tr><td><code>strokeAnimationSpeed</code></td><td>Stroke Animation Speed</td><td><code>number</code></td><td>Controls the scroll speed of the stroke gradient animation.</td></tr>
                                     <tr><td><code>strokeScrollDir</code></td><td>Stroke Scroll Direction</td><td><code>combobox</code></td><td>The direction for animated linear stroke gradients.</td></tr>
                                 </tbody>
                             </table>
@@ -245,6 +246,9 @@
                                     <tr><td><code>sensorValueSource</code></td><td>Sensor Value</td><td><code>combobox</code></td><td>The specific data point to use from the sensor (its current <code>value</code>, historical <code>min</code>, or historical <code>max</code>).</td></tr>
                                     <tr><td><code>timePlotLineThickness</code></td><td>Line Thickness</td><td><code>number</code></td><td>For <code>Time Plot</code>, defines the thickness of the graph line.</td></tr>
                                     <tr><td><code>timePlotFillArea</code></td><td>Fill Area</td><td><code>boolean</code></td><td>For <code>Time Plot</code>, if true, fills the area beneath the graph line with the object's selected fill style.</td></tr>
+                                    <tr><td><code>sensorMeterShowValue</code></td><td>Show Value</td><td><code>boolean</code></td><td>For <code>Sensor Meter</code>, displays the current sensor value as text.</td></tr>
+                                    <tr><td><code>timePlotAxesStyle</code></td><td>Axes Style</td><td><code>combobox</code></td><td>For <code>Time Plot</code>, controls the visibility of the X and Y axes.</td></tr>
+                                    <tr><td><code>timePlotTimeScale</code></td><td>Time Scale (Seconds)</td><td><code>number</code></td><td>For <code>Time Plot</code>, sets the duration displayed across the graph.</td></tr>
                                 </tbody>
                             </table>
                         </div>
