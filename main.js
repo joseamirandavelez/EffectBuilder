@@ -109,7 +109,7 @@ const INITIAL_CONFIG_TEMPLATE = `
     <meta property="obj3_animationSpeed" label="Visualizer: Animation Speed" type="number" min="1" max="50" default="10" />
     <meta property="obj3_vizLayout" label="Visualizer: Layout" type="combobox" default="Linear" values="Linear,Circular" />
     <meta property="obj3_vizDrawStyle" label="Visualizer: Draw Style" type="combobox" default="Line" values="Bars,Line,Area" />
-    <meta property="obj3_vizBarCount" label="Visualizer: Bar Count" type="number" default="64" min="2" max="200" />
+    <meta property="obj3_vizBarCount" label="Visualizer: Bar Count" type="number" default="64" min="2" max="128" />
     <meta property="obj3_vizBarSpacing" label="Visualizer: Bar Spacing" type="number" default="2" min="0" max="20" />
     <meta property="obj3_vizSmoothing" label="Visualizer: Smoothing" type="number" default="60" min="0" max="99" />
 `;
@@ -341,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
         ],
         circle: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -349,14 +349,14 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
         ],
         ring: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
         ],
         polygon: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'sides',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
         ],
         star: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -372,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'points', 'starInnerRadius',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
         ],
         text: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
@@ -391,7 +391,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'tetris': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'cycleSpeed', 'animationSpeed', 'phaseOffset',
-            'tetrisAnimation', 'tetrisBlockCount', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce', 'tetrisHoldTime', // <-- Add 'tetrisHoldTime' here
+            'tetrisAnimation', 'tetrisBlockCount', 'tetrisDropDelay', 'tetrisSpeed', 'tetrisBounce', 'tetrisHoldTime',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
         ],
         fire: [
@@ -409,7 +409,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'pixelArtData',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'sensorMetric', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
         ],
         'audio-visualizer': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationSpeed', 'scrollDir',
@@ -424,7 +424,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'shape', 'x', 'y', 'width', 'height', 'rotation',
             'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2',
             'cycleColors', 'cycleSpeed', 'animationSpeed', 'scrollDir', 'phaseOffset',
-            'strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerDirection', 'strimerEasing', 'strimerAnimationSpeed', // <-- Add it here
+            'strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerAnimationSpeed',
+            'strimerDirection', 'strimerEasing',
             'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerPulseSync', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection'
         ],
     };
@@ -1098,17 +1099,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
- * Generates the meta tags and JavaScript variables for the final exported HTML file.
- * This is where the "Minimize Properties" logic is applied.
- */
-    /**
- * Generates the meta tags and JavaScript variables for the final exported HTML file.
- * This is where the "Minimize Properties" logic is applied.
- */
+     * Generates the meta tags and JavaScript variables for the final exported HTML file.
+     * This is where the "Minimize Properties" logic is applied.
+     */
     function generateOutputScript() {
         let scriptHTML = '';
         let jsVars = '';
         let allKeys = [];
+        const objectMetaPropMap = {}; // NEW: Map to store which properties are meta tags for each object.
 
         const minimize = document.getElementById('minimize-props-export')?.checked || false;
         const generalValues = getControlValues();
@@ -1138,6 +1136,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Process Object-specific properties
         objects.forEach(obj => {
             const name = obj.name || `Object ${obj.id}`;
+            objectMetaPropMap[obj.id] = []; // NEW: Initialize the list for this object.
             const objectConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${obj.id}_`));
             const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
 
@@ -1165,7 +1164,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 allKeys.push(conf.property);
                 let exportValue = liveValue;
 
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize'];
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize', 'vizBarSpacing', 'vizSegmentSpacing'];
                 if (conf.type === 'number' && typeof liveValue === 'number') {
                     exportValue = propsToScale.includes(propName) ? Math.round(liveValue / 4) : Math.round(liveValue);
                 } else if (typeof liveValue === 'boolean') {
@@ -1173,19 +1172,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 const isApplicable = validPropsForShape.includes(propName);
-                let writeAsMeta;
-
-                if (!minimize) {
-                    writeAsMeta = true;
-                } else {
-                    if (propName === 'shape' || propName === 'x' || propName === 'y' || propName === 'width' || propName === 'height' || propName === 'rotation' || !isApplicable) {
-                        writeAsMeta = false;
-                    } else {
-                        writeAsMeta = true;
-                    }
-                }
+                const objectSpecificProps = ['shape', 'x', 'y', 'width', 'height', 'rotation'];
+                let writeAsMeta = !minimize || (!objectSpecificProps.includes(propName) && isApplicable);
 
                 if (writeAsMeta) {
+                    objectMetaPropMap[obj.id].push(propName); // NEW: Add this property to the map.
                     conf.label = `${name}: ${conf.label.split(':').slice(1).join(':').trim()}`;
                     const attrs = [`property="${conf.property}"`, `label="${conf.label}"`, `type="${conf.type}"`];
                     if (conf.values) {
@@ -1201,7 +1192,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        return { metaTags: scriptHTML.trim(), jsVars: jsVars.trim(), allKeys: allKeys };
+        return { metaTags: scriptHTML.trim(), jsVars: jsVars.trim(), allKeys: allKeys, objectMetaPropMap };
     }
 
     function createObjectPanel(obj, objectConfigs, activeCollapseStates, activeTabStates) {
@@ -1372,7 +1363,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
             'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost'], icon: 'bi-bar-chart-line-fill' },
             'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
-            'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'sensorValueSource', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea'], icon: 'bi-cpu-fill' },
+            'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'], icon: 'bi-cpu-fill' },
             'Strimer': { props: ['strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerAnimationSpeed', 'strimerDirection', 'strimerEasing', 'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection'], icon: 'bi-segmented-nav' },
         };
         const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
@@ -1469,10 +1460,6 @@ document.addEventListener('DOMContentLoaded', function () {
      * Renders the entire controls form based on the current `configStore` and `objects` state.
      * This function is responsible for dynamically building all the UI in the left panel.
      */
-    /**
- * Renders the entire controls form based on the current `configStore` and `objects` state.
- * This function is responsible for dynamically building all the UI in the left panel.
- */
     function renderForm() {
         // --- 1. PREPARATION & STATE PRESERVATION ---
         const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -1996,8 +1983,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 const progress = i / mockFreqData.length;
                 const bassEffect = Math.pow(1 - progress, 2) * mockBass;
                 const midEffect = (1 - Math.abs(progress - 0.5) * 2) * mockMids;
-                const highEffect = Math.pow(progress, 2) * mockHighs;
-                mockFreqData[i] = (bassEffect + midEffect + highEffect) / 3 * 255 * (Math.sin(i * 0.2 + time * 2) * 0.1 + 0.9);
+                const highEffect = Math.pow(Math.pow(progress, 2), 0.5) * mockHighs;
+                mockFreqData[i] = ((bassEffect + midEffect + highEffect) / 3) * 255 * (Math.sin(i * 0.2 + time * 2) * 0.1 + 0.9);
             }
 
             audioData = {
@@ -2009,25 +1996,16 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         }
 
-        const mockSensorData = {
-            'CPU Load': {
-                value: Math.sin(timestamp / 2000) * 50 + 50,
-                min: 0,
-                max: 100
-            },
-            'Memory Load': {
-                value: Math.cos(timestamp / 3000) * 40 + 50,
-                min: 0,
-                max: 100
-            },
-            'CPU Temperature': {
-                value: Math.sin(timestamp / 4000) * 10 + 60,
-                min: 40,
-                max: 80
-            }
-        };
+        const neededSensors = [...new Set(objects.map(o => o.userSensor).filter(Boolean))];
+        const baseMockValue = Math.sin(now / 2000) * 50 + 50;
 
-        sensorData = mockSensorData;
+        neededSensors.forEach(sensorName => {
+            sensorData[sensorName] = {
+                value: baseMockValue,
+                min: 0,
+                max: 100
+            };
+        });
 
         const paletteProps = {
             enablePalette: generalValues.enablePalette,
@@ -2535,7 +2513,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_vizInnerRadius`, label: `Object ${newId}: Inner Radius`, type: 'number', default: '40', min: '0', max: '95', description: '(Visualizer) Sets the radius of the empty inner circle, as a percentage of the total size.' },
             { property: `obj${newId}_vizLineWidth`, label: `Object ${newId}: Line Width`, type: 'number', default: '2', min: '1', max: '20', description: '(Visualizer) The thickness of the line for the Line/Area draw styles.' },
             { property: `obj${newId}_vizAutoScale`, label: `Object ${newId}: Auto-Scale Height`, type: 'boolean', default: 'true', description: '(Visualizer) If checked, the tallest bar will always reach the top of the shape.' },
-            { property: `obj${newId}_vizBarCount`, label: `Object ${newId}: Bar Count`, type: 'number', default: '12', min: '1', max: '200', description: '(Visualizer) The number of frequency bars to display.' },
+            { property: `obj${newId}_vizBarCount`, label: `Object ${newId}: Bar Count`, type: 'number', default: '12', min: '1', max: '128', description: '(Visualizer) The number of frequency bars to display.' },
             { property: `obj${newId}_vizBarSpacing`, label: `Object ${newId}: Bar Spacing`, type: 'number', default: '2', min: '0', max: '20', description: '(Visualizer) The space between each bar in pixels.' },
             { property: `obj${newId}_vizMaxBarHeight`, label: `Object ${newId}: Max Bar Height`, type: 'number', default: '30', min: '5', max: '100', description: '(Visualizer) Sets the maximum possible length for any visualizer bar, as a percentage of the available space.' },
             { property: `obj${newId}_vizUseSegments`, label: `Object ${newId}: Use LED Segments`, type: 'boolean', default: 'false', description: '(Visualizer) Renders bars as discrete segments instead of solid blocks.' },
@@ -2550,7 +2528,10 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_userSensor`, label: `Object ${newId}: Sensor`, type: 'sensor', default: 'CPU Load', description: 'The hardware sensor to monitor for reactivity.' },
             { property: `obj${newId}_timePlotLineThickness`, label: `Object ${newId}: Line Thickness`, type: 'number', default: '1', min: '1', max: '50', description: '(Time Plot) Sets the thickness of the time-plot line.' },
             { property: `obj${newId}_timePlotFillArea`, label: `Object ${newId}: Fill Area`, type: 'boolean', default: 'false', description: '(Time Plot) Fills the area under the time plot line.' },
-
+            { property: `obj${newId}_sensorMeterColorGradient`, label: `Object ${newId}: Use Value-Based Color`, type: 'boolean', default: 'false', description: '(Sensor Meter) Colors the meter from green (low) to red (high) based on the sensor value.' },
+            { property: `obj${newId}_sensorMeterShowValue`, label: `Object ${newId}: Show Value`, type: 'boolean', default: 'false', description: '(Sensor Meter) Displays the current sensor value as text on the meter.' },
+            { property: `obj${newId}_timePlotAxesStyle`, label: `Object ${newId}: Axes Style`, type: 'combobox', default: 'None', values: 'None,Lines Only,Lines and Values', description: '(Time Plot) Sets the style for the X and Y axes.' },
+            { property: `obj${newId}_timePlotTimeScale`, label: `Object ${newId}: Time Scale (Seconds)`, type: 'number', default: '5', min: '1', max: '30', description: '(Time Plot) The total duration in seconds displayed across the width of the chart.' },
             // Strimer
             { property: `obj${newId}_strimerRows`, label: `Object ${newId}: Rows`, type: 'number', default: '4', min: '1', max: '50', description: '(Strimer) Number of horizontal rows.' },
             { property: `obj${newId}_strimerColumns`, label: `Object ${newId}: Columns`, type: 'number', default: '4', min: '1', max: '50', description: '(Strimer) Number of vertical columns.' },
@@ -2745,7 +2726,14 @@ document.addEventListener('DOMContentLoaded', function () {
         try { shouldAnimate = eval('enableAnimation') == true; } catch(e) {}
         
         const audioData = getSignalRGBAudioMetrics();
-        const sensorData = {}; // Sensor logic is editor-only
+        const sensorData = {};
+        // Find all unique sensor names used by the objects in this effect.
+        const neededSensors = [...new Set(objects.map(o => o.userSensor).filter(Boolean))];
+
+        // For each needed sensor, get its live value from the engine.
+        neededSensors.forEach(sensorName => {
+            sensorData[sensorName] = getSensorValue(sensorName);
+        });
 
         // Read global properties from the effect's controls at the start of the frame
         const palette = {
@@ -4657,7 +4645,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         for (let i = 0; i < analyser.frequencyBinCount; i++) {
             const value = frequencyData[i];
-            volumeTotal += value; // Add every frequency value to the total volume
+            volumeTotal += value;
 
             if (i < bassEndIndex) {
                 bassTotal += value;
@@ -4671,10 +4659,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // --- START OF FIX ---
-        // This provides a single, reliable 'avg' property for the volume metric.
         const volumeAvg = (volumeTotal / analyser.frequencyBinCount) / 255;
-        // --- END OF FIX ---
 
         return {
             bass: {
@@ -4689,12 +4674,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 avg: (highsTotal / ((analyser.frequencyBinCount - midsEndIndex) || 1)) / 255,
                 peak: highsPeak / 255
             },
-            // We now provide the calculated average volume.
             volume: {
                 avg: volumeAvg,
-                peak: volumeAvg // For volume, peak and avg can be the same for simplicity.
+                peak: volumeAvg
             },
-            frequencyData: frequencyData
+            frequencyData: frequencyData // Pass the full, unfiltered array
         };
     }
 
@@ -4753,11 +4737,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
- * [SignalRGB Export] Analyzes SignalRGB's audio engine data and returns calculated metrics.
- * @returns {object} An object with bass, mids, highs, and volume properties (0-1 range).
- */
+     * [SignalRGB Export] Analyzes SignalRGB's audio engine data and returns calculated metrics.
+     * @returns {object} An object with bass, mids, highs, and volume properties (0-1 range).
+     */
     function getSignalRGBAudioMetrics() {
-        // Use a try/catch block for safety in the SignalRGB environment
         try {
             if (enableSound) {
                 const freqArray = engine.audio.freq || new Array(200).fill(0);
@@ -4781,20 +4764,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     mids: { avg: mids, peak: mids },
                     highs: { avg: highs, peak: highs },
                     volume: { avg: volume, peak: volume },
-                    frequencyData: freqArray // FIX: Include the frequency data array
+                    frequencyData: freqArray // FIX: Return the full, unfiltered array
                 };
             }
         } catch (e) {
             // This catch block handles cases where the 'engine' object might not be available.
         }
 
-        // Default return for when sound is off or an error occurs
         return {
             bass: { avg: 0, peak: 0 },
             mids: { avg: 0, peak: 0 },
             highs: { avg: 0, peak: 0 },
             volume: { avg: 0, peak: 0 },
-            frequencyData: new Array(200).fill(0) // FIX: Include a default empty array
+            frequencyData: new Array(200).fill(0)
         };
     }
 
