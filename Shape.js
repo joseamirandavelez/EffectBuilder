@@ -432,8 +432,7 @@ class Shape {
         this.sensorMeterShowValue = sensorMeterShowValue;
         this.timePlotAxesStyle = timePlotAxesStyle;
         this.timePlotTimeScale = timePlotTimeScale;
-        this.sensorRawValue = 0;
-        this.sensorRawValue = 0;
+        this.sensorRawValue = 0
         this.baseWidth = this.width;
         this.baseHeight = this.height;
         this.baseRotation = this.rotation;
