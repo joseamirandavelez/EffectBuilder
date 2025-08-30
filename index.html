@@ -251,7 +251,7 @@
                                     <li><strong>Duplicate/Delete:</strong> Use the menu button (<i class="bi bi-list"></i>) to access options for duplicating or deleting an object.</li>
                                 </ul>
                             </li>
-                            <li><strong class="text-warning">Shape-Specific Settings:</strong> The real power of the builder lies in its specialized shapes. When you change an object's <strong>Shape</strong> property, different settings will appear for shapes like Text, Oscilloscope, Strimer, Tetris, and more.</li>
+                            <li><strong class="text-warning">Shape-Specific Settings:</strong> The real power of the builder lies in its specialized shapes. When you change an object's <strong>Shape</strong> property, different settings will appear for shapes like Text, Oscilloscope, Strimer, Tetris, Spawner, and more.</li>
                             <li><strong>Strokes:</strong> You can add an outline to most shapes by enabling it in the <strong>Stroke</strong> tab within an object's panel. You can customize its color, thickness, and even apply its own independent animations.</li>
                         </ul>
 
@@ -336,6 +336,13 @@
                                     <li><code>Easing</code>: Controls the acceleration of the blocks for more dynamic motion.</li>
                                 </ul>
                             </li>
+                        </ul>
+
+                        <h6 class="text-info mt-4">Using the Spawner Shape</h6>
+                        <p>The Spawner is a powerful particle emitter that generates streams of other shapes. Its controls are split into two main tabs:</p>
+                        <ul>
+                            <li><strong>Spawner Tab:</strong> Controls the <strong>emitter</strong> itself. Here you can set the emission style (<code>explode</code>, <code>fountain</code>, <code>rain</code>, etc.), how many particles are on screen (<code>Max Particles</code>), how fast they are created (<code>Spawn Rate</code>), and their movement properties like <code>Initial Speed</code> and <code>Gravity</code>.</li>
+                            <li><strong>Particle Tab:</strong> Controls the <strong>appearance</strong> of the individual particles. You can set the particle's shape (<code>circle</code>, <code>star</code>, etc.), <code>Particle Size</code>, and <code>Particle Rotation Speed</code>. You can even use a <code>custom</code> shape by providing an SVG path string, with a convenient link to an online path editor.</li>
                         </ul>
 
                         <h6 class="text-info mt-4">Using the Tetris Shape</h6>
