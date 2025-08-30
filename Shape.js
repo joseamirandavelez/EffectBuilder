@@ -282,7 +282,7 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection, sensorMeterColorGradient }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -469,6 +469,26 @@ class Shape {
         this.strimerAnimationSpeed = strimerAnimationSpeed || 20;
         this.strimerSnakeProgress = strimerSnakeProgress || 0;
         this.sensorMeterColorGradient = sensorMeterColorGradient || false;
+
+        // Spawner
+        this.spawn_shapeType = spawn_shapeType || 'circle';
+        this.spawn_animation = spawn_animation || 'explode';
+        this.spawn_count = spawn_count || 100;
+        this.spawn_spawnRate = spawn_spawnRate || 50;
+        this.spawn_lifetime = spawn_lifetime || 3;
+        this.spawn_speed = spawn_speed || 50;
+        this.spawn_size = spawn_size || 10;
+        this.spawn_gravity = spawn_gravity || 0;
+        this.spawn_spread = spawn_spread || 360;
+        this.spawn_rotationSpeed = spawn_rotationSpeed || 0;
+        this.spawn_size_randomness = spawn_size_randomness || 0;
+        this.spawn_initialRotation_random = spawn_initialRotation_random || false;
+        // Particle system state
+        this.particles = [];
+        this.spawnCounter = 0;
+        this.nextParticleId = 0;
+        this.spawn_svg_path = spawn_svg_path || '';
+        this.customParticlePath = null; // Cache for the parsed Path2D object
     }
 
     _applySensorReactivity(sensorData) {
@@ -679,53 +699,53 @@ class Shape {
 
     _drawFill(phase = 0) {
         if (this.enableSensorReactivity && this.sensorTarget === 'Sensor Meter' && this.sensorMeterFill >= 0) {
-        this.ctx.save();
-        this.ctx.clip();
+            this.ctx.save();
+            this.ctx.clip();
 
-        // Draw the empty part of the meter
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+            // Draw the empty part of the meter
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
 
-        // Calculate and draw the filled part of the meter
-        if (this.sensorMeterFill > 0) {
-            const fillHeight = this.height * this.sensorMeterFill;
-            const fillY = this.height / 2 - fillHeight;
+            // Calculate and draw the filled part of the meter
+            if (this.sensorMeterFill > 0) {
+                const fillHeight = this.height * this.sensorMeterFill;
+                const fillY = this.height / 2 - fillHeight;
 
-            // NEW: Gradient coloring based on value
-            if (this.sensorMeterColorGradient) {
-                let color;
-                if (this.sensorMeterFill < 0.5) {
-                    color = lerpColor("#00ff00", "#ffa500", this.sensorMeterFill * 2);
+                // NEW: Gradient coloring based on value
+                if (this.sensorMeterColorGradient) {
+                    let color;
+                    if (this.sensorMeterFill < 0.5) {
+                        color = lerpColor("#00ff00", "#ffa500", this.sensorMeterFill * 2);
+                    } else {
+                        color = lerpColor("#ffa500", "#ff0000", (this.sensorMeterFill - 0.5) * 2);
+                    }
+                    this.ctx.fillStyle = color;
                 } else {
-                    color = lerpColor("#ffa500", "#ff0000", (this.sensorMeterFill - 0.5) * 2);
+                    this.ctx.fillStyle = this._createLocalFillStyle();
                 }
-                this.ctx.fillStyle = color;
-            } else {
-                this.ctx.fillStyle = this._createLocalFillStyle();
+
+                this.ctx.fillRect(-this.width / 2, fillY, this.width, fillHeight);
             }
 
-            this.ctx.fillRect(-this.width / 2, fillY, this.width, fillHeight);
-        }
+            // NEW: Draw the sensor value text if enabled
+            if (this.sensorMeterShowValue) {
+                const fontSize = Math.max(10, Math.round(this.width / 3));
+                this.ctx.font = `bold ${fontSize}px Arial`;
+                this.ctx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(this.sensorRawValue.toFixed(1), 0, 0); // Display value with one decimal
 
-        // NEW: Draw the sensor value text if enabled
-        if (this.sensorMeterShowValue) {
-            const fontSize = Math.max(10, Math.round(this.width / 3));
-            this.ctx.font = `bold ${fontSize}px Arial`;
-            this.ctx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(this.sensorRawValue.toFixed(1), 0, 0); // Display value with one decimal
+                this.ctx.font = `bold ${fontSize / 3}px Arial`;
+                this.ctx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(this.userSensor, 0, -fontSize / 1.5); // Display value with one decimal
+            }
 
-            this.ctx.font = `bold ${fontSize / 3}px Arial`;
-            this.ctx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(this.userSensor, 0, -fontSize/1.5); // Display value with one decimal
-        }
+            this.ctx.restore();
 
-        this.ctx.restore();
-
-    } else if (this.enableAudioReactivity && this.audioTarget === 'Volume Meter' && this.volumeMeterFill > 0) {
+        } else if (this.enableAudioReactivity && this.audioTarget === 'Volume Meter' && this.volumeMeterFill > 0) {
             this.ctx.save();
             this.ctx.clip();
 
@@ -968,6 +988,8 @@ class Shape {
         const oldStrimerBlockCount = this.strimerBlockCount;
         const oldStrimerDirection = this.strimerDirection;
         const oldStrimerAnimation = this.strimerAnimation;
+        const oldSpawnAnimation = this.spawn_animation;
+        const oldSpawnShape = this.spawn_shapeType;
 
         // --- PRE-UPDATE LOGIC ---
         const textChanged = props.text !== undefined && props.text !== this.text;
@@ -1007,6 +1029,10 @@ class Shape {
 
         this.dirty = true;
 
+        if (props.spawn_svg_path !== undefined && props.spawn_svg_path !== this.spawn_svg_path) {
+            this.customParticlePath = null; // Invalidate the cache
+        }
+
         if (props.width !== undefined || props.height !== undefined) {
             const dWidth = oldWidth - this.width;
             const dHeight = oldHeight - this.height;
@@ -1027,6 +1053,11 @@ class Shape {
         this.basePulseDepth = this.pulseDepth;
 
         // --- POST-UPDATE LOGIC ---
+        if (props.spawn_animation !== undefined && props.spawn_animation !== oldSpawnAnimation ||
+            props.spawn_shapeType !== undefined && props.spawn_shapeType !== oldSpawnShape) {
+            this.particles = [];
+        }
+
         if (this.shape === 'strimer' && (this.strimerColumns !== oldStrimerColumns || this.strimerBlockCount !== oldStrimerBlockCount || this.strimerDirection !== oldStrimerDirection || this.strimerAnimation !== oldStrimerAnimation)) {
             this.strimerBlocks = [];
             this.strimerMeterHeights = [];
@@ -1599,6 +1630,74 @@ class Shape {
         const rotationSpeed = (this.rotationSpeed || 0) * deltaTime;
         const tetrisSpeed = (this.tetrisSpeed || 0);
         this.strokeAnimationAngle += (this.strokeRotationSpeed || 0) * deltaTime * 0.06;
+
+        if (this.shape === 'spawner') {
+            // 1. SPAWN NEW PARTICLES
+            this.spawnCounter += this.spawn_spawnRate * deltaTime;
+            const particlesToSpawn = Math.floor(this.spawnCounter);
+            this.spawnCounter -= particlesToSpawn;
+
+            for (let i = 0; i < particlesToSpawn; i++) {
+                if (this.particles.length >= this.spawn_count) break;
+
+                // Calculate random size
+                const baseSize = this.spawn_size;
+                const sizeRandFactor = this.spawn_size_randomness / 100.0;
+                const sizeVariation = baseSize * sizeRandFactor * (Math.random() - 0.5) * 2;
+                const finalSize = Math.max(1, baseSize + sizeVariation);
+
+                const particle = {
+                    id: this.nextParticleId++,
+                    life: 0,
+                    maxLife: this.spawn_lifetime,
+                    x: this.width / 2,
+                    y: this.height / 2,
+                    vx: 0,
+                    vy: 0,
+                    size: finalSize, // Use the new random size
+                    rotation: this.spawn_initialRotation_random ? (Math.random() * 2 * Math.PI) : 0, // Use random initial rotation
+                };
+
+                const speed = this.spawn_speed;
+                switch (this.spawn_animation) {
+                    case 'explode': {
+                        const angle = Math.random() * (this.spawn_spread * Math.PI / 180) - (this.spawn_spread * Math.PI / 360);
+                        particle.vx = Math.cos(angle) * speed;
+                        particle.vy = Math.sin(angle) * speed;
+                        break;
+                    }
+                    case 'fountain': {
+                        const spreadRad = this.spawn_spread * Math.PI / 180;
+                        const angle = (Math.random() - 0.5) * spreadRad - (Math.PI / 2);
+                        particle.vx = Math.cos(angle) * speed;
+                        particle.vy = Math.sin(angle) * speed;
+                        particle.y = this.height; // Start from bottom center
+                        break;
+                    }
+                    case 'rain':
+                        particle.x = Math.random() * this.width;
+                        particle.y = 0;
+                        particle.vy = speed;
+                        break;
+                    case 'flow':
+                        particle.x = 0;
+                        particle.y = Math.random() * this.height;
+                        particle.vx = speed;
+                        break;
+                }
+                this.particles.push(particle);
+            }
+
+            // 2. UPDATE AND CULL EXISTING PARTICLES
+            this.particles = this.particles.filter(p => p.life < p.maxLife);
+            this.particles.forEach(p => {
+                p.life += deltaTime;
+                p.vy += this.spawn_gravity * deltaTime;
+                p.x += p.vx * deltaTime;
+                p.y += p.vy * deltaTime;
+                p.rotation += (this.spawn_rotationSpeed * Math.PI / 180) * deltaTime;
+            });
+        }
 
         if (this.shape === 'audio-visualizer' && audioData && audioData.frequencyData) {
             const fullFreqData = audioData.frequencyData;
@@ -2327,6 +2426,100 @@ class Shape {
                         this.ctx.globalAlpha = 1.0;
                     });
                 }
+            } else if (this.shape === 'spawner') {
+                if (this.spawn_shapeType === 'custom' && !this.customParticlePath && this.spawn_svg_path) {
+                    try {
+                        this.customParticlePath = new Path2D(this.spawn_svg_path);
+                    } catch (e) {
+                        console.error("Invalid SVG Path:", e);
+                        this.customParticlePath = new Path2D(); // Create empty path to prevent re-parsing
+                    }
+                }
+
+                // We are already translated to the center, so particle coords are relative
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+                this.ctx.clip();
+
+                this.particles.forEach(p => {
+                    this.ctx.save();
+                    this.ctx.translate(p.x - this.width / 2, p.y - this.height / 2);
+                    this.ctx.rotate(p.rotation);
+
+                    // Fade out particle based on life
+                    const lifeRatio = 1.0 - (p.life / p.maxLife);
+                    this.ctx.globalAlpha = Math.sin(lifeRatio * Math.PI);
+
+                    // Set fill and stroke for the particle
+                    this.ctx.fillStyle = this._createLocalFillStyle(p.id);
+                    if (this.enableStroke) {
+                        this.ctx.strokeStyle = this._createLocalStrokeStyle(p.id);
+                        this.ctx.lineWidth = this.strokeWidth;
+                    }
+
+                    const s = p.size / 2;
+
+                    // This switch now handles all drawing for each case independently
+                    switch (this.spawn_shapeType) {
+                        case 'custom':
+                            if (this.customParticlePath) {
+                                this.ctx.save();
+                                // Assumes the SVG path is designed within a ~40x40 unit space.
+                                // This scales it to match the particle's size property.
+                                const scale = p.size / 40;
+                                this.ctx.scale(scale, scale);
+                                this.ctx.fill(this.customParticlePath);
+                                if (this.enableStroke) {
+                                    this.ctx.stroke(this.customParticlePath);
+                                }
+                                this.ctx.restore();
+                            }
+                            break;
+
+                        default: // Handles rectangle, circle, star, polygon, sparkle
+                            this.ctx.beginPath();
+                            if (this.spawn_shapeType === 'circle') {
+                                this.ctx.arc(0, 0, s, 0, 2 * Math.PI);
+                            } else if (this.spawn_shapeType === 'sparkle') {
+                                this.ctx.moveTo(0, -s);
+                                this.ctx.lineTo(s * 0.3, -s * 0.3);
+                                this.ctx.lineTo(s, 0);
+                                this.ctx.lineTo(s * 0.3, s * 0.3);
+                                this.ctx.lineTo(0, s);
+                                this.ctx.lineTo(-s * 0.3, s * 0.3);
+                                this.ctx.lineTo(-s, 0);
+                                this.ctx.lineTo(-s * 0.3, -s * 0.3);
+                                this.ctx.closePath();
+                            } else if (this.spawn_shapeType === 'polygon') {
+                                const sides = Math.max(3, this.sides);
+                                for (let i = 0; i < sides; i++) {
+                                    const a = (i / sides) * 2 * Math.PI - (Math.PI / 2);
+                                    this.ctx[i === 0 ? 'moveTo' : 'lineTo'](s * Math.cos(a), s * Math.sin(a));
+                                }
+                                this.ctx.closePath();
+                            } else if (this.spawn_shapeType === 'star') {
+                                const points = Math.max(3, this.points);
+                                const iS = s * (this.starInnerRadius / 100);
+                                for (let i = 0; i < 2 * points; i++) {
+                                    const r = (i % 2 === 0) ? s : iS;
+                                    const a = (i / (2 * points)) * 2 * Math.PI - (Math.PI / 2);
+                                    this.ctx[i === 0 ? 'moveTo' : 'lineTo'](r * Math.cos(a), r * Math.sin(a));
+                                }
+                                this.ctx.closePath();
+                            } else { // rectangle
+                                this.ctx.rect(-s, -s, p.size, p.size);
+                            }
+
+                            this.ctx.fill();
+                            if (this.enableStroke) {
+                                this.ctx.stroke();
+                            }
+                            break;
+                    }
+                    this.ctx.restore();
+                });
+                this.ctx.restore();
             } else if (this.shape === 'text') {
                 const textToRender = this.getDisplayText();
                 const centeredShape = { ...this, x: -this.width / 2, y: -this.height / 2, };

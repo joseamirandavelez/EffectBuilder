@@ -92,6 +92,7 @@
                         <a class="nav-link" href="#shape-tetris">Tetris</a>
                         <a class="nav-link" href="#shape-pixelart">Pixel Art</a>
                         <a class="nav-link" href="#shape-strimer">Strimer</a>
+                        <a class="nav-link" href="#shape-spawner">Spawner</a>
                     </div>
                 </div>
             </nav>
@@ -449,12 +450,39 @@
                             </table>
                         </div>
 
+                        <h3 id="shape-spawner" class="mt-5">Spawner</h3>
+                        <p>A powerful particle emitter that generates and animates a stream of other shapes. The Spawner's own fill/stroke properties are applied to each particle it creates.</p>
+                        <div class="alert alert-info small"><b>Applicable General Properties:</b> <a href="#core">Core</a>, <a href="#fill">Fill & Animation</a>, <a href="#stroke">Stroke</a>, <a href="#audio">Audio Reactivity</a>, <a href="#sensor">Sensor Reactivity</a></div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered">
+                                <thead><tr><th>Property</th><th>Label</th><th>Type</th><th>Description & Values</th></tr></thead>
+                                <tbody>
+                                    <tr class="table-group-header"><th colspan="4">Emitter Properties</th></tr>
+                                    <tr><td><code>spawn_animation</code></td><td>Emitter Style</td><td><code>combobox</code></td><td>The behavior and direction of particle emission. Values: <code>explode</code>, <code>fountain</code>, <code>rain</code>, <code>flow</code>.</td></tr>
+                                    <tr><td><code>spawn_count</code></td><td>Max Particles</td><td><code>number</code></td><td>The maximum number of particles on screen at once.</td></tr>
+                                    <tr><td><code>spawn_spawnRate</code></td><td>Spawn Rate</td><td><code>number</code></td><td>How many new particles are created per second.</td></tr>
+                                    <tr><td><code>spawn_lifetime</code></td><td>Lifetime (s)</td><td><code>number</code></td><td>How long each particle lasts, in seconds.</td></tr>
+                                    <tr><td><code>spawn_speed</code></td><td>Initial Speed</td><td><code>number</code></td><td>The starting speed of newly created particles.</td></tr>
+                                    <tr><td><code>spawn_gravity</code></td><td>Gravity</td><td><code>number</code></td><td>A constant downward (or upward) force applied to particles.</td></tr>
+                                    <tr><td><code>spawn_spread</code></td><td>Spread Angle</td><td><code>number</code></td><td>The angle (in degrees) for <code>Explode</code> or <code>Fountain</code> emitters.</td></tr>
+
+                                    <tr class="table-group-header"><th colspan="4">Particle Appearance Properties</th></tr>
+                                    <tr><td><code>spawn_shapeType</code></td><td>Particle Shape</td><td><code>combobox</code></td><td>The geometric shape of the emitted particles. Values: <code>rectangle</code>, <code>circle</code>, <code>polygon</code>, <code>star</code>, <code>sparkle</code>, <code>custom</code>.</td></tr>
+                                    <tr><td><code>spawn_size</code></td><td>Particle Size</td><td><code>number</code></td><td>The base size of each particle in pixels.</td></tr>
+                                    <tr><td><code>spawn_size_randomness</code></td><td>Size Randomness %</td><td><code>number</code></td><td>How much to vary each particle's size from the base size. Range: <code>0</code> to <code>100</code>.</td></tr>
+                                    <tr><td><code>spawn_rotationSpeed</code></td><td>Particle Rotation Speed</td><td><code>number</code></td><td>The rotational speed of each individual particle.</td></tr>
+                                    <tr><td><code>spawn_initialRotation_random</code></td><td>Random Initial Rotation</td><td><code>boolean</code></td><td>If true, each particle starts at a random angle.</td></tr>
+                                    <tr><td><code>spawn_svg_path</code></td><td>Custom SVG Path</td><td><code>textarea</code></td><td>The SVG <code>d</code> attribute path data for the <code>custom</code> particle shape. Use the linked online editor to create paths.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
                     </div>
                 </div>
             </main>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="[https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js](https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js)"></script>
 </body>
 </html>

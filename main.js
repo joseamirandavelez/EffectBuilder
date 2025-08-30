@@ -428,6 +428,14 @@ document.addEventListener('DOMContentLoaded', function () {
             'strimerDirection', 'strimerEasing',
             'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerPulseSync', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection'
         ],
+        'spawner': [
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
+            'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
+            'cycleSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns',
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'spawn_shapeType', 'spawn_animation', 'spawn_count', 'spawn_spawnRate', 'spawn_lifetime', 'spawn_speed', 'spawn_size', 'spawn_size_randomness', 'spawn_gravity', 'spawn_spread', 'spawn_rotationSpeed', 'spawn_initialRotation_random', 'sides', 'points', 'starInnerRadius', 'spawn_svg_path'
+        ],
     };
 
     const galleryOffcanvasEl = document.getElementById('gallery-offcanvas');
@@ -1047,6 +1055,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 toolLink.className = 'form-text d-block mt-2';
                 toolLink.innerHTML = 'Open Pixel Art Data Generator <i class="bi bi-box-arrow-up-right"></i>';
                 formGroup.appendChild(toolLink);
+            } else if (controlId.endsWith('_spawn_svg_path')) {
+                const toolLink = document.createElement('a');
+                toolLink.href = 'https://yqnn.github.io/svg-path-editor/';
+                toolLink.target = '_blank';
+                toolLink.rel = 'noopener noreferrer';
+                toolLink.className = 'form-text d-block mt-2';
+                toolLink.innerHTML = 'Open SVG Path Editor <i class="bi bi-box-arrow-up-right"></i>';
+                formGroup.appendChild(toolLink);
             }
         } else if (type === 'color') {
             const colorGroup = document.createElement('div');
@@ -1164,7 +1180,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 allKeys.push(conf.property);
                 let exportValue = liveValue;
 
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize', 'vizBarSpacing', 'vizSegmentSpacing'];
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize', 'vizBarSpacing', 'vizSegmentSpacing', 'spawn_size', 'spawn_speed', 'spawn_gravity'];
                 if (conf.type === 'number' && typeof liveValue === 'number') {
                     exportValue = propsToScale.includes(propName) ? Math.round(liveValue / 4) : Math.round(liveValue);
                 } else if (typeof liveValue === 'boolean') {
@@ -1358,13 +1374,15 @@ document.addEventListener('DOMContentLoaded', function () {
             'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir'], icon: 'bi-brush-fill' },
             'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'], icon: 'bi-fonts' },
             'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
-            'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce'], icon: 'bi-grid-3x3-gap-fill' },
+            'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce', 'tetrisHoldTime'], icon: 'bi-grid-3x3-gap-fill' },
             'Fire': { props: ['fireSpread'], icon: 'bi-fire' },
             'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
             'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost'], icon: 'bi-bar-chart-line-fill' },
             'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
             'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'], icon: 'bi-cpu-fill' },
             'Strimer': { props: ['strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerAnimationSpeed', 'strimerDirection', 'strimerEasing', 'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection'], icon: 'bi-segmented-nav' },
+            'Spawner': { props: ['spawn_animation', 'spawn_count', 'spawn_spawnRate', 'spawn_lifetime', 'spawn_speed', 'spawn_gravity', 'spawn_spread'], icon: 'bi-broadcast' },
+            'Particle': { props: ['spawn_shapeType', 'spawn_size', 'spawn_size_randomness', 'spawn_rotationSpeed', 'spawn_initialRotation_random', 'spawn_svg_path'], icon: 'bi-stars' },
         };
         const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
         let isFirstTab = true;
@@ -1952,7 +1970,7 @@ document.addEventListener('DOMContentLoaded', function () {
         requestAnimationFrame(animate);
 
         const now = timestamp;
-        const deltaTime = (now - then) / 1000.0; // deltaTime in seconds
+        let deltaTime = (now - then) / 1000.0; // deltaTime in seconds
         then = now;
 
         if (deltaTime > 0.1) {
@@ -1997,11 +2015,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const neededSensors = [...new Set(objects.map(o => o.userSensor).filter(Boolean))];
-        const baseMockValue = Math.sin(now / 2000) * 50 + 50;
 
-        neededSensors.forEach(sensorName => {
+        neededSensors.forEach((sensorName, index) => {
+            // By adding the sensor's index to the sine function, each wave gets a unique phase offset.
+            const mockValue = Math.sin(now / 2000 + index) * 50 + 50;
             sensorData[sensorName] = {
-                value: baseMockValue,
+                value: mockValue,
                 min: 0,
                 max: 100
             };
@@ -2424,7 +2443,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function getDefaultObjectConfig(newId) {
         return [
             // Geometry & Transform
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art,audio-visualizer,strimer', description: 'The basic shape of the object.' },
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art,audio-visualizer,spawner,strimer', description: 'The basic shape of the object.' }, // MODIFIED: Added 'spawner'
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320', description: 'The horizontal position of the object on the canvas.' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200', description: 'The vertical position of the object on the canvas.' },
             { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320', description: 'The width of the object.' },
@@ -2550,6 +2569,21 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_strimerTrebleBoost`, label: `Object ${newId}: Treble Boost`, type: 'number', default: '150', min: '0', max: '200', description: '(Audio Meter) Multiplier for the treble/volume columns.' },
             { property: `obj${newId}_strimerAudioSmoothing`, label: `Object ${newId}: Audio Smoothing`, type: 'number', default: '60', min: '0', max: '99', description: '(Audio Meter) Smooths out the bar movement. Higher is smoother.' },
             { property: `obj${newId}_strimerPulseSpeed`, label: `Object ${newId}: Pulse Speed`, type: 'number', default: '0', min: '0', max: '100', description: '(Modifier) Speed of the breathing/pulse effect. Applied on top of other animations. 0 is off.' },
+
+            //Spawner
+            { property: `obj${newId}_spawn_shapeType`, label: `Object ${newId}: Particle Shape`, type: 'combobox', values: 'rectangle,circle,polygon,star,sparkle,custom', default: 'circle', description: '(Spawner) The geometric shape of the emitted particles.' },
+            { property: `obj${newId}_spawn_animation`, label: `Object ${newId}: Emitter Style`, type: 'combobox', values: 'explode,fountain,rain,flow', default: 'explode', description: '(Spawner) The behavior and direction of particle emission.' },
+            { property: `obj${newId}_spawn_count`, label: `Object ${newId}: Max Particles`, type: 'number', default: '100', min: '1', max: '500', description: '(Spawner) The maximum number of particles on screen at once.' },
+            { property: `obj${newId}_spawn_spawnRate`, label: `Object ${newId}: Spawn Rate`, type: 'number', default: '50', min: '0', max: '500', description: '(Spawner) How many new particles are created per second.' },
+            { property: `obj${newId}_spawn_lifetime`, label: `Object ${newId}: Lifetime (s)`, type: 'number', default: '3', min: '0.1', max: '20', description: '(Spawner) How long each particle lasts, in seconds.' },
+            { property: `obj${newId}_spawn_speed`, label: `Object ${newId}: Initial Speed`, type: 'number', default: '50', min: '0', max: '500', description: '(Spawner) The starting speed of newly created particles.' },
+            { property: `obj${newId}_spawn_size`, label: `Object ${newId}: Particle Size`, type: 'number', default: '10', min: '1', max: '100', description: '(Spawner) The size of each particle in pixels.' },
+            { property: `obj${newId}_spawn_size_randomness`, label: `Object ${newId}: Size Randomness %`, type: 'number', default: '0', min: '0', max: '100', description: '(Spawner) How much to vary each particle\'s size. 0% is uniform, 100% is highly varied.' },
+            { property: `obj${newId}_spawn_gravity`, label: `Object ${newId}: Gravity`, type: 'number', default: '0', min: '-200', max: '200', description: '(Spawner) A constant downward (or upward) force applied to particles.' },
+            { property: `obj${newId}_spawn_spread`, label: `Object ${newId}: Spread Angle`, type: 'number', default: '360', min: '0', max: '360', description: '(Spawner) The angle (in degrees) for Explode or Fountain emitters.' },
+            { property: `obj${newId}_spawn_rotationSpeed`, label: `Object ${newId}: Particle Rotation Speed`, type: 'number', default: '0', min: '-360', max: '360', description: '(Spawner) The rotational speed of each particle in degrees per second.' },
+            { property: `obj${newId}_spawn_initialRotation_random`, label: `Object ${newId}: Random Initial Rotation`, type: 'boolean', default: 'false', description: '(Spawner) If checked, each particle starts at a random angle.' },
+            { property: `obj${newId}_spawn_svg_path`, label: `Object ${newId}: Custom SVG Path`, type: 'textarea', default: 'M -2.5 -20 c -1.5 3.4 -2 3.8 -3.7 2.9 c -1.1 -0.6 -2.1 -0.9 -2.3 -0.7 a 34.09 34.09 0 0 0 0.8 6 c 0.6 3.2 0.8 6.1 0.4 6.4 s -1.7 -0.7 -3.2 -2.2 c -2.2 -2.6 -2.6 -2.7 -3.5 -1.2 c -0.8 1.2 -1.9 1.5 -4.5 1.1 l -3.4 -0.5 l 1.1 3.7 c 1 3 0.9 3.8 -0.3 4.6 c -0.9 0.6 -1.1 1.1 -0.3 1.6 c 0.6 0.5 3.2 2.6 5.8 4.7 c 3.8 3.2 4.6 4.4 4.2 6.3 c -0.6 2.1 -0.4 2.2 2.6 1.6 a 48.33 48.33 0 0 1 5.7 -0.8 c 2.4 0 2.5 0.2 2.2 5.7 c -0.1 3.6 0.2 5.8 0.8 5.8 S 1 22.6 1 19 c 0 -6.6 -0.2 -6.4 6.8 -5.1 c 4.2 0.8 4.3 0.8 3.8 -1.4 c -0.5 -1.8 0.5 -3.1 5.5 -7 c 5.2 -4.1 5.8 -4.9 4.4 -5.9 s -1.4 -1.7 -0.6 -3.9 c 1.5 -4 1.5 -4 -2.3 -3.3 c -2.7 0.5 -3.7 0.3 -4.4 -1 c -0.9 -1.6 -1.2 -1.5 -3.5 1.2 c -1.4 1.6 -2.9 2.6 -3.3 2.2 s -0.2 -3.3 0.5 -6.4 c 1.2 -6 0.9 -7.6 -1.1 -5.6 C 5 -15.4 4.4 -15.7 2.5 -20 c -1 -2.2 -2.1 -4 -2.5 -4 S -1.5 -22.2 -2.5 -20 Z', description: '(Spawner) The SVG `d` attribute path data for the custom particle shape.' },
         ];
 
     }
@@ -4404,7 +4438,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // --- START: NEW, CORRECTED LOGIC FOR SHAPE CHANGES ---
-        if (target.name && target.name.includes('_shape')) {
+        if (target.name && /_shape$/.test(target.name)) {
             const idMatch = target.name.match(/^obj(\d+)_/);
             if (!idMatch) return;
 
@@ -4572,7 +4606,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     'fire-radial': ['fireSpread'],
                     'pixel-art': ['pixelArtData'],
                     'audio-visualizer': ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost'],
-                    'strimer': ['strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerDirection', 'strimerEasing', 'strimerSnakeDirection']
+                    'strimer': ['strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerDirection', 'strimerEasing', 'strimerSnakeDirection'],
+                    'spawner': ['spawn_shapeType', 'spawn_animation', 'spawn_count', 'spawn_spawnRate', 'spawn_lifetime', 'spawn_speed', 'spawn_size', 'spawn_gravity', 'spawn_spread', 'spawn_rotationSpeed', 'spawn_size_randomness', 'spawn_initialRotation_random', 'sides', 'points', 'starInnerRadius', 'spawn_svg_path']
                 };
                 if (shapeSpecificMap[sourceObject.shape]) {
                     copyProps(shapeSpecificMap[sourceObject.shape]);
