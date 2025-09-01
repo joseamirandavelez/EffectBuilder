@@ -2572,19 +2572,19 @@ class Shape {
 
                                     if (isMatrixTrail) {
                                         this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
-                                        const glowEnabled = this.spawn_matrixEnableGlow && this.spawn_matrixGlowSize > 0;
-                                        if (glowEnabled) {
-                                            this.ctx.shadowBlur = this.spawn_matrixGlowSize;
-                                            this.ctx.shadowColor = this.ctx.fillStyle;
-                                        }
                                         this._drawParticleShape({ ...p, size: p.size, matrixChars: [p.matrixChars[drawnCharIndex + 1]] });
-                                        if (glowEnabled) {
-                                            this.ctx.shadowBlur = 0;
-                                        }
                                     } else { // Generic Trail
                                         const trailProgress = drawnCharIndex / trailLength;
                                         this.ctx.globalAlpha = overallAlpha * (1.0 - trailProgress);
+
+                                        // For the trail, we use the main fill style, but if it's solid, we base it on Color 2.
+                                        const originalColor1 = this.gradient.color1;
+                                        if (this.gradType === 'solid') {
+                                            this.gradient.color1 = this.gradient.color2;
+                                        }
                                         this.ctx.fillStyle = this._createLocalFillStyle(p.id);
+                                        this.gradient.color1 = originalColor1; // Restore it immediately
+
                                         if (this.enableStroke) {
                                             this.ctx.strokeStyle = this.ctx.fillStyle;
                                         }
@@ -2614,11 +2614,8 @@ class Shape {
                     } else if (p.actualShape === 'matrix') {
                         this.ctx.fillStyle = this.gradient.color1;
                     } else {
-                        if (this.spawn_enableTrail && !this.cycleColors) {
-                            this.ctx.fillStyle = this.spawn_leaderColor;
-                        } else {
-                            this.ctx.fillStyle = this._createLocalFillStyle(p.id);
-                        }
+                        // Leader particle is ALWAYS color 1, ignoring all other fill/cycle settings.
+                        this.ctx.fillStyle = this.gradient.color1;
                     }
 
                     if (this.enableStroke) {
