@@ -304,7 +304,8 @@
                             <li>Choose the browser tab that is playing music or sound.</li>
                             <li><strong>Important:</strong> Make sure to check the <strong>"Share tab audio"</strong> checkbox at the bottom of the prompt before clicking "Share".</li>
                         </ol>
-                        <p class="small text-body-secondary">Once connected, your audio-reactive shapes will begin responding to the real sound. If no audio is connected, shapes will react to a default preview animation for design purposes. <strong>Please note:</strong> This feature is a preview tool, and the audio response may differ slightly from the final effect in SignalRGB's native audio engine.</p>
+                        <p>Once enabled for an object, you can select a <code>Reactive Property</code>. Basic shapes can <code>Flash</code>, change <code>Size</code> or <code>Rotation</code>, or turn into a <code>Volume Meter</code>. Specialized shapes like the Spawner have their own unique reactive targets.</p>
+                        <p class="small text-body-secondary">If no audio is connected, shapes will react to a default preview animation for design purposes. <strong>Please note:</strong> This feature is a preview tool, and the audio response may differ slightly from the final effect in SignalRGB's native audio engine.</p>
 
                         <h6 class="text-info mt-4">Using Sensor Reactivity</h6>
                         <p>Create animations that react to real-time hardware data like CPU load or temperature. To use this, select an object, go to its <strong>Sensor</strong> tab, and enable reactivity.</p>
@@ -339,11 +340,41 @@
                         </ul>
 
                         <h6 class="text-info mt-4">Using the Spawner Shape</h6>
-                        <p>The Spawner is a powerful particle emitter that generates streams of other shapes. Its controls are split into two main tabs:</p>
+                        <p>The Spawner is a powerful and versatile particle emitter. You can control both how particles are spawned and what they look like, allowing for effects from simple snowfall to complex digital rain.</p>
+                        <p>Its controls are organized into several tabs:</p>
                         <ul>
-                            <li><strong>Spawner Tab:</strong> Controls the <strong>emitter</strong> itself. Here you can set the emission style (<code>explode</code>, <code>fountain</code>, <code>rain</code>, etc.), how many particles are on screen (<code>Max Particles</code>), how fast they are created (<code>Spawn Rate</code>), and their movement properties like <code>Initial Speed</code> and <code>Gravity</code>.</li>
-                            <li><strong>Particle Tab:</strong> Controls the <strong>appearance</strong> of the individual particles. You can set the particle's shape (<code>circle</code>, <code>star</code>, etc.), <code>Particle Size</code>, and <code>Particle Rotation Speed</code>. You can even use a <code>custom</code> shape by providing an SVG path string, with a convenient link to an online path editor.</li>
+                            <li>
+                                <strong>Spawner Tab:</strong> Controls the <strong>emitter's</strong> behavior.
+                                <ul>
+                                    <li><code>Emitter Style</code>: Sets the spawning pattern, like an <code>explode</code> from the center, a falling <code>rain</code>, a rising <code>fountain</code>, or a sideways <code>flow</code>.</li>
+                                    <li><code>Initial Speed</code> & <code>Initial Speed Variance</code>: Control the starting velocity of particles. Variance adds randomness for a more natural look.</li>
+                                    <li><code>Gravity</code>: Applies a constant downward (or upward, if negative) force to particles after they spawn.</li>
+                                    <li>Other controls let you manage the number of particles, their creation rate, and how long they live.</li>
+                                </ul>
+                            </li>
+                            <li>
+                                <strong>Particle Tab:</strong> Controls the <strong>appearance and special properties</strong> of the individual particles.
+                                <ul>
+                                    <li><strong>Particle Shape:</strong> You can choose from standard shapes like <code>circle</code> or <code>star</code>, or use special types:
+                                        <ul>
+                                            <li><code>matrix</code>: Turns particles into falling trails of characters. You can customize the <code>Character Set</code>, the <code>Trail Length</code>, and add a <code>Glow</code> effect. The lead character's color is set by <strong>Fill Color 1</strong>, while the trail uses <strong>Fill Color 2</strong> (for solid fills) or the full gradient for other fill types.</li>
+                                            <li><code>random</code>: Each new particle will be a random shape from all other available types.</li>
+                                            <li><code>custom</code>: Allows you to use your own SVG path data for the particle shape.</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Trail Effect (for any shape):</strong>
+                                        <ul>
+                                            <li>You can add a fading trail to <strong>any</strong> particle type by using the <strong>Trail</strong> settings.</li>
+                                            <li><code>Enable Trail</code>: Toggles the effect on or off.</li>
+                                            <li><code>Trail Length</code>: Controls the number of copies in the trail.</li>
+                                            <li><code>Leader Color</code>: Sets the color of the main particle, while the trail fades into the spawner's main fill color. This allows you to create effects like a trail of fading stars or circles.</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Other Properties:</strong> You can also control the particle's <code>Size</code> (with randomness) and <code>Rotation Speed</code> (with variance).</li>
+                                </ul>
+                            </li>
                         </ul>
+
 
                         <h6 class="text-info mt-4">Using the Tetris Shape</h6>
                         <p>This shape creates an animation of falling and stacking blocks that fill the object's bounds.</p>
