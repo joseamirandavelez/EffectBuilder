@@ -508,9 +508,15 @@ class Shape {
         const s = particle.size / 2;
 
         const glowEnabled = this.spawn_enableGlow && this.spawn_glowSize > 0;
-        if (glowEnabled && typeof this.ctx.fillStyle === 'string') {
+        if (glowEnabled) {
             this.ctx.shadowBlur = this.spawn_glowSize;
-            this.ctx.shadowColor = this.ctx.fillStyle;
+            if (typeof this.ctx.fillStyle === 'string') {
+                this.ctx.shadowColor = this.ctx.fillStyle;
+            } else {
+                // Fallback for gradients: use the primary solid color for the glow.
+                // This respects the global palette override as well.
+                this.ctx.shadowColor = this.gradient.color1;
+            }
         } else {
             this.ctx.shadowBlur = 0;
         }
@@ -2558,6 +2564,9 @@ class Shape {
                                 const p2 = history[i];
                                 const segmentDist = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
+                // Prevent division by zero if particle hasn't moved
+                if (segmentDist < 0.001) continue;
+
                                 while (distanceTraveledAlongPath + segmentDist >= distanceNeededForNextChar) {
                                     const ratio = (distanceNeededForNextChar - distanceTraveledAlongPath) / segmentDist;
                                     if (ratio > 1) break;
@@ -2574,10 +2583,23 @@ class Shape {
                                     if (isMatrixTrail) {
                                         this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
                                         this._drawParticleShape({ ...p, size: p.size, matrixChars: [p.matrixChars[drawnCharIndex + 1]] });
-                                    } else {
-                                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : this.spawn_leaderColor;
+                                    } else { // isGenericTrail
+                                        // Set fill for the trail based on the "split-color" logic
+                                        if (isFlashActive) {
+                                            this.ctx.fillStyle = '#FFFFFF';
+                                        } else if (this.gradType === 'solid') {
+                                            this.ctx.fillStyle = this.gradient.color2; // Trail uses Color 2 for solid fills
+                                        } else {
+                                            this.ctx.fillStyle = this._createLocalFillStyle(p.id); // Trail uses full effect for gradients
+                                        }
+
                                         if (this.enableStroke) this.ctx.strokeStyle = this.ctx.fillStyle;
-                                        this._drawParticleShape({ ...p, size: p.size });
+
+                                        // Calculate shrinking size for the trail segment
+                                        const sizeRatio = Math.max(0, 1.0 - (drawnCharIndex / trailLength));
+                                        const trailSize = p.size * sizeRatio;
+
+                                        this._drawParticleShape({ ...p, size: trailSize });
                                     }
 
                                     this.ctx.restore();
@@ -2597,13 +2619,17 @@ class Shape {
                     this.ctx.rotate(p.rotation);
                     this.ctx.globalAlpha = overallAlpha;
 
+                    // Set leader particle color based on "split-color" logic
                     if (isFlashActive) {
                         this.ctx.fillStyle = '#FFFFFF';
-                    } else if (p.actualShape === 'matrix') {
+                    } else if (p.actualShape === 'matrix' || this.spawn_enableTrail) {
+                        // Matrix leaders and generic leaders (when trail is on) use Color 1
                         this.ctx.fillStyle = this.gradient.color1;
                     } else {
-                        this.ctx.fillStyle = this.spawn_enableTrail ? this.spawn_leaderColor : this._createLocalFillStyle(p.id);
+                        // No trail, so the single particle uses the full fill effect
+                        this.ctx.fillStyle = this._createLocalFillStyle(p.id);
                     }
+
 
                     if (this.enableStroke) {
                         this.ctx.strokeStyle = this.ctx.fillStyle;
