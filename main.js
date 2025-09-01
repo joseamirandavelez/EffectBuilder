@@ -341,7 +341,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient',
+            'enablePerspective', 'cornerOffsets',
         ],
         circle: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -349,14 +350,15 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient',
         ],
         ring: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'rotationSpeed', 'cycleSpeed', 'innerDiameter', 'numberOfSegments', 'angularWidth',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient',
+            'enablePerspective', 'cornerOffsets',
         ],
         polygon: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -364,7 +366,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'sides',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient',
+            'enablePerspective', 'cornerOffsets',
         ],
         star: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -372,7 +375,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'points', 'starInnerRadius',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient',
+            'enablePerspective', 'cornerOffsets',
         ],
         text: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
@@ -387,6 +391,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'enableWaveAnimation', 'waveStyle', 'waveCount', 'oscAnimationSpeed',
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enablePerspective', 'cornerOffsets',
         ],
         'tetris': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -397,19 +402,22 @@ document.addEventListener('DOMContentLoaded', function () {
         fire: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enablePerspective', 'cornerOffsets',
         ],
         'fire-radial': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2', 'cycleColors',
             'animationSpeed', 'cycleSpeed', 'scrollDir', 'fireSpread',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'enablePerspective', 'cornerOffsets',
         ],
         'pixel-art': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationMode', 'animationSpeed', 'rotationSpeed',
             'cycleSpeed', 'scrollDir', 'phaseOffset', 'pixelArtData',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
+            'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient',
+            'enablePerspective', 'cornerOffsets',
         ],
         'audio-visualizer': ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'gradType', 'useSharpGradient', 'gradientStop',
             'gradColor1', 'gradColor2', 'cycleColors', 'animationSpeed', 'scrollDir',
@@ -418,7 +426,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'vizAutoScale', 'vizMaxBarHeight',
             'vizBarCount', 'vizBarSpacing', 'vizSmoothing',
             'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing',
-            'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost'
+            'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost',
+            'enablePerspective', 'cornerOffsets',
         ],
         'strimer': [
             'shape', 'x', 'y', 'width', 'height', 'rotation',
@@ -426,7 +435,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'cycleColors', 'cycleSpeed', 'animationSpeed', 'scrollDir', 'phaseOffset',
             'strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerAnimationSpeed',
             'strimerDirection', 'strimerEasing',
-            'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerPulseSync', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection'
+            'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerPulseSync', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection',
+            'enablePerspective', 'cornerOffsets',
         ],
         'spawner': [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -436,7 +446,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'spawn_shapeType', 'spawn_animation', 'spawn_count', 'spawn_spawnRate', 'spawn_lifetime', 'spawn_speed', 'spawn_speedVariance', 'spawn_size', 'spawn_size_randomness', 'spawn_gravity', 'spawn_spread', 'spawn_rotationSpeed', 'spawn_rotationVariance', 'spawn_initialRotation_random',
             'spawn_matrixCharSet', 'spawn_matrixTrailLength', 'spawn_matrixEnableGlow', 'spawn_matrixGlowSize', 'spawn_matrixGlowColor',
             'spawn_enableTrail', 'spawn_trailLength', 'spawn_trailSpacing', 'spawn_leaderColor',
-            'sides', 'points', 'starInnerRadius', 'spawn_svg_path'
+            'sides', 'points', 'starInnerRadius', 'spawn_svg_path',
+            'enablePerspective', 'cornerOffsets',
         ],
     };
 
@@ -1385,7 +1396,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'], icon: 'bi-cpu-fill' },
             'Strimer': { props: ['strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerAnimationSpeed', 'strimerDirection', 'strimerEasing', 'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection'], icon: 'bi-segmented-nav' },
             'Spawner': { props: ['spawn_animation', 'spawn_count', 'spawn_spawnRate', 'spawn_lifetime', 'spawn_speed', 'spawn_speedVariance', 'spawn_gravity', 'spawn_spread'], icon: 'bi-broadcast' },
-            'Particle': { props: ['spawn_shapeType', 'spawn_size', 'spawn_size_randomness', 'spawn_rotationSpeed', 'spawn_rotationVariance', 'spawn_initialRotation_random', 'spawn_matrixCharSet', 'spawn_matrixTrailLength', 'spawn_matrixEnableGlow', 'spawn_matrixGlowSize', 'spawn_matrixGlowColor', 'spawn_svg_path', 'spawn_enableTrail', 'spawn_trailLength', 'spawn_trailSpacing', 'spawn_leaderColor'], icon: 'bi-stars' }
+            'Particle': { props: ['spawn_shapeType', 'spawn_size', 'spawn_size_randomness', 'spawn_rotationSpeed', 'spawn_rotationVariance', 'spawn_initialRotation_random', 'spawn_matrixCharSet', 'spawn_matrixTrailLength', 'spawn_matrixEnableGlow', 'spawn_matrixGlowSize', 'spawn_matrixGlowColor', 'spawn_svg_path', 'spawn_enableTrail', 'spawn_trailLength', 'spawn_trailSpacing', 'spawn_leaderColor'], icon: 'bi-stars' },
+            'Distortion': { props: ['enablePerspective', 'cornerOffsets'], icon: 'bi-distort' },
         };
         const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
         let isFirstTab = true;
@@ -1399,6 +1411,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 return groupProps.includes(propName) && validPropsForShape.includes(propName);
             });
+
             if (relevantProps.length > 0) {
                 const safeGroupName = groupName.replace(/[\s&]/g, '-');
                 const tabId = `tab-${id}-${safeGroupName}`;
@@ -1423,20 +1436,70 @@ document.addEventListener('DOMContentLoaded', function () {
                 tabButton.appendChild(document.createTextNode(groupName.replace(/-/g, ' & ')));
                 tabItem.appendChild(tabButton);
                 tabNav.appendChild(tabItem);
+
                 const pane = document.createElement('div');
                 pane.className = `tab-pane fade`;
                 pane.id = paneId;
                 pane.setAttribute('role', 'tabpanel');
                 pane.setAttribute('aria-labelledby', tabId);
+
+                // This block is now structured correctly
                 const groupCard = document.createElement('div');
                 groupCard.className = 'card card-body bg-body mb-3';
                 const groupHeader = document.createElement('h6');
                 groupHeader.className = 'text-body-secondary border-bottom pb-1 mb-3';
                 groupHeader.textContent = groupName.replace(/-/g, ' & ');
                 groupCard.appendChild(groupHeader);
-                relevantProps.forEach(conf => {
-                    groupCard.appendChild(createFormControl(conf));
-                });
+
+                if (groupName === 'Distortion') {
+                    // First, add the 'enablePerspective' toggle
+                    const enableConf = relevantProps.find(p => p.property.endsWith('enablePerspective'));
+                    if (enableConf) {
+                        groupCard.appendChild(createFormControl(enableConf));
+                    }
+
+                    // Manually create number inputs for corner offsets
+                    const corners = { tl: 'Top-Left', tr: 'Top-Right', br: 'Bottom-Right', bl: 'Bottom-Left' };
+                    for (const cKey in corners) {
+                        const cornerLabel = corners[cKey];
+                        const cornerGroup = document.createElement('div');
+                        cornerGroup.className = 'mb-2 p-2 border rounded';
+
+                        const groupLabel = document.createElement('label');
+                        groupLabel.className = 'form-label d-block';
+                        groupLabel.textContent = cornerLabel + " Offset";
+                        cornerGroup.appendChild(groupLabel);
+
+                        const inputsDiv = document.createElement('div');
+                        inputsDiv.className = 'd-flex gap-2';
+
+                        ['x', 'y'].forEach(axis => {
+                            const inputId = `obj${id}_cornerOffsets_${cKey}_${axis}`;
+                            const inputConfig = {
+                                property: inputId,
+                                name: inputId,
+                                label: axis.toUpperCase(),
+                                type: 'number',
+                                default: '0',
+                                min: '-500',
+                                max: '500',
+                                step: '1'
+                            };
+                            const formCtrl = createFormControl(inputConfig);
+                            formCtrl.className = 'flex-grow-1';
+                            formCtrl.querySelector('.form-label').textContent = axis.toUpperCase();
+                            inputsDiv.appendChild(formCtrl);
+                        });
+                        cornerGroup.appendChild(inputsDiv);
+                        groupCard.appendChild(cornerGroup);
+                    }
+                } else {
+                    // Original logic for all other tabs
+                    relevantProps.forEach(conf => {
+                        groupCard.appendChild(createFormControl(conf));
+                    });
+                }
+
                 pane.appendChild(groupCard);
                 tabContent.appendChild(pane);
                 isFirstTab = false;
@@ -2126,6 +2189,18 @@ document.addEventListener('DOMContentLoaded', function () {
             values.height = values.width;
         }
 
+        // Handle nested cornerOffsets
+        values.cornerOffsets = { tl: {}, tr: {}, br: {}, bl: {} };
+        ['tl', 'tr', 'br', 'bl'].forEach(c => {
+            ['x', 'y'].forEach(axis => {
+                const key = `obj${id}_cornerOffsets_${c}_${axis}`;
+                const el = form.elements[key];
+                if (el) {
+                    values.cornerOffsets[c][axis] = parseFloat(el.value) || 0;
+                }
+            });
+        });
+
         return values;
     }
 
@@ -2597,6 +2672,10 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_spawn_leaderColor`, label: `Object ${newId}: Leader Color`, type: 'color', default: '#FFFFFF', description: '(Spawner/Trail) The color of the lead particle. The trail fades to the spawner\'s main fill color.' },
             { property: `obj${newId}_spawn_matrixEnableGlow`, label: `Object ${newId}: Enable Character Glow`, type: 'boolean', default: 'false', description: '(Spawner/Matrix) Adds a glow effect to the matrix characters.' },
             { property: `obj${newId}_spawn_matrixGlowSize`, label: `Object ${newId}: Character Glow Size`, type: 'number', default: '10', min: '0', max: '50', description: '(Spawner/Matrix) The size and intensity of the glow effect.' },
+
+            //Distortion
+            { property: `obj${newId}_enablePerspective`, label: `Object ${newId}: Enable Perspective`, type: 'boolean', default: 'false', description: 'Enables perspective distortion for this object.' },
+            { property: `obj${newId}_cornerOffsets`, label: `Object ${newId}: Corner Offsets`, type: 'json', default: '{"tl":{"x":0,"y":0},"tr":{"x":0,"y":0},"br":{"x":0,"y":0},"bl":{"x":0,"y":0}}', description: 'JSON data for corner offsets. (Advanced)' }, // This will be hidden but necessary for state saving
         ];
 
     }

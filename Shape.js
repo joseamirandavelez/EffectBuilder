@@ -282,7 +282,7 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path, spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixTrailLength, spawn_matrixEnableGlow, spawn_matrixGlowSize, spawn_matrixGlowColor, spawn_enableTrail, spawn_trailLength, spawn_leaderColor, spawn_audioTarget, spawn_trailSpacing }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path, spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixTrailLength, spawn_matrixEnableGlow, spawn_matrixGlowSize, spawn_matrixGlowColor, spawn_enableTrail, spawn_trailLength, spawn_leaderColor, spawn_audioTarget, spawn_trailSpacing, enablePerspective, cornerOffsets }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -295,6 +295,15 @@ class Shape {
         this.width = width || 200;
         this.height = height || 152;
         this.rotation = rotation || 0;
+        this.enablePerspective = enablePerspective || false;
+        this.cornerOffsets = cornerOffsets || {
+            tl: { x: 0, y: 0 },
+            tr: { x: 0, y: 0 },
+            br: { x: 0, y: 0 },
+            bl: { x: 0, y: 0 }
+        };
+        this.offscreenCanvas = null; // For caching the rendered texture
+        this.offscreenCanvas = null; // For caching the rendered texture
         this.baseRotation = this.rotation;
         this.baseAnimationAngle = 0;
         this.gradType = gradType || 'solid';
@@ -784,14 +793,14 @@ class Shape {
         }
     }
 
-    _drawFill(phase = 0) {
+    _drawFill(targetCtx, phase = 0) {
         if (this.enableSensorReactivity && this.sensorTarget === 'Sensor Meter' && this.sensorMeterFill >= 0) {
-            this.ctx.save();
-            this.ctx.clip();
+            targetCtx.save();
+            targetCtx.clip();
 
             // Draw the empty part of the meter
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-            this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+            targetCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            targetCtx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
 
             // Calculate and draw the filled part of the meter
             if (this.sensorMeterFill > 0) {
@@ -806,61 +815,61 @@ class Shape {
                     } else {
                         color = lerpColor("#ffa500", "#ff0000", (this.sensorMeterFill - 0.5) * 2);
                     }
-                    this.ctx.fillStyle = color;
+                    targetCtx.fillStyle = color;
                 } else {
-                    this.ctx.fillStyle = this._createLocalFillStyle();
+                    targetCtx.fillStyle = this._createLocalFillStyle();
                 }
 
-                this.ctx.fillRect(-this.width / 2, fillY, this.width, fillHeight);
+                targetCtx.fillRect(-this.width / 2, fillY, this.width, fillHeight);
             }
 
             // NEW: Draw the sensor value text if enabled
             if (this.sensorMeterShowValue) {
                 const fontSize = Math.max(10, Math.round(this.width / 3));
-                this.ctx.font = `bold ${fontSize}px Arial`;
-                this.ctx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                this.ctx.fillText(this.sensorRawValue.toFixed(1), 0, 0); // Display value with one decimal
+                targetCtx.font = `bold ${fontSize}px Arial`;
+                targetCtx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
+                targetCtx.textAlign = 'center';
+                targetCtx.textBaseline = 'middle';
+                targetCtx.fillText(this.sensorRawValue.toFixed(1), 0, 0); // Display value with one decimal
 
-                this.ctx.font = `bold ${fontSize / 3}px Arial`;
-                this.ctx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                this.ctx.fillText(this.userSensor, 0, -fontSize / 1.5); // Display value with one decimal
+                targetCtx.font = `bold ${fontSize / 3}px Arial`;
+                targetCtx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
+                targetCtx.textAlign = 'center';
+                targetCtx.textBaseline = 'middle';
+                targetCtx.fillText(this.userSensor, 0, -fontSize / 1.5); // Display value with one decimal
             }
 
-            this.ctx.restore();
+            targetCtx.restore();
 
         } else if (this.enableAudioReactivity && this.audioTarget === 'Volume Meter' && this.volumeMeterFill > 0) {
-            this.ctx.save();
-            this.ctx.clip();
+            targetCtx.save();
+            targetCtx.clip();
 
             // Draw the "empty" part of the meter
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-            this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+            targetCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            targetCtx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
 
             // Calculate the filled part's height and position
             const fillHeight = this.height * Math.min(1, this.volumeMeterFill);
             const fillY = this.height / 2 - fillHeight;
 
             // Draw the filled part
-            this.ctx.fillStyle = this._createLocalFillStyle(phase);
-            this.ctx.fillRect(-this.width / 2, fillY, this.width, fillHeight);
+            targetCtx.fillStyle = this._createLocalFillStyle(phase);
+            targetCtx.fillRect(-this.width / 2, fillY, this.width, fillHeight);
 
-            this.ctx.restore();
+            targetCtx.restore();
 
         } else {
             // If not a meter, use the original fill logic
             const fillStyle = this._createLocalFillStyle(phase);
-            this.ctx.fillStyle = fillStyle;
+            targetCtx.fillStyle = fillStyle;
             if (fillStyle instanceof CanvasPattern && fillStyle.offsetX) {
-                this.ctx.save();
-                this.ctx.translate(fillStyle.offsetX, fillStyle.offsetY);
-                this.ctx.fill();
-                this.ctx.restore();
+                targetCtx.save();
+                targetCtx.translate(fillStyle.offsetX, fillStyle.offsetY);
+                targetCtx.fill();
+                targetCtx.restore();
             } else {
-                this.ctx.fill();
+                targetCtx.fill();
             }
         }
     }
@@ -1849,7 +1858,7 @@ class Shape {
                     const trailLength = Number(this.spawn_trailLength) || 15;
                     const spacingFactor = 1 + this.spawn_trailSpacing * p.size;
                     const historyLength = Math.floor((trailLength + 2) * spacingFactor);
-                    
+
                     if (p.trail.length > historyLength) {
                         p.trail.length = historyLength; // Trim array directly
                     }
@@ -2358,7 +2367,119 @@ class Shape {
         }
     }
 
+    /**
+     * Main draw function. Decides whether to draw normally or with perspective distortion.
+     */
     draw(isSelected, audioData = {}, palette = {}) {
+        if (this.enablePerspective) {
+            // --- PERSPECTIVE PATH ---
+
+            // 1. Create or resize the off-screen canvas if needed
+            if (this.width <= 0 || this.height <= 0) return; // Safety check: Don't draw if the object has no size.
+
+            if (!this.offscreenCanvas || this.offscreenCanvas.width !== this.width || this.offscreenCanvas.height !== this.height) {
+                this.offscreenCanvas = document.createElement('canvas');
+                this.offscreenCanvas.width = this.width;
+                this.offscreenCanvas.height = this.height;
+            }
+            const offscreenCtx = this.offscreenCanvas.getContext('2d');
+
+            // Clear the hidden canvas before drawing on it each frame.
+            offscreenCtx.clearRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
+
+            // 2. Draw the original, unmodified shape onto the hidden canvas
+            // We pass 'false' for isSelected to avoid drawing selection handles on our texture
+            this._drawOriginalShape(offscreenCtx, false, audioData, palette);
+
+            // 3. Render the hidden canvas image onto the main canvas with distortion
+            this._renderWithPerspective(this.ctx);
+
+        } else {
+            // --- NORMAL PATH ---
+            this._drawOriginalShape(this.ctx, isSelected, audioData, palette);
+        }
+    }
+
+    /**
+     * Renders the off-screen canvas onto the main canvas with perspective distortion.
+     * This new method uses a "vertical strip" or "scanline" technique which is
+     * more robust and avoids the complex matrix math that was causing the errors.
+     */
+    _renderWithPerspective(targetCtx) {
+        // Safety check
+        if (!this.offscreenCanvas || this.width <= 0 || this.height <= 0) return;
+
+        // Calculate the final, distorted destination points in world space
+        const halfW = this.width / 2;
+        const halfH = this.height / 2;
+        const centerX = this.x + halfW;
+        const centerY = this.y + halfH;
+        const angle = this.getRenderAngle();
+        const s = Math.sin(angle);
+        const c = Math.cos(angle);
+
+        const corners = {
+            tl: { x: -halfW, y: -halfH },
+            tr: { x: halfW, y: -halfH },
+            br: { x: halfW, y: halfH },
+            bl: { x: -halfW, y: halfH }
+        };
+
+        const dest = {};
+        for (const key in corners) {
+            const corner = corners[key];
+            const offsetX = this.cornerOffsets[key].x;
+            const offsetY = this.cornerOffsets[key].y;
+            const localX = corner.x + offsetX;
+            const localY = corner.y + offsetY;
+
+            dest[key] = {
+                x: centerX + localX * c - localY * s,
+                y: centerY + localX * s + localY * c
+            };
+        }
+
+        const p1 = dest.tl, p2 = dest.tr, p3 = dest.br, p4 = dest.bl;
+        const source = this.offscreenCanvas;
+
+        // --- Vertical Strip Rendering Method ---
+        const stripWidth = 1; // Process 1-pixel-wide strips for high quality
+        for (let x = 0; x < source.width; x += stripWidth) {
+            const progress = x / source.width;
+
+            // Find the top and bottom points of the destination strip using linear interpolation
+            const topX = p1.x + (p2.x - p1.x) * progress;
+            const topY = p1.y + (p2.y - p1.y) * progress;
+            const botX = p4.x + (p3.x - p4.x) * progress;
+            const botY = p4.y + (p3.y - p4.y) * progress;
+
+            const stripHeight = Math.sqrt(Math.pow(botX - topX, 2) + Math.pow(botY - topY, 2));
+
+            if (stripHeight > 0) {
+                try {
+                    targetCtx.save();
+                    // Translate and rotate the context to align with the destination strip
+                    targetCtx.translate(topX, topY);
+                    targetCtx.rotate(Math.atan2(botY - topY, botX - topX));
+
+                    // Draw the 1px source strip, scaling its height to fit the destination
+                    targetCtx.drawImage(source,
+                        x, 0, stripWidth, source.height, // Source rect (a thin vertical slice)
+                        0, 0, stripWidth, stripHeight     // Destination rect (stretched vertically)
+                    );
+                    targetCtx.restore();
+                } catch (e) {
+                    // This catch prevents a crash with extreme distortions
+                    targetCtx.restore();
+                }
+            }
+        }
+    }
+
+    _drawOriginalShape(targetCtx, isSelected, audioData = {}, palette = {}) {
+        const originalCtx = this.ctx;
+        this.ctx = targetCtx;
+
         // Store original colors
         const originalGradient = { ...this.gradient };
         const originalStrokeGradient = { ...this.strokeGradient };
@@ -2373,60 +2494,76 @@ class Shape {
             this.strokeGradient.color2 = pColor2;
         }
 
-        const centerX = this.x + this.width / 2;
-        const centerY = this.y + this.height / 2;
+        let centerX, centerY;
+
+        // Check if we are drawing to the small off-screen canvas or the main one
+        if (targetCtx.canvas === this.offscreenCanvas) {
+            // If drawing to the texture, center it within that small canvas
+            centerX = this.width / 2;
+            centerY = this.height / 2;
+        } else {
+            // Otherwise, use the shape's global position on the main canvas
+            centerX = this.x + this.width / 2;
+            centerY = this.y + this.height / 2;
+        }
+
         const angleToUse = this.getRenderAngle();
 
-        this.ctx.save();
-        this.ctx.translate(centerX, centerY);
-        this.ctx.rotate(angleToUse);
-        this.ctx.rotate(this.animationAngle);
+        targetCtx.save();
+        targetCtx.translate(centerX, centerY);
+
+        // Only apply rotation when drawing to the main canvas.
+        // The texture on the off-screen canvas must be un-rotated.
+        if (targetCtx.canvas !== this.offscreenCanvas) {
+            targetCtx.rotate(angleToUse);
+            targetCtx.rotate(this.animationAngle);
+        }
 
         if (this.internalScale && this.internalScale !== 1.0) {
-            this.ctx.scale(this.internalScale, this.internalScale);
+            targetCtx.scale(this.internalScale, this.internalScale);
         }
 
         // Apply flash opacity if the effect is active
         if (this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0) {
-            this.ctx.globalAlpha = this.flashOpacity;
+            targetCtx.globalAlpha = this.flashOpacity;
         }
 
-        const applyStrokeInside = () => {
+        const applyStrokeInside = (targetCtx) => {
             if (this.enableStroke && this.strokeWidth > 0) {
                 const strokeStyle = this._createLocalStrokeStyle();
-                this.ctx.save();
-                this.ctx.clip();
-                this.ctx.strokeStyle = strokeStyle;
-                this.ctx.lineWidth = this.strokeWidth * 2;
+                targetCtx.save();
+                targetCtx.clip();
+                targetCtx.strokeStyle = strokeStyle;
+                targetCtx.lineWidth = this.strokeWidth * 2;
 
                 if (strokeStyle instanceof CanvasPattern && strokeStyle.offsetX) {
-                    this.ctx.save();
-                    this.ctx.translate(strokeStyle.offsetX, strokeStyle.offsetY);
-                    this.ctx.stroke();
-                    this.ctx.restore();
+                    targetCtx.save();
+                    targetCtx.translate(strokeStyle.offsetX, strokeStyle.offsetY);
+                    targetCtx.stroke();
+                    targetCtx.restore();
                 } else {
-                    this.ctx.stroke();
+                    targetCtx.stroke();
                 }
 
-                this.ctx.restore();
+                targetCtx.restore();
             }
         };
 
         // --- SENSOR REACTIVITY OVERRIDE ---
         if (this.enableSensorReactivity && (this.sensorTarget === 'Time Plot' || this.sensorTarget === 'Sensor Meter')) {
             // Create the correct shape path before clipping and drawing the sensor effect.
-            this.ctx.beginPath();
+            targetCtx.beginPath();
             if (this.shape === 'circle') {
-                this.ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, 2 * Math.PI);
+                targetCtx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, 2 * Math.PI);
             } else if (this.shape === 'polygon') {
                 const rX = this.width / 2;
                 const rY = this.height / 2;
                 const sides = Math.max(3, this.sides);
                 for (let i = 0; i < sides; i++) {
                     const a = (i / sides) * 2 * Math.PI - (Math.PI / 2);
-                    this.ctx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
+                    targetCtx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
                 }
-                this.ctx.closePath();
+                targetCtx.closePath();
             } else if (this.shape === 'star') {
                 const oRX = this.width / 2;
                 const oRY = this.height / 2;
@@ -2437,48 +2574,48 @@ class Shape {
                     const rX = (i % 2 === 0) ? oRX : iRX;
                     const rY = (i % 2 === 0) ? oRY : iRY;
                     const a = (i / (2 * points)) * 2 * Math.PI - (Math.PI / 2);
-                    this.ctx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
+                    targetCtx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
                 }
-                this.ctx.closePath();
+                targetCtx.closePath();
             } else { // Default to rectangle for sensor effects on complex/unsupported shapes
-                this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+                targetCtx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
             }
 
             if (this.sensorTarget === 'Time Plot') {
-                this.ctx.save(); // Save state before clipping
-                this.ctx.clip();
+                targetCtx.save(); // Save state before clipping
+                targetCtx.clip();
                 this._drawTimePlot();
-                this.ctx.restore(); // Restore state to remove clipping
+                targetCtx.restore(); // Restore state to remove clipping
             } else { // Sensor Meter
                 // _drawFill handles its own clipping and state saving/restoring
-                this._drawFill();
+                this._drawFill(targetCtx, targetCtx);
             }
 
         } else {
             // --- ALL REGULAR SHAPE DRAWING LOGIC IS NOW INSIDE THIS ELSE BLOCK ---
             if (this.shape === 'fire' || this.shape === 'fire-radial') {
-                this.ctx.save();
-                this.ctx.beginPath();
-                this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
-                this.ctx.clip();
-                this.ctx.globalCompositeOperation = 'lighter';
+                targetCtx.save();
+                targetCtx.beginPath();
+                targetCtx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+                targetCtx.clip();
+                targetCtx.globalCompositeOperation = 'lighter';
                 this.fireParticles.forEach(p => {
                     const lifeRatio = 1.0 - (p.age / p.maxAge);
-                    this.ctx.beginPath();
+                    targetCtx.beginPath();
                     const ageOpacity = Math.sin(lifeRatio * Math.PI);
                     if (this.colorOverride && this.flashOpacity > 0) {
-                        this.ctx.fillStyle = this.colorOverride;
-                        this.ctx.globalAlpha = this.flashOpacity * ageOpacity;
+                        targetCtx.fillStyle = this.colorOverride;
+                        targetCtx.globalAlpha = this.flashOpacity * ageOpacity;
                     } else {
                         const baseColor = parseColorToRgba(p.color);
                         const finalAlpha = baseColor.a * ageOpacity;
-                        this.ctx.fillStyle = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${finalAlpha})`;
-                        this.ctx.globalAlpha = 1.0;
+                        targetCtx.fillStyle = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${finalAlpha})`;
+                        targetCtx.globalAlpha = 1.0;
                     }
-                    this.ctx.ellipse(p.x, p.y, p.sizeX * lifeRatio, p.sizeY * lifeRatio, 0, 0, 2 * Math.PI);
-                    this.ctx.fill();
+                    targetCtx.ellipse(p.x, p.y, p.sizeX * lifeRatio, p.sizeY * lifeRatio, 0, 0, 2 * Math.PI);
+                    targetCtx.fill();
                 });
-                this.ctx.restore();
+                targetCtx.restore();
             } else if (this.shape === 'pixel-art') {
                 try {
                     if (!this.pixelArtData) return;
@@ -2490,34 +2627,34 @@ class Shape {
                     const cellWidth = this.width / cols;
                     const cellHeight = this.height / rows;
                     const isGradientFill = this.gradType === 'linear' || this.gradType === 'radial' || this.gradType.startsWith('rainbow');
-                    if (isGradientFill) { this.ctx.fillStyle = this._createLocalFillStyle(); }
+                    if (isGradientFill) { targetCtx.fillStyle = this._createLocalFillStyle(); }
                     for (let r = 0; r < rows; r++) {
                         for (let c = 0; c < cols; c++) {
                             const alphaValue = data[r] && data[r][c] ? data[r][c] : 0;
                             if (alphaValue > 0) {
                                 if (!isGradientFill) {
                                     const cellIndex = r * cols + c;
-                                    this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(cellIndex) : this._createLocalFillStyle(cellIndex);
+                                    targetCtx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(cellIndex) : this._createLocalFillStyle(cellIndex);
                                 }
-                                this.ctx.globalAlpha = alphaValue;
-                                this.ctx.fillRect(-this.width / 2 + c * cellWidth, -this.height / 2 + r * cellHeight, cellWidth, cellHeight);
+                                targetCtx.globalAlpha = alphaValue;
+                                targetCtx.fillRect(-this.width / 2 + c * cellWidth, -this.height / 2 + r * cellHeight, cellWidth, cellHeight);
                             }
                         }
                     }
-                    this.ctx.globalAlpha = 1.0;
+                    targetCtx.globalAlpha = 1.0;
                 } catch (e) { console.error("Failed to draw pixel art:", e); }
             } else if (this.shape === 'tetris') {
-                this.ctx.beginPath();
-                this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
-                this.ctx.clip();
+                targetCtx.beginPath();
+                targetCtx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+                targetCtx.clip();
                 this.tetrisBlocks.forEach((block, index) => {
-                    this.ctx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(index) : this._createLocalFillStyle(index);
-                    this.ctx.globalAlpha = block.life;
+                    targetCtx.fillStyle = this.gradType === 'random' ? this._getRandomColorForElement(index) : this._createLocalFillStyle(index);
+                    targetCtx.globalAlpha = block.life;
                     const drawX = block.x - (this.width / 2);
                     const drawY = block.y - (this.height / 2);
-                    this.ctx.fillRect(Math.round(drawX), Math.round(drawY), Math.ceil(block.w), Math.ceil(block.h));
+                    targetCtx.fillRect(Math.round(drawX), Math.round(drawY), Math.ceil(block.w), Math.ceil(block.h));
                 });
-                this.ctx.globalAlpha = 1.0;
+                targetCtx.globalAlpha = 1.0;
 
             } else if (this.shape === 'spawner') {
                 this.particles.forEach(p => {
@@ -2553,27 +2690,27 @@ class Shape {
 
                                 while (distanceTraveledAlongPath + segmentDist >= distanceNeededForNextChar) {
                                     const ratio = (distanceNeededForNextChar - distanceTraveledAlongPath) / segmentDist;
-                                    if (ratio > 1) break; 
+                                    if (ratio > 1) break;
                                     const charX = p1.x + (p2.x - p1.x) * ratio;
                                     const charY = p1.y + (p2.y - p1.y) * ratio;
 
-                                    this.ctx.save();
-                                    this.ctx.translate(charX - this.width / 2, charY - this.height / 2);
-                                    this.ctx.rotate(p1.rotation);
+                                    targetCtx.save();
+                                    targetCtx.translate(charX - this.width / 2, charY - this.height / 2);
+                                    targetCtx.rotate(p1.rotation);
 
                                     const trailOpacity = Math.max(0.1, 1.0 - (drawnCharIndex / trailLength));
-                                    this.ctx.globalAlpha = overallAlpha * trailOpacity;
-                                    
+                                    targetCtx.globalAlpha = overallAlpha * trailOpacity;
+
                                     if (isMatrixTrail) {
-                                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
+                                        targetCtx.fillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
                                         this._drawParticleShape({ ...p, size: p.size, matrixChars: [p.matrixChars[drawnCharIndex + 1]] });
                                     } else {
-                                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : this.spawn_leaderColor;
-                                        if (this.enableStroke) this.ctx.strokeStyle = this.ctx.fillStyle;
+                                        targetCtx.fillStyle = isFlashActive ? '#FFFFFF' : this.spawn_leaderColor;
+                                        if (this.enableStroke) targetCtx.strokeStyle = targetCtx.fillStyle;
                                         this._drawParticleShape({ ...p, size: p.size });
                                     }
-                                    
-                                    this.ctx.restore();
+
+                                    targetCtx.restore();
 
                                     drawnCharIndex++;
                                     distanceNeededForNextChar += spacing;
@@ -2585,36 +2722,36 @@ class Shape {
                     }
 
                     // --- Draw the Leader Particle ---
-                    this.ctx.save();
-                    this.ctx.translate(p.x - this.width / 2, p.y - this.height / 2);
-                    this.ctx.rotate(p.rotation);
-                    this.ctx.globalAlpha = overallAlpha;
+                    targetCtx.save();
+                    targetCtx.translate(p.x - this.width / 2, p.y - this.height / 2);
+                    targetCtx.rotate(p.rotation);
+                    targetCtx.globalAlpha = overallAlpha;
 
                     if (isFlashActive) {
-                        this.ctx.fillStyle = '#FFFFFF';
+                        targetCtx.fillStyle = '#FFFFFF';
                     } else if (p.actualShape === 'matrix') {
-                        this.ctx.fillStyle = this.gradient.color1;
+                        targetCtx.fillStyle = this.gradient.color1;
                     } else {
-                        this.ctx.fillStyle = this.spawn_enableTrail ? this.spawn_leaderColor : this._createLocalFillStyle(p.id);
+                        targetCtx.fillStyle = this.spawn_enableTrail ? this.spawn_leaderColor : this._createLocalFillStyle(p.id);
                     }
 
                     if (this.enableStroke) {
-                        this.ctx.strokeStyle = this.ctx.fillStyle;
+                        targetCtx.strokeStyle = targetCtx.fillStyle;
                     }
 
                     this._drawParticleShape(p);
-                    this.ctx.restore();
+                    targetCtx.restore();
                 });
             } else if (this.shape === 'text') {
                 const textToRender = this.getDisplayText();
                 const centeredShape = { ...this, x: -this.width / 2, y: -this.height / 2, };
-                this.ctx.fillStyle = this._createLocalFillStyle();
-                drawPixelText(this.ctx, centeredShape, textToRender);
+                targetCtx.fillStyle = this._createLocalFillStyle();
+                drawPixelText(targetCtx, centeredShape, textToRender);
             } else if (this.shape === 'audio-visualizer') {
                 const barCount = parseInt(this.vizBarCount, 10) || 32;
                 const fillStyle = this._createLocalFillStyle();
-                this.ctx.fillStyle = fillStyle;
-                this.ctx.strokeStyle = fillStyle;
+                targetCtx.fillStyle = fillStyle;
+                targetCtx.strokeStyle = fillStyle;
                 if (this.vizLayout === 'Circular') {
                     const centerX = 0;
                     const centerY = 0;
@@ -2622,7 +2759,7 @@ class Shape {
                     const innerRadius = outerRadius * ((this.vizInnerRadius || 0) / 100.0);
                     if (this.vizDrawStyle === 'Line' || this.vizDrawStyle === 'Area') {
                         if (barCount < 2) return;
-                        this.ctx.beginPath();
+                        targetCtx.beginPath();
                         for (let i = 0; i <= barCount; i++) {
                             const index = i % barCount;
                             const barHeight = this.vizBarHeights[index] || 0;
@@ -2630,14 +2767,14 @@ class Shape {
                             const radius = innerRadius + barHeight;
                             const x = centerX + radius * Math.cos(angle);
                             const y = centerY + radius * Math.sin(angle);
-                            if (i === 0) { this.ctx.moveTo(x, y); } else { this.ctx.lineTo(x, y); }
+                            if (i === 0) { targetCtx.moveTo(x, y); } else { targetCtx.lineTo(x, y); }
                         }
                         if (this.vizDrawStyle === 'Area') {
-                            this.ctx.closePath();
-                            this.ctx.fill();
+                            targetCtx.closePath();
+                            targetCtx.fill();
                         } else {
-                            this.ctx.lineWidth = this.vizLineWidth;
-                            this.ctx.stroke();
+                            targetCtx.lineWidth = this.vizLineWidth;
+                            targetCtx.stroke();
                         }
                     } else {
                         if (this.vizUseSegments) {
@@ -2659,14 +2796,14 @@ class Shape {
                                     for (let j = 0; j < litSegments; j++) {
                                         const segmentStartRadius = innerRadius + j * (segmentLength + segmentSpacing);
                                         const segmentEndRadius = segmentStartRadius + segmentLength;
-                                        this.ctx.beginPath();
-                                        this.ctx.arc(centerX, centerY, segmentEndRadius, startAngle, endAngle);
-                                        this.ctx.arc(centerX, centerY, segmentStartRadius, endAngle, startAngle, true);
-                                        this.ctx.closePath();
+                                        targetCtx.beginPath();
+                                        targetCtx.arc(centerX, centerY, segmentEndRadius, startAngle, endAngle);
+                                        targetCtx.arc(centerX, centerY, segmentStartRadius, endAngle, startAngle, true);
+                                        targetCtx.closePath();
                                         if (this.gradType === 'alternating' || this.gradType === 'random') {
-                                            this.ctx.fillStyle = this._createLocalFillStyle(j);
+                                            targetCtx.fillStyle = this._createLocalFillStyle(j);
                                         }
-                                        this.ctx.fill();
+                                        targetCtx.fill();
                                     }
                                 }
                             }
@@ -2681,11 +2818,11 @@ class Shape {
                                 const baseAngle = this.rotation * (Math.PI / 180);
                                 const startAngle = baseAngle + (i * angleStep) - (Math.PI / 2);
                                 const endAngle = startAngle + barAngularWidth;
-                                this.ctx.beginPath();
-                                this.ctx.arc(centerX, centerY, endRadius, startAngle, endAngle);
-                                this.ctx.arc(centerX, centerY, startRadius, endAngle, startAngle, true);
-                                this.ctx.closePath();
-                                this.ctx.fill();
+                                targetCtx.beginPath();
+                                targetCtx.arc(centerX, centerY, endRadius, startAngle, endAngle);
+                                targetCtx.arc(centerX, centerY, startRadius, endAngle, startAngle, true);
+                                targetCtx.closePath();
+                                targetCtx.fill();
                             }
                         }
                     }
@@ -2693,25 +2830,25 @@ class Shape {
                     const totalSpacing = (barCount - 1) * this.vizBarSpacing;
                     const barWidth = (this.width - totalSpacing) / barCount;
                     if (this.vizDrawStyle === 'Line' || this.vizDrawStyle === 'Area') {
-                        this.ctx.beginPath();
+                        targetCtx.beginPath();
                         const halfW = this.width / 2;
                         const halfH = this.height / 2;
                         const firstBarHeight = this.vizBarHeights[0] || 0;
-                        this.ctx.moveTo(-halfW, halfH - firstBarHeight);
+                        targetCtx.moveTo(-halfW, halfH - firstBarHeight);
                         for (let i = 0; i < barCount; i++) {
                             const barHeight = this.vizBarHeights[i] || 0;
                             const x = -halfW + i * (barWidth + this.vizBarSpacing) + barWidth / 2;
                             const y = halfH - barHeight;
-                            this.ctx.lineTo(x, y);
+                            targetCtx.lineTo(x, y);
                         }
                         if (this.vizDrawStyle === 'Area') {
-                            this.ctx.lineTo(halfW, halfH);
-                            this.ctx.lineTo(-halfW, halfH);
-                            this.ctx.closePath();
-                            this.ctx.fill();
+                            targetCtx.lineTo(halfW, halfH);
+                            targetCtx.lineTo(-halfW, halfH);
+                            targetCtx.closePath();
+                            targetCtx.fill();
                         } else {
-                            this.ctx.lineWidth = this.vizLineWidth;
-                            this.ctx.stroke();
+                            targetCtx.lineWidth = this.vizLineWidth;
+                            targetCtx.stroke();
                         }
                     } else {
                         for (let i = 0; i < barCount; i++) {
@@ -2729,7 +2866,7 @@ class Shape {
                                         let y;
                                         const segYPos = j * (segmentHeight + segmentSpacing);
                                         if (this.gradType === 'alternating' || this.gradType === 'random') {
-                                            this.ctx.fillStyle = this._createLocalFillStyle(j);
+                                            targetCtx.fillStyle = this._createLocalFillStyle(j);
                                         }
                                         switch (this.vizStyle) {
                                             case 'top': y = -this.height / 2 + segYPos; break;
@@ -2739,7 +2876,7 @@ class Shape {
                                                 break;
                                             default: y = this.height / 2 - segmentHeight - segYPos; break;
                                         }
-                                        this.ctx.fillRect(x, y, barWidth, segmentHeight);
+                                        targetCtx.fillRect(x, y, barWidth, segmentHeight);
                                     }
                                 }
                             } else {
@@ -2749,7 +2886,7 @@ class Shape {
                                     case 'center': y = -barHeight / 2; break;
                                     default: y = this.height / 2 - barHeight; break;
                                 }
-                                this.ctx.fillRect(x, y, barWidth, barHeight);
+                                targetCtx.fillRect(x, y, barWidth, barHeight);
                             }
                         }
                     }
@@ -2757,11 +2894,11 @@ class Shape {
             } else if (this.shape === 'oscilloscope') {
                 const activeWavePhase = this.enableWaveAnimation ? this.wavePhaseAngle : 0;
                 if (this.oscDisplayMode === 'radial') {
-                    this.ctx.lineWidth = this.vizLineWidth;
-                    this.ctx.strokeStyle = this._createLocalFillStyle();
-                    const totalRadius = (Math.min(this.width, this.height) / 2) - (this.ctx.lineWidth / 2);
+                    targetCtx.lineWidth = this.vizLineWidth;
+                    targetCtx.strokeStyle = this._createLocalFillStyle();
+                    const totalRadius = (Math.min(this.width, this.height) / 2) - (targetCtx.lineWidth / 2);
                     if (totalRadius > 0) {
-                        this.ctx.beginPath();
+                        targetCtx.beginPath();
                         const baseRadius = totalRadius * (0.5 + (this.pulseDepth || 0) / 100.0 * 0.5);
                         const maxAmplitude = totalRadius - baseRadius;
                         for (let i = 0; i <= 360; i++) {
@@ -2776,14 +2913,14 @@ class Shape {
                                 default: y_wave = Math.sin(waveFuncAngle); break;
                             }
                             const finalRadius = baseRadius + y_wave * maxAmplitude;
-                            if (i === 0) this.ctx.moveTo(finalRadius * Math.cos(angleRad), finalRadius * Math.sin(angleRad));
-                            else this.ctx.lineTo(finalRadius * Math.cos(angleRad), finalRadius * Math.sin(angleRad));
+                            if (i === 0) targetCtx.moveTo(finalRadius * Math.cos(angleRad), finalRadius * Math.sin(angleRad));
+                            else targetCtx.lineTo(finalRadius * Math.cos(angleRad), finalRadius * Math.sin(angleRad));
                         }
-                        this.ctx.closePath();
-                        this.ctx.stroke();
+                        targetCtx.closePath();
+                        targetCtx.stroke();
                     }
                 } else if (this.oscDisplayMode === 'seismic') {
-                    this.ctx.lineWidth = this.lineWidth;
+                    targetCtx.lineWidth = this.lineWidth;
                     const maxRadius = Math.min(this.width, this.height) / 2;
                     const waveCount = Math.max(1, this.waveCount);
                     const spacing = maxRadius / waveCount;
@@ -2796,8 +2933,8 @@ class Shape {
                         const fadeInLimit = spacing;
                         if (radius < fadeInLimit) alpha *= (radius / fadeInLimit);
                         if (alpha <= 0) continue;
-                        this.ctx.globalAlpha = alpha;
-                        this.ctx.beginPath();
+                        targetCtx.globalAlpha = alpha;
+                        targetCtx.beginPath();
                         if (this.waveStyle === 'wavy') {
                             const points = Math.max(60, this.frequency * 20);
                             const maxAmplitude = (this.pulseDepth / 100) * 20;
@@ -2816,22 +2953,22 @@ class Shape {
                                 }
                                 const r = radius + y_wave * amplitude;
                                 const finalAngle = angle + rotationalPhase;
-                                this.ctx[j === 0 ? 'moveTo' : 'lineTo'](Math.cos(finalAngle) * r, Math.sin(finalAngle) * r);
+                                targetCtx[j === 0 ? 'moveTo' : 'lineTo'](Math.cos(finalAngle) * r, Math.sin(finalAngle) * r);
                             }
-                        } else { this.ctx.arc(0, 0, radius, 0, 2 * Math.PI); }
-                        this.ctx.closePath();
+                        } else { targetCtx.arc(0, 0, radius, 0, 2 * Math.PI); }
+                        targetCtx.closePath();
                         const style = this._createLocalFillStyle(i);
-                        this.ctx.strokeStyle = style;
-                        this.ctx.fillStyle = style;
-                        if (this.fillShape) { this.ctx.fill(); } else { this.ctx.stroke(); }
+                        targetCtx.strokeStyle = style;
+                        targetCtx.fillStyle = style;
+                        if (this.fillShape) { targetCtx.fill(); } else { targetCtx.stroke(); }
                     }
-                    this.ctx.globalAlpha = 1.0;
+                    targetCtx.globalAlpha = 1.0;
                 } else {
                     const halfW = this.width / 2;
                     const halfH = this.height / 2;
                     const activeLineWidth = this.lineWidth;
                     const amplitude = Math.max(1, (this.height - activeLineWidth) / 2);
-                    this.ctx.beginPath();
+                    targetCtx.beginPath();
                     for (let i = 0; i <= this.width; i++) {
                         const progress = i / this.width;
                         const angle = 2 * Math.PI * this.frequency * progress + activeWavePhase;
@@ -2845,21 +2982,21 @@ class Shape {
                         }
                         const px = -halfW + i;
                         const py = -y_wave * amplitude;
-                        if (i === 0) this.ctx.moveTo(px, py); else this.ctx.lineTo(px, py);
+                        if (i === 0) targetCtx.moveTo(px, py); else targetCtx.lineTo(px, py);
                     }
                     if (this.fillShape) {
-                        this.ctx.save();
-                        this.ctx.lineTo(halfW, halfH);
-                        this.ctx.lineTo(-halfW, halfH);
-                        this.ctx.closePath();
-                        this.ctx.fillStyle = this._createLocalFillStyle();
-                        this.ctx.fill();
-                        this.ctx.restore();
+                        targetCtx.save();
+                        targetCtx.lineTo(halfW, halfH);
+                        targetCtx.lineTo(-halfW, halfH);
+                        targetCtx.closePath();
+                        targetCtx.fillStyle = this._createLocalFillStyle();
+                        targetCtx.fill();
+                        targetCtx.restore();
                     }
-                    this.ctx.strokeStyle = this._createLocalFillStyle();
-                    this.ctx.lineWidth = this.lineWidth;
-                    if (this.ctx.lineWidth <= 0 || !isFinite(this.ctx.lineWidth)) { this.ctx.lineWidth = 1; }
-                    this.ctx.stroke();
+                    targetCtx.strokeStyle = this._createLocalFillStyle();
+                    targetCtx.lineWidth = this.lineWidth;
+                    if (targetCtx.lineWidth <= 0 || !isFinite(targetCtx.lineWidth)) { targetCtx.lineWidth = 1; }
+                    targetCtx.stroke();
                 }
             } else if (this.shape === 'ring') {
                 const oR = this.width / 2;
@@ -2868,16 +3005,16 @@ class Shape {
                     const aStep = (2 * Math.PI) / this.numberOfSegments;
                     const segAngle = (this.angularWidth * Math.PI) / 180;
                     for (let i = 0; i < this.numberOfSegments; i++) {
-                        this.ctx.beginPath();
+                        targetCtx.beginPath();
                         const startAngle = i * aStep + this.animationAngle;
                         const endAngle = startAngle + segAngle;
-                        this.ctx.moveTo(Math.cos(startAngle) * oR, Math.sin(startAngle) * oR);
-                        this.ctx.arc(0, 0, oR, startAngle, endAngle, false);
-                        this.ctx.lineTo(Math.cos(endAngle) * iR, Math.sin(endAngle) * iR);
-                        this.ctx.arc(0, 0, iR, endAngle, startAngle, true);
-                        this.ctx.closePath();
-                        this._drawFill(i);
-                        applyStrokeInside();
+                        targetCtx.moveTo(Math.cos(startAngle) * oR, Math.sin(startAngle) * oR);
+                        targetCtx.arc(0, 0, oR, startAngle, endAngle, false);
+                        targetCtx.lineTo(Math.cos(endAngle) * iR, Math.sin(endAngle) * iR);
+                        targetCtx.arc(0, 0, iR, endAngle, startAngle, true);
+                        targetCtx.closePath();
+                        this._drawFill(targetCtx, i);
+                        applyStrokeInside(targetCtx)
                     }
                 }
             } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
@@ -2886,25 +3023,25 @@ class Shape {
                 for (let row = 0; row < this.numberOfRows; row++) {
                     for (let col = 0; col < this.numberOfColumns; col++) {
                         const cellIndex = row * this.numberOfColumns + col;
-                        this.ctx.beginPath();
-                        this.ctx.rect(-this.width / 2 + col * cellW, -this.height / 2 + row * cellH, cellW, cellH);
-                        this._drawFill(cellIndex);
-                        applyStrokeInside();
+                        targetCtx.beginPath();
+                        targetCtx.rect(-this.width / 2 + col * cellW, -this.height / 2 + row * cellH, cellW, cellH);
+                        this._drawFill(targetCtx, cellIndex);
+                        applyStrokeInside(targetCtx)
                     }
                 }
             } else {
-                this.ctx.beginPath();
+                targetCtx.beginPath();
                 if (this.shape === 'circle') {
-                    this.ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, 2 * Math.PI);
+                    targetCtx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, 2 * Math.PI);
                 } else if (this.shape === 'polygon') {
                     const rX = this.width / 2;
                     const rY = this.height / 2;
                     const sides = Math.max(3, this.sides);
                     for (let i = 0; i < sides; i++) {
                         const a = (i / sides) * 2 * Math.PI - (Math.PI / 2);
-                        this.ctx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
+                        targetCtx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
                     }
-                    this.ctx.closePath();
+                    targetCtx.closePath();
                 } else if (this.shape === 'star') {
                     const oRX = this.width / 2;
                     const oRY = this.height / 2;
@@ -2915,13 +3052,13 @@ class Shape {
                         const rX = (i % 2 === 0) ? oRX : iRX;
                         const rY = (i % 2 === 0) ? oRY : iRY;
                         const a = (i / (2 * points)) * 2 * Math.PI - (Math.PI / 2);
-                        this.ctx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
+                        targetCtx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
                     }
-                    this.ctx.closePath();
+                    targetCtx.closePath();
                 } else {
-                    this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+                    targetCtx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
                 }
-                this._drawFill();
+                this._drawFill(targetCtx);
                 applyStrokeInside();
             }
         }
@@ -2930,7 +3067,7 @@ class Shape {
         this.gradient = originalGradient;
         this.strokeGradient = originalStrokeGradient;
 
-        this.ctx.restore();
+        targetCtx.restore();
     }
 
     drawSelectionUI() {
