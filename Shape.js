@@ -2540,7 +2540,6 @@ class Shape {
                     const isMatrixTrail = p.actualShape === 'matrix' && p.matrixChars && p.trail && p.trail.length > 0;
                     const isGenericTrail = this.spawn_enableTrail && p.actualShape !== 'matrix' && p.trail && p.trail.length > 0;
 
-
                     if (isMatrixTrail || isGenericTrail) {
                         const spacing = (this.spawn_trailSpacing || 1) * p.size;
                         const trailLength = Number(this.spawn_trailLength) || 15;
@@ -2571,7 +2570,7 @@ class Shape {
                                     const trailOpacity = Math.max(0.1, 1.0 - (drawnCharIndex / trailLength));
                                     this.ctx.globalAlpha = overallAlpha * trailOpacity;
 
-                                    if (this.spawn_enableTrail && isMatrixTrail) {
+                                    if (isMatrixTrail) {
                                         this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
                                         const glowEnabled = this.spawn_matrixEnableGlow && this.spawn_matrixGlowSize > 0;
                                         if (glowEnabled) {
@@ -2582,10 +2581,15 @@ class Shape {
                                         if (glowEnabled) {
                                             this.ctx.shadowBlur = 0;
                                         }
-                                    } else if (this.spawn_enableTrail && isGenericTrail) {
-                                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : this.spawn_leaderColor;
-                                        if (this.enableStroke) this.ctx.strokeStyle = this.ctx.fillStyle;
-                                        this._drawParticleShape({ ...p, size: p.size });
+                                    } else { // Generic Trail
+                                        const trailProgress = drawnCharIndex / trailLength;
+                                        this.ctx.globalAlpha = overallAlpha * (1.0 - trailProgress);
+                                        this.ctx.fillStyle = this._createLocalFillStyle(p.id);
+                                        if (this.enableStroke) {
+                                            this.ctx.strokeStyle = this.ctx.fillStyle;
+                                        }
+                                        const trailParticle = { ...p, size: p.size * (1.0 - trailProgress) };
+                                        this._drawParticleShape(trailParticle);
                                     }
 
                                     this.ctx.restore();
