@@ -485,7 +485,7 @@ class Shape {
         this.spawn_rotationVariance = spawn_rotationVariance || 0;
         this.spawn_size_randomness = spawn_size_randomness || 0;
         this.spawn_initialRotation_random = spawn_initialRotation_random || false;
-        this.spawn_svg_path = spawn_svg_path || 'M -20 -20 L 20 -20 L 20 20 L -20 20 Z';
+        this.spawn_svg_path = spawn_svg_path || 'M 0 0 L 40 0 L 40 40 L 0 40 Z';
         this.spawn_matrixCharSet = spawn_matrixCharSet || 'katakana';
         this.spawn_matrixEnableGlow = spawn_matrixEnableGlow || false;
         this.spawn_matrixGlowSize = spawn_matrixGlowSize || 10;
@@ -521,6 +521,8 @@ class Shape {
                     this.ctx.save();
                     const scale = particle.size / 40;
                     this.ctx.scale(scale, scale);
+                    // This translation centers a path designed in a 0-40 viewport.
+                    this.ctx.translate(-20, -20);
                     this.ctx.fill(this.customParticlePath);
                     if (this.enableStroke) this.ctx.stroke(this.customParticlePath);
                     this.ctx.restore();
@@ -1069,6 +1071,8 @@ class Shape {
     }
 
     update(props) {
+        this._conicPatternCache = null;
+        this._strokeConicPatternCache = null;
         // --- Store original state for calculations ---
         const oldWidth = this.width;
         const oldHeight = this.height;
@@ -1328,7 +1332,10 @@ class Shape {
         }
 
         if (gradType === 'conic' || gradType === 'rainbow-conic') {
-            if (this._strokeConicPatternCache) return this._strokeConicPatternCache;
+            // If not animated, try to use the cache. Otherwise, always regenerate.
+            if (this.strokeAnimationSpeed === 0 && this._strokeConicPatternCache) {
+                return this._strokeConicPatternCache;
+            }
             const size = Math.ceil(Math.sqrt(this.width * this.width + this.height * this.height));
             if (size <= 0) return 'black';
 
@@ -1368,7 +1375,11 @@ class Shape {
             const pattern = this.ctx.createPattern(tempCanvas, 'no-repeat');
             pattern.offsetX = -centerX;
             pattern.offsetY = -centerY;
-            this._strokeConicPatternCache = pattern;
+
+            // Only cache the pattern if the animation is turned off.
+            if (this.strokeAnimationSpeed === 0) {
+                this._strokeConicPatternCache = pattern;
+            }
             return pattern;
         }
 
@@ -1419,7 +1430,8 @@ class Shape {
                 return this._getRandomColorForElement(phase);
             case 'conic':
             case 'rainbow-conic': {
-                if (this._conicPatternCache) {
+                // If not animated, try to use the cache. Otherwise, always regenerate.
+                if (this.animationSpeed === 0 && this._conicPatternCache) {
                     return this._conicPatternCache;
                 }
                 const size = Math.ceil(Math.sqrt(this.width * this.width + this.height * this.height));
@@ -1464,7 +1476,11 @@ class Shape {
                 const pattern = this.ctx.createPattern(tempCanvas, 'no-repeat');
                 pattern.offsetX = -centerX;
                 pattern.offsetY = -centerY;
-                this._conicPatternCache = pattern;
+
+                // Only cache the pattern if the animation is turned off.
+                if (this.animationSpeed === 0) {
+                    this._conicPatternCache = pattern;
+                }
                 return pattern;
             }
             default: // solid
@@ -1710,8 +1726,6 @@ class Shape {
     }
 
     updateAnimationState(audioData, sensorData, deltaTime = 0) {
-        this._conicPatternCache = null;
-        this._strokeConicPatternCache = null;
         this._applyAudioReactivity(audioData);
         this._applySensorReactivity(sensorData);
 
@@ -2581,30 +2595,33 @@ class Shape {
                                     this.ctx.translate(charX - this.width / 2, charY - this.height / 2);
                                     this.ctx.rotate(p1.rotation);
 
-                                    const trailOpacity = Math.max(0.1, 1.0 - (drawnCharIndex / trailLength));
+                                    const trailProgress = drawnCharIndex / trailLength;
+
+                                    // --- Refactored Trail Coloring & Drawing Logic ---
+                                    let trailFillStyle;
+                                    if (isFlashActive) {
+                                        trailFillStyle = '#FFFFFF';
+                                    } else if (this.gradType === 'solid') {
+                                        trailFillStyle = this.gradient.color2;
+                                    } else {
+                                        trailFillStyle = this._createLocalFillStyle(p.id);
+                                    }
+                                    this.ctx.fillStyle = trailFillStyle;
+                                    if (this.enableStroke) {
+                                        this.ctx.strokeStyle = trailFillStyle;
+                                    }
+
+                                    const trailOpacity = isMatrixTrail ? Math.max(0.1, 1.0 - trailProgress) : (1.0 - trailProgress);
                                     this.ctx.globalAlpha = overallAlpha * trailOpacity;
 
+                                    const trailParticle = { ...p };
                                     if (isMatrixTrail) {
-                                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
-                                        this._drawParticleShape({ ...p, size: p.size, matrixChars: [p.matrixChars[drawnCharIndex + 1]] });
-                                    } else { // Generic Trail
-                                        const trailProgress = drawnCharIndex / trailLength;
-                                        this.ctx.globalAlpha = overallAlpha * (1.0 - trailProgress);
-
-                                        // For the trail, we use the main fill style, but if it's solid, we base it on Color 2.
-                                        const originalColor1 = this.gradient.color1;
-                                        if (this.gradType === 'solid') {
-                                            this.gradient.color1 = this.gradient.color2;
-                                        }
-                                        this.ctx.fillStyle = this._createLocalFillStyle(p.id);
-                                        this.gradient.color1 = originalColor1; // Restore it immediately
-
-                                        if (this.enableStroke) {
-                                            this.ctx.strokeStyle = this.ctx.fillStyle;
-                                        }
-                                        const trailParticle = { ...p, size: p.size * (1.0 - trailProgress) };
-                                        this._drawParticleShape(trailParticle);
+                                        trailParticle.matrixChars = [p.matrixChars[drawnCharIndex + 1]];
+                                    } else {
+                                        trailParticle.size *= (1.0 - trailProgress);
                                     }
+                                    this._drawParticleShape(trailParticle);
+                                    // --- End Refactor ---
 
                                     this.ctx.restore();
 
