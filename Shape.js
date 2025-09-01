@@ -1824,16 +1824,16 @@ class Shape {
                         const angle = (Math.random() - 0.5) * spreadRad - (Math.PI / 2);
                         particle.vx = Math.cos(angle) * speed;
                         particle.vy = Math.sin(angle) * speed;
-                        particle.y = this.height;
+                        particle.y = this.height + finalSize; // Start below the box
                         break;
                     }
                     case 'rain':
                         particle.x = Math.random() * this.width;
-                        particle.y = 0;
+                        particle.y = -finalSize; // Start above the box
                         particle.vy = speed;
                         break;
                     case 'flow':
-                        particle.x = 0;
+                        particle.x = -finalSize; // Start left of the box
                         particle.y = Math.random() * this.height;
                         particle.vx = speed;
                         break;
