@@ -2573,19 +2573,9 @@ class Shape {
                                     if (isMatrixTrail) {
                                         this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
                                         this._drawParticleShape({ ...p, size: p.size, matrixChars: [p.matrixChars[drawnCharIndex + 1]] });
-                                    } else { // Generic Trail
-                                        const leaderColor = (this.spawn_enableTrail && !this.cycleColors) ? this.spawn_leaderColor : this._createLocalFillStyle(p.id);
-                                        const trailEndColor = this._createLocalFillStyle(p.id);
-                                        const trailProgress = drawnCharIndex / trailLength;
-                                        if (this.gradType === 'solid' && !isFlashActive) {
-                                            this.ctx.fillStyle = lerpColor(leaderColor, trailEndColor, trailProgress);
-                                        } else {
-                                            this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : leaderColor;
-                                        }
-
-                                        if (this.enableStroke) {
-                                            this.ctx.strokeStyle = this.ctx.fillStyle;
-                                        }
+                                    } else {
+                                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : this.spawn_leaderColor;
+                                        if (this.enableStroke) this.ctx.strokeStyle = this.ctx.fillStyle;
                                         this._drawParticleShape({ ...p, size: p.size });
                                     }
 
