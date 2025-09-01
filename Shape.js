@@ -282,7 +282,7 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path, spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixEnableGlow, spawn_matrixGlowSize, spawn_matrixGlowColor, spawn_enableTrail, spawn_trailLength, spawn_leaderColor }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -432,8 +432,7 @@ class Shape {
         this.sensorMeterShowValue = sensorMeterShowValue;
         this.timePlotAxesStyle = timePlotAxesStyle;
         this.timePlotTimeScale = timePlotTimeScale;
-        this.sensorRawValue = 0;
-        this.sensorRawValue = 0;
+        this.sensorRawValue = 0
         this.baseWidth = this.width;
         this.baseHeight = this.height;
         this.baseRotation = this.rotation;
@@ -477,18 +476,131 @@ class Shape {
         this.spawn_spawnRate = spawn_spawnRate || 50;
         this.spawn_lifetime = spawn_lifetime || 3;
         this.spawn_speed = spawn_speed || 50;
+        this.spawn_speedVariance = spawn_speedVariance || 0;
         this.spawn_size = spawn_size || 10;
         this.spawn_gravity = spawn_gravity || 0;
         this.spawn_spread = spawn_spread || 360;
         this.spawn_rotationSpeed = spawn_rotationSpeed || 0;
+        this.spawn_rotationVariance = spawn_rotationVariance || 0;
         this.spawn_size_randomness = spawn_size_randomness || 0;
         this.spawn_initialRotation_random = spawn_initialRotation_random || false;
+        this.spawn_svg_path = spawn_svg_path || 'M -20 -20 L 20 -20 L 20 20 L -20 20 Z';
+        this.spawn_matrixCharSet = spawn_matrixCharSet || 'katakana';
+        this.spawn_matrixEnableGlow = spawn_matrixEnableGlow || false;
+        this.spawn_matrixGlowSize = spawn_matrixGlowSize || 10;
+        this.spawn_enableTrail = spawn_enableTrail || false;
+        this.spawn_trailLength = spawn_trailLength || 10;
+        this.spawn_leaderColor = spawn_leaderColor || '#FFFFFF';
+
         // Particle system state
         this.particles = [];
         this.spawnCounter = 0;
         this.nextParticleId = 0;
-        this.spawn_svg_path = spawn_svg_path || '';
-        this.customParticlePath = null; // Cache for the parsed Path2D object
+        this.customParticlePath = null;
+        this.matrixActiveCharSet = '';
+        this.availableParticleShapes = ['rectangle', 'circle', 'polygon', 'star', 'sparkle', 'custom', 'matrix'];
+    }
+
+    _drawParticleShape(particle) {
+        const s = particle.size / 2;
+
+        switch (particle.actualShape) {
+            case 'custom':
+                if (this.customParticlePath) {
+                    this.ctx.save();
+                    const scale = particle.size / 40;
+                    this.ctx.scale(scale, scale);
+                    this.ctx.translate(-20, -20);
+                    this.ctx.fill(this.customParticlePath);
+                    if (this.enableStroke) this.ctx.stroke(this.customParticlePath);
+                    this.ctx.restore();
+                }
+                break;
+
+            case 'matrix':
+                if (!particle.matrixChars) break;
+
+                const fontSize = particle.size;
+                this.ctx.font = `bold ${fontSize}px monospace`;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                const glowEnabled = this.spawn_matrixEnableGlow && this.spawn_matrixGlowSize > 0;
+                const originalAlpha = this.ctx.globalAlpha;
+                const isFlashActive = this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0;
+
+                // 1. Define colors, giving priority to the Flash effect
+                const leaderColor = isFlashActive ? '#FFFFFF' : this.gradient.color1;
+                const trailFillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(particle.id));
+                const trailGlowColor = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this.gradient.color1);
+
+                // 2. Draw the Fading Trail
+                for (let i = particle.matrixChars.length - 1; i > 0; i--) {
+                    const char = particle.matrixChars[i];
+                    const yOffset = -i * fontSize;
+
+                    this.ctx.fillStyle = trailFillStyle;
+                    if (glowEnabled) {
+                        this.ctx.shadowBlur = this.spawn_matrixGlowSize;
+                        this.ctx.shadowColor = trailGlowColor;
+                    }
+
+                    const trailOpacity = Math.max(0.1, 1.0 - (i / particle.matrixChars.length));
+                    this.ctx.globalAlpha = originalAlpha * trailOpacity;
+
+                    this.ctx.fillText(char || '?', 0, yOffset);
+                }
+
+                // 3. Draw the Leader on Top
+                this.ctx.globalAlpha = originalAlpha;
+                this.ctx.shadowBlur = 0;
+                this.ctx.fillStyle = leaderColor;
+
+                if (glowEnabled) {
+                    this.ctx.shadowBlur = this.spawn_matrixGlowSize;
+                    this.ctx.shadowColor = leaderColor;
+                }
+
+                this.ctx.fillText(particle.matrixChars[0] || '?', 0, 0);
+
+                break;
+
+            default:
+                this.ctx.beginPath();
+                if (particle.actualShape === 'circle') {
+                    this.ctx.arc(0, 0, s, 0, 2 * Math.PI);
+                } else if (particle.actualShape === 'sparkle') {
+                    this.ctx.moveTo(0, -s);
+                    this.ctx.lineTo(s * 0.3, -s * 0.3);
+                    this.ctx.lineTo(s, 0);
+                    this.ctx.lineTo(s * 0.3, s * 0.3);
+                    this.ctx.lineTo(0, s);
+                    this.ctx.lineTo(-s * 0.3, s * 0.3);
+                    this.ctx.lineTo(-s, 0);
+                    this.ctx.lineTo(-s * 0.3, -s * 0.3);
+                    this.ctx.closePath();
+                } else if (particle.actualShape === 'polygon') {
+                    const sides = Math.max(3, this.sides);
+                    for (let i = 0; i < sides; i++) {
+                        const a = (i / sides) * 2 * Math.PI - (Math.PI / 2);
+                        this.ctx[i === 0 ? 'moveTo' : 'lineTo'](s * Math.cos(a), s * Math.sin(a));
+                    }
+                    this.ctx.closePath();
+                } else if (particle.actualShape === 'star') {
+                    const points = Math.max(3, this.points);
+                    const iS = s * (this.starInnerRadius / 100);
+                    for (let i = 0; i < 2 * points; i++) {
+                        const r = (i % 2 === 0) ? s : iS;
+                        const a = (i / (2 * points)) * 2 * Math.PI - (Math.PI / 2);
+                        this.ctx[i === 0 ? 'moveTo' : 'lineTo'](r * Math.cos(a), r * Math.sin(a));
+                    }
+                    this.ctx.closePath();
+                } else { // rectangle
+                    this.ctx.rect(-s, -s, particle.size, particle.size);
+                }
+                this.ctx.fill();
+                if (this.enableStroke) this.ctx.stroke();
+                break;
+        }
     }
 
     _applySensorReactivity(sensorData) {
@@ -631,68 +743,70 @@ class Shape {
     }
 
     _applyAudioReactivity(audioData) {
-        if (this.isBeingManuallyRotated) {
-            return;
-        }
+        if (this.isBeingManuallyRotated) return;
 
-        // Reset properties at the start of each frame.
+        // --- 1. Reset all reactive properties to their base state ---
         this.rotation = this.baseRotation || 0;
         this.internalScale = 1.0;
         this.colorOverride = null;
-        this.gradient = { ...(this.baseGradient || { color1: '#000000', color2: '#000000' }) };
+        this.flashOpacity = 0; // Reset opacity as well
         this.volumeMeterFill = 0;
 
-        // 1. Update Flash Decay
+        // --- 2. Decay any ongoing flash effect from the previous frame ---
         if (this.flashDecay > 0) {
-            this.flashDecay -= 0.18;
+            this.flashDecay -= 0.1; // This value controls the speed of the fade-out
         }
         this.flashDecay = Math.max(0, this.flashDecay);
 
-        // Exit if reactivity is disabled.
+        // --- 3. Exit if reactivity is disabled for this object ---
         if (!this.enableAudioReactivity || !audioData || !audioData[this.audioMetric] || this.audioTarget === 'none') {
             return;
         }
 
+        // --- 4. Process audio and detect new beats ---
         const rawAudioValue = audioData[this.audioMetric].avg || 0;
 
-        // Update smoothed value for continuous effects
+        // Update smoothed value for continuous effects like Rotation or Volume Meter
         const smoothingFactor = (this.audioSmoothing || 0) / 100.0;
         this.smoothedAudioValue = smoothingFactor * this.smoothedAudioValue + (1.0 - smoothingFactor) * rawAudioValue;
 
-        // Beat detection for impulse effects
+        // Beat detection logic for impulse effects like Flash and Size
         this.audioHistory.push(rawAudioValue);
-        this.audioHistory.shift();
+        if (this.audioHistory.length > 30) this.audioHistory.shift();
         const n = this.audioHistory.length;
         const mean = this.audioHistory.reduce((a, b) => a + b, 0) / n;
         const stdDev = Math.sqrt(this.audioHistory.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / n);
         const thresholdMultiplier = 0.5 + ((this.beatThreshold || 30) / 100.0) * 2.0;
         const threshold = mean + thresholdMultiplier * stdDev;
 
+        // If a new beat is detected, reset the flashDecay to a high value
         if (rawAudioValue > threshold) {
             const sensitivity = (this.audioSensitivity / 100.0) * 1.5;
             this.flashDecay = Math.min(1.5, sensitivity);
         }
 
-        const reactiveValue = this.flashDecay;
+        // --- 5. Apply the current state of reactivity to the object's properties ---
+        const reactiveValue = this.flashDecay; // For impulse effects
+        const continuousValue = this.smoothedAudioValue; // For continuous effects
+        const sign = Math.random() < 0.5 ? -1 : 1;
 
         switch (this.audioTarget) {
             case 'Flash':
+                // THE FIX: If there is *any* flash decay remaining, set both the color and opacity.
                 if (reactiveValue > 0) {
                     this.colorOverride = '#FFFFFF';
                     this.flashOpacity = Math.min(1.0, reactiveValue);
-                } else { this.flashOpacity = 0; }
+                }
                 break;
             case 'Size':
                 this.internalScale = 1.0 + reactiveValue;
                 break;
             case 'Rotation':
-                const rotationSensitivity = (this.audioSensitivity / 100.0) * 5 / 100;
-                const sign = Math.random() < 0.5 ? -1 : 1;
-                this.animationAngle = this.baseAnimationAngle + (sign * this.smoothedAudioValue * rotationSensitivity);
+                this.animationAngle = this.baseAnimationAngle + (sign * continuousValue * ((this.audioSensitivity / 100.0) * 5));
                 break;
             case 'Volume Meter':
                 const volumeSensitivity = (this.audioSensitivity || 100) / 100.0;
-                this.volumeMeterFill = this.smoothedAudioValue * volumeSensitivity;
+                this.volumeMeterFill = continuousValue * volumeSensitivity;
                 break;
         }
     }
@@ -992,6 +1106,11 @@ class Shape {
         const oldSpawnShape = this.spawn_shapeType;
 
         // --- PRE-UPDATE LOGIC ---
+        // When the SVG path string changes, invalidate the cached Path2D object
+        // so it will be regenerated on the next frame.
+        if (props.spawn_svg_path !== undefined && props.spawn_svg_path !== this.spawn_svg_path) {
+            this.customParticlePath = null;
+        }
         const textChanged = props.text !== undefined && props.text !== this.text;
         const animationChanged = props.textAnimation !== undefined && props.textAnimation !== this.textAnimation;
         if ((textChanged && this.textAnimation === 'typewriter') || (animationChanged && props.textAnimation === 'typewriter')) {
@@ -1028,10 +1147,6 @@ class Shape {
         }
 
         this.dirty = true;
-
-        if (props.spawn_svg_path !== undefined && props.spawn_svg_path !== this.spawn_svg_path) {
-            this.customParticlePath = null; // Invalidate the cache
-        }
 
         if (props.width !== undefined || props.height !== undefined) {
             const dWidth = oldWidth - this.width;
@@ -1632,6 +1747,20 @@ class Shape {
         this.strokeAnimationAngle += (this.strokeRotationSpeed || 0) * deltaTime * 0.06;
 
         if (this.shape === 'spawner') {
+            // If the current particle type could be 'matrix', ensure the character set is up-to-date.
+            // This now runs every frame to correctly handle the user changing the dropdown.
+            const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+            const numbers = '0123456789';
+            const binary = '01';
+            const ascii = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+            switch (this.spawn_matrixCharSet) {
+                case 'numbers': this.matrixActiveCharSet = numbers; break;
+                case 'binary': this.matrixActiveCharSet = binary; break;
+                case 'ascii': this.matrixActiveCharSet = ascii; break;
+                default: this.matrixActiveCharSet = katakana;
+            }
+
             // 1. SPAWN NEW PARTICLES
             this.spawnCounter += this.spawn_spawnRate * deltaTime;
             const particlesToSpawn = Math.floor(this.spawnCounter);
@@ -1640,11 +1769,22 @@ class Shape {
             for (let i = 0; i < particlesToSpawn; i++) {
                 if (this.particles.length >= this.spawn_count) break;
 
-                // Calculate random size
-                const baseSize = this.spawn_size;
-                const sizeRandFactor = this.spawn_size_randomness / 100.0;
-                const sizeVariation = baseSize * sizeRandFactor * (Math.random() - 0.5) * 2;
+                // Final, stable calculations for particle properties
+                const baseSize = Number(this.spawn_size) || 10;
+                const sizeRandomness = (Number(this.spawn_size_randomness) || 0) / 100.0;
+                const sizeVariation = baseSize * sizeRandomness * (Math.random() - 0.5) * 2;
                 const finalSize = Math.max(1, baseSize + sizeVariation);
+
+                const baseRotSpeed = Number(this.spawn_rotationSpeed) || 0;
+                const rotVariance = Number(this.spawn_rotationVariance) || 0;
+                const rotDeviation = rotVariance * (Math.random() - 0.5) * 2;
+                const finalRotSpeed = baseRotSpeed + rotDeviation;
+
+                const baseSpeed = Number(this.spawn_speed) || 0;
+                const speedVariance = Number(this.spawn_speedVariance) || 0;
+                const randomBaseSpeed = baseSpeed + (speedVariance * (Math.random() - 0.5) * 2);
+                const sizeFactor = finalSize / (baseSize || 10);
+                const finalSpeed = Math.max(0, randomBaseSpeed * sizeFactor);
 
                 const particle = {
                     id: this.nextParticleId++,
@@ -1654,11 +1794,25 @@ class Shape {
                     y: this.height / 2,
                     vx: 0,
                     vy: 0,
-                    size: finalSize, // Use the new random size
-                    rotation: this.spawn_initialRotation_random ? (Math.random() * 2 * Math.PI) : 0, // Use random initial rotation
+                    size: finalSize,
+                    rotation: this.spawn_initialRotation_random ? (Math.random() * 2 * Math.PI) : 0,
+                    rotationSpeed: finalRotSpeed,
+                    actualShape: this.spawn_shapeType,
+                    trail: []
                 };
 
-                const speed = this.spawn_speed;
+                // If the main shape is 'random', pick one of the other types for this specific particle
+                if (particle.actualShape === 'random') {
+                    particle.actualShape = this.availableParticleShapes[Math.floor(Math.random() * this.availableParticleShapes.length)];
+                }
+
+                // If the particle's final shape is 'matrix', assign it a character trail
+                if (particle.actualShape === 'matrix' && this.matrixActiveCharSet.length > 0) {
+                    const trailLength = Math.max(1, this.spawn_trailLength);
+                    particle.matrixChars = Array.from({ length: trailLength }, () => this.matrixActiveCharSet[Math.floor(Math.random() * this.matrixActiveCharSet.length)]);
+                }
+
+                const speed = finalSpeed;
                 switch (this.spawn_animation) {
                     case 'explode': {
                         const angle = Math.random() * (this.spawn_spread * Math.PI / 180) - (this.spawn_spread * Math.PI / 360);
@@ -1671,7 +1825,7 @@ class Shape {
                         const angle = (Math.random() - 0.5) * spreadRad - (Math.PI / 2);
                         particle.vx = Math.cos(angle) * speed;
                         particle.vy = Math.sin(angle) * speed;
-                        particle.y = this.height; // Start from bottom center
+                        particle.y = this.height;
                         break;
                     }
                     case 'rain':
@@ -1695,7 +1849,27 @@ class Shape {
                 p.vy += this.spawn_gravity * deltaTime;
                 p.x += p.vx * deltaTime;
                 p.y += p.vy * deltaTime;
-                p.rotation += (this.spawn_rotationSpeed * Math.PI / 180) * deltaTime;
+                p.rotation += (p.rotationSpeed * Math.PI / 180) * deltaTime;
+
+                // If trails are enabled, record the particle's current state
+                if (this.spawn_enableTrail) {
+                    p.trail.unshift({
+                        x: p.x,
+                        y: p.y,
+                        size: p.size,
+                        rotation: p.rotation
+                    });
+                    // Trim the trail to the specified length
+                    if (p.trail.length > this.spawn_trailLength) {
+                        p.trail.pop();
+                    }
+                }
+
+                // For matrix particles, randomly change characters in the trail for a shimmer effect
+                if (p.actualShape === 'matrix' && p.matrixChars && Math.random() > 0.9) {
+                    const charIndexToChange = Math.floor(Math.random() * p.matrixChars.length);
+                    p.matrixChars[charIndexToChange] = this.matrixActiveCharSet[Math.floor(Math.random() * this.matrixActiveCharSet.length)];
+                }
             });
         }
 
@@ -2223,6 +2397,11 @@ class Shape {
             this.ctx.scale(this.internalScale, this.internalScale);
         }
 
+        // Apply flash opacity if the effect is active
+        if (this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0) {
+            this.ctx.globalAlpha = this.flashOpacity;
+        }
+
         const applyStrokeInside = () => {
             if (this.enableStroke && this.strokeWidth > 0) {
                 const strokeStyle = this._createLocalStrokeStyle();
@@ -2350,176 +2529,95 @@ class Shape {
                     this.ctx.fillRect(Math.round(drawX), Math.round(drawY), Math.ceil(block.w), Math.ceil(block.h));
                 });
                 this.ctx.globalAlpha = 1.0;
-            } else if (this.shape === 'strimer') {
-                this.ctx.beginPath();
-                this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
-                this.ctx.clip();
-                const colWidth = this.width / this.strimerColumns;
-                if (this.strimerAnimation === 'Audio Meter') {
-                    for (let i = 0; i < this.strimerColumns; i++) {
-                        const fillHeight = this.strimerMeterHeights[i] || 0;
-                        const xPos = -this.width / 2 + i * colWidth;
-                        const yPos = this.height / 2 - fillHeight;
-                        this.ctx.fillStyle = this._createLocalFillStyle(i);
-                        this.ctx.fillRect(xPos, yPos, colWidth, fillHeight);
-                    }
-                } else if (this.strimerAnimation === 'Snake') {
-                    const colWidth = this.width / this.strimerColumns;
-                    const rowHeight = this.height / this.strimerRows;
-                    const totalPath = this.strimerSnakeDirection === 'Horizontal' ? this.strimerRows : this.strimerColumns;
-                    const snakeHeadIndex = Math.floor(this.strimerSnakeIndex % totalPath);
-                    const snakeHeadProgress = this.strimerSnakeProgress;
-                    const headPos = snakeHeadIndex + snakeHeadProgress;
-                    const step = this.strimerBlockSize / (this.strimerSnakeDirection === 'Horizontal' ? (this.width - this.strimerBlockSize) : (this.height - this.strimerBlockSize));
-                    this.ctx.save();
-                    this.ctx.translate(-this.width / 2, -this.height / 2);
-                    for (let i = 0; i < this.strimerBlockCount + 1; i++) {
-                        let xPos, yPos, segmentPos, index, progress;
-                        segmentPos = (headPos - i * step + totalPath) % totalPath;
-                        index = Math.floor(segmentPos);
-                        progress = segmentPos - index;
-                        if (this.strimerSnakeDirection === 'Horizontal') {
-                            if (index % 2 === 1) { progress = 1 - progress; }
-                            const easedProgress = this._applyEasing(progress);
-                            xPos = easedProgress * this.width;
-                            yPos = index * rowHeight;
-                            const blockWidth = this.strimerBlockSize;
-                            const blockHeight = rowHeight;
-                            this.ctx.fillRect(xPos, yPos, blockWidth, blockHeight);
-                        } else {
-                            if (index % 2 === 1) { progress = 1 - progress; }
-                            const easedProgress = this._applyEasing(progress);
-                            xPos = index * colWidth;
-                            yPos = easedProgress * this.height;
-                            const blockWidth = colWidth;
-                            const blockHeight = this.strimerBlockSize;
-                            this.ctx.fillRect(xPos, yPos, blockWidth, blockHeight);
-                        }
-                        const alpha = 1.0 - (i / this.strimerBlockCount) * 0.5;
-                        this.ctx.globalAlpha = alpha;
-                        this.ctx.fillStyle = this._createLocalFillStyle(i % 2);
-                        this.ctx.globalAlpha = 1.0;
-                    }
-                    this.ctx.restore();
-                } else {
-                    this.strimerBlocks.forEach((block, index) => {
-                        if (block.isGlitched) return;
-                        let yPos, blockHeight = this.strimerBlockSize;
-                        let alpha = 1.0;
-                        if (this.strimerPulseSpeed > 0) {
-                            const phaseOffset = this.strimerPulseSync ? 0 : block.col * (2 * Math.PI / this.strimerColumns);
-                            alpha = (Math.sin(this.pulseProgress + phaseOffset) + 1) / 2;
-                        }
-                        if (this.strimerAnimation === 'Cascade') {
-                            const totalSpacing = this.strimerBlockCount * this.strimerBlockSpacing;
-                            const totalBlockHeight = this.strimerBlockCount * blockHeight;
-                            const totalTravel = this.height + totalSpacing + totalBlockHeight;
-                            yPos = -this.height / 2 - totalBlockHeight + block.progress * totalTravel;
-                        } else {
-                            const easedProgress = this._applyEasing(block.progress);
-                            yPos = -this.height / 2 - blockHeight + easedProgress * (this.height + blockHeight);
-                        }
-                        const xPos = -this.width / 2 + block.col * colWidth;
-                        this.ctx.globalAlpha = alpha;
-                        this.ctx.fillStyle = this._createLocalFillStyle(block.colorIndex);
-                        this.ctx.fillRect(xPos, yPos, colWidth, blockHeight);
-                        this.ctx.globalAlpha = 1.0;
-                    });
-                }
+                // from: Shape.js
+
             } else if (this.shape === 'spawner') {
-                if (this.spawn_shapeType === 'custom' && !this.customParticlePath && this.spawn_svg_path) {
-                    try {
-                        this.customParticlePath = new Path2D(this.spawn_svg_path);
-                    } catch (e) {
-                        console.error("Invalid SVG Path:", e);
-                        this.customParticlePath = new Path2D(); // Create empty path to prevent re-parsing
-                    }
-                }
-
-                // We are already translated to the center, so particle coords are relative
-                this.ctx.save();
-                this.ctx.beginPath();
-                this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
-                this.ctx.clip();
-
                 this.particles.forEach(p => {
-                    this.ctx.save();
-                    this.ctx.translate(p.x - this.width / 2, p.y - this.height / 2);
-                    this.ctx.rotate(p.rotation);
+                    // 1. Calculate the particle's final opacity, considering both its lifetime and the global flash effect.
+                    let overallAlpha = Math.sin((p.life / p.maxLife) * Math.PI);
+                    const isFlashActive = this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0;
 
-                    // Fade out particle based on life
-                    const lifeRatio = 1.0 - (p.life / p.maxLife);
-                    this.ctx.globalAlpha = Math.sin(lifeRatio * Math.PI);
-
-                    // Set fill and stroke for the particle
-                    this.ctx.fillStyle = this._createLocalFillStyle(p.id);
-                    if (this.enableStroke) {
-                        this.ctx.strokeStyle = this._createLocalStrokeStyle(p.id);
-                        this.ctx.lineWidth = this.strokeWidth;
+                    if (isFlashActive) {
+                        overallAlpha *= this.flashOpacity;
                     }
 
-                    const s = p.size / 2;
+                    if (overallAlpha <= 0) return;
 
-                    // This switch now handles all drawing for each case independently
-                    switch (this.spawn_shapeType) {
-                        case 'custom':
-                            if (this.customParticlePath) {
+
+                    // 2. Use special, self-contained drawing logic for Matrix particles.
+                    if (p.actualShape === 'matrix' && p.matrixChars) {
+                        this.ctx.save();
+                        this.ctx.translate(p.x - this.width / 2, p.y - this.height / 2);
+                        this.ctx.rotate(p.rotation);
+
+                        const fontSize = p.size;
+                        this.ctx.font = `bold ${fontSize}px monospace`;
+                        this.ctx.textAlign = 'center';
+                        this.ctx.textBaseline = 'middle';
+                        const glowEnabled = this.spawn_matrixEnableGlow && this.spawn_matrixGlowSize > 0;
+
+                        // Define colors, giving absolute priority to the Flash effect.
+                        const leaderColor = isFlashActive ? '#FFFFFF' : this.gradient.color1;
+                        const trailFillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
+                        const trailGlowColor = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this.gradient.color1);
+
+                        // Draw the fading trail first.
+                        for (let i = 1; i < p.matrixChars.length; i++) {
+                            const char = p.matrixChars[i];
+                            const yOffset = -i * fontSize;
+                            const trailOpacity = Math.max(0.1, 1.0 - (i / p.matrixChars.length));
+
+                            this.ctx.globalAlpha = overallAlpha * trailOpacity;
+                            this.ctx.fillStyle = trailFillStyle;
+                            if (glowEnabled) {
+                                this.ctx.shadowBlur = this.spawn_matrixGlowSize;
+                                this.ctx.shadowColor = trailGlowColor;
+                            }
+                            this.ctx.fillText(char || '?', 0, yOffset);
+                        }
+
+                        // Draw the leader on top.
+                        this.ctx.globalAlpha = overallAlpha;
+                        this.ctx.shadowBlur = 0;
+                        this.ctx.fillStyle = leaderColor;
+                        if (glowEnabled) {
+                            this.ctx.shadowBlur = this.spawn_matrixGlowSize;
+                            this.ctx.shadowColor = leaderColor;
+                        }
+                        this.ctx.fillText(p.matrixChars[0] || '?', 0, 0);
+
+                        this.ctx.restore();
+
+                    } else {
+                        // --- 3. Use the generic drawing logic for all other particle shapes ---
+
+                        // Draw the Trail
+                        if (this.spawn_enableTrail && p.trail && p.trail.length > 0) {
+                            const trailFillStyle = isFlashActive ? '#FFFFFF' : this._createLocalFillStyle(p.id);
+                            p.trail.forEach((trailPoint, index) => {
                                 this.ctx.save();
-                                // Assumes the SVG path is designed within a ~40x40 unit space.
-                                // This scales it to match the particle's size property.
-                                const scale = p.size / 40;
-                                this.ctx.scale(scale, scale);
-                                this.ctx.fill(this.customParticlePath);
-                                if (this.enableStroke) {
-                                    this.ctx.stroke(this.customParticlePath);
-                                }
+                                this.ctx.translate(trailPoint.x - this.width / 2, trailPoint.y - this.height / 2);
+                                this.ctx.rotate(trailPoint.rotation);
+                                const trailProgress = (p.trail.length - index) / p.trail.length;
+                                this.ctx.globalAlpha = overallAlpha * trailProgress;
+                                this.ctx.fillStyle = trailFillStyle;
+                                if (this.enableStroke) this.ctx.strokeStyle = trailFillStyle;
+                                this._drawParticleShape({ ...p, size: trailPoint.size });
                                 this.ctx.restore();
-                            }
-                            break;
+                            });
+                        }
 
-                        default: // Handles rectangle, circle, star, polygon, sparkle
-                            this.ctx.beginPath();
-                            if (this.spawn_shapeType === 'circle') {
-                                this.ctx.arc(0, 0, s, 0, 2 * Math.PI);
-                            } else if (this.spawn_shapeType === 'sparkle') {
-                                this.ctx.moveTo(0, -s);
-                                this.ctx.lineTo(s * 0.3, -s * 0.3);
-                                this.ctx.lineTo(s, 0);
-                                this.ctx.lineTo(s * 0.3, s * 0.3);
-                                this.ctx.lineTo(0, s);
-                                this.ctx.lineTo(-s * 0.3, s * 0.3);
-                                this.ctx.lineTo(-s, 0);
-                                this.ctx.lineTo(-s * 0.3, -s * 0.3);
-                                this.ctx.closePath();
-                            } else if (this.spawn_shapeType === 'polygon') {
-                                const sides = Math.max(3, this.sides);
-                                for (let i = 0; i < sides; i++) {
-                                    const a = (i / sides) * 2 * Math.PI - (Math.PI / 2);
-                                    this.ctx[i === 0 ? 'moveTo' : 'lineTo'](s * Math.cos(a), s * Math.sin(a));
-                                }
-                                this.ctx.closePath();
-                            } else if (this.spawn_shapeType === 'star') {
-                                const points = Math.max(3, this.points);
-                                const iS = s * (this.starInnerRadius / 100);
-                                for (let i = 0; i < 2 * points; i++) {
-                                    const r = (i % 2 === 0) ? s : iS;
-                                    const a = (i / (2 * points)) * 2 * Math.PI - (Math.PI / 2);
-                                    this.ctx[i === 0 ? 'moveTo' : 'lineTo'](r * Math.cos(a), r * Math.sin(a));
-                                }
-                                this.ctx.closePath();
-                            } else { // rectangle
-                                this.ctx.rect(-s, -s, p.size, p.size);
-                            }
-
-                            this.ctx.fill();
-                            if (this.enableStroke) {
-                                this.ctx.stroke();
-                            }
-                            break;
+                        // Draw the Leader
+                        this.ctx.save();
+                        this.ctx.translate(p.x - this.width / 2, p.y - this.height / 2);
+                        this.ctx.rotate(p.rotation);
+                        this.ctx.globalAlpha = overallAlpha;
+                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : (this.spawn_enableTrail ? this.spawn_leaderColor : this._createLocalFillStyle(p.id));
+                        if (this.enableStroke) this.ctx.strokeStyle = this.ctx.fillStyle;
+                        this._drawParticleShape(p);
+                        this.ctx.restore();
                     }
-                    this.ctx.restore();
                 });
-                this.ctx.restore();
             } else if (this.shape === 'text') {
                 const textToRender = this.getDisplayText();
                 const centeredShape = { ...this, x: -this.width / 2, y: -this.height / 2, };

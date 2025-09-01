@@ -222,7 +222,7 @@
                                 <thead><tr><th>Property</th><th>Label</th><th>Type</th><th>Description & Values</th></tr></thead>
                                 <tbody>
                                     <tr><td><code>enableAudioReactivity</code></td><td>Enable Sound Reactivity</td><td><code>boolean</code></td><td>Toggles audio reactivity on or off for this specific object.</td></tr>
-                                    <tr><td><code>audioTarget</code></td><td>Reactive Property</td><td><code>combobox</code></td><td>The visual property that will be affected by the audio. For example, <code>Size</code> will make the object grow and shrink with the beat.</td></tr>
+                                    <tr><td><code>audioTarget</code></td><td>Reactive Property</td><td><code>combobox</code></td><td>The visual property that will be affected by the audio. For example, <code>Size</code> will make the object grow and shrink with the beat. Not all targets work with all shapes.</td></tr>
                                     <tr><td><code>audioMetric</code></td><td>Audio Metric</td><td><code>combobox</code></td><td>The audio frequency range the object will listen to (e.g., <code>bass</code>, <code>volume</code>).</td></tr>
                                     <tr><td><code>audioSensitivity</code></td><td>Sensitivity</td><td><code>number</code></td><td>Multiplies the intensity of the audio reaction.</td></tr>
                                     <tr><td><code>beatThreshold</code></td><td>Beat Threshold</td><td><code>number</code></td><td>Adjusts the sensitivity of the beat detection algorithm. Higher values require a more pronounced "beat" to trigger a reaction.</td></tr>
@@ -452,7 +452,7 @@
 
                         <h3 id="shape-spawner" class="mt-5">Spawner</h3>
                         <p>A powerful particle emitter that generates and animates a stream of other shapes. The Spawner's own fill/stroke properties are applied to each particle it creates.</p>
-                        <div class="alert alert-info small"><b>Applicable General Properties:</b> <a href="#core">Core</a>, <a href="#fill">Fill & Animation</a>, <a href="#stroke">Stroke</a>, <a href="#audio">Audio Reactivity</a>, <a href="#sensor">Sensor Reactivity</a></div>
+                        <div class="alert alert-info small"><b>Applicable General Properties:</b> <a href="#core">Core</a>, <a href="#fill">Fill & Animation</a>, <a href="#stroke">Stroke</a>, <a href="#audio">Audio Reactivity</a></div>
                         <div class="table-responsive">
                             <table class="table table-striped table-bordered">
                                 <thead><tr><th>Property</th><th>Label</th><th>Type</th><th>Description & Values</th></tr></thead>
@@ -463,20 +463,36 @@
                                     <tr><td><code>spawn_spawnRate</code></td><td>Spawn Rate</td><td><code>number</code></td><td>How many new particles are created per second.</td></tr>
                                     <tr><td><code>spawn_lifetime</code></td><td>Lifetime (s)</td><td><code>number</code></td><td>How long each particle lasts, in seconds.</td></tr>
                                     <tr><td><code>spawn_speed</code></td><td>Initial Speed</td><td><code>number</code></td><td>The starting speed of newly created particles.</td></tr>
-                                    <tr><td><code>spawn_gravity</code></td><td>Gravity</td><td><code>number</code></td><td>A constant downward (or upward) force applied to particles.</td></tr>
+                                    <tr><td><code>spawn_speedVariance</code></td><td>Initial Speed Variance (±)</td><td><code>number</code></td><td>Adds randomness to each particle's starting speed.</td></tr>
+                                    <tr><td><code>spawn_gravity</code></td><td>Gravity</td><td><code>number</code></td><td>A constant downward (or upward, if negative) force applied to particles.</td></tr>
                                     <tr><td><code>spawn_spread</code></td><td>Spread Angle</td><td><code>number</code></td><td>The angle (in degrees) for <code>Explode</code> or <code>Fountain</code> emitters.</td></tr>
 
                                     <tr class="table-group-header"><th colspan="4">Particle Appearance Properties</th></tr>
-                                    <tr><td><code>spawn_shapeType</code></td><td>Particle Shape</td><td><code>combobox</code></td><td>The geometric shape of the emitted particles. Values: <code>rectangle</code>, <code>circle</code>, <code>polygon</code>, <code>star</code>, <code>sparkle</code>, <code>custom</code>.</td></tr>
+                                    <tr><td><code>spawn_shapeType</code></td><td>Particle Shape</td><td><code>combobox</code></td><td>The geometric shape of the emitted particles. Values: <code>rectangle</code>, <code>circle</code>, <code>polygon</code>, <code>star</code>, <code>sparkle</code>, <code>custom</code>, <code>matrix</code>, <code>random</code>.</td></tr>
                                     <tr><td><code>spawn_size</code></td><td>Particle Size</td><td><code>number</code></td><td>The base size of each particle in pixels.</td></tr>
                                     <tr><td><code>spawn_size_randomness</code></td><td>Size Randomness %</td><td><code>number</code></td><td>How much to vary each particle's size from the base size. Range: <code>0</code> to <code>100</code>.</td></tr>
-                                    <tr><td><code>spawn_rotationSpeed</code></td><td>Particle Rotation Speed</td><td><code>number</code></td><td>The rotational speed of each individual particle.</td></tr>
+                                    <tr><td><code>spawn_rotationSpeed</code></td><td>Particle Rotation Speed</td><td><code>number</code></td><td>The average rotational speed of each individual particle.</td></tr>
+                                    <tr><td><code>spawn_rotationVariance</code></td><td>Rotation Variance (±deg/s)</td><td><code>number</code></td><td>Adds randomness to each particle's rotation speed.</td></tr>
                                     <tr><td><code>spawn_initialRotation_random</code></td><td>Random Initial Rotation</td><td><code>boolean</code></td><td>If true, each particle starts at a random angle.</td></tr>
-                                    <tr><td><code>spawn_svg_path</code></td><td>Custom SVG Path</td><td><code>textarea</code></td><td>The SVG <code>d</code> attribute path data for the <code>custom</code> particle shape. Use the linked online editor to create paths.</td></tr>
+                                    <tr><td><code>spawn_svg_path</code></td><td>Custom SVG Path</td><td><code>textarea</code></td><td>The SVG <code>d</code> attribute path data for the <code>custom</code> particle shape. The path should be centered on the (0,0) origin for proper rotation.</td></tr>
+                                
+                                    <tr class="table-group-divider"><th colspan="4" class="table-group-header">Matrix Particle Properties</th></tr>
+                                    <tr><td><code>spawn_matrixCharSet</code></td><td>Matrix Character Set</td><td><code>combobox</code></td><td>The set of characters to use for the <code>matrix</code> particle type.</td></tr>
+                                    <tr><td><code>spawn_matrixTrailLength</code></td><td>Matrix Trail Length</td><td><code>number</code></td><td>The number of characters in each falling <code>matrix</code> trail.</td></tr>
+                                    <tr><td><code>spawn_matrixEnableGlow</code></td><td>Enable Character Glow</td><td><code>boolean</code></td><td>Adds a glow effect to the <code>matrix</code> characters.</td></tr>
+                                    <tr><td><code>spawn_matrixGlowSize</code></td><td>Character Glow Size</td><td><code>number</code></td><td>The size and intensity of the glow effect.</td></tr>
+
+                                    <tr class="table-group-divider"><th colspan="4" class="table-group-header">Generic Trail Properties</th></tr>
+                                    <tr><td><code>spawn_enableTrail</code></td><td>Enable Trail</td><td><code>boolean</code></td><td>Enables a fading trail behind each particle (any shape except <code>matrix</code>).</td></tr>
+                                    <tr><td><code>spawn_trailLength</code></td><td>Trail Length</td><td><code>number</code></td><td>The number of segments in each particle's trail.</td></tr>
+                                    <tr><td><code>spawn_leaderColor</code></td><td>Leader Color</td><td><code>color</code></td><td>The color of the lead particle. The trail fades to the spawner's main fill color.</td></tr>
+
+                                    <tr class="table-group-divider"><th colspan="4" class="table-group-header">Audio Reactivity</th></tr>
+                                    <tr><td><code>spawn_audioTarget</code></td><td>Spawner: Reactive Target</td><td><code>combobox</code></td><td>Which property of the spawner will react to sound. Affects <code>Spawn Rate</code>, <code>Initial Speed</code>, <code>Particle Size</code>, etc.</td></tr>
+
                                 </tbody>
                             </table>
                         </div>
-
                     </div>
                 </div>
             </main>
