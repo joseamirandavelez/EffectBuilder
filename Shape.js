@@ -1405,6 +1405,11 @@ class Shape {
             c2 = `hsl(${(this.hue2 + phase * this.phaseOffset) % 360}, 100%, 50%)`;
         }
 
+        // Spawners should not use conic gradients; fall back to a solid color.
+        if (this.shape === 'spawner' && this.gradType.includes('conic')) {
+            return c1;
+        }
+
         if (this.gradType === 'alternating') {
             return (phase % 2 === 0) ? c1 : c2;
         }
