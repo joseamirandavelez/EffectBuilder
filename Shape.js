@@ -487,12 +487,12 @@ class Shape {
         this.spawn_initialRotation_random = spawn_initialRotation_random || false;
         this.spawn_svg_path = spawn_svg_path || 'M -20 -20 L 20 -20 L 20 20 L -20 20 Z';
         this.spawn_matrixCharSet = spawn_matrixCharSet || 'katakana';
-        this.spawn_enableGlow = spawn_enableGlow !== undefined ? spawn_enableGlow : (spawn_matrixEnableGlow || false);
-        this.spawn_glowSize = spawn_glowSize !== undefined ? spawn_glowSize : (spawn_matrixGlowSize || 10);
-        this.spawn_glowColor = spawn_glowColor !== undefined ? spawn_glowColor : (spawn_matrixGlowColor || '#FFFFFF');
+        this.spawn_matrixEnableGlow = spawn_matrixEnableGlow || false;
+        this.spawn_matrixGlowSize = spawn_matrixGlowSize || 10;
+        this.spawn_enableGlow = spawn_enableGlow || false;
+        this.spawn_glowSize = spawn_glowSize || 10;
         this.spawn_enableTrail = spawn_enableTrail || false;
         this.spawn_trailLength = spawn_trailLength || 10;
-        this.spawn_leaderColor = spawn_leaderColor || '#FFFFFF';
         this.spawn_trailSpacing = spawn_trailSpacing || 1;
 
         // Particle system state
@@ -507,9 +507,12 @@ class Shape {
     _drawParticleShape(particle) {
         const s = particle.size / 2;
 
-        const glowEnabled = this.spawn_enableGlow && this.spawn_glowSize > 0;
-        if (glowEnabled) {
-            this.ctx.shadowBlur = this.spawn_glowSize;
+        const isMatrix = particle.actualShape === 'matrix';
+        const glowEnabled = this.spawn_enableGlow;
+        const glowSize = isMatrix ? this.spawn_matrixGlowSize : this.spawn_glowSize;
+
+        if (glowEnabled && glowSize > 0) {
+            this.ctx.shadowBlur = glowSize;
             if (typeof this.ctx.fillStyle === 'string') {
                 this.ctx.shadowColor = this.ctx.fillStyle;
             } else {
@@ -2581,7 +2584,7 @@ class Shape {
                                     this.ctx.globalAlpha = overallAlpha * trailOpacity;
 
                                     if (isMatrixTrail) {
-                                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
+                                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id + drawnCharIndex));
                                         this._drawParticleShape({ ...p, size: p.size, matrixChars: [p.matrixChars[drawnCharIndex + 1]] });
                                     } else { // isGenericTrail
                                         // Set fill for the trail based on the "split-color" logic
@@ -2590,7 +2593,7 @@ class Shape {
                                         } else if (this.gradType === 'solid') {
                                             this.ctx.fillStyle = this.gradient.color2; // Trail uses Color 2 for solid fills
                                         } else {
-                                            this.ctx.fillStyle = this._createLocalFillStyle(p.id); // Trail uses full effect for gradients
+                                            this.ctx.fillStyle = this._createLocalFillStyle(p.id + drawnCharIndex); // Trail uses full effect for gradients
                                         }
 
                                         if (this.enableStroke) this.ctx.strokeStyle = this.ctx.fillStyle;
