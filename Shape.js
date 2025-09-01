@@ -508,9 +508,11 @@ class Shape {
         const s = particle.size / 2;
 
         const glowEnabled = this.spawn_enableGlow && this.spawn_glowSize > 0;
-        if (glowEnabled) {
+        if (glowEnabled && typeof this.ctx.fillStyle === 'string') {
             this.ctx.shadowBlur = this.spawn_glowSize;
-            this.ctx.shadowColor = this.spawn_glowColor;
+            this.ctx.shadowColor = this.ctx.fillStyle;
+        } else {
+            this.ctx.shadowBlur = 0;
         }
 
         switch (particle.actualShape) {
