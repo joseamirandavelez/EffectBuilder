@@ -500,6 +500,14 @@ class Shape {
         this.spawnCounter = 0;
         this.nextParticleId = 0;
         this.customParticlePath = null;
+        try {
+            if (this.spawn_svg_path) {
+                this.customParticlePath = new Path2D(this.spawn_svg_path);
+            }
+        } catch (e) {
+            console.error("Invalid SVG Path data on constructor:", e);
+            this.customParticlePath = null;
+        }
         this.matrixActiveCharSet = '';
         this.availableParticleShapes = ['rectangle', 'circle', 'polygon', 'star', 'sparkle', 'custom', 'matrix'];
     }
@@ -513,7 +521,6 @@ class Shape {
                     this.ctx.save();
                     const scale = particle.size / 40;
                     this.ctx.scale(scale, scale);
-                    this.ctx.translate(-20, -20);
                     this.ctx.fill(this.customParticlePath);
                     if (this.enableStroke) this.ctx.stroke(this.customParticlePath);
                     this.ctx.restore();
@@ -1080,7 +1087,14 @@ class Shape {
         // When the SVG path string changes, invalidate the cached Path2D object
         // so it will be regenerated on the next frame.
         if (props.spawn_svg_path !== undefined && props.spawn_svg_path !== this.spawn_svg_path) {
-            this.customParticlePath = null;
+            // Directly update the path and try to parse it.
+            this.spawn_svg_path = props.spawn_svg_path;
+            try {
+                this.customParticlePath = new Path2D(this.spawn_svg_path);
+            } catch (e) {
+                console.error("Invalid SVG Path data on update:", e);
+                this.customParticlePath = null;
+            }
         }
         const textChanged = props.text !== undefined && props.text !== this.text;
         const animationChanged = props.textAnimation !== undefined && props.textAnimation !== this.textAnimation;
