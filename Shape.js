@@ -1849,7 +1849,7 @@ class Shape {
                     const trailLength = Number(this.spawn_trailLength) || 15;
                     const spacingFactor = 1 + this.spawn_trailSpacing * p.size;
                     const historyLength = Math.floor((trailLength + 2) * spacingFactor);
-                    
+
                     if (p.trail.length > historyLength) {
                         p.trail.length = historyLength; // Trim array directly
                     }
@@ -2507,6 +2507,7 @@ class Shape {
                     this.ctx.globalAlpha = 1.0;
                 } catch (e) { console.error("Failed to draw pixel art:", e); }
             } else if (this.shape === 'tetris') {
+                this.ctx.save();
                 this.ctx.beginPath();
                 this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
                 this.ctx.clip();
@@ -2518,8 +2519,13 @@ class Shape {
                     this.ctx.fillRect(Math.round(drawX), Math.round(drawY), Math.ceil(block.w), Math.ceil(block.h));
                 });
                 this.ctx.globalAlpha = 1.0;
+                this.ctx.restore();
 
             } else if (this.shape === 'spawner') {
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+                this.ctx.clip();
                 this.particles.forEach(p => {
                     let overallAlpha = Math.sin((p.life / p.maxLife) * Math.PI);
                     const isFlashActive = this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0;
@@ -2553,7 +2559,7 @@ class Shape {
 
                                 while (distanceTraveledAlongPath + segmentDist >= distanceNeededForNextChar) {
                                     const ratio = (distanceNeededForNextChar - distanceTraveledAlongPath) / segmentDist;
-                                    if (ratio > 1) break; 
+                                    if (ratio > 1) break;
                                     const charX = p1.x + (p2.x - p1.x) * ratio;
                                     const charY = p1.y + (p2.y - p1.y) * ratio;
 
@@ -2563,7 +2569,7 @@ class Shape {
 
                                     const trailOpacity = Math.max(0.1, 1.0 - (drawnCharIndex / trailLength));
                                     this.ctx.globalAlpha = overallAlpha * trailOpacity;
-                                    
+
                                     if (isMatrixTrail) {
                                         this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
                                         this._drawParticleShape({ ...p, size: p.size, matrixChars: [p.matrixChars[drawnCharIndex + 1]] });
@@ -2572,7 +2578,7 @@ class Shape {
                                         if (this.enableStroke) this.ctx.strokeStyle = this.ctx.fillStyle;
                                         this._drawParticleShape({ ...p, size: p.size });
                                     }
-                                    
+
                                     this.ctx.restore();
 
                                     drawnCharIndex++;
@@ -2605,6 +2611,7 @@ class Shape {
                     this._drawParticleShape(p);
                     this.ctx.restore();
                 });
+                this.ctx.restore();
             } else if (this.shape === 'text') {
                 const textToRender = this.getDisplayText();
                 const centeredShape = { ...this, x: -this.width / 2, y: -this.height / 2, };
