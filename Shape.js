@@ -282,7 +282,7 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path, spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixEnableGlow, spawn_matrixGlowSize, spawn_matrixGlowColor, spawn_enableTrail, spawn_trailLength, spawn_leaderColor }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path, spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixTrailLength, spawn_matrixEnableGlow, spawn_matrixGlowSize, spawn_matrixGlowColor, spawn_enableTrail, spawn_trailLength, spawn_leaderColor, spawn_audioTarget, spawn_trailSpacing }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -295,8 +295,8 @@ class Shape {
         this.width = width || 200;
         this.height = height || 152;
         this.rotation = rotation || 0;
-        this.baseRotation = this.rotation; // Store the original static rotation
-        this.baseAnimationAngle = 0; // Store the original dynamic rotation
+        this.baseRotation = this.rotation;
+        this.baseAnimationAngle = 0;
         this.gradType = gradType || 'solid';
         this.gradient = gradient ? { ...gradient } : { color1: '#000000', color2: '#000000' };
         this.scrollDirection = scrollDirection || 'right';
@@ -321,7 +321,7 @@ class Shape {
         this.strokeGradientStop = strokeGradientStop || 50;
         this.strokeRotationSpeed = strokeRotationSpeed || 0;
         this.strokePhaseOffset = strokePhaseOffset || 10;
-        this.strokeAnimationAngle = 0; // Internal state for rotation
+        this.strokeAnimationAngle = 0;
         this.strokeHue1 = 0;
         this.strokeHue2 = 90;
         this.strokeScrollOffset = 0;
@@ -468,6 +468,7 @@ class Shape {
         this.strimerAnimationSpeed = strimerAnimationSpeed || 20;
         this.strimerSnakeProgress = strimerSnakeProgress || 0;
         this.sensorMeterColorGradient = sensorMeterColorGradient || false;
+        this.spawn_audioTarget = spawn_audioTarget || 'none';
 
         // Spawner
         this.spawn_shapeType = spawn_shapeType || 'circle';
@@ -488,9 +489,11 @@ class Shape {
         this.spawn_matrixCharSet = spawn_matrixCharSet || 'katakana';
         this.spawn_matrixEnableGlow = spawn_matrixEnableGlow || false;
         this.spawn_matrixGlowSize = spawn_matrixGlowSize || 10;
+        this.spawn_matrixGlowColor = spawn_matrixGlowColor || '#FFFFFF';
         this.spawn_enableTrail = spawn_enableTrail || false;
         this.spawn_trailLength = spawn_trailLength || 10;
         this.spawn_leaderColor = spawn_leaderColor || '#FFFFFF';
+        this.spawn_trailSpacing = spawn_trailSpacing || 1;
 
         // Particle system state
         this.particles = [];
@@ -518,50 +521,20 @@ class Shape {
                 break;
 
             case 'matrix':
-                if (!particle.matrixChars) break;
+                if (particle.matrixChars && particle.matrixChars.length > 0) {
+                    this.ctx.font = `bold ${particle.size}px monospace`;
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
 
-                const fontSize = particle.size;
-                this.ctx.font = `bold ${fontSize}px monospace`;
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                const glowEnabled = this.spawn_matrixEnableGlow && this.spawn_matrixGlowSize > 0;
-                const originalAlpha = this.ctx.globalAlpha;
-                const isFlashActive = this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0;
-
-                // 1. Define colors, giving priority to the Flash effect
-                const leaderColor = isFlashActive ? '#FFFFFF' : this.gradient.color1;
-                const trailFillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(particle.id));
-                const trailGlowColor = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this.gradient.color1);
-
-                // 2. Draw the Fading Trail
-                for (let i = particle.matrixChars.length - 1; i > 0; i--) {
-                    const char = particle.matrixChars[i];
-                    const yOffset = -i * fontSize;
-
-                    this.ctx.fillStyle = trailFillStyle;
+                    const glowEnabled = this.spawn_matrixEnableGlow && this.spawn_matrixGlowSize > 0;
                     if (glowEnabled) {
                         this.ctx.shadowBlur = this.spawn_matrixGlowSize;
-                        this.ctx.shadowColor = trailGlowColor;
+                        this.ctx.shadowColor = this.ctx.fillStyle;
                     }
 
-                    const trailOpacity = Math.max(0.1, 1.0 - (i / particle.matrixChars.length));
-                    this.ctx.globalAlpha = originalAlpha * trailOpacity;
-
-                    this.ctx.fillText(char || '?', 0, yOffset);
+                    // This helper now ONLY draws the first character of the array it's given.
+                    this.ctx.fillText(particle.matrixChars[0] || '?', 0, 0);
                 }
-
-                // 3. Draw the Leader on Top
-                this.ctx.globalAlpha = originalAlpha;
-                this.ctx.shadowBlur = 0;
-                this.ctx.fillStyle = leaderColor;
-
-                if (glowEnabled) {
-                    this.ctx.shadowBlur = this.spawn_matrixGlowSize;
-                    this.ctx.shadowColor = leaderColor;
-                }
-
-                this.ctx.fillText(particle.matrixChars[0] || '?', 0, 0);
-
                 break;
 
             default:
@@ -913,8 +886,6 @@ class Shape {
         const text = this.getDisplayText();
         return text;
     }
-
-    // In Shape.js
 
     _getRandomColorForElement(elementIndex) {
         if (this.cycleColors) {
@@ -1540,8 +1511,6 @@ class Shape {
      * @returns {CanvasGradient} The generated linear gradient.
      * @private
      */
-    // Shape.js
-
     _createLinearGradient(c1, c2, p) {
         const gradientStop = (typeof this.gradientStop === 'number' && isFinite(this.gradientStop)) ? this.gradientStop / 100.0 : 0.5;
         const progress = (typeof p === 'number' && isFinite(p)) ? p : 0;
@@ -1630,8 +1599,6 @@ class Shape {
      * @returns {CanvasGradient} The generated radial gradient.
      * @private
      */
-    // Shape.js
-
     _createRadialGradient(c1, c2, p) {
         const gradientStop = (typeof this.gradientStop === 'number' && isFinite(this.gradientStop)) ? this.gradientStop / 100.0 : 0.5;
         const progress = (typeof p === 'number' && isFinite(p)) ? p : 0;
@@ -1747,8 +1714,29 @@ class Shape {
         this.strokeAnimationAngle += (this.strokeRotationSpeed || 0) * deltaTime * 0.06;
 
         if (this.shape === 'spawner') {
-            // If the current particle type could be 'matrix', ensure the character set is up-to-date.
-            // This now runs every frame to correctly handle the user changing the dropdown.
+
+            // --- Audio Reactivity Calculations ---
+            let spawnRate = Number(this.spawn_spawnRate) || 0;
+            let initialSpeed = Number(this.spawn_speed) || 0;
+            let particleSize = Number(this.spawn_size) || 0;
+            let gravity = Number(this.spawn_gravity) || 0;
+            let spreadAngle = Number(this.spawn_spread) || 0;
+
+            if (this.enableAudioReactivity && this.spawn_audioTarget !== 'none') {
+                const audioValue = this.smoothedAudioValue;
+                const sensitivity = (this.audioSensitivity || 10) / 50.0;
+                const reactiveAmount = audioValue * sensitivity;
+
+                switch (this.spawn_audioTarget) {
+                    case 'spawnRate': spawnRate *= (1 + reactiveAmount * 3); break;
+                    case 'initialSpeed': initialSpeed *= (1 + reactiveAmount * 1.5); break;
+                    case 'particleSize': particleSize *= (1 + reactiveAmount * 2); break;
+                    case 'gravity': gravity -= reactiveAmount * 100; break;
+                    case 'spreadAngle': spreadAngle = Math.min(360, spreadAngle + reactiveAmount * 180); break;
+                }
+            }
+
+            // --- Matrix Character Set Preparation ---
             const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
             const numbers = '0123456789';
             const binary = '01';
@@ -1761,16 +1749,15 @@ class Shape {
                 default: this.matrixActiveCharSet = katakana;
             }
 
-            // 1. SPAWN NEW PARTICLES
-            this.spawnCounter += this.spawn_spawnRate * deltaTime;
+            // --- 1. SPAWN NEW PARTICLES ---
+            this.spawnCounter += spawnRate * deltaTime;
             const particlesToSpawn = Math.floor(this.spawnCounter);
             this.spawnCounter -= particlesToSpawn;
 
             for (let i = 0; i < particlesToSpawn; i++) {
                 if (this.particles.length >= this.spawn_count) break;
 
-                // Final, stable calculations for particle properties
-                const baseSize = Number(this.spawn_size) || 10;
+                const baseSize = particleSize;
                 const sizeRandomness = (Number(this.spawn_size_randomness) || 0) / 100.0;
                 const sizeVariation = baseSize * sizeRandomness * (Math.random() - 0.5) * 2;
                 const finalSize = Math.max(1, baseSize + sizeVariation);
@@ -1780,7 +1767,7 @@ class Shape {
                 const rotDeviation = rotVariance * (Math.random() - 0.5) * 2;
                 const finalRotSpeed = baseRotSpeed + rotDeviation;
 
-                const baseSpeed = Number(this.spawn_speed) || 0;
+                const baseSpeed = initialSpeed;
                 const speedVariance = Number(this.spawn_speedVariance) || 0;
                 const randomBaseSpeed = baseSpeed + (speedVariance * (Math.random() - 0.5) * 2);
                 const sizeFactor = finalSize / (baseSize || 10);
@@ -1801,27 +1788,25 @@ class Shape {
                     trail: []
                 };
 
-                // If the main shape is 'random', pick one of the other types for this specific particle
                 if (particle.actualShape === 'random') {
                     particle.actualShape = this.availableParticleShapes[Math.floor(Math.random() * this.availableParticleShapes.length)];
                 }
 
-                // If the particle's final shape is 'matrix', assign it a character trail
                 if (particle.actualShape === 'matrix' && this.matrixActiveCharSet.length > 0) {
-                    const trailLength = Math.max(1, this.spawn_trailLength);
-                    particle.matrixChars = Array.from({ length: trailLength }, () => this.matrixActiveCharSet[Math.floor(Math.random() * this.matrixActiveCharSet.length)]);
+                    const trailLength = Math.max(1, Number(this.spawn_trailLength) || 0);
+                    particle.matrixChars = Array.from({ length: trailLength + 1 }, () => this.matrixActiveCharSet[Math.floor(Math.random() * this.matrixActiveCharSet.length)]);
                 }
 
                 const speed = finalSpeed;
                 switch (this.spawn_animation) {
                     case 'explode': {
-                        const angle = Math.random() * (this.spawn_spread * Math.PI / 180) - (this.spawn_spread * Math.PI / 360);
+                        const angle = Math.random() * (spreadAngle * Math.PI / 180) - (spreadAngle * Math.PI / 360);
                         particle.vx = Math.cos(angle) * speed;
                         particle.vy = Math.sin(angle) * speed;
                         break;
                     }
                     case 'fountain': {
-                        const spreadRad = this.spawn_spread * Math.PI / 180;
+                        const spreadRad = spreadAngle * Math.PI / 180;
                         const angle = (Math.random() - 0.5) * spreadRad - (Math.PI / 2);
                         particle.vx = Math.cos(angle) * speed;
                         particle.vy = Math.sin(angle) * speed;
@@ -1842,30 +1827,34 @@ class Shape {
                 this.particles.push(particle);
             }
 
-            // 2. UPDATE AND CULL EXISTING PARTICLES
+            // --- 2. UPDATE AND CULL EXISTING PARTICLES ---
             this.particles = this.particles.filter(p => p.life < p.maxLife);
             this.particles.forEach(p => {
                 p.life += deltaTime;
-                p.vy += this.spawn_gravity * deltaTime;
+                p.vy += gravity * deltaTime;
                 p.x += p.vx * deltaTime;
                 p.y += p.vy * deltaTime;
                 p.rotation += (p.rotationSpeed * Math.PI / 180) * deltaTime;
 
-                // If trails are enabled, record the particle's current state
-                if (this.spawn_enableTrail) {
+                const trailEnabled = p.actualShape === 'matrix' || this.spawn_enableTrail;
+
+                if (trailEnabled) {
                     p.trail.unshift({
                         x: p.x,
                         y: p.y,
                         size: p.size,
                         rotation: p.rotation
                     });
-                    // Trim the trail to the specified length
-                    if (p.trail.length > this.spawn_trailLength) {
-                        p.trail.pop();
+
+                    const trailLength = Number(this.spawn_trailLength) || 15;
+                    const spacingFactor = 1 + this.spawn_trailSpacing * p.size;
+                    const historyLength = Math.floor((trailLength + 2) * spacingFactor);
+                    
+                    if (p.trail.length > historyLength) {
+                        p.trail.length = historyLength; // Trim array directly
                     }
                 }
 
-                // For matrix particles, randomly change characters in the trail for a shimmer effect
                 if (p.actualShape === 'matrix' && p.matrixChars && Math.random() > 0.9) {
                     const charIndexToChange = Math.floor(Math.random() * p.matrixChars.length);
                     p.matrixChars[charIndexToChange] = this.matrixActiveCharSet[Math.floor(Math.random() * this.matrixActiveCharSet.length)];
@@ -2529,11 +2518,9 @@ class Shape {
                     this.ctx.fillRect(Math.round(drawX), Math.round(drawY), Math.ceil(block.w), Math.ceil(block.h));
                 });
                 this.ctx.globalAlpha = 1.0;
-                // from: Shape.js
 
             } else if (this.shape === 'spawner') {
                 this.particles.forEach(p => {
-                    // 1. Calculate the particle's final opacity, considering both its lifetime and the global flash effect.
                     let overallAlpha = Math.sin((p.life / p.maxLife) * Math.PI);
                     const isFlashActive = this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0;
 
@@ -2543,80 +2530,80 @@ class Shape {
 
                     if (overallAlpha <= 0) return;
 
+                    // --- Draw the Trail (Matrix or Generic) ---
+                    const isMatrixTrail = p.actualShape === 'matrix' && p.matrixChars && p.trail && p.trail.length > 0;
+                    const isGenericTrail = this.spawn_enableTrail && p.actualShape !== 'matrix' && p.trail && p.trail.length > 0;
 
-                    // 2. Use special, self-contained drawing logic for Matrix particles.
-                    if (p.actualShape === 'matrix' && p.matrixChars) {
-                        this.ctx.save();
-                        this.ctx.translate(p.x - this.width / 2, p.y - this.height / 2);
-                        this.ctx.rotate(p.rotation);
+                    if (isMatrixTrail || isGenericTrail) {
+                        const spacing = (this.spawn_trailSpacing || 1) * p.size;
+                        const trailLength = Number(this.spawn_trailLength) || 15;
+                        const history = p.trail;
 
-                        const fontSize = p.size;
-                        this.ctx.font = `bold ${fontSize}px monospace`;
-                        this.ctx.textAlign = 'center';
-                        this.ctx.textBaseline = 'middle';
-                        const glowEnabled = this.spawn_matrixEnableGlow && this.spawn_matrixGlowSize > 0;
+                        if (spacing > 0 && history.length > 1) {
+                            let distanceNeededForNextChar = spacing;
+                            let distanceTraveledAlongPath = 0;
+                            let drawnCharIndex = 0;
 
-                        // Define colors, giving absolute priority to the Flash effect.
-                        const leaderColor = isFlashActive ? '#FFFFFF' : this.gradient.color1;
-                        const trailFillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
-                        const trailGlowColor = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this.gradient.color1);
+                            for (let i = 1; i < history.length; i++) {
+                                if (drawnCharIndex >= trailLength) break;
 
-                        // Draw the fading trail first.
-                        for (let i = 1; i < p.matrixChars.length; i++) {
-                            const char = p.matrixChars[i];
-                            const yOffset = -i * fontSize;
-                            const trailOpacity = Math.max(0.1, 1.0 - (i / p.matrixChars.length));
+                                const p1 = history[i - 1];
+                                const p2 = history[i];
+                                const segmentDist = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
-                            this.ctx.globalAlpha = overallAlpha * trailOpacity;
-                            this.ctx.fillStyle = trailFillStyle;
-                            if (glowEnabled) {
-                                this.ctx.shadowBlur = this.spawn_matrixGlowSize;
-                                this.ctx.shadowColor = trailGlowColor;
+                                while (distanceTraveledAlongPath + segmentDist >= distanceNeededForNextChar) {
+                                    const ratio = (distanceNeededForNextChar - distanceTraveledAlongPath) / segmentDist;
+                                    if (ratio > 1) break; 
+                                    const charX = p1.x + (p2.x - p1.x) * ratio;
+                                    const charY = p1.y + (p2.y - p1.y) * ratio;
+
+                                    this.ctx.save();
+                                    this.ctx.translate(charX - this.width / 2, charY - this.height / 2);
+                                    this.ctx.rotate(p1.rotation);
+
+                                    const trailOpacity = Math.max(0.1, 1.0 - (drawnCharIndex / trailLength));
+                                    this.ctx.globalAlpha = overallAlpha * trailOpacity;
+                                    
+                                    if (isMatrixTrail) {
+                                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : ((this.gradType === 'solid') ? this.gradient.color2 : this._createLocalFillStyle(p.id));
+                                        this._drawParticleShape({ ...p, size: p.size, matrixChars: [p.matrixChars[drawnCharIndex + 1]] });
+                                    } else {
+                                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : this.spawn_leaderColor;
+                                        if (this.enableStroke) this.ctx.strokeStyle = this.ctx.fillStyle;
+                                        this._drawParticleShape({ ...p, size: p.size });
+                                    }
+                                    
+                                    this.ctx.restore();
+
+                                    drawnCharIndex++;
+                                    distanceNeededForNextChar += spacing;
+                                    if (drawnCharIndex >= trailLength) break;
+                                }
+                                distanceTraveledAlongPath += segmentDist;
                             }
-                            this.ctx.fillText(char || '?', 0, yOffset);
                         }
-
-                        // Draw the leader on top.
-                        this.ctx.globalAlpha = overallAlpha;
-                        this.ctx.shadowBlur = 0;
-                        this.ctx.fillStyle = leaderColor;
-                        if (glowEnabled) {
-                            this.ctx.shadowBlur = this.spawn_matrixGlowSize;
-                            this.ctx.shadowColor = leaderColor;
-                        }
-                        this.ctx.fillText(p.matrixChars[0] || '?', 0, 0);
-
-                        this.ctx.restore();
-
-                    } else {
-                        // --- 3. Use the generic drawing logic for all other particle shapes ---
-
-                        // Draw the Trail
-                        if (this.spawn_enableTrail && p.trail && p.trail.length > 0) {
-                            const trailFillStyle = isFlashActive ? '#FFFFFF' : this._createLocalFillStyle(p.id);
-                            p.trail.forEach((trailPoint, index) => {
-                                this.ctx.save();
-                                this.ctx.translate(trailPoint.x - this.width / 2, trailPoint.y - this.height / 2);
-                                this.ctx.rotate(trailPoint.rotation);
-                                const trailProgress = (p.trail.length - index) / p.trail.length;
-                                this.ctx.globalAlpha = overallAlpha * trailProgress;
-                                this.ctx.fillStyle = trailFillStyle;
-                                if (this.enableStroke) this.ctx.strokeStyle = trailFillStyle;
-                                this._drawParticleShape({ ...p, size: trailPoint.size });
-                                this.ctx.restore();
-                            });
-                        }
-
-                        // Draw the Leader
-                        this.ctx.save();
-                        this.ctx.translate(p.x - this.width / 2, p.y - this.height / 2);
-                        this.ctx.rotate(p.rotation);
-                        this.ctx.globalAlpha = overallAlpha;
-                        this.ctx.fillStyle = isFlashActive ? '#FFFFFF' : (this.spawn_enableTrail ? this.spawn_leaderColor : this._createLocalFillStyle(p.id));
-                        if (this.enableStroke) this.ctx.strokeStyle = this.ctx.fillStyle;
-                        this._drawParticleShape(p);
-                        this.ctx.restore();
                     }
+
+                    // --- Draw the Leader Particle ---
+                    this.ctx.save();
+                    this.ctx.translate(p.x - this.width / 2, p.y - this.height / 2);
+                    this.ctx.rotate(p.rotation);
+                    this.ctx.globalAlpha = overallAlpha;
+
+                    if (isFlashActive) {
+                        this.ctx.fillStyle = '#FFFFFF';
+                    } else if (p.actualShape === 'matrix') {
+                        this.ctx.fillStyle = this.gradient.color1;
+                    } else {
+                        this.ctx.fillStyle = this.spawn_enableTrail ? this.spawn_leaderColor : this._createLocalFillStyle(p.id);
+                    }
+
+                    if (this.enableStroke) {
+                        this.ctx.strokeStyle = this.ctx.fillStyle;
+                    }
+
+                    this._drawParticleShape(p);
+                    this.ctx.restore();
                 });
             } else if (this.shape === 'text') {
                 const textToRender = this.getDisplayText();
