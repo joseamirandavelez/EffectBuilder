@@ -282,7 +282,7 @@ function getPatternColor(t, c1, c2) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, strimerSnakeDirection, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path, spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixTrailLength, spawn_enableGlow, spawn_matrixEnableGlow, spawn_glowSize, spawn_matrixGlowSize, spawn_glowColor, spawn_matrixGlowColor, spawn_enableTrail, spawn_trailLength, spawn_leaderColor, spawn_audioTarget, spawn_trailSpacing }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path, spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixEnableGlow, spawn_glowSize, spawn_matrixGlowSize, spawn_enableTrail, spawn_trailLength, spawn_audioTarget, spawn_trailSpacing }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -489,7 +489,6 @@ class Shape {
         this.spawn_matrixCharSet = spawn_matrixCharSet || 'katakana';
         this.spawn_matrixEnableGlow = spawn_matrixEnableGlow || false;
         this.spawn_matrixGlowSize = spawn_matrixGlowSize || 10;
-        this.spawn_enableGlow = spawn_enableGlow || false;
         this.spawn_glowSize = spawn_glowSize || 10;
         this.spawn_enableTrail = spawn_enableTrail || false;
         this.spawn_trailLength = spawn_trailLength || 10;
@@ -508,8 +507,8 @@ class Shape {
         const s = particle.size / 2;
 
         const isMatrix = particle.actualShape === 'matrix';
-        const glowEnabled = this.spawn_enableGlow || this.spawn_matrixEnableGlow;
-        const glowSize = isMatrix ? this.spawn_matrixGlowSize : this.spawn_glowSize;
+        const glowEnabled = this.spawn_matrixEnableGlow;
+        const glowSize = this.spawn_matrixGlowSize
 
         if (glowEnabled && glowSize > 0) {
             this.ctx.shadowBlur = glowSize;
@@ -1090,6 +1089,7 @@ class Shape {
         // When the SVG path string changes, invalidate the cached Path2D object
         // so it will be regenerated on the next frame.
         if (props.spawn_svg_path !== undefined && props.spawn_svg_path !== this.spawn_svg_path) {
+            console.log('[UPDATE] Invalidating customParticlePath due to new SVG path.');
             this.customParticlePath = null;
         }
         const textChanged = props.text !== undefined && props.text !== this.text;
@@ -2540,6 +2540,7 @@ class Shape {
                 // Ensure the custom particle path is created if needed
                 if (this.spawn_shapeType === 'custom' || this.spawn_shapeType === 'random') {
                     if (!this.customParticlePath && this.spawn_svg_path) {
+                        console.log('[DRAW] customParticlePath is null, attempting to create new Path2D.');
                         try {
                             this.customParticlePath = new Path2D(this.spawn_svg_path);
                         } catch (e) {
@@ -2548,7 +2549,7 @@ class Shape {
                         }
                     }
                 }
-
+                
                 this.particles.forEach(p => {
                     let overallAlpha = Math.sin((p.life / p.maxLife) * Math.PI);
                     const isFlashActive = this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0;
