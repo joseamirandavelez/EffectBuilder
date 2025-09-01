@@ -508,9 +508,7 @@ class Shape {
         const s = particle.size / 2;
 
         const isMatrix = particle.actualShape === 'matrix';
-        // Enable glow if the generic flag is on, OR if it's a matrix particle and its specific flag is on.
-        const glowEnabled = this.spawn_enableGlow || (isMatrix && this.spawn_matrixEnableGlow);
-        // Use the matrix-specific size for matrix particles, otherwise the generic size.
+        const glowEnabled = this.spawn_enableGlow || this.spawn_matrixEnableGlow;
         const glowSize = isMatrix ? this.spawn_matrixGlowSize : this.spawn_glowSize;
 
         if (glowEnabled && glowSize > 0) {
