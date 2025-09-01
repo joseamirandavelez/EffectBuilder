@@ -1456,7 +1456,7 @@ class Shape {
                     }
                     tempCtx.beginPath();
                     tempCtx.moveTo(centerX, centerY);
-                    tempCtx.arc(centerX, centerY, size, startAngle, endAngle);
+                    tempCtx.arc(centerX, centerY, size / 2, startAngle, endAngle);
                     tempCtx.closePath();
                     tempCtx.fillStyle = segmentColor;
                     tempCtx.fill();
