@@ -3548,20 +3548,48 @@ document.addEventListener('DOMContentLoaded', function () {
                 const shape = objects.find(o => o.id === currentlyDrawingShapeId);
                 if (!shape) return;
 
-                // Convert canvas click coordinates to the shape's local coordinate space
-                const localX = x - shape.x;
-                const localY = y - shape.y;
+                // --- START: BUG FIX for incorrect node placement ---
+                // The original logic was incorrect because it didn't account for the shape's rotation
+                // or the fact that its bounding box (and thus its x/y origin) moves.
+                // This new logic correctly transforms the world click coordinates into the shape's local space.
+
+                const center = shape.getCenter();
+                const angle = -shape.getRenderAngle(); // Use negative angle for inverse transform
+                const s = Math.sin(angle);
+                const c = Math.cos(angle);
+
+                const dx = x - center.x;
+                const dy = y - center.y;
+
+                // 1. Get click coordinates relative to the shape's center, ignoring rotation.
+                const localClickX = dx * c - dy * s;
+                const localClickY = dx * s + dy * c;
+
+                // 2. Convert from center-relative coordinates to top-left-relative coordinates,
+                // which is how the polylineNodes array is stored.
+                const nodeX = localClickX + shape.width / 2;
+                const nodeY = localClickY + shape.height / 2;
+                // --- END: BUG FIX ---
 
                 // Create a new nodes array and trigger the update
                 const currentNodes = (typeof shape.polylineNodes === 'string') ? JSON.parse(shape.polylineNodes) : shape.polylineNodes;
-                const newNodes = [...currentNodes, {x: localX, y: localY}];
+                const newNodes = [...currentNodes, { x: nodeX, y: nodeY }];
                 shape.update({ polylineNodes: newNodes });
 
                 // The update() method normalizes nodes, so we need the updated version
-                // to correctly position the preview line's start point.
+                // to correctly position the preview line's start point for the next segment.
+                // We must transform the new local node position back to world space.
                 const lastNode = shape.polylineNodes[shape.polylineNodes.length - 1];
-                previewLine.startX = shape.x + lastNode.x;
-                previewLine.startY = shape.y + lastNode.y;
+                const newCenter = shape.getCenter();
+                const newAngle = shape.getRenderAngle();
+                const newS = Math.sin(newAngle);
+                const newC = Math.cos(newAngle);
+
+                const lastNodeCenterX = lastNode.x - shape.width / 2;
+                const lastNodeCenterY = lastNode.y - shape.height / 2;
+
+                previewLine.startX = newCenter.x + (lastNodeCenterX * newC - lastNodeCenterY * newS);
+                previewLine.startY = newCenter.y + (lastNodeCenterX * newS + lastNodeCenterY * newC);
 
                 updateFormValuesFromObjects();
             }
