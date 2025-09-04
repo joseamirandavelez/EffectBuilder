@@ -3179,52 +3179,41 @@ class Shape {
                                     this.ctx.beginPath();
                                     const isRainbow = this.strokeGradType.startsWith('rainbow');
 
-                                    if (isCurved) {
-                                        const p0 = midPoints[i];
-                                        const p1 = localNodes[i+1];
-                                        const p2 = midPoints[i+1];
+                                    const p1 = isCurved ? midPoints[i] : localNodes[i];
+                                    const p2 = isCurved ? midPoints[i+1] : localNodes[i+1];
+                                    const grad = this.ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
 
-                                        const grad = this.ctx.createLinearGradient(p0.x, p0.y, p2.x, p2.y);
+                                    if (isRainbow) {
+                                        const numStops = 5; // More stops = smoother rainbow on the segment
+                                        const segDist = segLength / totalLength;
+                                        for (let j = 0; j <= numStops; j++) {
+                                            const t = j / numStops; // interpolation factor for this segment, from 0 to 1
 
-                                        if (isRainbow) {
-                                            const numStops = 10;
-                                            for (let j = 0; j <= numStops; j++) {
-                                                const t = j / numStops;
-                                                const currentRatio = startRatio + (endRatio - startRatio) * t;
-                                                const hue = (currentRatio * 360 + this.strokeHue1) % 360;
-                                                grad.addColorStop(t, `hsl(${hue}, 100%, 50%)`);
-                                            }
-                                        } else {
-                                            const startColor = lerpColor(c1, c2, startRatio);
-                                            const endColor = lerpColor(c1, c2, endRatio);
-                                            grad.addColorStop(0, startColor);
-                                            grad.addColorStop(1, endColor);
+                                            // Calculate the ratio along the total path, handling wrap-around
+                                            const currentRatio = startRatio + t * segDist;
+
+                                            const hue = (currentRatio * 360) % 360;
+                                            grad.addColorStop(t, `hsl(${hue}, 100%, 50%)`);
                                         }
-
-                                        this.ctx.strokeStyle = grad;
-                                        this.ctx.moveTo(p0.x, p0.y);
-                                        this.ctx.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
                                     } else {
-                                        const p1 = localNodes[i];
-                                        const p2 = localNodes[i+1];
-                                        const grad = this.ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
-
-                                        if (isRainbow) {
-                                            const numStops = 10;
-                                            for (let j = 0; j <= numStops; j++) {
-                                                const t = j / numStops;
-                                                const currentRatio = startRatio + (endRatio - startRatio) * t;
-                                                const hue = (currentRatio * 360 + this.strokeHue1) % 360;
-                                                grad.addColorStop(t, `hsl(${hue}, 100%, 50%)`);
-                                            }
+                                        // Handle wrap-around for linear gradients
+                                        if (endRatio < startRatio) {
+                                            const breakPoint = (1.0 - startRatio) / ( (1.0 - startRatio) + endRatio );
+                                            grad.addColorStop(0, lerpColor(c1, c2, startRatio));
+                                            grad.addColorStop(breakPoint - 0.001, lerpColor(c1, c2, 1.0));
+                                            grad.addColorStop(breakPoint, lerpColor(c1, c2, 0.0));
+                                            grad.addColorStop(1, lerpColor(c1, c2, endRatio));
                                         } else {
-                                            const startColor = lerpColor(c1, c2, startRatio);
-                                            const endColor = lerpColor(c1, c2, endRatio);
-                                            grad.addColorStop(0, startColor);
-                                            grad.addColorStop(1, endColor);
+                                            grad.addColorStop(0, lerpColor(c1, c2, startRatio));
+                                            grad.addColorStop(1, lerpColor(c1, c2, endRatio));
                                         }
+                                    }
 
-                                        this.ctx.strokeStyle = grad;
+                                    this.ctx.strokeStyle = grad;
+                                    if (isCurved) {
+                                        this.ctx.moveTo(p1.x, p1.y);
+                                        this.ctx.quadraticCurveTo(localNodes[i+1].x, localNodes[i+1].y, p2.x, p2.y);
+                                    } else {
                                         this.ctx.moveTo(p1.x, p1.y);
                                         this.ctx.lineTo(p2.x, p2.y);
                                     }
