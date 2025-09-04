@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRGB Interactive Effect Builder - TEST</title>
+
+    <!-- Test Configuration -->
+    <meta title="Test Effect" />
+    <meta description="A simple configuration for testing." />
+    <meta property="enableAnimation" label="Enable Animation" type="boolean" default="true" />
+    <meta property="enableSound" label="Enable Sound" type="boolean" default="false" />
+
+    <!-- Object 1: Rectangle -->
+    <meta property="obj1_shape" label="Test Rect: Shape" type="combobox" values="rectangle,polyline" default="rectangle" />
+    <meta property="obj1_x" label="Test Rect: X" type="number" default="10" />
+    <meta property="obj1_y" label="Test Rect: Y" type="number" default="10" />
+    <meta property="obj1_width" label="Test Rect: Width" type="number" default="100" />
+    <meta property="obj1_height" label="Test Rect: Height" type="number" default="50" />
+    <meta property="obj1_gradColor1" label="Test Rect: Color 1" type="color" default="#ff0000" />
+
+    <!-- Object 2: Polyline -->
+    <meta property="obj2_shape" label="Test Poly: Shape" type="combobox" values="rectangle,polyline" default="polyline" />
+    <meta property="obj2_x" label="Test Poly: X" type="number" default="50" />
+    <meta property="obj2_y" label="Test Poly: Y" type="number" default="150" />
+    <meta property="obj2_width" label="Test Poly: Width" type="number" default="200" />
+    <meta property="obj2_height" label="Test Poly: Height" type="number" default="100" />
+    <meta property="obj2_enableStroke" label="Test Poly: Enable Stroke" type="boolean" default="true" />
+    <meta property="obj2_strokeWidth" label="Test Poly: Stroke Width" type="number" default="2" />
+    <meta property="obj2_strokeGradColor1" label="Test Poly: Stroke Color" type="color" default="#00ffff" />
+    <meta property="obj2_polylineNodes" label="Test Poly: Nodes" type="textarea" default='[{"x":0,"y":0},{"x":100,"y":100},{"x":200,"y":0}]' />
+    <meta property="obj2_polylineCurveStyle" label="Test Poly: Curve" type="combobox" values="straight,curved" default="straight" />
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="d-flex flex-column vh-100">
+    <!-- Simplified layout for testing -->
+    <div id="right-panel" class="d-flex flex-column h-100">
+        <div id="right-panel-top" style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+            <div id="canvas-container">
+                <canvas id="signalCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="util.js"></script>
+    <script src="Shape.js"></script>
+    <!-- We need a mock main.js that just runs the core animation loop -->
+    <script>
+        // Mock a minimal environment for Shape.js to run
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('signalCanvas');
+            if (!canvas) { return; }
+            canvas.width = 1280;
+            canvas.height = 800;
+            const ctx = canvas.getContext('2d');
+
+            let objects = [];
+            let configStore = [];
+
+            // --- Copied from main.js ---
+            function parseMetaToConfig(metaElement) {
+                const config = {};
+                for (const attr of metaElement.attributes) {
+                    config[attr.name] = attr.value;
+                }
+                return config;
+            }
+
+            function createInitialObjects() {
+                console.log("Attempting to create objects...");
+                const metaElements = Array.from(document.querySelectorAll('head > meta'));
+                console.log(`Found ${metaElements.length} meta tags.`);
+
+                configStore = metaElements.map(parseMetaToConfig);
+                console.log("Config store created:", configStore);
+
+                const allPropKeysFromStore = configStore.map(c => c.property || c.name);
+                if (allPropKeysFromStore.length === 0) {
+                    console.log("No properties found in config store. Aborting.");
+                    return;
+                }
+
+                const uniqueIds = [...new Set(allPropKeysFromStore.map(p => {
+                    if (!p || !p.startsWith('obj')) return null;
+                    const end = p.indexOf('_');
+                    if (end <= 3) return null;
+                    const idString = p.substring(3, end);
+                    const id = parseInt(idString, 10);
+                    return isNaN(id) ? null : String(id);
+                }).filter(id => id !== null))];
+                console.log("Unique Object IDs found:", uniqueIds);
+
+                const initialStates = uniqueIds.map(id => {
+                    const configForThisObject = { id: parseInt(id), ctx: ctx, gradient: {}, strokeGradient: {} };
+                    const objectConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${id}_`));
+
+                    if (!objectConfigs) return null;
+
+                    objectConfigs.forEach(conf => {
+                        const key = conf.property.replace(`obj${id}_`, '');
+                        let value = conf.default;
+
+                        if (conf.type === 'number') value = parseFloat(value);
+                        else if (conf.type === 'boolean') value = (String(value).toLowerCase() === 'true');
+                        else if (conf.type === 'textarea') value = String(value).replace(/\\n/g, '\n');
+
+                        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize'];
+                        if (propsToScale.includes(key) && typeof value === 'number') {
+                            value *= 4;
+                        }
+
+                        if (key.startsWith('gradColor')) {
+                            configForThisObject.gradient[key.replace('grad', '').toLowerCase()] = value;
+                        } else if (key.startsWith('strokeGradColor')) {
+                            configForThisObject.strokeGradient[key.replace('strokeGradColor', 'color').toLowerCase()] = value;
+                        } else {
+                            configForThisObject[key] = value;
+                        }
+                    });
+                    return configForThisObject;
+                }).filter(Boolean);
+                console.log("Initial states for objects:", initialStates);
+
+                objects = initialStates.map(state => new Shape({ ...state, ctx: ctx, canvasWidth: canvas.width }));
+            }
+
+            function drawFrame() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#111'; // Dark background for visibility
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                for (let i = objects.length - 1; i >= 0; i--) {
+                    objects[i].draw(false, {}, {});
+                }
+            }
+
+            console.log("Test page initialized.");
+            createInitialObjects();
+            console.log(`Created ${objects.length} objects for testing.`);
+            drawFrame();
+        });
+    </script>
+</body>
+</html>

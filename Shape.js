@@ -942,7 +942,7 @@ class Shape {
         const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
         const { charWidth, charHeight, charSpacing, lineSpacing } = fontData;
         const textToMeasure = this.getWrappedText() || ' ';
-        const lines = textToMeasure.split('\n');
+        const lines = textToMeasure.split('\\n');
         const pixelSize = this.fontSize / 10;
         const textBlockHeight = lines.length * (charHeight + lineSpacing) * pixelSize - (lineSpacing * pixelSize);
         this.height = textBlockHeight + (2 * pixelSize);
@@ -954,7 +954,7 @@ class Shape {
         const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
         const { charHeight, lineSpacing } = fontData;
         const textToMeasure = this.getWrappedText() || ' ';
-        const lines = textToMeasure.split('\n');
+        const lines = textToMeasure.split('\\n');
 
         const denominator = (lines.length * (charHeight + lineSpacing) - lineSpacing + 2);
         if (denominator <= 0) return;
@@ -1151,7 +1151,7 @@ class Shape {
                     nodes = (typeof propValue === 'string') ? JSON.parse(propValue) : propValue;
                 } catch (e) {
                     console.error("Failed to parse polylineNodes on update:", e);
-                    continue; // Skip this property if it's invalid
+                    continue;
                 }
 
                 if (!Array.isArray(nodes) || nodes.length === 0) {
@@ -1161,9 +1161,6 @@ class Shape {
                     continue;
                 }
 
-                const oldCenterX = this.x + this.width / 2;
-                const oldCenterY = this.y + this.height / 2;
-
                 const minX = Math.min(...nodes.map(n => n.x));
                 const minY = Math.min(...nodes.map(n => n.y));
                 const maxX = Math.max(...nodes.map(n => n.x));
@@ -1172,14 +1169,16 @@ class Shape {
                 const newWidth = Math.max(1, maxX - minX);
                 const newHeight = Math.max(1, maxY - minY);
 
+                // This logic preserves the world-space position of the nodes.
+                // It adjusts the shape's origin (x,y) and normalizes the node coordinates
+                // relative to the new origin.
+                this.x += minX;
+                this.y += minY;
                 this.width = newWidth;
                 this.height = newHeight;
-                this.x = oldCenterX - newWidth / 2;
-                this.y = oldCenterY - newHeight / 2;
-
                 this.polylineNodes = nodes.map(n => ({ x: n.x - minX, y: n.y - minY }));
 
-                continue; // Prevent default assignment at the end of the loop
+                continue;
             } else if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
                 if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
                 if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
@@ -2977,51 +2976,59 @@ class Shape {
                     this.ctx.stroke();
                 }
                 } else if (this.shape === 'polyline') {
-                    if (!this.enableStroke || this.strokeWidth <= 0) return;
-
                     let nodes;
                     try {
                         nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : this.polylineNodes;
-                    } catch (e) {
-                        console.error("Failed to parse polylineNodes:", e);
-                        return;
-                    }
+                    } catch (e) { console.error("Failed to parse polylineNodes:", e); return; }
 
-                    if (!Array.isArray(nodes) || nodes.length < 1) {
-                        return;
-                    }
-
-                    this.ctx.strokeStyle = this._createLocalStrokeStyle();
-                    this.ctx.lineWidth = this.strokeWidth;
-                    this.ctx.lineCap = 'round';
-                    this.ctx.lineJoin = 'round';
-                    this.ctx.beginPath();
+                    if (!Array.isArray(nodes) || nodes.length < 1) return;
 
                     const offsetX = this.width / 2;
                     const offsetY = this.height / 2;
                     const localNodes = nodes.map(n => ({ x: n.x - offsetX, y: n.y - offsetY }));
 
-                    if (this.polylineCurveStyle === 'curved' && localNodes.length > 1) {
-                        if (localNodes.length < 3) {
-                            this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
-                            this.ctx.lineTo(localNodes[1].x, localNodes[1].y);
-                        } else {
-                            this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
-                            for (var i = 0; i < localNodes.length - 2; i++) {
-                                const xc = (localNodes[i].x + localNodes[i + 1].x) / 2;
-                                const yc = (localNodes[i].y + localNodes[i + 1].y) / 2;
-                                this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, xc, yc);
+                    // Draw the main stroke if enabled
+                    if (this.enableStroke && this.strokeWidth > 0) {
+                        this.ctx.strokeStyle = this._createLocalStrokeStyle();
+                        this.ctx.lineWidth = this.strokeWidth;
+                        this.ctx.lineCap = 'round';
+                        this.ctx.lineJoin = 'round';
+                        this.ctx.beginPath();
+
+                        if (this.polylineCurveStyle === 'curved' && localNodes.length > 1) {
+                            if (localNodes.length < 3) {
+                                this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
+                                this.ctx.lineTo(localNodes[1].x, localNodes[1].y);
+                            } else {
+                                this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
+                                for (var i = 0; i < localNodes.length - 2; i++) {
+                                    const xc = (localNodes[i].x + localNodes[i + 1].x) / 2;
+                                    const yc = (localNodes[i].y + localNodes[i + 1].y) / 2;
+                                    this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, xc, yc);
+                                }
+                                this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, localNodes[i + 1].x, localNodes[i + 1].y);
                             }
-                            this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, localNodes[i + 1].x, localNodes[i + 1].y);
+                        } else { // Straight line
+                            this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
+                            for (let i = 1; i < localNodes.length; i++) {
+                                this.ctx.lineTo(localNodes[i].x, localNodes[i].y);
+                            }
                         }
-                    } else { // Straight line
+                        this.ctx.stroke();
+                    }
+                    // If stroke is disabled but the object is selected, draw a faint guide line
+                    else if (isSelected) {
+                        this.ctx.strokeStyle = 'rgba(0, 246, 255, 0.5)'; // Faint version of selection color
+                        this.ctx.lineWidth = 1;
+                        this.ctx.setLineDash([2, 4]);
+                        this.ctx.beginPath();
                         this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
                         for (let i = 1; i < localNodes.length; i++) {
                             this.ctx.lineTo(localNodes[i].x, localNodes[i].y);
                         }
+                        this.ctx.stroke();
+                        this.ctx.setLineDash([]);
                     }
-
-                    this.ctx.stroke();
             } else if (this.shape === 'ring') {
                 const oR = this.width / 2;
                 const iR = this.innerDiameter / 2;
@@ -3164,7 +3171,7 @@ class Shape {
             this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
 
             // SVG path data for Bootstrap's 'lock-fill' icon.
-            const lockPathData = "M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z";
+            const lockPathData = "M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2-2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z";
             const lockIconPath = new Path2D(lockPathData);
 
             // The original icon is on a 16x16 grid. We'll scale it to 30px.
@@ -3182,3 +3189,9 @@ class Shape {
         }
     }
 }
+"""
+new_content = content.replace(
+    "spawn_trailSpacing })",
+    "spawn_trailSpacing, polylineNodes, polylineCurveStyle })"
+)
+overwrite_file_with_block('Shape.js', new_content)
