@@ -516,8 +516,8 @@ class Shape {
         this.spawn_trailSpacing = spawn_trailSpacing || 1;
 
         // Polyline properties
-        this.polylineNodes = polylineNodes || [{x: 50, y: 50}, {x: 150, y: 100}];
-        this.polylineCurveStyle = polylineCurveStyle || 'straight';
+        this.polylineNodes = [{x: 50, y: 50}, {x: 150, y: 100}];
+        this.polylineCurveStyle = 'straight';
 
         // Particle system state
         this.particles = [];
@@ -963,7 +963,7 @@ class Shape {
         const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
         const { charWidth, charHeight, charSpacing, lineSpacing } = fontData;
         const textToMeasure = this.getWrappedText() || ' ';
-        const lines = textToMeasure.split('\\n');
+        const lines = textToMeasure.split('\n');
         const pixelSize = this.fontSize / 10;
         const textBlockHeight = lines.length * (charHeight + lineSpacing) * pixelSize - (lineSpacing * pixelSize);
         this.height = textBlockHeight + (2 * pixelSize);
@@ -975,7 +975,7 @@ class Shape {
         const fontData = this.pixelFont === 'large' ? FONT_DATA_5PX : FONT_DATA_4PX;
         const { charHeight, lineSpacing } = fontData;
         const textToMeasure = this.getWrappedText() || ' ';
-        const lines = textToMeasure.split('\\n');
+        const lines = textToMeasure.split('\n');
 
         const denominator = (lines.length * (charHeight + lineSpacing) - lineSpacing + 2);
         if (denominator <= 0) return;
@@ -3113,151 +3113,6 @@ class Shape {
                     if (this.ctx.lineWidth <= 0 || !isFinite(this.ctx.lineWidth)) { this.ctx.lineWidth = 1; }
                     this.ctx.stroke();
                 }
-                } else if (this.shape === 'polyline') {
-                    let nodes;
-                    try {
-                        nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : this.polylineNodes;
-                    } catch (e) { console.error("Failed to parse polylineNodes:", e); return; }
-
-                    if (!Array.isArray(nodes) || nodes.length < 1) return;
-
-                    const offsetX = this.width / 2;
-                    const offsetY = this.height / 2;
-                    const localNodes = nodes.map(n => ({ x: n.x - offsetX, y: n.y - offsetY }));
-
-                    // Draw the main stroke if enabled
-                    if (this.enableStroke && this.strokeWidth > 0) {
-                        const isPathCompatibleGradient = !this.strokeGradType.includes('radial') && !this.strokeGradType.includes('conic');
-                        if (this.strokeScrollDir === 'along-path' && localNodes.length > 1 && isPathCompatibleGradient) {
-                            const c1 = this.strokeGradient.color1;
-                            const c2 = this.strokeGradient.color2;
-                            const isCurved = this.polylineCurveStyle === 'curved';
-
-                            // 1. Calculate total length and segment lengths
-                            let totalLength = 0;
-                            const segmentData = [];
-                            let midPoints = [];
-
-                            if (isCurved) {
-                                midPoints.push(localNodes[0]);
-                                for (let i = 1; i < localNodes.length - 1; i++) {
-                                    midPoints.push({ x: (localNodes[i].x + localNodes[i+1].x) / 2, y: (localNodes[i].y + localNodes[i+1].y) / 2 });
-                                }
-                                midPoints.push(localNodes[localNodes.length - 1]);
-                            }
-
-                            for (let i = 0; i < localNodes.length - 1; i++) {
-                                let length = 0;
-                                if (isCurved) {
-                                    const p0 = midPoints[i];
-                                    const p1 = localNodes[i+1];
-                                    const p2 = midPoints[i+1];
-                                    length = getQuadraticCurveLength(p0, p1, p2);
-                                } else {
-                                    const p1 = localNodes[i];
-                                    const p2 = localNodes[i+1];
-                                    length = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-                                }
-                                segmentData.push({ length });
-                                totalLength += length;
-                            }
-
-                            if (totalLength > 0) {
-                                this.ctx.lineWidth = this.strokeWidth;
-                                this.ctx.lineCap = 'round';
-                                this.ctx.lineJoin = 'round';
-
-                                let lengthSoFar = 0;
-                                const scrollOffset = (this.strokeScrollOffset % 1.0 + 1.0) % 1.0;
-
-                                for (let i = 0; i < localNodes.length - 1; i++) {
-                                    const segLength = segmentData[i].length;
-                                    const startRatio = (lengthSoFar / totalLength + scrollOffset) % 1.0;
-                                    lengthSoFar += segLength;
-                                    const endRatio = (lengthSoFar / totalLength + scrollOffset) % 1.0;
-
-                                    this.ctx.beginPath();
-                                    const isRainbow = this.strokeGradType.startsWith('rainbow');
-
-                                    const p1 = isCurved ? midPoints[i] : localNodes[i];
-                                    const p2 = isCurved ? midPoints[i+1] : localNodes[i+1];
-                                    const grad = this.ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
-
-                                    if (isRainbow) {
-                                        const numStops = 5; // More stops = smoother rainbow on the segment
-                                        const segDist = segLength / totalLength;
-                                        for (let j = 0; j <= numStops; j++) {
-                                            const t = j / numStops; // interpolation factor for this segment, from 0 to 1
-
-                                            // Calculate the ratio along the total path, handling wrap-around
-                                            const currentRatio = startRatio + t * segDist;
-
-                                            const hue = (currentRatio * 360) % 360;
-                                            grad.addColorStop(t, `hsl(${hue}, 100%, 50%)`);
-                                        }
-                                    } else {
-                                        // Handle wrap-around for linear gradients
-                                        if (endRatio < startRatio) {
-                                            const breakPoint = (1.0 - startRatio) / ( (1.0 - startRatio) + endRatio );
-                                            grad.addColorStop(0, lerpColor(c1, c2, startRatio));
-                                            grad.addColorStop(breakPoint - 0.001, lerpColor(c1, c2, 1.0));
-                                            grad.addColorStop(breakPoint, lerpColor(c1, c2, 0.0));
-                                            grad.addColorStop(1, lerpColor(c1, c2, endRatio));
-                                        } else {
-                                            grad.addColorStop(0, lerpColor(c1, c2, startRatio));
-                                            grad.addColorStop(1, lerpColor(c1, c2, endRatio));
-                                        }
-                                    }
-
-                                    this.ctx.strokeStyle = grad;
-                                    if (isCurved) {
-                                        this.ctx.moveTo(p1.x, p1.y);
-                                        this.ctx.quadraticCurveTo(localNodes[i+1].x, localNodes[i+1].y, p2.x, p2.y);
-                                    } else {
-                                        this.ctx.moveTo(p1.x, p1.y);
-                                        this.ctx.lineTo(p2.x, p2.y);
-                                    }
-                                    this.ctx.stroke();
-                                }
-                            }
-                        } else {
-                            // Original logic for other stroke types
-                            this.ctx.strokeStyle = this._createLocalStrokeStyle();
-                            this.ctx.lineWidth = this.strokeWidth;
-                            this.ctx.lineCap = 'round';
-                            this.ctx.lineJoin = 'round';
-                            this.ctx.beginPath();
-
-                            if (this.polylineCurveStyle === 'curved' && localNodes.length > 2) {
-                                this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
-                                for (let i = 1; i < localNodes.length - 1; i++) {
-                                    const xc = (localNodes[i].x + localNodes[i + 1].x) / 2;
-                                    const yc = (localNodes[i].y + localNodes[i + 1].y) / 2;
-                                    this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, xc, yc);
-                                }
-                                this.ctx.lineTo(localNodes[localNodes.length - 1].x, localNodes[localNodes.length - 1].y);
-                            } else { // Straight line or not enough nodes for curves
-                                this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
-                                for (let i = 1; i < localNodes.length; i++) {
-                                    this.ctx.lineTo(localNodes[i].x, localNodes[i].y);
-                                }
-                            }
-                            this.ctx.stroke();
-                        }
-                    }
-                    // If stroke is disabled but the object is selected, draw a faint guide line
-                    else if (isSelected) {
-                        this.ctx.strokeStyle = 'rgba(0, 246, 255, 0.5)'; // Faint version of selection color
-                        this.ctx.lineWidth = 1;
-                        this.ctx.setLineDash([2, 4]);
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
-                        for (let i = 1; i < localNodes.length; i++) {
-                            this.ctx.lineTo(localNodes[i].x, localNodes[i].y);
-                        }
-                        this.ctx.stroke();
-                        this.ctx.setLineDash([]);
-                    }
             } else if (this.shape === 'ring') {
                 const oR = this.width / 2;
                 const iR = this.innerDiameter / 2;
@@ -3349,27 +3204,6 @@ class Shape {
         this.ctx.setLineDash([]);
 
         if (!this.locked) {
-            // Draw node handles for polylines
-            if (this.shape === 'polyline') {
-                let nodes;
-                try {
-                    nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : this.polylineNodes;
-                } catch (e) { nodes = []; }
-
-                if (Array.isArray(nodes)) {
-                    const offsetX = this.width / 2;
-                    const offsetY = this.height / 2;
-                    this.ctx.fillStyle = selectionColor;
-                    nodes.forEach(node => {
-                        const nodeX = node.x - offsetX;
-                        const nodeY = node.y - offsetY;
-                        this.ctx.beginPath();
-                        this.ctx.arc(nodeX, nodeY, 6, 0, 2 * Math.PI);
-                        this.ctx.fill();
-                    });
-                }
-            }
-
             this.ctx.fillStyle = selectionColor;
             const h2 = this.handleSize / 2;
             const handlePositions = [
@@ -3400,7 +3234,7 @@ class Shape {
             this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
 
             // SVG path data for Bootstrap's 'lock-fill' icon.
-            const lockPathData = "M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2-2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z";
+            const lockPathData = "M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z";
             const lockIconPath = new Path2D(lockPathData);
 
             // The original icon is on a 16x16 grid. We'll scale it to 30px.
