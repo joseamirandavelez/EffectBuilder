@@ -3288,7 +3288,6 @@ class Shape {
 
                         // Draw fill if enabled
                         if (this.fillShape) {
-                            this.ctx.closePath();
                             this._drawFill();
                         }
 
