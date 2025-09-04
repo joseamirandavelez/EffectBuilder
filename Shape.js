@@ -2996,17 +2996,15 @@ class Shape {
                         this.ctx.beginPath();
 
                         if (this.polylineCurveStyle === 'curved' && localNodes.length > 1) {
-                            if (localNodes.length < 3) {
-                                this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
-                                this.ctx.lineTo(localNodes[1].x, localNodes[1].y);
-                            } else {
-                                this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
-                                for (var i = 0; i < localNodes.length - 2; i++) {
-                                    const xc = (localNodes[i].x + localNodes[i + 1].x) / 2;
-                                    const yc = (localNodes[i].y + localNodes[i + 1].y) / 2;
-                                    this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, xc, yc);
-                                }
-                                this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, localNodes[i + 1].x, localNodes[i + 1].y);
+                            this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
+                            for (let i = 1; i < localNodes.length - 1; i++) {
+                                const xc = (localNodes[i].x + localNodes[i + 1].x) / 2;
+                                const yc = (localNodes[i].y + localNodes[i + 1].y) / 2;
+                                this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, xc, yc);
+                            }
+                            // For the last segment
+                            if (localNodes.length > 1) {
+                                this.ctx.lineTo(localNodes[localNodes.length - 1].x, localNodes[localNodes.length - 1].y);
                             }
                         } else { // Straight line
                             this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
