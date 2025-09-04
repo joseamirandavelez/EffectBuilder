@@ -280,6 +280,27 @@ function getPatternColor(t, c1, c2) {
     }
 }
 
+function getPointOnQuadraticBezier(p0, p1, p2, t) {
+    const oneMinusT = 1 - t;
+    const x = oneMinusT * oneMinusT * p0.x + 2 * oneMinusT * t * p1.x + t * t * p2.x;
+    const y = oneMinusT * oneMinusT * p0.y + 2 * oneMinusT * t * p1.y + t * t * p2.y;
+    return { x: x, y: y };
+}
+
+function getQuadraticCurveLength(p0, p1, p2, segments = 20) {
+    let length = 0;
+    let lastPoint = p0;
+    for (let i = 1; i <= segments; i++) {
+        const t = i / segments;
+        const currentPoint = getPointOnQuadraticBezier(p0, p1, p2, t);
+        const dx = currentPoint.x - lastPoint.x;
+        const dy = currentPoint.y - lastPoint.y;
+        length += Math.sqrt(dx * dx + dy * dy);
+        lastPoint = currentPoint;
+    }
+    return length;
+}
+
 // Update this for a new property
 class Shape {
     constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path, spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixEnableGlow, spawn_glowSize, spawn_matrixGlowSize, spawn_enableTrail, spawn_trailLength, spawn_audioTarget, spawn_trailSpacing, polylineNodes, polylineCurveStyle }) {
@@ -2443,7 +2464,8 @@ class Shape {
 
         if (this.strokeGradType !== 'solid' && this.strokeGradType !== 'alternating' && this.strokeGradType !== 'random') {
             const increment = strokeAnimSpeed * 0.025;
-            this.strokeScrollOffset += increment;
+            const directionMultiplier = (this.strokeScrollDir === 'left' || this.strokeScrollDir === 'up') ? -1 : 1;
+            this.strokeScrollOffset += increment * directionMultiplier;
         }
 
         let shapeIncrement;
@@ -3105,19 +3127,37 @@ class Shape {
 
                     // Draw the main stroke if enabled
                     if (this.enableStroke && this.strokeWidth > 0) {
-                        // --- START: Path-based gradient logic ---
-                        if (this.strokeGradType === 'along-path') {
+                        if (this.strokeScrollDir === 'along-path' && localNodes.length > 1) {
                             const c1 = this.strokeGradient.color1;
                             const c2 = this.strokeGradient.color2;
+                            const isCurved = this.polylineCurveStyle === 'curved';
 
                             // 1. Calculate total length and segment lengths
                             let totalLength = 0;
-                            const segmentLengths = [];
+                            const segmentData = [];
+                            let midPoints = [];
+
+                            if (isCurved) {
+                                midPoints.push(localNodes[0]);
+                                for (let i = 1; i < localNodes.length - 1; i++) {
+                                    midPoints.push({ x: (localNodes[i].x + localNodes[i+1].x) / 2, y: (localNodes[i].y + localNodes[i+1].y) / 2 });
+                                }
+                                midPoints.push(localNodes[localNodes.length - 1]);
+                            }
+
                             for (let i = 0; i < localNodes.length - 1; i++) {
-                                const p1 = localNodes[i];
-                                const p2 = localNodes[i+1];
-                                const length = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-                                segmentLengths.push(length);
+                                let length = 0;
+                                if (isCurved) {
+                                    const p0 = midPoints[i];
+                                    const p1 = localNodes[i+1];
+                                    const p2 = midPoints[i+1];
+                                    length = getQuadraticCurveLength(p0, p1, p2);
+                                } else {
+                                    const p1 = localNodes[i];
+                                    const p2 = localNodes[i+1];
+                                    length = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+                                }
+                                segmentData.push({ length });
                                 totalLength += length;
                             }
 
@@ -3128,10 +3168,7 @@ class Shape {
 
                                 let lengthSoFar = 0;
                                 for (let i = 0; i < localNodes.length - 1; i++) {
-                                    const p1 = localNodes[i];
-                                    const p2 = localNodes[i+1];
-                                    const segLength = segmentLengths[i];
-
+                                    const segLength = segmentData[i].length;
                                     const startRatio = lengthSoFar / totalLength;
                                     lengthSoFar += segLength;
                                     const endRatio = lengthSoFar / totalLength;
@@ -3139,37 +3176,49 @@ class Shape {
                                     const startColor = lerpColor(c1, c2, startRatio);
                                     const endColor = lerpColor(c1, c2, endRatio);
 
-                                    const grad = this.ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
-                                    grad.addColorStop(0, startColor);
-                                    grad.addColorStop(1, endColor);
-
-                                    this.ctx.strokeStyle = grad;
                                     this.ctx.beginPath();
-                                    this.ctx.moveTo(p1.x, p1.y);
-                                    this.ctx.lineTo(p2.x, p2.y);
+                                    if (isCurved) {
+                                        const p0 = midPoints[i];
+                                        const p1 = localNodes[i+1];
+                                        const p2 = midPoints[i+1];
+
+                                        const grad = this.ctx.createLinearGradient(p0.x, p0.y, p2.x, p2.y);
+                                        grad.addColorStop(0, startColor);
+                                        grad.addColorStop(1, endColor);
+                                        this.ctx.strokeStyle = grad;
+
+                                        this.ctx.moveTo(p0.x, p0.y);
+                                        this.ctx.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
+                                    } else {
+                                        const p1 = localNodes[i];
+                                        const p2 = localNodes[i+1];
+                                        const grad = this.ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+                                        grad.addColorStop(0, startColor);
+                                        grad.addColorStop(1, endColor);
+                                        this.ctx.strokeStyle = grad;
+                                        this.ctx.moveTo(p1.x, p1.y);
+                                        this.ctx.lineTo(p2.x, p2.y);
+                                    }
                                     this.ctx.stroke();
                                 }
                             }
                         } else {
-                        // --- END: Proof-of-concept --- (Original logic below)
+                            // Original logic for other stroke types
                             this.ctx.strokeStyle = this._createLocalStrokeStyle();
                             this.ctx.lineWidth = this.strokeWidth;
                             this.ctx.lineCap = 'round';
                             this.ctx.lineJoin = 'round';
                             this.ctx.beginPath();
 
-                            if (this.polylineCurveStyle === 'curved' && localNodes.length > 1) {
+                            if (this.polylineCurveStyle === 'curved' && localNodes.length > 2) {
                                 this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
                                 for (let i = 1; i < localNodes.length - 1; i++) {
                                     const xc = (localNodes[i].x + localNodes[i + 1].x) / 2;
                                     const yc = (localNodes[i].y + localNodes[i + 1].y) / 2;
                                     this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, xc, yc);
                                 }
-                                // For the last segment
-                                if (localNodes.length > 1) {
-                                    this.ctx.lineTo(localNodes[localNodes.length - 1].x, localNodes[localNodes.length - 1].y);
-                                }
-                            } else { // Straight line
+                                this.ctx.lineTo(localNodes[localNodes.length - 1].x, localNodes[localNodes.length - 1].y);
+                            } else { // Straight line or not enough nodes for curves
                                 this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
                                 for (let i = 1; i < localNodes.length; i++) {
                                     this.ctx.lineTo(localNodes[i].x, localNodes[i].y);
