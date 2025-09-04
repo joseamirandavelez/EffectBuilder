@@ -1097,6 +1097,123 @@ class Shape {
             localY >= -halfHeight && localY <= halfHeight);
     }
 
+    addNodeAtPoint(worldX, worldY) {
+        if (this.shape !== 'polyline' || this.locked) return false;
+
+        let nodes;
+        try {
+            nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : [...this.polylineNodes];
+        } catch (e) {
+            console.error("Failed to parse polylineNodes for adding a node:", e);
+            return false;
+        }
+
+        if (nodes.length < 2) return false;
+
+        // --- 1. Transform world click coordinates to local, unrotated space relative to the shape's center ---
+        const center = this.getCenter();
+        const angle = -this.getRenderAngle();
+        const s = Math.sin(angle);
+        const c = Math.cos(angle);
+        const dx = worldX - center.x;
+        const dy = worldY - center.y;
+        const localClickX = dx * c - dy * s;
+        const localClickY = dx * s + dy * c;
+
+        // --- 2. Adjust local click to be relative to the top-left corner of the bounding box (like the nodes) ---
+        const clickPoint = {
+            x: localClickX + this.width / 2,
+            y: localClickY + this.height / 2
+        };
+
+        let bestSegmentIndex = -1;
+        let minDistanceSq = Infinity;
+        let closestPointOnSegment = null;
+
+        // --- 3. Find the closest line segment to the click point ---
+        for (let i = 0; i < nodes.length - 1; i++) {
+            const p1 = nodes[i];
+            const p2 = nodes[i + 1];
+
+            const l2 = Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2);
+            if (l2 === 0) { // If the segment has zero length, just check distance to the point
+                const distSq = Math.pow(clickPoint.x - p1.x, 2) + Math.pow(clickPoint.y - p1.y, 2);
+                 if (distSq < minDistanceSq) {
+                    minDistanceSq = distSq;
+                    bestSegmentIndex = i;
+                    closestPointOnSegment = { ...p1 };
+                }
+                continue;
+            }
+
+            // 't' is the projection of the point onto the line segment.
+            // t < 0 means the closest point is p1.
+            // t > 1 means the closest point is p2.
+            // Otherwise, it's a point on the segment.
+            let t = ((clickPoint.x - p1.x) * (p2.x - p1.x) + (clickPoint.y - p1.y) * (p2.y - p1.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+
+            const closest = {
+                x: p1.x + t * (p2.x - p1.x),
+                y: p1.y + t * (p2.y - p1.y)
+            };
+
+            const distSq = Math.pow(clickPoint.x - closest.x, 2) + Math.pow(clickPoint.y - closest.y, 2);
+
+            if (distSq < minDistanceSq) {
+                minDistanceSq = distSq;
+                bestSegmentIndex = i;
+                closestPointOnSegment = closest;
+            }
+        }
+
+        // --- 4. Insert the new node if a suitable segment was found ---
+        // Add a threshold to avoid adding nodes when clicking far away from the line
+        const threshold = (this.strokeWidth || 1) * 4; // A generous threshold
+        if (bestSegmentIndex !== -1 && Math.sqrt(minDistanceSq) < threshold) {
+            const newNode = {
+                x: Math.round(closestPointOnSegment.x),
+                y: Math.round(closestPointOnSegment.y)
+            };
+
+            nodes.splice(bestSegmentIndex + 1, 0, newNode);
+
+            // Trigger an update to recalculate bounding box and redraw
+            this.update({ polylineNodes: nodes });
+            return true;
+        }
+
+        return false;
+    }
+
+    deleteNode(indexToDelete) {
+        if (this.shape !== 'polyline' || this.locked) return false;
+
+        let nodes;
+        try {
+            nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : [...this.polylineNodes];
+        } catch (e) {
+            console.error("Failed to parse polylineNodes for deleting a node:", e);
+            return false;
+        }
+
+        // Prevent deleting nodes if it would result in less than 2 nodes
+        if (nodes.length <= 2) {
+            console.warn("Cannot delete node, polyline must have at least 2 nodes.");
+            return false;
+        }
+
+        if (indexToDelete >= 0 && indexToDelete < nodes.length) {
+            nodes.splice(indexToDelete, 1);
+
+            // Trigger an update to recalculate bounding box and redraw
+            this.update({ polylineNodes: nodes });
+            return true;
+        }
+
+        return false;
+    }
+
     update(props) {
         // --- Store original state for calculations ---
         const oldWidth = this.width;

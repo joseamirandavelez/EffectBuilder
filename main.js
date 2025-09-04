@@ -3044,6 +3044,25 @@ document.addEventListener('DOMContentLoaded', function () {
     canvasContainer.addEventListener('dblclick', e => {
         if (isDrawingPolyline) {
             finalizePolyline();
+            return;
+        }
+
+        // Handle adding a node to an existing polyline
+        if (activeTool === 'select' && selectedObjectIds.length === 1) {
+            const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
+            if (selectedObject && selectedObject.shape === 'polyline' && !selectedObject.locked) {
+                const { x, y } = getCanvasCoordinates(e);
+
+                // This new method will do the hard work.
+                const nodeAdded = selectedObject.addNodeAtPoint(x, y);
+
+                if (nodeAdded) {
+                    // If a node was added, update the form and record history
+                    updateFormValuesFromObjects();
+                    recordHistory();
+                    drawFrame();
+                }
+            }
         }
     });
 
@@ -3560,6 +3579,17 @@ document.addEventListener('DOMContentLoaded', function () {
         if (activeObject && !activeObject.locked) {
             const handle = activeObject.getHandleAtPoint(x, y);
             if (handle) {
+                // NEW: Handle Alt+Click to delete a node
+                if (e.altKey && handle.type === 'node') {
+                    const nodeDeleted = activeObject.deleteNode(handle.index);
+                    if (nodeDeleted) {
+                        updateFormValuesFromObjects();
+                        recordHistory();
+                        drawFrame();
+                    }
+                    return; // Stop further processing
+                }
+
                 if (handle.type === 'rotation') {
                     isRotating = true;
                     activeObject.isBeingManuallyRotated = true;
