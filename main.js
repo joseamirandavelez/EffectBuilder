@@ -146,6 +146,8 @@ let snapLines = [];
 let isDragging = false;
 let isResizing = false;
 let isRotating = false;
+let isDraggingNode = false;
+let activeNodeDragState = null;
 let activeResizeHandle = null;
 let initialDragState = [];
 let dragStartX = 0;
@@ -329,9 +331,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const exportBtn = document.getElementById('export-btn');
     const shareBtn = document.getElementById('share-btn');
     const addObjectBtn = document.getElementById('add-object-btn');
+    const addPolylineBtn = document.getElementById('add-polyline-btn');
     const confirmImportBtn = document.getElementById('confirm-import-btn');
     const confirmBtn = document.getElementById('confirm-overwrite-btn');
     const coordsDisplay = document.getElementById('coords-display');
+
+    let activeTool = 'select'; // 'select' or 'polyline'
+    let isDrawingPolyline = false;
+    let currentlyDrawingShapeId = null;
+    let previewLine = { startX: 0, startY: 0, endX: 0, endY: 0, active: false };
 
     // Update this for a new property
     const shapePropertyMap = {
@@ -342,6 +350,11 @@ document.addEventListener('DOMContentLoaded', function () {
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
             'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
+        ],
+        polyline: [
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'polylineNodes', 'polylineCurveStyle',
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         circle: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -1966,6 +1979,19 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
         drawSnapLines(snapLines);
+
+        if (previewLine.active) {
+            ctx.save();
+            ctx.resetTransform(); // Draw in screen space, not subject to object transforms
+            ctx.beginPath();
+            ctx.moveTo(previewLine.startX, previewLine.startY);
+            ctx.lineTo(previewLine.endX, previewLine.endY);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 
     // MODIFIED - A new, time-based animation loop using delta time
@@ -2446,7 +2472,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function getDefaultObjectConfig(newId) {
         return [
             // Geometry & Transform
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art,audio-visualizer,spawner,strimer', description: 'The basic shape of the object.' }, // MODIFIED: Added 'spawner'
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art,audio-visualizer,spawner,strimer,polyline', description: 'The basic shape of the object.' }, // MODIFIED: Added 'spawner'
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320', description: 'The horizontal position of the object on the canvas.' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200', description: 'The vertical position of the object on the canvas.' },
             { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320', description: 'The width of the object.' },
@@ -2595,6 +2621,10 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_spawn_enableTrail`, label: `Object ${newId}: Enable Trail`, type: 'boolean', default: 'false', description: '(Spawner/Trail) Enables a fading trail behind each particle.' },
             { property: `obj${newId}_spawn_matrixEnableGlow`, label: `Object ${newId}: Enable Character Glow`, type: 'boolean', default: 'false', description: '(Spawner/Matrix) Adds a glow effect to the matrix characters.' },
             { property: `obj${newId}_spawn_matrixGlowSize`, label: `Object ${newId}: Character Glow Size`, type: 'number', default: '10', min: '0', max: '50', description: '(Spawner/Matrix) The size and intensity of the glow effect.' },
+
+            // Polyline
+            { property: `obj${newId}_polylineNodes`, label: `Object ${newId}: Nodes`, type: 'textarea', default: '[{"x":50,"y":50},{"x":150,"y":100}]', description: '(Polyline) The JSON data for the polyline nodes.' },
+            { property: `obj${newId}_polylineCurveStyle`, label: `Object ${newId}: Curve Style`, type: 'combobox', default: 'straight', values: 'straight,curved', description: '(Polyline) The style of the line segments.' },
         ];
 
     }
@@ -2982,7 +3012,46 @@ document.addEventListener('DOMContentLoaded', function () {
     });;
 
     // MODIFIED - Added Ctrl+C and Ctrl+V keyboard shortcuts for copy/paste
+    function finalizePolyline() {
+        if (!isDrawingPolyline) return;
+
+        const shape = objects.find(o => o.id === currentlyDrawingShapeId);
+        if (shape) {
+            const nodes = (typeof shape.polylineNodes === 'string') ? JSON.parse(shape.polylineNodes) : shape.polylineNodes;
+            if (nodes.length > 1) {
+                const last = nodes[nodes.length - 1];
+                const secondLast = nodes[nodes.length - 2];
+                if (last.x === secondLast.x && last.y === secondLast.y) {
+                    nodes.pop();
+                    shape.update({ polylineNodes: nodes });
+                }
+            }
+        }
+
+        isDrawingPolyline = false;
+        currentlyDrawingShapeId = null;
+        previewLine.active = false;
+        activeTool = 'select';
+        canvasContainer.style.cursor = 'default';
+
+        recordHistory();
+        drawFrame(); // Final redraw to remove the preview line
+        showToast("Polyline created!", "success");
+    }
+
+    canvasContainer.addEventListener('dblclick', e => {
+        if (isDrawingPolyline) {
+            finalizePolyline();
+        }
+    });
+
     document.addEventListener('keydown', (e) => {
+        if (isDrawingPolyline && (e.key === 'Enter' || e.key === 'Escape')) {
+            e.preventDefault();
+            finalizePolyline();
+            return;
+        }
+
         const target = e.target;
         const isInputFocused = target.tagName === 'INPUT' ||
             target.tagName === 'TEXTAREA' ||
@@ -3394,6 +3463,88 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {MouseEvent} e - The mousedown event object.
      */
     canvasContainer.addEventListener('mousedown', e => {
+        if (activeTool === 'polyline') {
+            const { x, y } = getCanvasCoordinates(e);
+
+            if (!isDrawingPolyline) {
+                // Start drawing a new polyline
+                isDrawingPolyline = true;
+                const newId = objects.length > 0 ? (Math.max(...objects.map(o => o.id))) + 1 : 1;
+
+                // Create a new Shape instance for the polyline
+                const newShape = new Shape({
+                    id: newId,
+                    shape: 'polyline',
+                    name: `Polyline ${newId}`,
+                    x: x, // Initial position is the click position
+                    y: y,
+                    width: 1, // Start with a minimal bounding box
+                    height: 1,
+                    polylineNodes: [{x: 0, y: 0}], // First node is at the shape's local origin
+                    ctx: ctx,
+                    enableStroke: true, // Make it visible by default
+                    strokeWidth: 4
+                });
+
+                currentlyDrawingShapeId = newId;
+                objects.unshift(newShape); // Add to the top layer
+
+                // Create the corresponding configuration for the UI
+                const newObjectConfigs = getDefaultObjectConfig(newId);
+                newObjectConfigs.forEach(conf => {
+                    const propName = conf.property.substring(conf.property.indexOf('_') + 1);
+                    if (propName === 'shape') conf.default = 'polyline';
+                    else if (propName === 'x') conf.default = Math.round(x / 4);
+                    else if (propName === 'y') conf.default = Math.round(y / 4);
+                    else if (propName === 'width' || propName === 'height') conf.default = 1;
+                    else if (propName === 'polylineNodes') conf.default = '[{"x":0,"y":0}]';
+                    else if (propName === 'enableStroke') conf.default = 'true';
+                    else if (propName === 'strokeWidth') conf.default = '1';
+                });
+
+                const firstObjectConfigIndex = configStore.findIndex(c => (c.property || '').startsWith('obj'));
+                if (firstObjectConfigIndex === -1) {
+                    configStore.push(...newObjectConfigs);
+                } else {
+                    configStore.splice(firstObjectConfigIndex, 0, ...newObjectConfigs);
+                }
+
+                selectedObjectIds = [newId];
+                renderForm(); // Re-render UI with the new object
+                updateFormValuesFromObjects(); // Sync form with object state
+
+                // Set up for the preview line
+                previewLine.startX = x;
+                previewLine.startY = y;
+                previewLine.active = true;
+
+            } else {
+                // Add a new node to the currently drawing polyline
+                const shape = objects.find(o => o.id === currentlyDrawingShapeId);
+                if (!shape) return;
+
+                // Convert canvas click coordinates to the shape's local coordinate space
+                const localX = x - shape.x;
+                const localY = y - shape.y;
+
+                // Create a new nodes array and trigger the update
+                const currentNodes = (typeof shape.polylineNodes === 'string') ? JSON.parse(shape.polylineNodes) : shape.polylineNodes;
+                const newNodes = [...currentNodes, {x: localX, y: localY}];
+                shape.update({ polylineNodes: newNodes });
+
+                // The update() method normalizes nodes, so we need the updated version
+                // to correctly position the preview line's start point.
+                const lastNode = shape.polylineNodes[shape.polylineNodes.length - 1];
+                previewLine.startX = shape.x + lastNode.x;
+                previewLine.startY = shape.y + lastNode.y;
+
+                updateFormValuesFromObjects();
+            }
+
+            drawFrame();
+            return; // Important to stop the rest of the mousedown logic
+        }
+
         e.preventDefault();
         const { x, y } = getCanvasCoordinates(e);
         dragStartX = x;
@@ -3422,6 +3573,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         startAngle: startAngle,
                         initialObjectAngle: activeObject.getRenderAngle()
                     }];
+                } else if (handle.type === 'node') {
+                    isDraggingNode = true;
+                    activeNodeDragState = {
+                        id: activeObject.id,
+                        nodeIndex: handle.index
+                    };
                 } else {
                     isResizing = true;
                     activeResizeHandle = handle.name;
@@ -3437,7 +3594,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        if (!isRotating && !isResizing) {
+        if (!isRotating && !isResizing && !isDraggingNode) {
             const hitObject = objects.find(obj => obj.isPointInside(x, y));
             if (hitObject) {
                 const isNewlySelected = !selectedObjectIds.includes(hitObject.id);
@@ -3500,7 +3657,7 @@ document.addEventListener('DOMContentLoaded', function () {
             upEvent.preventDefault();
             window.removeEventListener('mousemove', handleMouseMove);
 
-            const wasManipulating = isDragging || isResizing || isRotating;
+            const wasManipulating = isDragging || isResizing || isRotating || isDraggingNode;
             if (isRotating) {
                 const obj = objects.find(o => o.id === initialDragState[0].id);
                 if (obj) {
@@ -3535,8 +3692,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 recordHistory();
             }
 
-            isDragging = isResizing = isRotating = false;
+            isDragging = isResizing = isRotating = isDraggingNode = false;
             activeResizeHandle = null;
+            activeNodeDragState = null;
             initialDragState = [];
             snapLines = [];
             cachedSnapTargets = null;
@@ -3555,6 +3713,13 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {MouseEvent} e - The mousemove event object.
      */
     canvasContainer.addEventListener('mousemove', e => {
+        if (isDrawingPolyline && previewLine.active) {
+            const { x, y } = getCanvasCoordinates(e);
+            previewLine.endX = x;
+            previewLine.endY = y;
+            drawFrame();
+            return;
+        }
         if (coordsDisplay) {
             const { x, y } = getCanvasCoordinates(e);
             coordsDisplay.textContent = `${Math.round(x / 4)}, ${Math.round(y / 4)}: (${Math.round(x)}, ${Math.round(y)})`;
@@ -3562,6 +3727,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
         e.preventDefault();
         const { x, y } = getCanvasCoordinates(e);
+
+        if (isDraggingNode) {
+            const { id, nodeIndex } = activeNodeDragState;
+            const shape = objects.find(o => o.id === id);
+            if (!shape) return;
+
+            const center = shape.getCenter();
+            const staticAngle = -shape.getRenderAngle();
+            const s = Math.sin(staticAngle);
+            const c = Math.cos(staticAngle);
+            const dx = x - center.x;
+            const dy = y - center.y;
+            const localX = dx * c - dy * s;
+            const localY = dx * s + dy * c;
+
+            let nodes = (typeof shape.polylineNodes === 'string') ? JSON.parse(shape.polylineNodes) : shape.polylineNodes;
+
+            nodes[nodeIndex].x = localX + shape.width / 2;
+            nodes[nodeIndex].y = localY + shape.height / 2;
+
+            shape.update({ polylineNodes: nodes });
+
+            updateFormValuesFromObjects();
+            drawFrame();
+            return;
+        }
 
         if (!isDragging && !isResizing && !isRotating && e.buttons === 1 && initialDragState.length > 0) {
             const dx = x - dragStartX;
@@ -4350,7 +4541,18 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     });
 
+    addPolylineBtn.addEventListener('click', () => {
+        activeTool = 'polyline';
+        canvasContainer.style.cursor = 'crosshair';
+        isDrawingPolyline = false; // Reset state in case it was stuck
+        currentlyDrawingShapeId = null;
+        previewLine.active = false;
+        showToast("Polyline tool activated. Click on the canvas to start drawing.", "info");
+    });
+
     addObjectBtn.addEventListener('click', () => {
+        activeTool = 'select';
+        canvasContainer.style.cursor = 'default';
         currentProjectDocId = null;
         updateShareButtonState();
         const newId = objects.length > 0 ? (Math.max(...objects.map(o => o.id))) + 1 : 1;

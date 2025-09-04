@@ -494,6 +494,10 @@ class Shape {
         this.spawn_trailLength = spawn_trailLength || 10;
         this.spawn_trailSpacing = spawn_trailSpacing || 1;
 
+        // Polyline properties
+        this.polylineNodes = polylineNodes || [{x: 50, y: 50}, {x: 150, y: 100}];
+        this.polylineCurveStyle = polylineCurveStyle || 'straight';
+
         // Particle system state
         this.particles = [];
         this.spawnCounter = 0;
@@ -1010,6 +1014,29 @@ class Shape {
             y: (px - center.x) * Math.sin(-staticAngle) + (py - center.y) * Math.cos(-staticAngle)
         };
 
+        if (this.shape === 'polyline') {
+            let nodes;
+            try {
+                nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : this.polylineNodes;
+            } catch (e) { return null; }
+
+            if (Array.isArray(nodes)) {
+                const offsetX = this.width / 2;
+                const offsetY = this.height / 2;
+                const handleRadius = 8; // Larger hit area
+
+                for (let i = 0; i < nodes.length; i++) {
+                    const node = nodes[i];
+                    const nodeX = node.x - offsetX;
+                    const nodeY = node.y - offsetY;
+                    const dist = Math.sqrt(Math.pow(localPoint.x - nodeX, 2) + Math.pow(localPoint.y - nodeY, 2));
+                    if (dist <= handleRadius) {
+                        return { name: `node-${i}`, cursor: 'move', type: 'node', index: i };
+                    }
+                }
+            }
+        }
+
         const h2 = this.handleSize / 2;
 
         // Check for rotation handle first
@@ -1116,7 +1143,44 @@ class Shape {
         // --- UNIFIED UPDATE LOGIC ---
         for (const key in props) {
             if (props[key] === undefined) continue;
-            if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
+
+            if (key === 'polylineNodes') {
+                let nodes;
+                try {
+                    const propValue = props.polylineNodes;
+                    nodes = (typeof propValue === 'string') ? JSON.parse(propValue) : propValue;
+                } catch (e) {
+                    console.error("Failed to parse polylineNodes on update:", e);
+                    continue; // Skip this property if it's invalid
+                }
+
+                if (!Array.isArray(nodes) || nodes.length === 0) {
+                    this.polylineNodes = [];
+                    this.width = 0;
+                    this.height = 0;
+                    continue;
+                }
+
+                const oldCenterX = this.x + this.width / 2;
+                const oldCenterY = this.y + this.height / 2;
+
+                const minX = Math.min(...nodes.map(n => n.x));
+                const minY = Math.min(...nodes.map(n => n.y));
+                const maxX = Math.max(...nodes.map(n => n.x));
+                const maxY = Math.max(...nodes.map(n => n.y));
+
+                const newWidth = Math.max(1, maxX - minX);
+                const newHeight = Math.max(1, maxY - minY);
+
+                this.width = newWidth;
+                this.height = newHeight;
+                this.x = oldCenterX - newWidth / 2;
+                this.y = oldCenterY - newHeight / 2;
+
+                this.polylineNodes = nodes.map(n => ({ x: n.x - minX, y: n.y - minY }));
+
+                continue; // Prevent default assignment at the end of the loop
+            } else if (key === 'gradient' && typeof props[key] === 'object' && props[key] !== null) {
                 if (props.gradient.color1 !== undefined) this.gradient.color1 = props.gradient.color1;
                 if (props.gradient.color2 !== undefined) this.gradient.color2 = props.gradient.color2;
             } else if (key === 'strokeGradient' && typeof props[key] === 'object' && props[key] !== null) {
@@ -2912,6 +2976,52 @@ class Shape {
                     if (this.ctx.lineWidth <= 0 || !isFinite(this.ctx.lineWidth)) { this.ctx.lineWidth = 1; }
                     this.ctx.stroke();
                 }
+                } else if (this.shape === 'polyline') {
+                    if (!this.enableStroke || this.strokeWidth <= 0) return;
+
+                    let nodes;
+                    try {
+                        nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : this.polylineNodes;
+                    } catch (e) {
+                        console.error("Failed to parse polylineNodes:", e);
+                        return;
+                    }
+
+                    if (!Array.isArray(nodes) || nodes.length < 1) {
+                        return;
+                    }
+
+                    this.ctx.strokeStyle = this._createLocalStrokeStyle();
+                    this.ctx.lineWidth = this.strokeWidth;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.beginPath();
+
+                    const offsetX = this.width / 2;
+                    const offsetY = this.height / 2;
+                    const localNodes = nodes.map(n => ({ x: n.x - offsetX, y: n.y - offsetY }));
+
+                    if (this.polylineCurveStyle === 'curved' && localNodes.length > 1) {
+                        if (localNodes.length < 3) {
+                            this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
+                            this.ctx.lineTo(localNodes[1].x, localNodes[1].y);
+                        } else {
+                            this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
+                            for (var i = 0; i < localNodes.length - 2; i++) {
+                                const xc = (localNodes[i].x + localNodes[i + 1].x) / 2;
+                                const yc = (localNodes[i].y + localNodes[i + 1].y) / 2;
+                                this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, xc, yc);
+                            }
+                            this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, localNodes[i + 1].x, localNodes[i + 1].y);
+                        }
+                    } else { // Straight line
+                        this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
+                        for (let i = 1; i < localNodes.length; i++) {
+                            this.ctx.lineTo(localNodes[i].x, localNodes[i].y);
+                        }
+                    }
+
+                    this.ctx.stroke();
             } else if (this.shape === 'ring') {
                 const oR = this.width / 2;
                 const iR = this.innerDiameter / 2;
@@ -3003,6 +3113,27 @@ class Shape {
         this.ctx.setLineDash([]);
 
         if (!this.locked) {
+            // Draw node handles for polylines
+            if (this.shape === 'polyline') {
+                let nodes;
+                try {
+                    nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : this.polylineNodes;
+                } catch (e) { nodes = []; }
+
+                if (Array.isArray(nodes)) {
+                    const offsetX = this.width / 2;
+                    const offsetY = this.height / 2;
+                    this.ctx.fillStyle = selectionColor;
+                    nodes.forEach(node => {
+                        const nodeX = node.x - offsetX;
+                        const nodeY = node.y - offsetY;
+                        this.ctx.beginPath();
+                        this.ctx.arc(nodeX, nodeY, 6, 0, 2 * Math.PI);
+                        this.ctx.fill();
+                    });
+                }
+            }
+
             this.ctx.fillStyle = selectionColor;
             const h2 = this.handleSize / 2;
             const handlePositions = [
