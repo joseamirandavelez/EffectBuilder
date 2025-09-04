@@ -3351,9 +3351,3 @@ class Shape {
         }
     }
 }
-"""
-new_content = content.replace(
-    "spawn_trailSpacing })",
-    "spawn_trailSpacing, polylineNodes, polylineCurveStyle })"
-)
-overwrite_file_with_block('Shape.js', new_content)
