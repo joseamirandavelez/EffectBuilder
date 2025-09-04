@@ -3127,7 +3127,8 @@ class Shape {
 
                     // Draw the main stroke if enabled
                     if (this.enableStroke && this.strokeWidth > 0) {
-                        if (this.strokeScrollDir === 'along-path' && localNodes.length > 1) {
+                        const isPathCompatibleGradient = !this.strokeGradType.includes('radial') && !this.strokeGradType.includes('conic');
+                        if (this.strokeScrollDir === 'along-path' && localNodes.length > 1 && isPathCompatibleGradient) {
                             const c1 = this.strokeGradient.color1;
                             const c2 = this.strokeGradient.color2;
                             const isCurved = this.polylineCurveStyle === 'curved';
@@ -3167,34 +3168,62 @@ class Shape {
                                 this.ctx.lineJoin = 'round';
 
                                 let lengthSoFar = 0;
+                                const scrollOffset = (this.strokeScrollOffset % 1.0 + 1.0) % 1.0;
+
                                 for (let i = 0; i < localNodes.length - 1; i++) {
                                     const segLength = segmentData[i].length;
-                                    const startRatio = lengthSoFar / totalLength;
+                                    const startRatio = (lengthSoFar / totalLength + scrollOffset) % 1.0;
                                     lengthSoFar += segLength;
-                                    const endRatio = lengthSoFar / totalLength;
-
-                                    const startColor = lerpColor(c1, c2, startRatio);
-                                    const endColor = lerpColor(c1, c2, endRatio);
+                                    const endRatio = (lengthSoFar / totalLength + scrollOffset) % 1.0;
 
                                     this.ctx.beginPath();
+                                    const isRainbow = this.strokeGradType.startsWith('rainbow');
+
                                     if (isCurved) {
                                         const p0 = midPoints[i];
                                         const p1 = localNodes[i+1];
                                         const p2 = midPoints[i+1];
 
                                         const grad = this.ctx.createLinearGradient(p0.x, p0.y, p2.x, p2.y);
-                                        grad.addColorStop(0, startColor);
-                                        grad.addColorStop(1, endColor);
-                                        this.ctx.strokeStyle = grad;
 
+                                        if (isRainbow) {
+                                            const numStops = 10;
+                                            for (let j = 0; j <= numStops; j++) {
+                                                const t = j / numStops;
+                                                const currentRatio = startRatio + (endRatio - startRatio) * t;
+                                                const hue = (currentRatio * 360 + this.strokeHue1) % 360;
+                                                grad.addColorStop(t, `hsl(${hue}, 100%, 50%)`);
+                                            }
+                                        } else {
+                                            const startColor = lerpColor(c1, c2, startRatio);
+                                            const endColor = lerpColor(c1, c2, endRatio);
+                                            grad.addColorStop(0, startColor);
+                                            grad.addColorStop(1, endColor);
+                                        }
+
+                                        this.ctx.strokeStyle = grad;
                                         this.ctx.moveTo(p0.x, p0.y);
                                         this.ctx.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
                                     } else {
                                         const p1 = localNodes[i];
                                         const p2 = localNodes[i+1];
                                         const grad = this.ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
-                                        grad.addColorStop(0, startColor);
-                                        grad.addColorStop(1, endColor);
+
+                                        if (isRainbow) {
+                                            const numStops = 10;
+                                            for (let j = 0; j <= numStops; j++) {
+                                                const t = j / numStops;
+                                                const currentRatio = startRatio + (endRatio - startRatio) * t;
+                                                const hue = (currentRatio * 360 + this.strokeHue1) % 360;
+                                                grad.addColorStop(t, `hsl(${hue}, 100%, 50%)`);
+                                            }
+                                        } else {
+                                            const startColor = lerpColor(c1, c2, startRatio);
+                                            const endColor = lerpColor(c1, c2, endRatio);
+                                            grad.addColorStop(0, startColor);
+                                            grad.addColorStop(1, endColor);
+                                        }
+
                                         this.ctx.strokeStyle = grad;
                                         this.ctx.moveTo(p1.x, p1.y);
                                         this.ctx.lineTo(p2.x, p2.y);
