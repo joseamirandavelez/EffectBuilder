@@ -516,8 +516,8 @@ class Shape {
         this.spawn_trailSpacing = spawn_trailSpacing || 1;
 
         // Polyline properties
-        this.polylineNodes = [{x: 50, y: 50}, {x: 150, y: 100}];
-        this.polylineCurveStyle = 'straight';
+        this.polylineNodes = polylineNodes || [{x: 50, y: 50}, {x: 150, y: 100}];
+        this.polylineCurveStyle = polylineCurveStyle || 'straight';
 
         // Particle system state
         this.particles = [];
@@ -3170,6 +3170,137 @@ class Shape {
                         this.ctx[i === 0 ? 'moveTo' : 'lineTo'](rX * Math.cos(a), rY * Math.sin(a));
                     }
                     this.ctx.closePath();
+                } else if (this.shape === 'polyline') {
+                    let nodes;
+                    try {
+                        nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : this.polylineNodes;
+                    } catch (e) {
+                        nodes = []; // Draw nothing if nodes are invalid
+                    }
+
+                    if (!Array.isArray(nodes) || nodes.length < 2) {
+                        // If no valid nodes, draw a dashed outline box to indicate selection
+                        if (isSelected) {
+                            this.ctx.save();
+                            this.ctx.strokeStyle = '#00f6ff';
+                            this.ctx.lineWidth = 1;
+                            this.ctx.setLineDash([2, 4]);
+                            this.ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                            this.ctx.restore();
+                        }
+                        return; // Exit draw method
+                    }
+
+                    const offsetX = -this.width / 2;
+                    const offsetY = -this.height / 2;
+
+                    // Special case for 'along-path' stroke gradient
+                    if (this.enableStroke && this.strokeGradType === 'along-path') {
+                        // 1. Calculate total path length
+                        let totalLength = 0;
+                        const segments = [];
+                        for (let i = 0; i < nodes.length - 1; i++) {
+                            const p1 = { x: nodes[i].x + offsetX, y: nodes[i].y + offsetY };
+                            const p2 = { x: nodes[i + 1].x + offsetX, y: nodes[i + 1].y + offsetY };
+                            let segmentLength = 0;
+                            if (this.polylineCurveStyle === 'curved' && i < nodes.length - 2) {
+                                const p3 = { x: nodes[i + 2].x + offsetX, y: nodes[i + 2].y + offsetY };
+                                const cp1 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+                                const cp2 = { x: (p2.x + p3.x) / 2, y: (p2.y + p3.y) / 2 };
+                                segmentLength = getQuadraticCurveLength(cp1, p2, cp2);
+                                segments.push({ type: 'curve', p1: cp1, p2, p3: cp2, length: segmentLength, startLength: totalLength });
+                            } else {
+                                segmentLength = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+                                segments.push({ type: 'line', p1, p2, length: segmentLength, startLength: totalLength });
+                            }
+                            totalLength += segmentLength;
+                        }
+
+                        if (totalLength <= 0) return;
+
+                        // 2. Draw path segment by segment with interpolated gradients
+                        const c1 = this.strokeGradient.color1;
+                        const c2 = this.strokeGradient.color2;
+                        const isRainbow = this.strokeCycleColors; // Using cycleColors to mean rainbow for this mode
+                        const animOffset = (this.strokeScrollOffset % 1.0 + 1.0) % 1.0;
+
+                        this.ctx.lineWidth = this.strokeWidth;
+                        this.ctx.lineCap = 'round';
+
+                        for (const seg of segments) {
+                            const startFraction = seg.startLength / totalLength;
+                            const endFraction = (seg.startLength + seg.length) / totalLength;
+
+                            let grad;
+                            if (seg.type === 'line') {
+                                grad = this.ctx.createLinearGradient(seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y);
+                            } else { // Use a simple gradient for curves, could be improved
+                                grad = this.ctx.createLinearGradient(seg.p1.x, seg.p1.y, seg.p3.x, seg.p3.y);
+                            }
+
+                            if (isRainbow) {
+                                const startHue = (startFraction * 360 + animOffset * 360) % 360;
+                                const endHue = (endFraction * 360 + animOffset * 360) % 360;
+                                grad.addColorStop(0, `hsl(${startHue}, 100%, 50%)`);
+                                grad.addColorStop(1, `hsl(${endHue}, 100%, 50%)`);
+                            } else {
+                                 // This handles the wrap-around for the two-color gradient
+                                const t1 = (startFraction + animOffset) % 1.0;
+                                const t2 = (endFraction + animOffset) % 1.0;
+                                grad.addColorStop(0, getPatternColor(t1, c1, c2));
+                                grad.addColorStop(1, getPatternColor(t2, c1, c2));
+                            }
+
+                            this.ctx.strokeStyle = grad;
+                            this.ctx.beginPath();
+                            if (seg.type === 'line') {
+                                this.ctx.moveTo(seg.p1.x, seg.p1.y);
+                                this.ctx.lineTo(seg.p2.x, seg.p2.y);
+                            } else {
+                                this.ctx.moveTo(seg.p1.x, seg.p1.y);
+                                this.ctx.quadraticCurveTo(seg.p2.x, seg.p2.y, seg.p3.x, seg.p3.y);
+                            }
+                            this.ctx.stroke();
+                        }
+
+                    } else {
+                         // Default rendering (fill and simple stroke)
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(nodes[0].x + offsetX, nodes[0].y + offsetY);
+
+                        if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
+                            for (let i = 0; i < nodes.length - 2; i++) {
+                                const p1 = { x: nodes[i].x + offsetX, y: nodes[i].y + offsetY };
+                                const p2 = { x: nodes[i+1].x + offsetX, y: nodes[i+1].y + offsetY };
+                                const p3 = { x: nodes[i+2].x + offsetX, y: nodes[i+2].y + offsetY };
+                                const cp1 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+                                const cp2 = { x: (p2.x + p3.x) / 2, y: (p2.y + p3.y) / 2 };
+                                this.ctx.lineTo(cp1.x, cp1.y);
+                                this.ctx.quadraticCurveTo(p2.x, p2.y, cp2.x, cp2.y);
+                            }
+                            this.ctx.lineTo(nodes[nodes.length - 1].x + offsetX, nodes[nodes.length - 1].y + offsetY);
+                        } else {
+                            // Straight line logic
+                            for (let i = 1; i < nodes.length; i++) {
+                                this.ctx.lineTo(nodes[i].x + offsetX, nodes[i].y + offsetY);
+                            }
+                        }
+
+                        // Draw fill if enabled
+                        if (this.fillShape) {
+                            this.ctx.closePath();
+                            this._drawFill();
+                        }
+
+                        // Draw standard stroke if enabled
+                        if (this.enableStroke) {
+                            this.ctx.strokeStyle = this._createLocalStrokeStyle();
+                            this.ctx.lineWidth = this.strokeWidth;
+                            this.ctx.lineJoin = 'round';
+                            this.ctx.lineCap = 'round';
+                            this.ctx.stroke();
+                        }
+                    }
                 } else {
                     this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
                 }
