@@ -3135,6 +3135,112 @@ class Shape {
                         applyStrokeInside();
                     }
                 }
+            } else if (this.shape === 'polyline') {
+                let nodes;
+                try {
+                    nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : this.polylineNodes;
+                } catch (e) { return; }
+                if (!Array.isArray(nodes) || nodes.length < 2) return;
+
+                this.ctx.save();
+                this.ctx.translate(-this.width / 2, -this.height / 2);
+
+                // --- Stroke Logic ---
+                if (this.enableStroke && this.strokeWidth > 0) {
+                    const isAlongPath = this.strokeScrollDir === 'along-path';
+
+                    // --- PASS 1: Undercoat for smooth joins (for along-path gradient) ---
+                    if (isAlongPath) {
+                        this.ctx.save();
+                        this.ctx.lineCap = 'round';
+                        this.ctx.lineJoin = 'round';
+                        this.ctx.lineWidth = this.strokeWidth + 1; // A bit wider to cover gaps
+                        this.ctx.strokeStyle = 'rgba(0,0,0,0.01)'; // Barely visible, just for joining
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(nodes[0].x, nodes[0].y);
+                        for (let i = 1; i < nodes.length; i++) {
+                            if (this.polylineCurveStyle === 'curved' && i < nodes.length - 1) {
+                                const p1 = nodes[i];
+                                const p2 = nodes[i + 1];
+                                const midPoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+                                this.ctx.quadraticCurveTo(p1.x, p1.y, midPoint.x, midPoint.y);
+                            } else {
+                                this.ctx.lineTo(nodes[i].x, nodes[i].y);
+                            }
+                        }
+                        this.ctx.stroke();
+                        this.ctx.restore();
+                    }
+
+                    // --- PASS 2: Visible Stroke ---
+                    this.ctx.lineWidth = this.strokeWidth;
+                    this.ctx.lineCap = isAlongPath ? 'butt' : 'round';
+                    this.ctx.lineJoin = isAlongPath ? 'miter' : 'round';
+
+                    // Calculate total path length for "along-path" gradient
+                    let totalLength = 0;
+                    if (isAlongPath) {
+                        for (let i = 0; i < nodes.length - 1; i++) {
+                            const p1 = nodes[i];
+                            const p2 = nodes[i + 1];
+                            if (this.polylineCurveStyle === 'curved' && i < nodes.length - 1) {
+                                const midPoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+                                totalLength += getQuadraticCurveLength(p1, p2, midPoint);
+                            } else {
+                                totalLength += Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+                            }
+                        }
+                    }
+
+                    let distanceCovered = 0;
+                    for (let i = 0; i < nodes.length - 1; i++) {
+                        const p1 = nodes[i];
+                        const p2 = nodes[i + 1];
+
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(p1.x, p1.y);
+
+                        let segmentLength = 0;
+                        if (this.polylineCurveStyle === 'curved' && i < nodes.length - 1) {
+                            const midPoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+                            this.ctx.quadraticCurveTo(p1.x, p1.y, midPoint.x, midPoint.y);
+                             segmentLength = getQuadraticCurveLength(p1, p2, midPoint);
+                        } else {
+                            this.ctx.lineTo(p2.x, p2.y);
+                            segmentLength = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+                        }
+
+                        if (isAlongPath && totalLength > 0) {
+                            const startRatio = distanceCovered / totalLength;
+                            const endRatio = (distanceCovered + segmentLength) / totalLength;
+                            const grad = this.ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+                            const c1 = this.strokeGradient.color1;
+                            const c2 = this.strokeGradient.color2;
+                            grad.addColorStop(0, getPatternColor(this.strokeScrollOffset + startRatio, c1, c2));
+                            grad.addColorStop(1, getPatternColor(this.strokeScrollOffset + endRatio, c1, c2));
+                            this.ctx.strokeStyle = grad;
+                        } else {
+                            this.ctx.strokeStyle = this._createLocalStrokeStyle(i);
+                        }
+                        this.ctx.stroke();
+                        distanceCovered += segmentLength;
+                    }
+                } else if (isSelected) {
+                    // Draw a faint line so it's selectable even with stroke disabled
+                    this.ctx.save();
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    this.ctx.setLineDash([2, 4]);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(nodes[0].x, nodes[0].y);
+                    for (let i = 1; i < nodes.length; i++) {
+                         this.ctx.lineTo(nodes[i].x, nodes[i].y);
+                    }
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                }
+
+                this.ctx.restore();
             } else if (this.shape === 'rectangle' && (this.numberOfRows > 1 || this.numberOfColumns > 1)) {
                 const cellW = this.width / this.numberOfColumns;
                 const cellH = this.height / this.numberOfRows;
