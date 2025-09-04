@@ -3182,16 +3182,9 @@ class Shape {
                     }
 
                     if (!Array.isArray(nodes) || nodes.length < 2) {
-                        // If no valid nodes, draw a dashed outline box to indicate selection
-                        if (isSelected) {
-                            this.ctx.save();
-                            this.ctx.strokeStyle = '#00f6ff';
-                            this.ctx.lineWidth = 1;
-                            this.ctx.setLineDash([2, 4]);
-                            this.ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
-                            this.ctx.restore();
-                        }
-                        return; // Exit draw method
+                        // With less than 2 nodes, there's no line to draw.
+                        // The selection UI will still be handled separately.
+                        return;
                     }
 
                     const offsetX = -this.width / 2;
@@ -3272,16 +3265,18 @@ class Shape {
                         this.ctx.moveTo(nodes[0].x + offsetX, nodes[0].y + offsetY);
 
                         if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
-                            for (let i = 0; i < nodes.length - 2; i++) {
-                                const p1 = { x: nodes[i].x + offsetX, y: nodes[i].y + offsetY };
-                                const p2 = { x: nodes[i+1].x + offsetX, y: nodes[i+1].y + offsetY };
-                                const p3 = { x: nodes[i+2].x + offsetX, y: nodes[i+2].y + offsetY };
-                                const cp1 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-                                const cp2 = { x: (p2.x + p3.x) / 2, y: (p2.y + p3.y) / 2 };
-                                this.ctx.lineTo(cp1.x, cp1.y);
-                                this.ctx.quadraticCurveTo(p2.x, p2.y, cp2.x, cp2.y);
+                            for (let i = 1; i < nodes.length - 2; i++) {
+                                const xc = (nodes[i].x + nodes[i + 1].x) / 2 + offsetX;
+                                const yc = (nodes[i].y + nodes[i + 1].y) / 2 + offsetY;
+                                this.ctx.quadraticCurveTo(nodes[i].x + offsetX, nodes[i].y + offsetY, xc, yc);
                             }
-                            this.ctx.lineTo(nodes[nodes.length - 1].x + offsetX, nodes[nodes.length - 1].y + offsetY);
+                            // For the last segment, curve to the last point
+                            this.ctx.quadraticCurveTo(
+                                nodes[nodes.length - 2].x + offsetX,
+                                nodes[nodes.length - 2].y + offsetY,
+                                nodes[nodes.length - 1].x + offsetX,
+                                nodes[nodes.length - 1].y + offsetY
+                            );
                         } else {
                             // Straight line logic
                             for (let i = 1; i < nodes.length; i++) {
