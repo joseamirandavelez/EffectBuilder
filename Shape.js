@@ -3337,6 +3337,29 @@ class Shape {
         this.ctx.strokeRect(-halfW, -halfH, this.width, this.height);
         this.ctx.setLineDash([]);
 
+        if (this.shape === 'polyline') {
+            let nodes;
+            try {
+                nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : this.polylineNodes;
+            } catch (e) { return; }
+
+            if (Array.isArray(nodes)) {
+                const offsetX = -this.width / 2;
+                const offsetY = -this.height / 2;
+                const handleSize = 8;
+                this.ctx.fillStyle = selectionColor;
+
+                nodes.forEach(node => {
+                    this.ctx.fillRect(
+                        node.x + offsetX - handleSize / 2,
+                        node.y + offsetY - handleSize / 2,
+                        handleSize,
+                        handleSize
+                    );
+                });
+            }
+        }
+
         if (!this.locked) {
             this.ctx.fillStyle = selectionColor;
             const h2 = this.handleSize / 2;
