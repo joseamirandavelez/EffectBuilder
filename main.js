@@ -2229,7 +2229,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (key === 'strokeScrollDir') {
                     updateField('strokeScrollDir', obj.strokeScrollDir);
                 } else if (key === 'polylineNodes') {
-                    updateField(key, JSON.stringify(obj[key]));
+                    let nodesValue = obj[key];
+                    if (typeof nodesValue !== 'string') {
+                        nodesValue = JSON.stringify(nodesValue);
+                    }
+                    updateField(key, nodesValue);
                 } else if (typeof obj[key] !== 'object' && typeof obj[key] !== 'function') {
                     if (typeof obj[key] === 'number') {
                         updateField(key, Math.round(obj[key]));
