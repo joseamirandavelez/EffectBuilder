@@ -3198,7 +3198,7 @@ class Shape {
                     const offsetY = -this.height / 2;
 
                     // Special case for 'along-path' stroke gradient
-                    if (this.enableStroke && this.strokeGradType === 'along-path') {
+                    if (this.enableStroke && this.strokeScrollDir === 'along-path') {
                         // 1. Calculate total path length
                         let totalLength = 0;
                         const segments = [];
@@ -3224,7 +3224,7 @@ class Shape {
                         // 2. Draw path segment by segment with interpolated gradients
                         const c1 = this.strokeGradient.color1;
                         const c2 = this.strokeGradient.color2;
-                        const isRainbow = this.strokeCycleColors; // Using cycleColors to mean rainbow for this mode
+                        const isRainbow = this.strokeGradType.startsWith('rainbow');
                         const animOffset = (this.strokeScrollOffset % 1.0 + 1.0) % 1.0;
 
                         this.ctx.lineWidth = this.strokeWidth;
@@ -3306,9 +3306,9 @@ class Shape {
                     }
                 } else {
                     this.ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+                    this._drawFill();
+                    applyStrokeInside();
                 }
-                this._drawFill();
-                applyStrokeInside();
             }
         }
 
