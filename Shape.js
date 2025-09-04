@@ -2443,8 +2443,7 @@ class Shape {
 
         if (this.strokeGradType !== 'solid' && this.strokeGradType !== 'alternating' && this.strokeGradType !== 'random') {
             const increment = strokeAnimSpeed * 0.025;
-            const directionMultiplier = (this.strokeScrollDir === 'left' || this.strokeScrollDir === 'up') ? -1 : 1;
-            this.strokeScrollOffset += increment * directionMultiplier;
+            this.strokeScrollOffset += increment;
         }
 
         let shapeIncrement;
@@ -3106,30 +3105,78 @@ class Shape {
 
                     // Draw the main stroke if enabled
                     if (this.enableStroke && this.strokeWidth > 0) {
-                        this.ctx.strokeStyle = this._createLocalStrokeStyle();
-                        this.ctx.lineWidth = this.strokeWidth;
-                        this.ctx.lineCap = 'round';
-                        this.ctx.lineJoin = 'round';
-                        this.ctx.beginPath();
+                        // --- START: Path-based gradient logic ---
+                        if (this.strokeGradType === 'along-path') {
+                            const c1 = this.strokeGradient.color1;
+                            const c2 = this.strokeGradient.color2;
 
-                        if (this.polylineCurveStyle === 'curved' && localNodes.length > 1) {
-                            this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
-                            for (let i = 1; i < localNodes.length - 1; i++) {
-                                const xc = (localNodes[i].x + localNodes[i + 1].x) / 2;
-                                const yc = (localNodes[i].y + localNodes[i + 1].y) / 2;
-                                this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, xc, yc);
+                            // 1. Calculate total length and segment lengths
+                            let totalLength = 0;
+                            const segmentLengths = [];
+                            for (let i = 0; i < localNodes.length - 1; i++) {
+                                const p1 = localNodes[i];
+                                const p2 = localNodes[i+1];
+                                const length = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+                                segmentLengths.push(length);
+                                totalLength += length;
                             }
-                            // For the last segment
-                            if (localNodes.length > 1) {
-                                this.ctx.lineTo(localNodes[localNodes.length - 1].x, localNodes[localNodes.length - 1].y);
+
+                            if (totalLength > 0) {
+                                this.ctx.lineWidth = this.strokeWidth;
+                                this.ctx.lineCap = 'round';
+                                this.ctx.lineJoin = 'round';
+
+                                let lengthSoFar = 0;
+                                for (let i = 0; i < localNodes.length - 1; i++) {
+                                    const p1 = localNodes[i];
+                                    const p2 = localNodes[i+1];
+                                    const segLength = segmentLengths[i];
+
+                                    const startRatio = lengthSoFar / totalLength;
+                                    lengthSoFar += segLength;
+                                    const endRatio = lengthSoFar / totalLength;
+
+                                    const startColor = lerpColor(c1, c2, startRatio);
+                                    const endColor = lerpColor(c1, c2, endRatio);
+
+                                    const grad = this.ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+                                    grad.addColorStop(0, startColor);
+                                    grad.addColorStop(1, endColor);
+
+                                    this.ctx.strokeStyle = grad;
+                                    this.ctx.beginPath();
+                                    this.ctx.moveTo(p1.x, p1.y);
+                                    this.ctx.lineTo(p2.x, p2.y);
+                                    this.ctx.stroke();
+                                }
                             }
-                        } else { // Straight line
-                            this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
-                            for (let i = 1; i < localNodes.length; i++) {
-                                this.ctx.lineTo(localNodes[i].x, localNodes[i].y);
+                        } else {
+                        // --- END: Proof-of-concept --- (Original logic below)
+                            this.ctx.strokeStyle = this._createLocalStrokeStyle();
+                            this.ctx.lineWidth = this.strokeWidth;
+                            this.ctx.lineCap = 'round';
+                            this.ctx.lineJoin = 'round';
+                            this.ctx.beginPath();
+
+                            if (this.polylineCurveStyle === 'curved' && localNodes.length > 1) {
+                                this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
+                                for (let i = 1; i < localNodes.length - 1; i++) {
+                                    const xc = (localNodes[i].x + localNodes[i + 1].x) / 2;
+                                    const yc = (localNodes[i].y + localNodes[i + 1].y) / 2;
+                                    this.ctx.quadraticCurveTo(localNodes[i].x, localNodes[i].y, xc, yc);
+                                }
+                                // For the last segment
+                                if (localNodes.length > 1) {
+                                    this.ctx.lineTo(localNodes[localNodes.length - 1].x, localNodes[localNodes.length - 1].y);
+                                }
+                            } else { // Straight line
+                                this.ctx.moveTo(localNodes[0].x, localNodes[0].y);
+                                for (let i = 1; i < localNodes.length; i++) {
+                                    this.ctx.lineTo(localNodes[i].x, localNodes[i].y);
+                                }
                             }
+                            this.ctx.stroke();
                         }
-                        this.ctx.stroke();
                     }
                     // If stroke is disabled but the object is selected, draw a faint guide line
                     else if (isSelected) {
