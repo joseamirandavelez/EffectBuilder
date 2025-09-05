@@ -31,6 +31,26 @@
     <meta property="obj2_polylineNodes" label="Test Poly: Nodes" type="textarea" default='[{"x":0,"y":0},{"x":100,"y":100},{"x":200,"y":0}]' />
     <meta property="obj2_polylineCurveStyle" label="Test Poly: Curve" type="combobox" values="straight,curved" default="straight" />
 
+    <!-- Object 3: Ping-Pong Test -->
+    <meta property="obj3_shape" label="Ping-Pong Test: Shape" type="combobox" default="polyline" />
+    <meta property="obj3_x" label="Ping-Pong Test: X" type="number" default="50" />
+    <meta property="obj3_y" label="Ping-Pong Test: Y" type="number" default="50" />
+    <meta property="obj3_width" label="Ping-Pong Test: Width" type="number" default="250" />
+    <meta property="obj3_height" label="Ping-Pong Test: Height" type="number" default="50" />
+    <meta property="obj3_enableStroke" label="Ping-Pong Test: Enable Stroke" type="boolean" default="true" />
+    <meta property="obj3_strokeWidth" label="Ping-Pong Test: Stroke Width" type="number" default="1" />
+    <meta property="obj3_strokeGradColor1" label="Ping-Pong Test: Stroke Color" type="color" default="#888888" />
+    <meta property="obj3_polylineNodes" label="Ping-Pong Test: Nodes" type="textarea" default='[{"x":0,"y":25},{"x":250,"y":25}]' />
+    <meta property="obj3_pathAnim_enable" label="Ping-Pong Test: Anim" type="boolean" default="true" />
+    <meta property="obj3_pathAnim_behavior" label="Ping-Pong Test: Behavior" type="combobox" default="Ping-Pong" />
+    <meta property="obj3_pathAnim_objectCount" label="Ping-Pong Test: Count" type="number" default="5" />
+    <meta property="obj3_pathAnim_objectSpacing" label="Ping-Pong Test: Spacing" type="number" default="25" />
+    <meta property="obj3_pathAnim_shape" label="Ping-Pong Test: Shape" type="combobox" default="circle" />
+    <meta property="obj3_pathAnim_size" label="Ping-Pong Test: Size" type="number" default="5" />
+    <meta property="obj3_pathAnim_speed" label="Ping-Pong Test: Speed" type="number" default="500" />
+    <meta property="obj3_pathAnim_gradColor1" label="Ping-Pong Test: Color" type="color" default="#00ff00" />
+
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -124,7 +144,14 @@
                 }).filter(Boolean);
                 console.log("Initial states for objects:", initialStates);
 
-                objects = initialStates.map(state => new Shape({ ...state, ctx: ctx, canvasWidth: canvas.width }));
+                objects = initialStates.map(state => {
+                    try {
+                        return new Shape({ ...state, ctx: ctx, canvasWidth: canvas.width });
+                    } catch (e) {
+                        console.error(`Failed to create shape with state:`, state, e);
+                        return null;
+                    }
+                }).filter(Boolean); // Filter out nulls from failed constructions
             }
 
             function drawFrame() {
@@ -132,15 +159,20 @@
                 ctx.fillStyle = '#111'; // Dark background for visibility
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                for (let i = objects.length - 1; i >= 0; i--) {
+                for (let i = 0; i < objects.length; i++) {
                     objects[i].draw(false, {}, {});
                 }
+            }
+
+            function animationLoop() {
+                drawFrame();
+                requestAnimationFrame(animationLoop);
             }
 
             console.log("Test page initialized.");
             createInitialObjects();
             console.log(`Created ${objects.length} objects for testing.`);
-            drawFrame();
+            animationLoop();
         });
     </script>
 </body>

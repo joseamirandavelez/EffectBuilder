@@ -2666,11 +2666,17 @@ class Shape {
 
             // --- BEHAVIOR LOGIC ---
             if (this.pathAnim_behavior === 'Ping-Pong') {
-                // Leader object reverses when it hits the start or end of the path.
-                if (this.pathAnim_direction === 1 && this.pathAnim_distance > totalLength) {
-                    this.pathAnim_distance = totalLength;
+                const objectCount = Math.max(1, this.pathAnim_objectCount || 1);
+                const spacing = (this.pathAnim_objectSpacing || 100) / 4;
+                const swarmLength = (objectCount - 1) * spacing;
+
+                // Reverse when the LAST object hits the end of the path
+                if (this.pathAnim_direction === 1 && (this.pathAnim_distance - swarmLength) >= totalLength) {
+                    this.pathAnim_distance = totalLength + swarmLength;
                     this.pathAnim_direction = -1;
-                } else if (this.pathAnim_direction === -1 && this.pathAnim_distance < 0) {
+                }
+                // Reverse when the FIRST object hits the start of the path
+                else if (this.pathAnim_direction === -1 && this.pathAnim_distance < 0) {
                     this.pathAnim_distance = 0;
                     this.pathAnim_direction = 1;
                 }
