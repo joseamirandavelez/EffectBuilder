@@ -3486,17 +3486,27 @@ class Shape {
                     nodes = [];
                 }
 
-                if (!Array.isArray(nodes) || nodes.length < 2) {
+                if (!Array.isArray(nodes) || nodes.length === 0) {
                     return;
                 }
 
                 const offsetX = -this.width / 2;
                 const offsetY = -this.height / 2;
 
-                // --- Stroke is ENABLED ---
+                // If there is only one node (during creation), draw a handle to show the start point.
+                if (nodes.length === 1) {
+                    if (typeof engine === 'undefined') {
+                        this.ctx.fillStyle = 'rgba(0, 246, 255, 0.8)';
+                        this.ctx.beginPath();
+                        this.ctx.arc(nodes[0].x + offsetX, nodes[0].y + offsetY, 5, 0, 2 * Math.PI);
+                        this.ctx.fill();
+                    }
+                    return;
+                }
+
                 if (this.enableStroke) {
+                    this.ctx.setLineDash([]); // Ensure line is solid
                     if (this.strokeScrollDir === 'along-path') {
-                        // ... (The complex 'along-path' logic remains unchanged)
                         const segments = [];
                         let totalLength = 0;
                         let currentPoint = { x: nodes[0].x + offsetX, y: nodes[0].y + offsetY };
@@ -3504,7 +3514,7 @@ class Shape {
                             for (let i = 1; i < nodes.length - 1; i++) {
                                 const controlPoint = { x: nodes[i].x + offsetX, y: nodes[i].y + offsetY };
                                 const endPoint = { x: (nodes[i].x + nodes[i + 1].x) / 2 + offsetX, y: (nodes[i].y + nodes[i + 1].y) / 2 + offsetY };
-                                const segmentLength = getQuadraticCurveLength(currentPoint, controlPoint, endPoint);
+                                const segmentLength = this._getQuadraticCurveLength(currentPoint, controlPoint, endPoint);
                                 segments.push({ type: 'curve', p0: currentPoint, p1: controlPoint, p2: endPoint, length: segmentLength, startLength: totalLength });
                                 totalLength += segmentLength;
                                 currentPoint = endPoint;
@@ -3542,7 +3552,6 @@ class Shape {
                             }
                         }
                     } else {
-                        // Logic for all other simple stroke types
                         this.ctx.beginPath();
                         this.ctx.moveTo(nodes[0].x + offsetX, nodes[0].y + offsetY);
                         if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
@@ -3563,11 +3572,7 @@ class Shape {
                         this.ctx.lineCap = 'round';
                         this.ctx.stroke();
                     }
-                    // --- Stroke is DISABLED ---
                 } else {
-                    // --- THIS IS THE FIX FOR THE DOTTED LINE ---
-                    // Only draw the dotted preview line if we are NOT in the SignalRGB environment.
-                    // The 'engine' object only exists inside SignalRGB.
                     if (typeof engine === 'undefined') {
                         this.ctx.beginPath();
                         this.ctx.moveTo(nodes[0].x + offsetX, nodes[0].y + offsetY);

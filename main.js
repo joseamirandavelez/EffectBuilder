@@ -2442,7 +2442,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     value = String(value).replace(/\\n/g, '\n');
                 }
 
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize'];
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize', 'pathAnim_size', 'pathAnim_speed', 'pathAnim_objectSpacing', 'pathAnim_trailLength'];
                 if (propsToScale.includes(key) && typeof value === 'number') {
                     value *= 4;
                 }
@@ -3162,29 +3162,16 @@ document.addEventListener('DOMContentLoaded', function () {
             dirtyProperties.add(target.name);
         }
 
-        // If a 'fillShape' toggle was changed, update its dependent controls.
-        if (target.name && target.name.endsWith('_fillShape')) {
-            const fieldset = target.closest('fieldset[data-object-id]');
-            if (fieldset) {
-                updateDependentControls(fieldset);
-            }
-            // Add these two lines to update the object and redraw the canvas
-            updateObjectsFromForm();
-            drawFrame();
-        }
-
         if (['enablePalette', 'paletteColor1', 'paletteColor2'].includes(target.name)) {
             updateColorControls();
         }
 
-        // Sync number inputs with their corresponding range sliders
         if (target.type === 'number' && document.getElementById(`${target.id}_slider`)) {
             document.getElementById(`${target.id}_slider`).value = target.value;
         } else if (target.type === 'range' && target.id.endsWith('_slider')) {
             document.getElementById(target.id.replace('_slider', '')).value = target.value;
         }
 
-        // Sync color pickers with their corresponding hex input fields
         if (target.type === 'color' && document.getElementById(`${target.id}_hex`)) {
             document.getElementById(`${target.id}_hex`).value = target.value;
         } else if (target.type === 'text' && target.id.endsWith('_hex')) {
@@ -3194,16 +3181,68 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // This listener now only handles live, non-destructive updates to the canvas.
+        // Merged logic for node table edits
+        if (target.classList.contains('node-x-input') || target.classList.contains('node-y-input')) {
+            const container = target.closest('.node-table-container');
+            if (container) {
+                const hiddenTextarea = container.querySelector('textarea');
+                const tbody = container.querySelector('tbody');
+                const newNodes = Array.from(tbody.children).map(tr => ({
+                    x: parseFloat(tr.querySelector('.node-x-input').value) || 0,
+                    y: parseFloat(tr.querySelector('.node-y-input').value) || 0,
+                }));
+                hiddenTextarea.value = JSON.stringify(newNodes);
+            }
+        }
+
         updateObjectsFromForm();
         drawFrame();
     });
 
     form.addEventListener('click', (e) => {
+        // Logic for adding/deleting nodes from the table
+        const addBtn = e.target.closest('.btn-add-node');
+        const deleteBtn = e.target.closest('.btn-delete-node');
+        if (addBtn || deleteBtn) {
+            const container = e.target.closest('.node-table-container');
+            const tbody = container.querySelector('tbody');
+            const hiddenTextarea = container.querySelector('textarea');
+
+            if (addBtn) {
+                const newIndex = tbody.children.length;
+                const lastNode = newIndex > 0 ? tbody.children[newIndex - 1] : null;
+                const lastX = lastNode ? parseInt(lastNode.querySelector('.node-x-input').value, 10) : 0;
+                const lastY = lastNode ? parseInt(lastNode.querySelector('.node-y-input').value, 10) : 0;
+                const tr = document.createElement('tr');
+                tr.dataset.index = newIndex;
+                tr.innerHTML = `<td class="align-middle">${newIndex + 1}</td><td><input type="number" class="form-control form-control-sm node-x-input" value="${lastX + 50}"></td><td><input type="number" class="form-control form-control-sm node-y-input" value="${lastY + 50}"></td><td class="align-middle"><button type="button" class="btn btn-sm btn-outline-danger btn-delete-node" title="Delete Node"><i class="bi bi-trash"></i></button></td>`;
+                tbody.appendChild(tr);
+            }
+
+            if (deleteBtn) {
+                if (tbody.children.length > 2) {
+                    deleteBtn.closest('tr').remove();
+                    Array.from(tbody.children).forEach((tr, index) => {
+                        tr.dataset.index = index;
+                        tr.firstElementChild.textContent = index + 1;
+                    });
+                } else {
+                    showToast("A polyline must have at least 2 nodes.", "danger");
+                }
+            }
+
+            const newNodes = Array.from(tbody.children).map(tr => ({
+                x: parseFloat(tr.querySelector('.node-x-input').value) || 0,
+                y: parseFloat(tr.querySelector('.node-y-input').value) || 0,
+            }));
+            hiddenTextarea.value = JSON.stringify(newNodes);
+            hiddenTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            return; // Stop further execution
+        }
+
+        // Original logic for selecting a panel
         const fieldset = e.target.closest('fieldset[data-object-id]');
         const isInteractive = e.target.closest('button, a, input, [contenteditable="true"]');
-
-        // This listener is now only responsible for selecting a panel when the empty space is clicked.
         if (fieldset && !isInteractive) {
             const idToSelect = parseInt(fieldset.dataset.objectId, 10);
             if (!(selectedObjectIds.length === 1 && selectedObjectIds[0] === idToSelect)) {
@@ -3215,90 +3254,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    form.addEventListener('input', (e) => {
-        // This part handles live edits to the X/Y input fields
-        const input = e.target;
-        if (input.classList.contains('node-x-input') || input.classList.contains('node-y-input')) {
-            const container = input.closest('.node-table-container');
-            if (container) {
-                const hiddenTextarea = container.querySelector('textarea');
-                const tbody = container.querySelector('tbody');
-                const newNodes = Array.from(tbody.children).map(tr => ({
-                    x: parseFloat(tr.querySelector('.node-x-input').value) || 0,
-                    y: parseFloat(tr.querySelector('.node-y-input').value) || 0,
-                }));
-                hiddenTextarea.value = JSON.stringify(newNodes);
-                // The main form 'input' listener will automatically handle the rest!
-            }
-        }
-    });
-
-    form.addEventListener('click', (e) => {
-        const addBtn = e.target.closest('.btn-add-node');
-        const deleteBtn = e.target.closest('.btn-delete-node');
-
-        if (!addBtn && !deleteBtn) return;
-
-        const container = e.target.closest('.node-table-container');
-        const tbody = container.querySelector('tbody');
-        const hiddenTextarea = container.querySelector('textarea');
-
-        if (addBtn) {
-            const newIndex = tbody.children.length;
-            const lastNode = newIndex > 0 ? tbody.children[newIndex - 1] : null;
-            const lastX = lastNode ? parseInt(lastNode.querySelector('.node-x-input').value, 10) : 0;
-            const lastY = lastNode ? parseInt(lastNode.querySelector('.node-y-input').value, 10) : 0;
-
-            const tr = document.createElement('tr');
-            tr.dataset.index = newIndex;
-            tr.innerHTML = `
-            <td class="align-middle">${newIndex + 1}</td>
-            <td><input type="number" class="form-control form-control-sm node-x-input" value="${lastX + 50}"></td>
-            <td><input type="number" class="form-control form-control-sm node-y-input" value="${lastY + 50}"></td>
-            <td class="align-middle">
-                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-node" title="Delete Node"><i class="bi bi-trash"></i></button>
-            </td>`;
-            tbody.appendChild(tr);
-        }
-
-        if (deleteBtn) {
-            if (tbody.children.length > 2) {
-                deleteBtn.closest('tr').remove();
-                Array.from(tbody.children).forEach((tr, index) => {
-                    tr.dataset.index = index;
-                    tr.firstElementChild.textContent = index + 1;
-                });
-            } else {
-                showToast("A polyline must have at least 2 nodes.", "danger");
-            }
-        }
-
-        const newNodes = Array.from(tbody.children).map(tr => ({
-            x: parseFloat(tr.querySelector('.node-x-input').value) || 0,
-            y: parseFloat(tr.querySelector('.node-y-input').value) || 0,
-        }));
-
-        hiddenTextarea.value = JSON.stringify(newNodes);
-
-        // Trigger an 'input' event, which correctly calls the canvas redraw logic.
-        hiddenTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-
     // MODIFIED - Added Ctrl+C and Ctrl+V keyboard shortcuts for copy/paste
     function finalizePolyline() {
         if (!isDrawingPolyline) return;
 
         const shape = objects.find(o => o.id === currentlyDrawingShapeId);
         if (shape) {
-            const nodes = (typeof shape.polylineNodes === 'string') ? JSON.parse(shape.polylineNodes) : shape.polylineNodes;
-            if (nodes.length > 1) {
-                const last = nodes[nodes.length - 1];
-                const secondLast = nodes[nodes.length - 2];
-                if (last.x === secondLast.x && last.y === secondLast.y) {
-                    nodes.pop();
-                    shape.update({ polylineNodes: nodes });
-                }
-            }
+            // Final update to recalculate bounding box correctly
+            shape.update({ polylineNodes: shape.polylineNodes });
+            updateFormValuesFromObjects();
         }
 
         isDrawingPolyline = false;
@@ -3308,7 +3272,7 @@ document.addEventListener('DOMContentLoaded', function () {
         canvasContainer.style.cursor = 'default';
 
         recordHistory();
-        drawFrame(); // Final redraw to remove the preview line
+        drawFrame();
         showToast("Polyline created!", "success");
     }
 
@@ -3773,113 +3737,64 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     canvasContainer.addEventListener('mousedown', e => {
         if (activeTool === 'polyline') {
+            e.preventDefault();
             const { x, y } = getCanvasCoordinates(e);
 
             if (!isDrawingPolyline) {
-                // Start drawing a new polyline
+                // First click: Create the shape and start the preview
                 isDrawingPolyline = true;
                 const newId = objects.length > 0 ? (Math.max(...objects.map(o => o.id))) + 1 : 1;
-
-                // Create a new Shape instance for the polyline
-                const newShape = new Shape({
-                    id: newId,
-                    shape: 'polyline',
-                    name: `Polyline ${newId}`,
-                    x: x, // Initial position is the click position
-                    y: y,
-                    width: 1, // Start with a minimal bounding box
-                    height: 1,
-                    polylineNodes: [{ x: 0, y: 0 }], // First node is at the shape's local origin
-                    ctx: ctx,
-                    enableStroke: true, // Make it visible by default
-                    strokeWidth: 4
-                });
-
                 currentlyDrawingShapeId = newId;
-                objects.unshift(newShape); // Add to the top layer
 
-                // Create the corresponding configuration for the UI
-                const newObjectConfigs = getDefaultObjectConfig(newId);
-                newObjectConfigs.forEach(conf => {
-                    const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                    if (propName === 'shape') conf.default = 'polyline';
-                    else if (propName === 'x') conf.default = Math.round(x / 4);
-                    else if (propName === 'y') conf.default = Math.round(y / 4);
-                    else if (propName === 'width' || propName === 'height') conf.default = 1;
-                    else if (propName === 'polylineNodes') conf.default = '[{"x":0,"y":0}]';
-                    else if (propName === 'enableStroke') conf.default = 'true';
-                    else if (propName === 'strokeWidth') conf.default = '1';
+                const newShape = new Shape({
+                    id: newId, shape: 'polyline', name: `Polyline ${newId}`,
+                    x: x, y: y, width: 1, height: 1,
+                    polylineNodes: [{ x: 0, y: 0 }],
+                    ctx: ctx, enableStroke: true, strokeWidth: 4
                 });
+                objects.unshift(newShape);
 
+                const newObjectConfigs = getDefaultObjectConfig(newId).filter(
+                    conf => (shapePropertyMap['polyline'] || []).includes(conf.property.substring(conf.property.indexOf('_') + 1))
+                );
                 const firstObjectConfigIndex = configStore.findIndex(c => (c.property || '').startsWith('obj'));
-                if (firstObjectConfigIndex === -1) {
-                    configStore.push(...newObjectConfigs);
-                } else {
-                    configStore.splice(firstObjectConfigIndex, 0, ...newObjectConfigs);
-                }
+                if (firstObjectConfigIndex === -1) { configStore.push(...newObjectConfigs); }
+                else { configStore.splice(firstObjectConfigIndex, 0, ...newObjectConfigs); }
 
                 selectedObjectIds = [newId];
-                renderForm(); // Re-render UI with the new object
-                updateFormValuesFromObjects(); // Sync form with object state
+                renderForm();
+                updateFormValuesFromObjects();
 
-                // Set up for the preview line
+                // Correctly start the preview line FROM and TO the first click location
                 previewLine.startX = x;
                 previewLine.startY = y;
+                previewLine.endX = x;
+                previewLine.endY = y;
                 previewLine.active = true;
 
             } else {
-                // Add a new node to the currently drawing polyline
+                // Subsequent clicks: Add a new node
                 const shape = objects.find(o => o.id === currentlyDrawingShapeId);
                 if (!shape) return;
 
-                // --- START: BUG FIX for incorrect node placement ---
-                // The original logic was incorrect because it didn't account for the shape's rotation
-                // or the fact that its bounding box (and thus its x/y origin) moves.
-                // This new logic correctly transforms the world click coordinates into the shape's local space.
-
                 const center = shape.getCenter();
-                const angle = -shape.getRenderAngle(); // Use negative angle for inverse transform
-                const s = Math.sin(angle);
-                const c = Math.cos(angle);
-
-                const dx = x - center.x;
-                const dy = y - center.y;
-
-                // 1. Get click coordinates relative to the shape's center, ignoring rotation.
-                const localClickX = dx * c - dy * s;
-                const localClickY = dx * s + dy * c;
-
-                // 2. Convert from center-relative coordinates to top-left-relative coordinates,
-                // which is how the polylineNodes array is stored.
+                const angle = -shape.getRenderAngle();
+                const localClickX = (x - center.x) * Math.cos(angle) - (y - center.y) * Math.sin(angle);
+                const localClickY = (x - center.x) * Math.sin(angle) + (y - center.y) * Math.cos(angle);
                 const nodeX = localClickX + shape.width / 2;
                 const nodeY = localClickY + shape.height / 2;
-                // --- END: BUG FIX ---
 
-                // Create a new nodes array and trigger the update
-                const currentNodes = (typeof shape.polylineNodes === 'string') ? JSON.parse(shape.polylineNodes) : shape.polylineNodes;
-                const newNodes = [...currentNodes, { x: nodeX, y: nodeY }];
+                const newNodes = [...shape.polylineNodes, { x: nodeX, y: nodeY }];
                 shape.update({ polylineNodes: newNodes });
 
-                // The update() method normalizes nodes, so we need the updated version
-                // to correctly position the preview line's start point for the next segment.
-                // We must transform the new local node position back to world space.
-                const lastNode = shape.polylineNodes[shape.polylineNodes.length - 1];
-                const newCenter = shape.getCenter();
-                const newAngle = shape.getRenderAngle();
-                const newS = Math.sin(newAngle);
-                const newC = Math.cos(newAngle);
-
-                const lastNodeCenterX = lastNode.x - shape.width / 2;
-                const lastNodeCenterY = lastNode.y - shape.height / 2;
-
-                previewLine.startX = newCenter.x + (lastNodeCenterX * newC - lastNodeCenterY * newS);
-                previewLine.startY = newCenter.y + (lastNodeCenterX * newS + lastNodeCenterY * newC);
-
                 updateFormValuesFromObjects();
-            }
 
+                // Update the preview line's start to this new point
+                previewLine.startX = x;
+                previewLine.startY = y;
+            }
             drawFrame();
-            return; // Important to stop the rest of the mousedown logic
+            return;
         }
 
         e.preventDefault();
@@ -4061,13 +3976,16 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {MouseEvent} e - The mousemove event object.
      */
     canvasContainer.addEventListener('mousemove', e => {
+        // This part only updates the state. The 'animate' loop handles the redraw.
         if (isDrawingPolyline && previewLine.active) {
             const { x, y } = getCanvasCoordinates(e);
             previewLine.endX = x;
             previewLine.endY = y;
-            drawFrame();
+            // NOTE: We do NOT call drawFrame() here. We just update the state.
             return;
         }
+
+        // --- This is the original logic for dragging, resizing, and showing coordinates ---
         if (coordsDisplay) {
             const { x, y } = getCanvasCoordinates(e);
             coordsDisplay.textContent = `${Math.round(x / 4)}, ${Math.round(y / 4)}: (${Math.round(x)}, ${Math.round(y)})`;
@@ -4892,10 +4810,10 @@ document.addEventListener('DOMContentLoaded', function () {
     addPolylineBtn.addEventListener('click', () => {
         activeTool = 'polyline';
         canvasContainer.style.cursor = 'crosshair';
-        isDrawingPolyline = false; // Reset state in case it was stuck
+        isDrawingPolyline = false; // Reset state
         currentlyDrawingShapeId = null;
         previewLine.active = false;
-        showToast("Polyline tool activated. Click on the canvas to start drawing.", "info");
+        showToast("Polyline tool activated. Click on the canvas to start drawing. Double-click to finish.", "info");
     });
 
     addObjectBtn.addEventListener('click', () => {
