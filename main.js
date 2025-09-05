@@ -146,6 +146,8 @@ let snapLines = [];
 let isDragging = false;
 let isResizing = false;
 let isRotating = false;
+let isDraggingNode = false;
+let activeNodeDragState = null;
 let activeResizeHandle = null;
 let initialDragState = [];
 let dragStartX = 0;
@@ -329,9 +331,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const exportBtn = document.getElementById('export-btn');
     const shareBtn = document.getElementById('share-btn');
     const addObjectBtn = document.getElementById('add-object-btn');
+    const addPolylineBtn = document.getElementById('add-polyline-btn');
     const confirmImportBtn = document.getElementById('confirm-import-btn');
     const confirmBtn = document.getElementById('confirm-overwrite-btn');
     const coordsDisplay = document.getElementById('coords-display');
+
+    let activeTool = 'select'; // 'select' or 'polyline'
+    let isDrawingPolyline = false;
+    let currentlyDrawingShapeId = null;
+    let previewLine = { startX: 0, startY: 0, endX: 0, endY: 0, active: false };
 
     // Update this for a new property
     const shapePropertyMap = {
@@ -342,6 +350,11 @@ document.addEventListener('DOMContentLoaded', function () {
             'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
             'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
             'enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'
+        ],
+        polyline: [
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'polylineNodes', 'polylineCurveStyle',
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
         circle: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'gradType', 'useSharpGradient', 'gradientStop',
@@ -437,6 +450,15 @@ document.addEventListener('DOMContentLoaded', function () {
             'spawn_matrixCharSet', 'spawn_matrixTrailLength', 'spawn_matrixEnableGlow', 'spawn_matrixGlowSize', 'spawn_matrixGlowColor',
             'spawn_enableTrail', 'spawn_trailLength', 'spawn_trailSpacing',
             'sides', 'points', 'starInnerRadius', 'spawn_svg_path'
+        ],
+        polyline: [
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'polylineNodes', 'polylineCurveStyle',
+            'pathAnim_enable', 'pathAnim_shape', 'pathAnim_size', 'pathAnim_speed', 'pathAnim_behavior', 'pathAnim_objectCount', 'pathAnim_objectSpacing',
+            'pathAnim_gradType', 'pathAnim_useSharpGradient', 'pathAnim_gradientStop', 'pathAnim_gradColor1', 'pathAnim_gradColor2',
+            'pathAnim_cycleColors', 'pathAnim_cycleSpeed', 'pathAnim_animationMode', 'pathAnim_animationSpeed', 'pathAnim_scrollDir',
+            'pathAnim_trail', 'pathAnim_trailLength', 'pathAnim_trailColor',
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
     };
 
@@ -1113,6 +1135,59 @@ document.addEventListener('DOMContentLoaded', function () {
                 select.appendChild(option);
             });
             formGroup.appendChild(select);
+        } else if (type === 'nodetable') {
+            const container = document.createElement('div');
+            container.className = 'node-table-container';
+
+            // This hidden textarea will still hold the raw JSON data for the application to use.
+            // The table is just a user-friendly way to edit it.
+            const hiddenTextarea = document.createElement('textarea');
+            hiddenTextarea.id = controlId;
+            hiddenTextarea.name = controlId;
+            hiddenTextarea.style.display = 'none';
+            hiddenTextarea.textContent = defaultValue;
+
+            const table = document.createElement('table');
+            table.className = 'table table-dark table-sm node-table';
+            table.innerHTML = `
+        <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">X</th>
+                <th scope="col">Y</th>
+                <th scope="col" style="width: 80px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>`;
+
+            const tbody = table.querySelector('tbody');
+            let nodes = [];
+            try {
+                nodes = JSON.parse(defaultValue);
+            } catch (e) { console.error("Could not parse polyline nodes for table.", e); }
+
+            nodes.forEach((node, index) => {
+                const tr = document.createElement('tr');
+                tr.dataset.index = index;
+                tr.innerHTML = `
+            <td class="align-middle">${index + 1}</td>
+            <td><input type="number" class="form-control form-control-sm node-x-input" value="${Math.round(node.x)}"></td>
+            <td><input type="number" class="form-control form-control-sm node-y-input" value="${Math.round(node.y)}"></td>
+            <td class="align-middle">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-node" title="Delete Node"><i class="bi bi-trash"></i></button>
+            </td>`;
+                tbody.appendChild(tr);
+            });
+
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.className = 'btn btn-sm btn-outline-success mt-2 btn-add-node';
+            addButton.innerHTML = '<i class="bi bi-plus-circle"></i> Add Node';
+
+            container.appendChild(hiddenTextarea);
+            container.appendChild(table);
+            container.appendChild(addButton);
+            formGroup.appendChild(container);
         }
         return formGroup;
     }
@@ -1125,21 +1200,23 @@ document.addEventListener('DOMContentLoaded', function () {
         let scriptHTML = '';
         let jsVars = '';
         let allKeys = [];
-        const objectMetaPropMap = {}; // NEW: Map to store which properties are meta tags for each object.
+        const objectMetaPropMap = {};
 
         const minimize = document.getElementById('minimize-props-export')?.checked || false;
         const generalValues = getControlValues();
 
-        // Process General (Global) properties
         configStore.filter(conf => !(conf.property || conf.name).startsWith('obj')).forEach(conf => {
             const key = conf.property || conf.name;
             if (generalValues[key] !== undefined) {
                 allKeys.push(key);
                 let exportValue = generalValues[key];
-
                 if (conf.name && !conf.property) {
                     scriptHTML += `<meta ${key}="${exportValue}" />\n`;
                 } else {
+                    let finalExportValue = exportValue;
+                    if (typeof finalExportValue === 'string') {
+                        finalExportValue = finalExportValue.replace(/"/g, '&quot;');
+                    }
                     const attrs = [`property="${conf.property}"`, `label="${conf.label}"`, `type="${conf.type}"`];
                     if (conf.values) {
                         const sortedValues = conf.values.split(',').sort().join(',');
@@ -1147,21 +1224,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     if (conf.min) attrs.push(`min="${conf.min}"`);
                     if (conf.max) attrs.push(`max="${conf.max}"`);
-                    scriptHTML += `<meta ${attrs.join(' ')} default="${exportValue}" />\n`;
+                    scriptHTML += `<meta ${attrs.join(' ')} default="${finalExportValue}" />\n`;
                 }
             }
         });
 
-        // Process Object-specific properties
         objects.forEach(obj => {
             const name = obj.name || `Object ${obj.id}`;
-            objectMetaPropMap[obj.id] = []; // NEW: Initialize the list for this object.
+            objectMetaPropMap[obj.id] = [];
             const objectConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${obj.id}_`));
             const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
 
             objectConfigs.forEach(conf => {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                let liveValue;
+                let liveValue = obj[propName];
 
                 if (propName.startsWith('gradColor')) {
                     liveValue = obj.gradient[propName.replace('gradColor', 'color')];
@@ -1171,8 +1247,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     liveValue = obj.scrollDirection;
                 } else if (propName === 'strokeScrollDir') {
                     liveValue = obj.strokeScrollDir;
-                } else {
-                    liveValue = obj[propName];
                 }
 
                 if (liveValue === undefined) {
@@ -1182,8 +1256,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 allKeys.push(conf.property);
                 let exportValue = liveValue;
+                let exportType = conf.type;
 
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize', 'vizBarSpacing', 'vizSegmentSpacing', 'spawn_size', 'spawn_speed', 'spawn_gravity'];
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize', 'pathAnim_size', 'pathAnim_speed', 'pathAnim_objectSpacing', 'pathAnim_trailLength'];
                 if (conf.type === 'number' && typeof liveValue === 'number') {
                     exportValue = propsToScale.includes(propName) ? Math.round(liveValue / 4) : Math.round(liveValue);
                 } else if (typeof liveValue === 'boolean') {
@@ -1194,19 +1269,36 @@ document.addEventListener('DOMContentLoaded', function () {
                 const objectSpecificProps = ['shape', 'x', 'y', 'width', 'height', 'rotation'];
                 let writeAsMeta = !minimize || (!objectSpecificProps.includes(propName) && isApplicable);
 
+                if (propName === 'polylineNodes') {
+                    writeAsMeta = false; // Always export polylineNodes as a hard-coded variable
+                }
+
                 if (writeAsMeta) {
-                    objectMetaPropMap[obj.id].push(propName); // NEW: Add this property to the map.
+                    objectMetaPropMap[obj.id].push(propName);
                     conf.label = `${name}: ${conf.label.split(':').slice(1).join(':').trim()}`;
-                    const attrs = [`property="${conf.property}"`, `label="${conf.label}"`, `type="${conf.type}"`];
+                    const attrs = [`property="${conf.property}"`, `label="${conf.label}"`, `type="${exportType}"`];
                     if (conf.values) {
                         const sortedValues = conf.values.split(',').sort().join(',');
                         attrs.push(`values="${sortedValues}"`);
                     }
                     if (conf.min) attrs.push(`min="${conf.min}"`);
                     if (conf.max) attrs.push(`max="${conf.max}"`);
-                    scriptHTML += `<meta ${attrs.join(' ')} default="${exportValue}" />\n`;
+                    let finalExportValue = exportValue;
+                    if (typeof finalExportValue === 'string') {
+                        finalExportValue = finalExportValue.replace(/"/g, '&quot;');
+                    }
+                    scriptHTML += `<meta ${attrs.join(' ')} default="${finalExportValue}" />\n`;
                 } else {
-                    jsVars += `const ${conf.property} = ${JSON.stringify(exportValue)};\n`;
+                    if (propName === 'polylineNodes' && Array.isArray(exportValue)) {
+                        // Manually scale down the node coordinates for export.
+                        const scaledNodes = exportValue.map(node => ({
+                            x: Math.round(node.x / 4),
+                            y: Math.round(node.y / 4)
+                        }));
+                        jsVars += `const ${conf.property} = ${JSON.stringify(scaledNodes)};\n`;
+                    } else {
+                        jsVars += `const ${conf.property} = ${JSON.stringify(exportValue)};\n`;
+                    }
                 }
             });
         });
@@ -1371,18 +1463,22 @@ document.addEventListener('DOMContentLoaded', function () {
         tabContent.id = `object-tab-content-${id}`;
 
         // Update this for a new property
+        //Tabs
         const controlGroupMap = {
             'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
-            'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'animationSpeed', 'cycleSpeed'], icon: 'bi-palette-fill' },
+            'Polyline': { props: ['polylineNodes', 'polylineCurveStyle'], icon: 'bi-vector-pen' },
             'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir'], icon: 'bi-brush-fill' },
+            'Object': { props: ['pathAnim_enable', 'pathAnim_shape', 'pathAnim_size', 'pathAnim_speed', 'pathAnim_behavior', 'pathAnim_objectCount', 'pathAnim_objectSpacing', 'pathAnim_trail', 'pathAnim_trailLength', 'pathAnim_trailColor'], icon: 'bi-box-seam' },
+            'Object Fill': { props: ['pathAnim_gradType', 'pathAnim_gradColor1', 'pathAnim_gradColor2', 'pathAnim_useSharpGradient', 'pathAnim_gradientStop', 'pathAnim_animationMode', 'pathAnim_animationSpeed', 'pathAnim_scrollDir', 'pathAnim_cycleColors', 'pathAnim_cycleSpeed'], icon: 'bi-palette-fill' },
+            'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'animationSpeed', 'cycleSpeed', 'fillShape'], icon: 'bi-palette-fill' },
             'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'], icon: 'bi-fonts' },
-            'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
+            'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
             'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce', 'tetrisHoldTime'], icon: 'bi-grid-3x3-gap-fill' },
             'Fire': { props: ['fireSpread'], icon: 'bi-fire' },
             'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
             'Visualizer': { props: ['vizLayout', 'vizDrawStyle', 'vizStyle', 'vizLineWidth', 'vizAutoScale', 'vizMaxBarHeight', 'vizBarCount', 'vizBarSpacing', 'vizSmoothing', 'vizUseSegments', 'vizSegmentCount', 'vizSegmentSpacing', 'vizInnerRadius', 'vizBassLevel', 'vizTrebleBoost'], icon: 'bi-bar-chart-line-fill' },
-            'Audio': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
-            'Sensor': { props: ['enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'], icon: 'bi-cpu-fill' },
+            'Audio Responsiveness': { props: ['enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'], icon: 'bi-mic-fill' },
+            'Sensor Responsiveness': { props: ['enableSensorReactivity', 'sensorTarget', 'userSensor', 'timePlotLineThickness', 'timePlotFillArea', 'sensorMeterShowValue', 'timePlotAxesStyle', 'timePlotTimeScale', 'sensorMeterColorGradient'], icon: 'bi-cpu-fill' },
             'Strimer': { props: ['strimerRows', 'strimerColumns', 'strimerBlockCount', 'strimerBlockSize', 'strimerAnimation', 'strimerAnimationSpeed', 'strimerDirection', 'strimerEasing', 'strimerBlockSpacing', 'strimerGlitchFrequency', 'strimerAudioSensitivity', 'strimerBassLevel', 'strimerTrebleBoost', 'strimerAudioSmoothing', 'strimerPulseSpeed', 'strimerSnakeDirection'], icon: 'bi-segmented-nav' },
             'Spawner': { props: ['spawn_animation', 'spawn_count', 'spawn_spawnRate', 'spawn_lifetime', 'spawn_speed', 'spawn_speedVariance', 'spawn_gravity', 'spawn_spread'], icon: 'bi-broadcast' },
             'Particle': { props: ['spawn_shapeType', 'spawn_size', 'spawn_size_randomness', 'spawn_rotationSpeed', 'spawn_rotationVariance', 'spawn_initialRotation_random', 'spawn_matrixCharSet', 'spawn_matrixTrailLength', 'spawn_matrixEnableGlow', 'spawn_matrixGlowSize', 'spawn_matrixGlowColor', 'spawn_svg_path', 'spawn_enableTrail', 'spawn_trailLength', 'spawn_trailSpacing'], icon: 'bi-stars' }
@@ -1618,6 +1714,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         updateFormValuesFromObjects();
+
+        form.querySelectorAll('fieldset[data-object-id]').forEach(updateDependentControls);
+        form.querySelectorAll('fieldset[data-object-id]').forEach(updateStrokeDependentControls);
     }
 
     /**
@@ -1798,6 +1897,36 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
+     * Enables or disables dependent fill controls based on the 'fillShape' checkbox state.
+     * @param {HTMLElement} fieldset - The fieldset element for a specific object.
+     */
+    function updateDependentControls(fieldset) {
+        const id = fieldset.dataset.objectId;
+        const fillShapeToggle = fieldset.querySelector(`[name="obj${id}_fillShape"]`);
+        if (!fillShapeToggle) return;
+
+        const isFillEnabled = fillShapeToggle.checked;
+
+        // List all controls that depend on the fill being enabled
+        const dependentControls = [
+            'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2',
+            'cycleColors', 'animationMode', 'animationSpeed', 'cycleSpeed', 'scrollDir'
+        ];
+
+        dependentControls.forEach(prop => {
+            const control = fieldset.querySelector(`[name="obj${id}_${prop}"]`);
+            if (control) {
+                control.disabled = !isFillEnabled;
+                // Also handle associated sliders and hex inputs
+                const slider = fieldset.querySelector(`[name="obj${id}_${prop}_slider"]`);
+                if (slider) slider.disabled = !isFillEnabled;
+                const hexInput = fieldset.querySelector(`[name="obj${id}_${prop}_hex"]`);
+                if (hexInput) hexInput.disabled = !isFillEnabled;
+            }
+        });
+    }
+
+    /**
      * Enables or disables toolbar buttons based on the current selection.
      */
     function updateToolbarState() {
@@ -1966,6 +2095,19 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
         drawSnapLines(snapLines);
+
+        if (previewLine.active) {
+            ctx.save();
+            ctx.resetTransform(); // Draw in screen space, not subject to object transforms
+            ctx.beginPath();
+            ctx.moveTo(previewLine.startX, previewLine.startY);
+            ctx.lineTo(previewLine.endX, previewLine.endY);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 
     // MODIFIED - A new, time-based animation loop using delta time
@@ -2087,7 +2229,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const values = {};
         const prefix = `obj${id}_`;
         const configs = configStore.filter(c => c.property && c.property.startsWith(prefix));
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize'];
+
+        // This list now includes the missing polyline animation properties.
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize', 'pathAnim_size', 'pathAnim_speed', 'pathAnim_objectSpacing', 'pathAnim_trailLength'];
 
         configs.forEach(conf => {
             const key = conf.property.replace(prefix, '');
@@ -2146,6 +2290,16 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             obj.update(newProps);
+
+            if (obj.shape === 'polyline') {
+                const fieldset = form.querySelector(`fieldset[data-object-id="${obj.id}"]`);
+                if (fieldset) {
+                    const hiddenTextarea = fieldset.querySelector(`[name="obj${obj.id}_polylineNodes"]`);
+                    if (hiddenTextarea) {
+                        hiddenTextarea.value = JSON.stringify(obj.polylineNodes);
+                    }
+                }
+            }
         });
 
         configStore.forEach(conf => {
@@ -2168,7 +2322,8 @@ document.addEventListener('DOMContentLoaded', function () {
      * Reads all properties from the 'objects' array and updates the form inputs to match.
      */
     function updateFormValuesFromObjects() {
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize'];
+        // This list now includes the missing polyline animation properties.
+        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize', 'pathAnim_size', 'pathAnim_speed', 'pathAnim_objectSpacing', 'pathAnim_trailLength'];
 
         objects.forEach(obj => {
             const fieldset = form.querySelector(`fieldset[data-object-id="${obj.id}"]`);
@@ -2190,7 +2345,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (key === 'rotationSpeed' && obj._pausedRotationSpeed !== null) {
                     return;
                 }
-                if (propsToScale.includes(key)) {
+                else if (key === 'polylineNodes') {
+                    const controlId = `obj${obj.id}_polylineNodes`;
+                    const container = fieldset.querySelector('.node-table-container');
+                    const hiddenTextarea = fieldset.querySelector(`[name="${controlId}"]`);
+                    if (!container || !hiddenTextarea) return;
+
+                    const nodes = obj.polylineNodes;
+                    hiddenTextarea.value = JSON.stringify(nodes);
+
+                    const tbody = container.querySelector('tbody');
+                    tbody.innerHTML = ''; // Clear the existing table body
+
+                    // Rebuild the table from the object's current node data
+                    nodes.forEach((node, index) => {
+                        const tr = document.createElement('tr');
+                        tr.dataset.index = index;
+                        tr.innerHTML = `
+                        <td class="align-middle">${index + 1}</td>
+                        <td><input type="number" class="form-control form-control-sm node-x-input" value="${Math.round(node.x)}"></td>
+                        <td><input type="number" class="form-control form-control-sm node-y-input" value="${Math.round(node.y)}"></td>
+                        <td class="align-middle">
+                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-node" title="Delete Node"><i class="bi bi-trash"></i></button>
+                        </td>`;
+                        tbody.appendChild(tr);
+                    });
+
+                }
+                // --- END OF MODIFIED PART ---
+                else if (propsToScale.includes(key)) {
                     updateField(key, Math.round(obj[key] / 4));
                 } else if (key === 'gradient') {
                     updateField('gradColor1', obj.gradient.color1);
@@ -2203,11 +2386,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (key === 'strokeScrollDir') {
                     updateField('strokeScrollDir', obj.strokeScrollDir);
                 } else if (typeof obj[key] !== 'object' && typeof obj[key] !== 'function') {
-                    if (typeof obj[key] === 'number') {
-                        updateField(key, Math.round(obj[key]));
-                    } else {
-                        updateField(key, obj[key]);
-                    }
+                    updateField(key, typeof obj[key] === 'number' ? Math.round(obj[key]) : obj[key]);
                 }
             });
         });
@@ -2274,7 +2453,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     value = String(value).replace(/\\n/g, '\n');
                 }
 
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize'];
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize', 'pathAnim_size', 'pathAnim_speed', 'pathAnim_objectSpacing', 'pathAnim_trailLength'];
                 if (propsToScale.includes(key) && typeof value === 'number') {
                     value *= 4;
                 }
@@ -2363,6 +2542,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const mergedConfigsForThisObject = fullDefaultConfigSet.map(defaultConf => {
                 if (savedPropsMap.has(defaultConf.property)) {
                     const savedConf = savedPropsMap.get(defaultConf.property);
+                    // The incorrect scaling logic has been removed here.
                     return { ...defaultConf, default: savedConf.default, label: savedConf.label || defaultConf.label };
                 } else {
                     return defaultConf;
@@ -2446,7 +2626,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function getDefaultObjectConfig(newId) {
         return [
             // Geometry & Transform
-            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art,audio-visualizer,spawner,strimer', description: 'The basic shape of the object.' }, // MODIFIED: Added 'spawner'
+            { property: `obj${newId}_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'rectangle', values: 'rectangle,circle,ring,polygon,star,text,oscilloscope,tetris,fire,fire-radial,pixel-art,audio-visualizer,spawner,strimer,polyline', description: 'The basic shape of the object.' }, // MODIFIED: Added 'spawner'
             { property: `obj${newId}_x`, label: `Object ${newId}: X Position`, type: 'number', default: '10', min: '0', max: '320', description: 'The horizontal position of the object on the canvas.' },
             { property: `obj${newId}_y`, label: `Object ${newId}: Y Position`, type: 'number', default: '10', min: '0', max: '200', description: 'The vertical position of the object on the canvas.' },
             { property: `obj${newId}_width`, label: `Object ${newId}: Width`, type: 'number', default: '50', min: '2', max: '320', description: 'The width of the object.' },
@@ -2454,6 +2634,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360', description: 'The static rotation of the object in degrees.' },
 
             // Fill Style & Animation
+            { property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false', description: 'Fills the interior of the shape with the selected fill style. For polylines, this will close the path.' },
             { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,conic,alternating,random,rainbow,rainbow-radial,rainbow-conic', description: 'The type of color fill or gradient to use.' },
             { property: `obj${newId}_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false', description: 'If checked, creates a hard line between colors in Linear/Radial gradients instead of a smooth blend.' },
             { property: `obj${newId}_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100', description: 'For sharp gradients, this is the percentage width of the primary color band.' },
@@ -2489,7 +2670,6 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_frequency`, label: `Object ${newId}: Frequency / Wave Peaks`, type: 'number', default: '5', min: '1', max: '50', description: '(Oscilloscope) The number of wave peaks displayed across the shape.' },
             { property: `obj${newId}_oscDisplayMode`, label: `Object ${newId}: Display Mode`, type: 'combobox', default: 'linear', values: 'linear,radial,seismic', description: '(Oscilloscope) The layout of the oscilloscope animation.' },
             { property: `obj${newId}_pulseDepth`, label: `Object ${newId}: Pulse Depth`, type: 'number', default: '50', min: '0', max: '100', description: 'The intensity of the wave\'s amplitude or pulse effect.' },
-            { property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false', description: 'For linear oscilloscopes, fills the area under the wave.' },
             { property: `obj${newId}_enableWaveAnimation`, label: `Object ${newId}: Enable Wave Animation`, type: 'boolean', default: 'true', description: 'Toggles the movement of the oscilloscope wave.' },
             { property: `obj${newId}_oscAnimationSpeed`, label: `Object ${newId}: Wave Animation Speed`, type: 'number', min: '0', max: '100', default: '10', description: 'Controls the speed of the oscilloscope wave movement, independent of the fill animation.' },
             { property: `obj${newId}_waveStyle`, label: `Object ${newId}: Seismic Wave Style`, type: 'combobox', default: 'wavy', values: 'wavy,round', description: '(Oscilloscope) The style of the seismic wave.' },
@@ -2514,12 +2694,12 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_strokeCycleColors`, label: `Object ${newId}: Cycle Stroke Colors`, type: 'boolean', default: 'false', description: 'Animates the stroke colors by cycling through the color spectrum.' },
             { property: `obj${newId}_strokeCycleSpeed`, label: `Object ${newId}: Stroke Color Cycle Speed`, type: 'number', default: '10', min: '0', max: '100', description: 'The speed at which stroke colors cycle when "Cycle Stroke Colors" is enabled.' },
             { property: `obj${newId}_strokeRotationSpeed`, label: `Object ${newId}: Stroke Rotation Speed`, type: 'number', default: '0', min: '-100', max: '100', description: 'The continuous rotation speed of the stroke\'s conic gradient pattern.' },
-            { property: `obj${newId}_strokeScrollDir`, label: `Object ${newId}: Stroke Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down', description: 'The direction the stroke gradient animation moves.' },
+            { property: `obj${newId}_strokeScrollDir`, label: `Object ${newId}: Stroke Scroll Direction`, type: 'combobox', default: 'right', values: 'right,left,up,down,along-path,along-path-reversed', description: 'The direction the stroke gradient animation moves. "Along Path" is for Polylines only.' },
             { property: `obj${newId}_strokePhaseOffset`, label: `Object ${newId}: Stroke Phase Offset`, type: 'number', default: '10', min: '0', max: '100', description: 'Offsets the stroke gradient animation for each item in a grid, creating a cascading effect.' },
 
             //Audiop
             { property: `obj${newId}_enableAudioReactivity`, label: `Object ${newId}: Enable Sound Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sound.' },
-            { property: `obj${newId}_audioTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Flash', values: 'none,Flash,Size,Rotation,Volume Meter', description: 'Which property of the object will be affected by the sound.' },
+            { property: `obj${newId}_audioTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Flash', values: 'none,Flash,Size,Rotation,Volume Meter,Path Speed', description: 'Which property of the object will be affected by the sound.' },
             { property: `obj${newId}_audioMetric`, label: `Object ${newId}: Audio Metric`, type: 'combobox', default: 'volume', values: 'volume,bass,mids,highs', description: 'Which part of the audio spectrum to react to.' },
             { property: `obj${newId}_beatThreshold`, label: `Object ${newId}: Beat Threshold`, type: 'number', default: '30', min: '1', max: '100', description: 'Sensitivity for beat detection. Higher values are MORE sensitive. Default is 30.' },
             { property: `obj${newId}_audioSensitivity`, label: `Object ${newId}: Sensitivity`, type: 'number', default: '50', min: '0', max: '200', description: 'How strongly the object reacts to the audio metric.' },
@@ -2595,8 +2775,62 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_spawn_enableTrail`, label: `Object ${newId}: Enable Trail`, type: 'boolean', default: 'false', description: '(Spawner/Trail) Enables a fading trail behind each particle.' },
             { property: `obj${newId}_spawn_matrixEnableGlow`, label: `Object ${newId}: Enable Character Glow`, type: 'boolean', default: 'false', description: '(Spawner/Matrix) Adds a glow effect to the matrix characters.' },
             { property: `obj${newId}_spawn_matrixGlowSize`, label: `Object ${newId}: Character Glow Size`, type: 'number', default: '10', min: '0', max: '50', description: '(Spawner/Matrix) The size and intensity of the glow effect.' },
+
+            // Polyline
+            { property: `obj${newId}_polylineCurveStyle`, label: `Object ${newId}: Curve Style`, type: 'combobox', default: 'straight', values: 'straight,loose-curve,tight-curve', description: '(Polyline) The style of the line segments.' },
+            { property: `obj${newId}_polylineNodes`, label: `Object ${newId}: Nodes`, type: 'nodetable', default: '[{"x":50,"y":50},{"x":150,"y":100}]', description: '(Polyline) The coordinate data for the polyline nodes.' },
+            { property: `obj${newId}_pathAnim_enable`, label: `Object ${newId}: Enable Animation`, type: 'boolean', default: 'false', description: 'Enables an object that travels along the path.' },
+            { property: `obj${newId}_pathAnim_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'circle', values: 'circle,rectangle,star,polygon', description: 'The shape of the traveling object.' },
+            { property: `obj${newId}_pathAnim_size`, label: `Object ${newId}: Size`, type: 'number', default: '10', min: '1', max: '100', description: 'The size of the traveling object in pixels.' },
+            { property: `obj${newId}_pathAnim_speed`, label: `Object ${newId}: Speed`, type: 'number', default: '50', min: '0', max: '1000', description: 'How fast the object travels along the path (pixels per second).' },
+            { property: `obj${newId}_pathAnim_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'solid', values: 'solid,linear,radial,conic,alternating,random,rainbow,rainbow-radial,rainbow-conic' },
+            { property: `obj${newId}_pathAnim_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false' },
+            { property: `obj${newId}_pathAnim_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100' },
+            { property: `obj${newId}_pathAnim_gradColor1`, label: `Object ${newId}: Color 1`, type: 'color', default: '#FFFFFF' },
+            { property: `obj${newId}_pathAnim_gradColor2`, label: `Object ${newId}: Color 2`, type: 'color', default: '#00BFFF' },
+            { property: `obj${newId}_pathAnim_animationMode`, label: `Object ${newId}: Fill Animation`, type: 'combobox', values: 'loop,bounce', default: 'loop' },
+            { property: `obj${newId}_pathAnim_animationSpeed`, label: `Object ${newId}: Fill Speed`, type: 'number', default: '10', min: '0', max: '100' },
+            { property: `obj${newId}_pathAnim_behavior`, label: `Object ${newId}: Behavior`, type: 'combobox', values: 'Loop,Ping-Pong', default: 'Loop', description: 'How the object behaves when it reaches the end of the path.' },
+            { property: `obj${newId}_pathAnim_objectCount`, label: `Object ${newId}: Object Count`, type: 'number', default: '1', min: '1', max: '100', description: 'The number of objects to animate along the path.' },
+            { property: `obj${newId}_pathAnim_objectSpacing`, label: `Object ${newId}: Object Spacing`, type: 'number', default: '25', min: '0', max: '200', description: 'The distance between each object when Object Count is greater than 1.' },
+            { property: `obj${newId}_pathAnim_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', values: 'right,left,up,down', default: 'right' },
+            { property: `obj${newId}_pathAnim_cycleColors`, label: `Object ${newId}: Cycle Colors`, type: 'boolean', default: 'false' },
+            { property: `obj${newId}_pathAnim_cycleSpeed`, label: `Object ${newId}: Color Cycle Speed`, type: 'number', default: '10', min: '0', max: '100' },
+            { property: `obj${newId}_pathAnim_trail`, label: `Object ${newId}: Trail`, type: 'combobox', values: 'None,Fade,Solid', default: 'None', description: 'Adds a trail behind the moving object.' },
+            { property: `obj${newId}_pathAnim_trailLength`, label: `Object ${newId}: Trail Length`, type: 'number', default: '20', min: '1', max: '200', description: 'The length of the trail.' },
+            { property: `obj${newId}_pathAnim_trailColor`, label: `Object ${newId}: Trail Color`, type: 'combobox', values: 'Inherit,Rainbow', default: 'Inherit', description: 'The color style of the trail.' },
         ];
 
+    }
+
+    /**
+     * Enables or disables dependent stroke controls based on the 'enableStroke' checkbox state.
+     * @param {HTMLElement} fieldset - The fieldset element for a specific object.
+     */
+    function updateStrokeDependentControls(fieldset) {
+        const id = fieldset.dataset.objectId;
+        const enableStrokeToggle = fieldset.querySelector(`[name="obj${id}_enableStroke"]`);
+        if (!enableStrokeToggle) return;
+
+        const isStrokeEnabled = enableStrokeToggle.checked;
+
+        const dependentControls = [
+            'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop',
+            'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed',
+            'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode',
+            'strokePhaseOffset', 'strokeScrollDir'
+        ];
+
+        dependentControls.forEach(prop => {
+            const control = fieldset.querySelector(`[name="obj${id}_${prop}"]`);
+            if (control) {
+                control.disabled = !isStrokeEnabled;
+                const slider = fieldset.querySelector(`[name="obj${id}_${prop}_slider"]`);
+                if (slider) slider.disabled = !isStrokeEnabled;
+                const hexInput = fieldset.querySelector(`[name="obj${id}_${prop}_hex"]`);
+                if (hexInput) hexInput.disabled = !isStrokeEnabled;
+            }
+        });
     }
 
     function getLocalDateFromUTC(dateUTC) {
@@ -2735,6 +2969,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const propName = key.substring(prefix.length);
                 try {
                     let value = eval(key);
+
                     if (value === "true") value = true;
                     if (value === "false") value = false;
 
@@ -2943,14 +3178,12 @@ document.addEventListener('DOMContentLoaded', function () {
             updateColorControls();
         }
 
-        // Sync number inputs with their corresponding range sliders
         if (target.type === 'number' && document.getElementById(`${target.id}_slider`)) {
             document.getElementById(`${target.id}_slider`).value = target.value;
         } else if (target.type === 'range' && target.id.endsWith('_slider')) {
             document.getElementById(target.id.replace('_slider', '')).value = target.value;
         }
 
-        // Sync color pickers with their corresponding hex input fields
         if (target.type === 'color' && document.getElementById(`${target.id}_hex`)) {
             document.getElementById(`${target.id}_hex`).value = target.value;
         } else if (target.type === 'text' && target.id.endsWith('_hex')) {
@@ -2960,16 +3193,68 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // This listener now only handles live, non-destructive updates to the canvas.
+        // Merged logic for node table edits
+        if (target.classList.contains('node-x-input') || target.classList.contains('node-y-input')) {
+            const container = target.closest('.node-table-container');
+            if (container) {
+                const hiddenTextarea = container.querySelector('textarea');
+                const tbody = container.querySelector('tbody');
+                const newNodes = Array.from(tbody.children).map(tr => ({
+                    x: parseFloat(tr.querySelector('.node-x-input').value) || 0,
+                    y: parseFloat(tr.querySelector('.node-y-input').value) || 0,
+                }));
+                hiddenTextarea.value = JSON.stringify(newNodes);
+            }
+        }
+
         updateObjectsFromForm();
         drawFrame();
     });
 
     form.addEventListener('click', (e) => {
+        // Logic for adding/deleting nodes from the table
+        const addBtn = e.target.closest('.btn-add-node');
+        const deleteBtn = e.target.closest('.btn-delete-node');
+        if (addBtn || deleteBtn) {
+            const container = e.target.closest('.node-table-container');
+            const tbody = container.querySelector('tbody');
+            const hiddenTextarea = container.querySelector('textarea');
+
+            if (addBtn) {
+                const newIndex = tbody.children.length;
+                const lastNode = newIndex > 0 ? tbody.children[newIndex - 1] : null;
+                const lastX = lastNode ? parseInt(lastNode.querySelector('.node-x-input').value, 10) : 0;
+                const lastY = lastNode ? parseInt(lastNode.querySelector('.node-y-input').value, 10) : 0;
+                const tr = document.createElement('tr');
+                tr.dataset.index = newIndex;
+                tr.innerHTML = `<td class="align-middle">${newIndex + 1}</td><td><input type="number" class="form-control form-control-sm node-x-input" value="${lastX + 50}"></td><td><input type="number" class="form-control form-control-sm node-y-input" value="${lastY + 50}"></td><td class="align-middle"><button type="button" class="btn btn-sm btn-outline-danger btn-delete-node" title="Delete Node"><i class="bi bi-trash"></i></button></td>`;
+                tbody.appendChild(tr);
+            }
+
+            if (deleteBtn) {
+                if (tbody.children.length > 2) {
+                    deleteBtn.closest('tr').remove();
+                    Array.from(tbody.children).forEach((tr, index) => {
+                        tr.dataset.index = index;
+                        tr.firstElementChild.textContent = index + 1;
+                    });
+                } else {
+                    showToast("A polyline must have at least 2 nodes.", "danger");
+                }
+            }
+
+            const newNodes = Array.from(tbody.children).map(tr => ({
+                x: parseFloat(tr.querySelector('.node-x-input').value) || 0,
+                y: parseFloat(tr.querySelector('.node-y-input').value) || 0,
+            }));
+            hiddenTextarea.value = JSON.stringify(newNodes);
+            hiddenTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            return; // Stop further execution
+        }
+
+        // Original logic for selecting a panel
         const fieldset = e.target.closest('fieldset[data-object-id]');
         const isInteractive = e.target.closest('button, a, input, [contenteditable="true"]');
-
-        // This listener is now only responsible for selecting a panel when the empty space is clicked.
         if (fieldset && !isInteractive) {
             const idToSelect = parseInt(fieldset.dataset.objectId, 10);
             if (!(selectedObjectIds.length === 1 && selectedObjectIds[0] === idToSelect)) {
@@ -2979,10 +3264,62 @@ document.addEventListener('DOMContentLoaded', function () {
                 drawFrame();
             }
         }
-    });;
+    });
 
     // MODIFIED - Added Ctrl+C and Ctrl+V keyboard shortcuts for copy/paste
+    function finalizePolyline() {
+        if (!isDrawingPolyline) return;
+
+        const shape = objects.find(o => o.id === currentlyDrawingShapeId);
+        if (shape) {
+            // Final update to recalculate bounding box correctly
+            shape.update({ polylineNodes: shape.polylineNodes });
+            updateFormValuesFromObjects();
+        }
+
+        isDrawingPolyline = false;
+        currentlyDrawingShapeId = null;
+        previewLine.active = false;
+        activeTool = 'select';
+        canvasContainer.style.cursor = 'default';
+
+        recordHistory();
+        drawFrame();
+        showToast("Polyline created!", "success");
+    }
+
+    canvasContainer.addEventListener('dblclick', e => {
+        if (isDrawingPolyline) {
+            finalizePolyline();
+            return;
+        }
+
+        // Handle adding a node to an existing polyline
+        if (activeTool === 'select' && selectedObjectIds.length === 1) {
+            const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
+            if (selectedObject && selectedObject.shape === 'polyline' && !selectedObject.locked) {
+                const { x, y } = getCanvasCoordinates(e);
+
+                // This new method will do the hard work.
+                const nodeAdded = selectedObject.addNodeAtPoint(x, y);
+
+                if (nodeAdded) {
+                    // If a node was added, update the form and record history
+                    updateFormValuesFromObjects();
+                    recordHistory();
+                    drawFrame();
+                }
+            }
+        }
+    });
+
     document.addEventListener('keydown', (e) => {
+        if (isDrawingPolyline && (e.key === 'Enter' || e.key === 'Escape')) {
+            e.preventDefault();
+            finalizePolyline();
+            return;
+        }
+
         const target = e.target;
         const isInputFocused = target.tagName === 'INPUT' ||
             target.tagName === 'TEXTAREA' ||
@@ -3329,14 +3666,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
             case 'fit-canvas':
                 selectedObjects.forEach(o => {
+                    const oldWidth = o.width;
+                    const oldHeight = o.height;
+
+                    // 1. Directly update the object's properties as before.
                     o.x = 0;
                     o.y = 0;
                     o.width = canvas.width;
                     o.height = canvas.height;
+
+                    if (o.shape === 'polyline' && oldWidth > 0 && oldHeight > 0) {
+                        const scaleX = o.width / oldWidth;
+                        const scaleY = o.height / oldHeight;
+                        o.polylineNodes = o.polylineNodes.map(node => ({
+                            x: node.x * scaleX,
+                            y: node.y * scaleY
+                        }));
+                        // 2. Manually invalidate the object's internal path cache. This is the critical step.
+                        o._cachedPathSegments = null;
+                    }
+
                     if (o.shape === 'text') {
                         o._updateFontSizeFromHeight();
                     }
                 });
+
+                // 3. After all objects are updated, sync the form with their new state.
+                updateFormValuesFromObjects();
                 break;
             case 'match-text-size':
                 const textObjects = selectedObjects.filter(obj => obj.shape === 'text');
@@ -3394,6 +3750,78 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {MouseEvent} e - The mousedown event object.
      */
     canvasContainer.addEventListener('mousedown', e => {
+        if (activeTool === 'polyline') {
+            e.preventDefault();
+            const { x, y } = getCanvasCoordinates(e);
+
+            if (!isDrawingPolyline) {
+                // First click: Create the shape and start the preview
+                isDrawingPolyline = true;
+                const newId = objects.length > 0 ? (Math.max(...objects.map(o => o.id))) + 1 : 1;
+                currentlyDrawingShapeId = newId;
+
+                const newShape = new Shape({
+                    id: newId, shape: 'polyline', name: `Polyline ${newId}`,
+                    x: x, y: y, width: 1, height: 1,
+                    polylineNodes: [{ x: 0, y: 0 }],
+                    ctx: ctx, enableStroke: true, strokeWidth: 4
+                });
+                objects.unshift(newShape);
+
+                const newObjectConfigs = getDefaultObjectConfig(newId).filter(
+                    conf => (shapePropertyMap['polyline'] || []).includes(conf.property.substring(conf.property.indexOf('_') + 1))
+                );
+
+                // Manually override the defaults for the new configs to match the instantiated shape
+                const enableStrokeConf = newObjectConfigs.find(c => c.property === `obj${newId}_enableStroke`);
+                if (enableStrokeConf) {
+                    enableStrokeConf.default = 'true';
+                }
+                const strokeWidthConf = newObjectConfigs.find(c => c.property === `obj${newId}_strokeWidth`);
+                if (strokeWidthConf) {
+                    strokeWidthConf.default = '4';
+                }
+
+                const firstObjectConfigIndex = configStore.findIndex(c => (c.property || '').startsWith('obj'));
+                if (firstObjectConfigIndex === -1) { configStore.push(...newObjectConfigs); }
+                else { configStore.splice(firstObjectConfigIndex, 0, ...newObjectConfigs); }
+
+                selectedObjectIds = [newId];
+                renderForm();
+                updateFormValuesFromObjects();
+
+                // Correctly start the preview line FROM and TO the first click location
+                previewLine.startX = x;
+                previewLine.startY = y;
+                previewLine.endX = x;
+                previewLine.endY = y;
+                previewLine.active = true;
+
+            } else {
+                // Subsequent clicks: Add a new node
+                const shape = objects.find(o => o.id === currentlyDrawingShapeId);
+                if (!shape) return;
+
+                const center = shape.getCenter();
+                const angle = -shape.getRenderAngle();
+                const localClickX = (x - center.x) * Math.cos(angle) - (y - center.y) * Math.sin(angle);
+                const localClickY = (x - center.x) * Math.sin(angle) + (y - center.y) * Math.cos(angle);
+                const nodeX = localClickX + shape.width / 2;
+                const nodeY = localClickY + shape.height / 2;
+
+                const newNodes = [...shape.polylineNodes, { x: nodeX, y: nodeY }];
+                shape.update({ polylineNodes: newNodes });
+
+                updateFormValuesFromObjects();
+
+                // Update the preview line's start to this new point
+                previewLine.startX = x;
+                previewLine.startY = y;
+            }
+            drawFrame();
+            return;
+        }
+
         e.preventDefault();
         const { x, y } = getCanvasCoordinates(e);
         dragStartX = x;
@@ -3407,6 +3835,17 @@ document.addEventListener('DOMContentLoaded', function () {
         if (activeObject && !activeObject.locked) {
             const handle = activeObject.getHandleAtPoint(x, y);
             if (handle) {
+                // NEW: Handle Alt+Click to delete a node
+                if (e.altKey && handle.type === 'node') {
+                    const nodeDeleted = activeObject.deleteNode(handle.index);
+                    if (nodeDeleted) {
+                        updateFormValuesFromObjects();
+                        recordHistory();
+                        drawFrame();
+                    }
+                    return; // Stop further processing
+                }
+
                 if (handle.type === 'rotation') {
                     isRotating = true;
                     activeObject.isBeingManuallyRotated = true;
@@ -3422,6 +3861,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         startAngle: startAngle,
                         initialObjectAngle: activeObject.getRenderAngle()
                     }];
+                } else if (handle.type === 'node') {
+                    isDraggingNode = true;
+                    activeNodeDragState = {
+                        id: activeObject.id,
+                        nodeIndex: handle.index
+                    };
                 } else {
                     isResizing = true;
                     activeResizeHandle = handle.name;
@@ -3437,7 +3882,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        if (!isRotating && !isResizing) {
+        if (!isRotating && !isResizing && !isDraggingNode) {
             const hitObject = objects.find(obj => obj.isPointInside(x, y));
             if (hitObject) {
                 const isNewlySelected = !selectedObjectIds.includes(hitObject.id);
@@ -3500,7 +3945,7 @@ document.addEventListener('DOMContentLoaded', function () {
             upEvent.preventDefault();
             window.removeEventListener('mousemove', handleMouseMove);
 
-            const wasManipulating = isDragging || isResizing || isRotating;
+            const wasManipulating = isDragging || isResizing || isRotating || isDraggingNode;
             if (isRotating) {
                 const obj = objects.find(o => o.id === initialDragState[0].id);
                 if (obj) {
@@ -3535,8 +3980,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 recordHistory();
             }
 
-            isDragging = isResizing = isRotating = false;
+            isDragging = isResizing = isRotating = isDraggingNode = false;
             activeResizeHandle = null;
+            activeNodeDragState = null;
             initialDragState = [];
             snapLines = [];
             cachedSnapTargets = null;
@@ -3555,6 +4001,16 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {MouseEvent} e - The mousemove event object.
      */
     canvasContainer.addEventListener('mousemove', e => {
+        // This part only updates the state. The 'animate' loop handles the redraw.
+        if (isDrawingPolyline && previewLine.active) {
+            const { x, y } = getCanvasCoordinates(e);
+            previewLine.endX = x;
+            previewLine.endY = y;
+            // NOTE: We do NOT call drawFrame() here. We just update the state.
+            return;
+        }
+
+        // --- This is the original logic for dragging, resizing, and showing coordinates ---
         if (coordsDisplay) {
             const { x, y } = getCanvasCoordinates(e);
             coordsDisplay.textContent = `${Math.round(x / 4)}, ${Math.round(y / 4)}: (${Math.round(x)}, ${Math.round(y)})`;
@@ -3562,6 +4018,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
         e.preventDefault();
         const { x, y } = getCanvasCoordinates(e);
+
+        if (isDraggingNode) {
+            const { id, nodeIndex } = activeNodeDragState;
+            const shape = objects.find(o => o.id === id);
+            if (!shape) return;
+
+            const center = shape.getCenter();
+            const staticAngle = -shape.getRenderAngle();
+            const s = Math.sin(staticAngle);
+            const c = Math.cos(staticAngle);
+            const dx = x - center.x;
+            const dy = y - center.y;
+            const localX = dx * c - dy * s;
+            const localY = dx * s + dy * c;
+
+            let nodes = (typeof shape.polylineNodes === 'string') ? JSON.parse(shape.polylineNodes) : shape.polylineNodes;
+
+            nodes[nodeIndex].x = localX + shape.width / 2;
+            nodes[nodeIndex].y = localY + shape.height / 2;
+
+            shape.update({ polylineNodes: nodes });
+
+            updateFormValuesFromObjects();
+            drawFrame();
+            return;
+        }
 
         if (!isDragging && !isResizing && !isRotating && e.buttons === 1 && initialDragState.length > 0) {
             const dx = x - dragStartX;
@@ -4350,7 +4832,18 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     });
 
+    addPolylineBtn.addEventListener('click', () => {
+        activeTool = 'polyline';
+        canvasContainer.style.cursor = 'crosshair';
+        isDrawingPolyline = false; // Reset state
+        currentlyDrawingShapeId = null;
+        previewLine.active = false;
+        showToast("Polyline tool activated. Click on the canvas to start drawing. Double-click to finish.", "info");
+    });
+
     addObjectBtn.addEventListener('click', () => {
+        activeTool = 'select';
+        canvasContainer.style.cursor = 'default';
         currentProjectDocId = null;
         updateShareButtonState();
         const newId = objects.length > 0 ? (Math.max(...objects.map(o => o.id))) + 1 : 1;
@@ -4392,7 +4885,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+        const propsToScale = [
+            'x', 'y', 'width', 'height', 'innerDiameter', 'fontSize',
+            'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize',
+            'pathAnim_size', 'pathAnim_speed', 'pathAnim_objectSpacing', 'pathAnim_trailLength'
+        ];
         propsToScale.forEach(prop => {
             if (state[prop] !== undefined) {
                 state[prop] *= 4;
@@ -4444,12 +4941,19 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('change', (e) => {
         const target = e.target;
 
+        if (target.name && target.name.endsWith('_enableStroke')) {
+            const fieldset = target.closest('fieldset[data-object-id]');
+            if (fieldset) {
+                updateStrokeDependentControls(fieldset);
+            }
+        }
+
         if (target.name) {
             dirtyProperties.add(target.name); // <-- Add this line
         }
 
         // --- START: NEW, CORRECTED LOGIC FOR SHAPE CHANGES ---
-        if (target.name && /_shape$/.test(target.name)) {
+        if (target.name && /^obj\d+_shape$/.test(target.name)) {
             const idMatch = target.name.match(/^obj(\d+)_/);
             if (!idMatch) return;
 
@@ -4532,7 +5036,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (target.name && (
             target.name.includes('_shape') ||
             target.name.includes('_vizDrawStyle') ||
-            target.name.includes('_gradType') ||
             target.name.includes('_numberOfRows') ||
             target.name.includes('_numberOfColumns') ||
             target.name.includes('_oscDisplayMode') ||
