@@ -303,7 +303,7 @@ function getQuadraticCurveLength(p0, p1, p2, segments = 20) {
 
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path, spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixEnableGlow, spawn_glowSize, spawn_matrixGlowSize, spawn_enableTrail, spawn_trailLength, spawn_audioTarget, spawn_trailSpacing, polylineNodes, polylineCurveStyle }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path, spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixEnableGlow, spawn_glowSize, spawn_matrixGlowSize, spawn_enableTrail, spawn_trailLength, spawn_audioTarget, spawn_trailSpacing, polylineNodes, polylineCurveStyle, pathAnim_enable, pathAnim_shape, pathAnim_size, pathAnim_speed, pathAnim_gradType, pathAnim_useSharpGradient, pathAnim_gradientStop, pathAnim_gradColor1, pathAnim_gradColor2, pathAnim_cycleColors, pathAnim_cycleSpeed, pathAnim_animationMode, pathAnim_animationSpeed, pathAnim_scrollDir, pathAnim_trail, pathAnim_trailLength }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -516,7 +516,17 @@ class Shape {
         this.spawn_trailSpacing = spawn_trailSpacing || 1;
 
         // Polyline properties
-        this.polylineNodes = polylineNodes || [{ x: 50, y: 50 }, { x: 150, y: 100 }];
+        try {
+            const initialNodes = polylineNodes || '[{"x":50,"y":50},{"x":150,"y":100}]';
+            if (typeof initialNodes === 'string') {
+                this.polylineNodes = JSON.parse(initialNodes);
+            } else {
+                this.polylineNodes = initialNodes;
+            }
+        } catch (e) {
+            console.error("Error parsing initial polyline nodes, falling back to default.", e);
+            this.polylineNodes = [{ x: 50, y: 50 }, { x: 150, y: 100 }];
+        }
         this.polylineCurveStyle = polylineCurveStyle || 'straight';
 
         // Particle system state
@@ -526,6 +536,62 @@ class Shape {
         this.customParticlePath = null;
         this.matrixActiveCharSet = '';
         this.availableParticleShapes = ['rectangle', 'circle', 'polygon', 'star', 'sparkle', 'custom', 'matrix'];
+
+        this.pathAnim_enable = pathAnim_enable || false;
+        this.pathAnim_shape = pathAnim_shape || 'circle';
+        this.pathAnim_size = pathAnim_size || 40; // This is the scaled value (UI value * 4)
+        this.pathAnim_speed = pathAnim_speed || 200; // This is the scaled value (UI value * 4)
+        this.pathAnim_gradType = pathAnim_gradType || 'solid';
+        this.pathAnim_useSharpGradient = pathAnim_useSharpGradient || false;
+        this.pathAnim_gradientStop = pathAnim_gradientStop || 50;
+        this.pathAnim_gradColor1 = pathAnim_gradColor1 || '#FFFFFF';
+        this.pathAnim_gradColor2 = pathAnim_gradColor2 || '#00BFFF';
+        this.pathAnim_cycleColors = pathAnim_cycleColors || false;
+        this.pathAnim_cycleSpeed = pathAnim_cycleSpeed || 0;
+        this.pathAnim_animationMode = pathAnim_animationMode || 'loop';
+        this.pathAnim_animationSpeed = pathAnim_animationSpeed || 0;
+        this.pathAnim_scrollDir = pathAnim_scrollDir || 'right';
+        this.pathAnim_trail = pathAnim_trail || 'None';
+        this.pathAnim_trailLength = pathAnim_trailLength || 80; // Scaled value
+
+        // State variables for the sub-object's fill animation
+        this.pathAnim_hue1 = 0;
+        this.pathAnim_scrollOffset = 0;
+
+        // State variables for the animation
+        this._cachedPathSegments = null; // To store path calculations for performance
+        this.pathAnim_distance = 0;      // Current distance along the path
+    }
+
+    _drawSubObject(shape, size) {
+        this.ctx.beginPath();
+        switch (shape) {
+            case 'rectangle':
+                this.ctx.rect(-size / 2, -size / 2, size, size);
+                break;
+            case 'star':
+                const points = 5; const innerRadius = 0.5;
+                for (let i = 0; i < 2 * points; i++) {
+                    const r = (i % 2 === 0) ? size / 2 : size / 2 * innerRadius;
+                    const a = (i / (2 * points)) * 2 * Math.PI - (Math.PI / 2);
+                    this.ctx[i === 0 ? 'moveTo' : 'lineTo'](r * Math.cos(a), r * Math.sin(a));
+                }
+                this.ctx.closePath();
+                break;
+            case 'polygon':
+                const sides = 6;
+                for (let i = 0; i < sides; i++) {
+                    const a = (i / sides) * 2 * Math.PI - (Math.PI / 2);
+                    this.ctx[i === 0 ? 'moveTo' : 'lineTo'](size / 2 * Math.cos(a), size / 2 * Math.sin(a));
+                }
+                this.ctx.closePath();
+                break;
+            case 'circle':
+            default:
+                this.ctx.arc(0, 0, size / 2, 0, 2 * Math.PI);
+                break;
+        }
+        this.ctx.fill('evenodd');
     }
 
     _drawParticleShape(particle) {
@@ -750,34 +816,27 @@ class Shape {
     }
 
     _applyAudioReactivity(audioData) {
-        if (this.isBeingManuallyRotated) return;
-
-        // --- 1. Reset all reactive properties to their base state ---
-        this.rotation = this.baseRotation || 0;
+        // Reset all reactive properties at the start of each frame
         this.internalScale = 1.0;
         this.colorOverride = null;
-        this.flashOpacity = 0; // Reset opacity as well
-        this.volumeMeterFill = 0;
+        this.flashOpacity = 0;
+        this.pathAnim_internalScale = 1.0;
+        this.pathAnim_colorOverride = null;
+        this.pathAnim_flashOpacity = 0;
 
-        // --- 2. Decay any ongoing flash effect from the previous frame ---
+        // Decay any ongoing flash effect
         if (this.flashDecay > 0) {
-            this.flashDecay -= 0.1; // This value controls the speed of the fade-out
+            this.flashDecay -= 0.1;
         }
         this.flashDecay = Math.max(0, this.flashDecay);
 
-        // --- 3. Exit if reactivity is disabled for this object ---
+        // Exit if reactivity is disabled
         if (!this.enableAudioReactivity || !audioData || !audioData[this.audioMetric] || this.audioTarget === 'none') {
             return;
         }
 
-        // --- 4. Process audio and detect new beats ---
+        // Beat detection logic (remains the same)
         const rawAudioValue = audioData[this.audioMetric].avg || 0;
-
-        // Update smoothed value for continuous effects like Rotation or Volume Meter
-        const smoothingFactor = (this.audioSmoothing || 0) / 100.0;
-        this.smoothedAudioValue = smoothingFactor * this.smoothedAudioValue + (1.0 - smoothingFactor) * rawAudioValue;
-
-        // Beat detection logic for impulse effects like Flash and Size
         this.audioHistory.push(rawAudioValue);
         if (this.audioHistory.length > 30) this.audioHistory.shift();
         const n = this.audioHistory.length;
@@ -786,35 +845,47 @@ class Shape {
         const thresholdMultiplier = 0.5 + ((this.beatThreshold || 30) / 100.0) * 2.0;
         const threshold = mean + thresholdMultiplier * stdDev;
 
-        // If a new beat is detected, reset the flashDecay to a high value
         if (rawAudioValue > threshold) {
             const sensitivity = (this.audioSensitivity / 100.0) * 1.5;
             this.flashDecay = Math.min(1.5, sensitivity);
         }
 
-        // --- 5. Apply the current state of reactivity to the object's properties ---
-        const reactiveValue = this.flashDecay; // For impulse effects
-        const continuousValue = this.smoothedAudioValue; // For continuous effects
-        const sign = Math.random() < 0.5 ? -1 : 1;
+        const reactiveValue = this.flashDecay;
+        const randomSign = Math.random() < 0.5 ? -1 : 1;
 
-        switch (this.audioTarget) {
-            case 'Flash':
-                // THE FIX: If there is *any* flash decay remaining, set both the color and opacity.
-                if (reactiveValue > 0) {
-                    this.colorOverride = '#FFFFFF';
-                    this.flashOpacity = Math.min(1.0, reactiveValue);
-                }
-                break;
-            case 'Size':
-                this.internalScale = 1.0 + reactiveValue;
-                break;
-            case 'Rotation':
-                this.animationAngle = this.baseAnimationAngle + (sign * continuousValue * ((this.audioSensitivity / 100.0) * 5));
-                break;
-            case 'Volume Meter':
-                const volumeSensitivity = (this.audioSensitivity || 100) / 100.0;
-                this.volumeMeterFill = continuousValue * volumeSensitivity;
-                break;
+        // --- NEW CONDITIONAL LOGIC ---
+        // If path animation is ON, apply effects to the pathAnim_ properties.
+        if (this.pathAnim_enable) {
+            switch (this.audioTarget) {
+                case 'Flash':
+                    if (reactiveValue > 0) {
+                        this.pathAnim_colorOverride = '#FFFFFF';
+                        this.pathAnim_flashOpacity = Math.min(1.0, reactiveValue);
+                    }
+                    break;
+                case 'Size':
+                    this.pathAnim_internalScale = 1.0 + reactiveValue;
+                    break;
+                case 'Rotation':
+                    // Note: Rotation on the moving object isn't visually distinct, so we skip it.
+                    break;
+            }
+            // If path animation is OFF, apply effects to the main shape's properties.
+        } else {
+            switch (this.audioTarget) {
+                case 'Flash':
+                    if (reactiveValue > 0) {
+                        this.colorOverride = '#FFFFFF';
+                        this.flashOpacity = Math.min(1.0, reactiveValue);
+                    }
+                    break;
+                case 'Size':
+                    this.internalScale = 1.0 + reactiveValue;
+                    break;
+                case 'Rotation':
+                    this.animationAngle = this.baseAnimationAngle + (randomSign * reactiveValue * 30);
+                    break;
+            }
         }
     }
 
@@ -1283,6 +1354,7 @@ class Shape {
             if (props[key] === undefined) continue;
 
             if (key === 'polylineNodes') {
+                this._cachedPathSegments = null;
                 let nodes;
                 try {
                     const propValue = props.polylineNodes;
@@ -1328,6 +1400,24 @@ class Shape {
                 if (props.strokeGradient.color2 !== undefined) this.strokeGradient.color2 = props.strokeGradient.color2;
             } else {
                 this[key] = props[key];
+            }
+        }
+
+        // Check if a resize occurred and if the shape is a polyline with nodes.
+        const widthChanged = props.width !== undefined && props.width !== oldWidth;
+        const heightChanged = props.height !== undefined && props.height !== oldHeight;
+
+        if (this.shape === 'polyline' && (widthChanged || heightChanged)) {
+            // Avoid division by zero if the shape had a width/height of 0.
+            if (oldWidth > 0 && oldHeight > 0) {
+                const scaleX = this.width / oldWidth;
+                const scaleY = this.height / oldHeight;
+
+                // Create a new array by scaling the x and y of each node.
+                this.polylineNodes = this.polylineNodes.map(node => ({
+                    x: node.x * scaleX,
+                    y: node.y * scaleY
+                }));
             }
         }
 
@@ -1390,6 +1480,115 @@ class Shape {
                 };
             }
         }
+    }
+
+    _calculatePathSegments() {
+        if (this._cachedPathSegments) return this._cachedPathSegments;
+
+        let nodes;
+        try {
+            nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : this.polylineNodes;
+        } catch (e) { return { segments: [], totalLength: 0 }; }
+
+        if (!Array.isArray(nodes) || nodes.length < 2) {
+            return { segments: [], totalLength: 0 };
+        }
+
+        const offsetX = -this.width / 2;
+        const offsetY = -this.height / 2;
+        const segments = [];
+        let totalLength = 0;
+        let currentPoint = { x: nodes[0].x + offsetX, y: nodes[0].y + offsetY };
+
+        const curveDetail = 30; // Number of points to cache for curve speed correction
+
+        if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
+            for (let i = 1; i < nodes.length - 1; i++) {
+                const controlPoint = { x: nodes[i].x + offsetX, y: nodes[i].y + offsetY };
+                const endPoint = { x: (nodes[i].x + nodes[i + 1].x) / 2 + offsetX, y: (nodes[i].y + nodes[i + 1].y) / 2 + offsetY };
+
+                const segmentLength = getQuadraticCurveLength(currentPoint, controlPoint, endPoint, curveDetail);
+                const lookupTable = [];
+                let lastLutPoint = currentPoint;
+                let cumulativeLength = 0;
+
+                for (let j = 1; j <= curveDetail; j++) {
+                    const t = j / curveDetail;
+                    const lutPoint = getPointOnQuadraticBezier(currentPoint, controlPoint, endPoint, t);
+                    const dx = lutPoint.x - lastLutPoint.x;
+                    const dy = lutPoint.y - lastLutPoint.y;
+                    cumulativeLength += Math.sqrt(dx * dx + dy * dy);
+                    lookupTable.push({ t, point: lutPoint, dist: cumulativeLength });
+                    lastLutPoint = lutPoint;
+                }
+
+                segments.push({ type: 'curve', p0: currentPoint, p1: controlPoint, p2: endPoint, length: segmentLength, startLength: totalLength, lookupTable });
+                totalLength += segmentLength;
+                currentPoint = endPoint;
+            }
+            const finalNode = { x: nodes[nodes.length - 1].x + offsetX, y: nodes[nodes.length - 1].y + offsetY };
+            const finalSegmentLength = Math.sqrt(Math.pow(finalNode.x - currentPoint.x, 2) + Math.pow(finalNode.y - currentPoint.y, 2));
+            segments.push({ type: 'line', p0: currentPoint, p1: finalNode, length: finalSegmentLength, startLength: totalLength });
+            totalLength += finalSegmentLength;
+        } else {
+            for (let i = 0; i < nodes.length - 1; i++) {
+                const p0 = { x: nodes[i].x + offsetX, y: nodes[i].y + offsetY };
+                const p1 = { x: nodes[i + 1].x + offsetX, y: nodes[i + 1].y + offsetY };
+                const segmentLength = Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));
+                segments.push({ type: 'line', p0: p0, p1: p1, length: segmentLength, startLength: totalLength });
+                totalLength += segmentLength;
+            }
+        }
+
+        this._cachedPathSegments = { segments, totalLength };
+        return this._cachedPathSegments;
+    }
+
+    _getPointAndAngleAtDistance(distance) {
+        const { segments, totalLength } = this._calculatePathSegments();
+        if (totalLength === 0) return { x: 0, y: 0, angle: 0 };
+
+        // Loop the distance along the path
+        let d = distance;
+        if (totalLength > 0) {
+            d = distance % totalLength;
+            if (d < 0) d += totalLength;
+        }
+
+        for (const seg of segments) {
+            if (d >= seg.startLength && d <= seg.startLength + seg.length) {
+                const localDist = d - seg.startLength;
+
+                let p, dx, dy;
+                if (seg.type === 'line') {
+                    const t = seg.length > 0 ? localDist / seg.length : 0;
+                    p = { x: seg.p0.x + t * (seg.p1.x - seg.p0.x), y: seg.p0.y + t * (seg.p1.y - seg.p0.y) };
+                    dx = seg.p1.x - seg.p0.x;
+                    dy = seg.p1.y - seg.p0.y;
+                } else { // curve
+                    // Find the two points in the lookup table that bracket our distance
+                    let t = 0;
+                    for (let i = 0; i < seg.lookupTable.length; i++) {
+                        if (seg.lookupTable[i].dist >= localDist) {
+                            const prevPoint = i > 0 ? seg.lookupTable[i - 1] : { t: 0, dist: 0 };
+                            const nextPoint = seg.lookupTable[i];
+                            const distInSegment = nextPoint.dist - prevPoint.dist;
+                            const ratio = distInSegment > 0 ? (localDist - prevPoint.dist) / distInSegment : 0;
+                            t = prevPoint.t + ratio * (nextPoint.t - prevPoint.t);
+                            break;
+                        }
+                    }
+
+                    p = getPointOnQuadraticBezier(seg.p0, seg.p1, seg.p2, t);
+                    const dP0 = { x: 2 * (seg.p1.x - seg.p0.x), y: 2 * (seg.p1.y - seg.p0.y) };
+                    const dP1 = { x: 2 * (seg.p2.x - seg.p1.x), y: 2 * (seg.p2.y - seg.p1.y) };
+                    dx = (1 - t) * dP0.x + t * dP1.x;
+                    dy = (1 - t) * dP0.y + t * dP1.y;
+                }
+                return { x: p.x, y: p.y, angle: Math.atan2(dy, dx) };
+            }
+        }
+        return { x: segments[0]?.p0.x || 0, y: segments[0]?.p0.y || 0, angle: 0 }; // Fallback
     }
 
     _createLocalStrokeStyle(phase = 0) {
@@ -1573,6 +1772,49 @@ class Shape {
         }
 
         return c1; // Fallback
+    }
+
+    _createFillStyleForSubObject(size) {
+        let c1 = this.pathAnim_gradColor1;
+        let c2 = this.pathAnim_gradColor2;
+
+        if (this.pathAnim_cycleColors) {
+            c1 = `hsl(${this.pathAnim_hue1 % 360}, 100%, 50%)`;
+            c2 = `hsl(${(this.pathAnim_hue1 + 90) % 360}, 100%, 50%)`; // Use a 90-degree offset for the second color
+        }
+
+        const p = (this.pathAnim_scrollOffset % 1.0 + 1.0) % 1.0;
+        const halfSize = size / 2;
+
+        switch (this.pathAnim_gradType) {
+            case 'linear':
+                return this._createLinearGradient(c1, c2, p, size, size, this.pathAnim_animationMode, this.pathAnim_useSharpGradient, this.pathAnim_gradientStop);
+            case 'radial':
+                return this._createRadialGradient(c1, c2, p, size, size, this.pathAnim_animationMode, this.pathAnim_useSharpGradient, this.pathAnim_gradientStop);
+            case 'rainbow':
+            case 'rainbow-radial': {
+                let animProgress = p;
+                if (this.pathAnim_animationMode.includes('bounce')) {
+                    animProgress = (p < 0.5) ? (p * 2) : ((1 - p) * 2);
+                }
+                const hueOffset = animProgress * 360;
+                let grad;
+                if (this.pathAnim_gradType === 'rainbow-radial') {
+                    grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, halfSize);
+                } else {
+                    grad = this.ctx.createLinearGradient(-halfSize, 0, halfSize, 0);
+                }
+                for (let i = 0; i <= 60; i++) {
+                    grad.addColorStop(i / 60, `hsl(${(i * 6 + hueOffset) % 360}, 100%, 50%)`);
+                }
+                return grad;
+            }
+            // NOTE: Conic, alternating, and random are complex and omitted for this sub-object for simplicity.
+            // They will fall back to solid color.
+            case 'solid':
+            default:
+                return c1;
+        }
     }
 
     /**
@@ -2397,6 +2639,40 @@ class Shape {
             }
         }
 
+        if (this.shape === 'polyline' && this.pathAnim_enable) {
+            // --- START: NEW SAFETY CHECK ---
+            // Ensure the history array exists before trying to use it.
+            if (!Array.isArray(this.pathAnim_history)) {
+                this.pathAnim_history = [];
+            }
+            // --- END: NEW SAFETY CHECK ---
+
+            const speed = (this.pathAnim_speed || 0) / 4;
+            this.pathAnim_distance += speed * deltaTime;
+
+            const { totalLength } = this._calculatePathSegments();
+            if (totalLength > 0 && this.pathAnim_distance > totalLength) {
+                this.pathAnim_distance %= totalLength;
+            }
+
+            const pathAnimSpeed = (this.pathAnim_animationSpeed || 0) * deltaTime;
+            const pathCycleSpeed = (this.pathAnim_cycleSpeed || 0) * deltaTime;
+            this.pathAnim_hue1 += pathCycleSpeed * 20;
+            const increment = pathAnimSpeed * 0.025;
+            const directionMultiplier = (this.pathAnim_scrollDir === 'left' || this.pathAnim_scrollDir === 'up') ? -1 : 1;
+            this.pathAnim_scrollOffset += increment * directionMultiplier;
+
+            const { x, y, angle } = this._getPointAndAngleAtDistance(this.pathAnim_distance);
+            this.pathAnim_history.unshift({ x, y, angle });
+
+            const trailLength = (this.pathAnim_trailLength || 80) / 4;
+            if (this.pathAnim_history.length > trailLength) {
+                this.pathAnim_history.length = Math.ceil(trailLength);
+            }
+        } else if (this.shape === 'polyline') {
+            this.pathAnim_history = [];
+        }
+
         if (this.gradType === 'random' && this.randomElementState) {
             for (const key in this.randomElementState) {
                 this.randomElementState[key].timer -= animSpeed * 1;
@@ -3152,10 +3428,9 @@ class Shape {
                 try {
                     nodes = (typeof this.polylineNodes === 'string') ? JSON.parse(this.polylineNodes) : this.polylineNodes;
                 } catch (e) {
-                    nodes = []; // Draw nothing if nodes are invalid
+                    nodes = [];
                 }
 
-                // Safety check: Exit immediately if the nodes array is not valid.
                 if (!Array.isArray(nodes) || nodes.length < 2) {
                     return;
                 }
@@ -3163,87 +3438,81 @@ class Shape {
                 const offsetX = -this.width / 2;
                 const offsetY = -this.height / 2;
 
-                // --- Branch for "Along Path" stroke rendering ---
-                if (this.enableStroke && this.strokeScrollDir === 'along-path') {
-                    const segments = [];
-                    let totalLength = 0;
-                    let currentPoint = { x: nodes[0].x + offsetX, y: nodes[0].y + offsetY };
-
-                    // 1. Correctly calculate all the segments of the path first.
-                    if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
-                        for (let i = 1; i < nodes.length - 1; i++) {
-                            const controlPoint = { x: nodes[i].x + offsetX, y: nodes[i].y + offsetY };
-                            const endPoint = {
-                                x: (nodes[i].x + nodes[i + 1].x) / 2 + offsetX,
-                                y: (nodes[i].y + nodes[i + 1].y) / 2 + offsetY
-                            };
-                            const segmentLength = getQuadraticCurveLength(currentPoint, controlPoint, endPoint);
-                            segments.push({ type: 'curve', p0: currentPoint, p1: controlPoint, p2: endPoint, length: segmentLength, startLength: totalLength });
-                            totalLength += segmentLength;
-                            currentPoint = endPoint;
+                // --- Stroke is ENABLED ---
+                if (this.enableStroke) {
+                    if (this.strokeScrollDir === 'along-path') {
+                        // ... (The complex 'along-path' logic remains unchanged)
+                        const segments = [];
+                        let totalLength = 0;
+                        let currentPoint = { x: nodes[0].x + offsetX, y: nodes[0].y + offsetY };
+                        if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
+                            for (let i = 1; i < nodes.length - 1; i++) {
+                                const controlPoint = { x: nodes[i].x + offsetX, y: nodes[i].y + offsetY };
+                                const endPoint = { x: (nodes[i].x + nodes[i + 1].x) / 2 + offsetX, y: (nodes[i].y + nodes[i + 1].y) / 2 + offsetY };
+                                const segmentLength = getQuadraticCurveLength(currentPoint, controlPoint, endPoint);
+                                segments.push({ type: 'curve', p0: currentPoint, p1: controlPoint, p2: endPoint, length: segmentLength, startLength: totalLength });
+                                totalLength += segmentLength;
+                                currentPoint = endPoint;
+                            }
+                            const finalNode = { x: nodes[nodes.length - 1].x + offsetX, y: nodes[nodes.length - 1].y + offsetY };
+                            const finalSegmentLength = Math.sqrt(Math.pow(finalNode.x - currentPoint.x, 2) + Math.pow(finalNode.y - currentPoint.y, 2));
+                            segments.push({ type: 'line', p0: currentPoint, p1: finalNode, length: finalSegmentLength, startLength: totalLength });
+                            totalLength += finalSegmentLength;
+                        } else {
+                            for (let i = 0; i < nodes.length - 1; i++) {
+                                const p0 = { x: nodes[i].x + offsetX, y: nodes[i].y + offsetY };
+                                const p1 = { x: nodes[i + 1].x + offsetX, y: nodes[i + 1].y + offsetY };
+                                const segmentLength = Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));
+                                segments.push({ type: 'line', p0: p0, p1: p1, length: segmentLength, startLength: totalLength });
+                                totalLength += segmentLength;
+                            }
                         }
-                        const finalNode = { x: nodes[nodes.length - 1].x + offsetX, y: nodes[nodes.length - 1].y + offsetY };
-                        const finalSegmentLength = Math.sqrt(Math.pow(finalNode.x - currentPoint.x, 2) + Math.pow(finalNode.y - currentPoint.y, 2));
-                        segments.push({ type: 'line', p0: currentPoint, p1: finalNode, length: finalSegmentLength, startLength: totalLength });
-                        totalLength += finalSegmentLength;
+                        if (totalLength > 0) {
+                            this.ctx.lineWidth = this.strokeWidth; this.ctx.lineCap = 'round'; this.ctx.lineJoin = 'round';
+                            for (const seg of segments) {
+                                const startFraction = seg.startLength / totalLength; const endFraction = (seg.startLength + seg.length) / totalLength;
+                                let grad;
+                                if (seg.type === 'line') { grad = this.ctx.createLinearGradient(seg.p0.x, seg.p0.y, seg.p1.x, seg.p1.y); } else { grad = this.ctx.createLinearGradient(seg.p0.x, seg.p0.y, seg.p2.x, seg.p2.y); }
+                                const animOffset = (this.strokeScrollOffset % 1.0 + 1.0) % 1.0;
+                                if (this.strokeGradType === 'rainbow') {
+                                    const startHue = (startFraction * 360 + animOffset * 360) % 360; const endHue = (endFraction * 360 + animOffset * 360) % 360;
+                                    grad.addColorStop(0, `hsl(${startHue}, 100%, 50%)`); grad.addColorStop(1, `hsl(${endHue}, 100%, 50%)`);
+                                } else {
+                                    grad.addColorStop(0, getPatternColor((startFraction + animOffset) % 1.0, this.strokeGradient.color1, this.strokeGradient.color2));
+                                    grad.addColorStop(1, getPatternColor((endFraction + animOffset) % 1.0, this.strokeGradient.color1, this.strokeGradient.color2));
+                                }
+                                this.ctx.strokeStyle = grad; this.ctx.beginPath(); this.ctx.moveTo(seg.p0.x, seg.p0.y);
+                                if (seg.type === 'line') { this.ctx.lineTo(seg.p1.x, seg.p1.y); } else { this.ctx.quadraticCurveTo(seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y); }
+                                this.ctx.stroke();
+                            }
+                        }
                     } else {
-                        for (let i = 0; i < nodes.length - 1; i++) {
-                            const p0 = { x: nodes[i].x + offsetX, y: nodes[i].y + offsetY };
-                            const p1 = { x: nodes[i + 1].x + offsetX, y: nodes[i + 1].y + offsetY };
-                            const segmentLength = Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));
-                            segments.push({ type: 'line', p0: p0, p1: p1, length: segmentLength, startLength: totalLength });
-                            totalLength += segmentLength;
-                        }
-                    }
-
-                    if (totalLength <= 0) return;
-
-                    // 2. Draw each segment individually with the correct gradient.
-                    const c1 = this.strokeGradient.color1;
-                    const c2 = this.strokeGradient.color2;
-                    const isRainbow = this.strokeGradType === 'rainbow';
-                    const animOffset = (this.strokeScrollOffset % 1.0 + 1.0) % 1.0;
-
-                    this.ctx.lineWidth = this.strokeWidth;
-                    this.ctx.lineCap = 'round';
-                    this.ctx.lineJoin = 'round';
-
-                    for (const seg of segments) {
-                        const startFraction = seg.startLength / totalLength;
-                        const endFraction = (seg.startLength + seg.length) / totalLength;
-                        let grad;
-                        if (seg.type === 'line') {
-                            grad = this.ctx.createLinearGradient(seg.p0.x, seg.p0.y, seg.p1.x, seg.p1.y);
-                        } else {
-                            grad = this.ctx.createLinearGradient(seg.p0.x, seg.p0.y, seg.p2.x, seg.p2.y);
-                        }
-
-                        if (isRainbow) {
-                            const startHue = (startFraction * 360 + animOffset * 360) % 360;
-                            const endHue = (endFraction * 360 + animOffset * 360) % 360;
-                            grad.addColorStop(0, `hsl(${startHue}, 100%, 50%)`);
-                            grad.addColorStop(1, `hsl(${endHue}, 100%, 50%)`);
-                        } else {
-                            grad.addColorStop(0, getPatternColor((startFraction + animOffset) % 1.0, c1, c2));
-                            grad.addColorStop(1, getPatternColor((endFraction + animOffset) % 1.0, c1, c2));
-                        }
-
-                        this.ctx.strokeStyle = grad;
+                        // Logic for all other simple stroke types
                         this.ctx.beginPath();
-                        this.ctx.moveTo(seg.p0.x, seg.p0.y);
-                        if (seg.type === 'line') {
-                            this.ctx.lineTo(seg.p1.x, seg.p1.y);
+                        this.ctx.moveTo(nodes[0].x + offsetX, nodes[0].y + offsetY);
+                        if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
+                            for (let i = 1; i < nodes.length - 1; i++) {
+                                const xc = (nodes[i].x + nodes[i + 1].x) / 2 + offsetX;
+                                const yc = (nodes[i].y + nodes[i + 1].y) / 2 + offsetY;
+                                this.ctx.quadraticCurveTo(nodes[i].x + offsetX, nodes[i].y + offsetY, xc, yc);
+                            }
+                            this.ctx.lineTo(nodes[nodes.length - 1].x + offsetX, nodes[nodes.length - 1].y + offsetY);
                         } else {
-                            this.ctx.quadraticCurveTo(seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y);
+                            for (let i = 1; i < nodes.length; i++) {
+                                this.ctx.lineTo(nodes[i].x + offsetX, nodes[i].y + offsetY);
+                            }
                         }
+                        this.ctx.strokeStyle = this._createLocalStrokeStyle();
+                        this.ctx.lineWidth = this.strokeWidth;
+                        this.ctx.lineJoin = 'round';
+                        this.ctx.lineCap = 'round';
                         this.ctx.stroke();
                     }
-                    // --- Branch for Default rendering (all other stroke types and fill) ---
+                    // --- Stroke is DISABLED ---
                 } else {
-                    // First, define the entire path in memory.
+                    // Draw a thin, dotted preview line so the shape is always visible.
                     this.ctx.beginPath();
                     this.ctx.moveTo(nodes[0].x + offsetX, nodes[0].y + offsetY);
-
                     if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
                         for (let i = 1; i < nodes.length - 1; i++) {
                             const xc = (nodes[i].x + nodes[i + 1].x) / 2 + offsetX;
@@ -3257,17 +3526,57 @@ class Shape {
                         }
                     }
 
-                    // Then, draw the fill and/or stroke based on that path.
-                    if (this.fillShape) {
-                        this._drawFill();
+                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.setLineDash([4, 4]);
+                    this.ctx.stroke();
+                    this.ctx.setLineDash([]); // Reset for other shapes
+                }
+
+                // --- 3. PATH ANIMATION DRAWING (New) ---
+                // This runs last to draw the animated object on top of the path.
+                if (this.pathAnim_enable && this.pathAnim_history.length > 0) {
+                    const size = (this.pathAnim_size || 40) / 4;
+                    const mainObjectPos = this.pathAnim_history[0];
+
+                    // --- Draw the Trail ---
+                    if (this.pathAnim_trail !== 'None' && this.pathAnim_history.length > 1) {
+                        for (let i = 1; i < this.pathAnim_history.length; i++) {
+                            const pos = this.pathAnim_history[i];
+                            const progress = i / this.pathAnim_history.length;
+
+                            const trailSize = size * (1 - progress);
+                            if (trailSize < 1) continue;
+
+                            this.ctx.save();
+                            this.ctx.translate(pos.x, pos.y);
+                            this.ctx.rotate(pos.angle);
+
+                            if (this.pathAnim_trail === 'Fade') {
+                                this.ctx.globalAlpha = (1 - progress) * 0.7; // Fade out
+                            }
+
+                            this.ctx.fillStyle = this._createFillStyleForSubObject(trailSize);
+                            this._drawSubObject(this.pathAnim_shape, trailSize);
+                            this.ctx.restore();
+                        }
                     }
-                    if (this.enableStroke) {
-                        this.ctx.strokeStyle = this._createLocalStrokeStyle();
-                        this.ctx.lineWidth = this.strokeWidth;
-                        this.ctx.lineJoin = 'round';
-                        this.ctx.lineCap = 'round';
-                        this.ctx.stroke();
+
+                    // --- Draw the Main Animated Object ---
+                    this.ctx.save();
+                    this.ctx.translate(mainObjectPos.x, mainObjectPos.y);
+                    this.ctx.rotate(mainObjectPos.angle);
+
+                    // Apply reactivity effects
+                    if (this.pathAnim_flashOpacity > 0) {
+                        this.ctx.globalAlpha = this.pathAnim_flashOpacity;
                     }
+                    this.ctx.scale(this.pathAnim_internalScale, this.pathAnim_internalScale);
+
+                    // Use a separate fill style function for the moving object
+                    this.ctx.fillStyle = this.pathAnim_colorOverride || this._createFillStyleForSubObject(size);
+                    this._drawSubObject(this.pathAnim_shape, size);
+                    this.ctx.restore();
                 }
             } else {
                 this.ctx.beginPath();

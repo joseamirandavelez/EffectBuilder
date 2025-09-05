@@ -451,6 +451,15 @@ document.addEventListener('DOMContentLoaded', function () {
             'spawn_enableTrail', 'spawn_trailLength', 'spawn_trailSpacing',
             'sides', 'points', 'starInnerRadius', 'spawn_svg_path'
         ],
+        polyline: [
+            'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'polylineNodes', 'polylineCurveStyle',
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
+            'pathAnim_enable', 'pathAnim_shape', 'pathAnim_size', 'pathAnim_speed',
+            'pathAnim_gradType', 'pathAnim_useSharpGradient', 'pathAnim_gradientStop', 'pathAnim_gradColor1', 'pathAnim_gradColor2',
+            'pathAnim_cycleColors', 'pathAnim_cycleSpeed', 'pathAnim_animationMode', 'pathAnim_animationSpeed', 'pathAnim_scrollDir',
+            'pathAnim_trail', 'pathAnim_trailLength',
+        ],
     };
 
     const galleryOffcanvasEl = document.getElementById('gallery-offcanvas');
@@ -1126,6 +1135,59 @@ document.addEventListener('DOMContentLoaded', function () {
                 select.appendChild(option);
             });
             formGroup.appendChild(select);
+        } else if (type === 'nodetable') {
+            const container = document.createElement('div');
+            container.className = 'node-table-container';
+
+            // This hidden textarea will still hold the raw JSON data for the application to use.
+            // The table is just a user-friendly way to edit it.
+            const hiddenTextarea = document.createElement('textarea');
+            hiddenTextarea.id = controlId;
+            hiddenTextarea.name = controlId;
+            hiddenTextarea.style.display = 'none';
+            hiddenTextarea.textContent = defaultValue;
+
+            const table = document.createElement('table');
+            table.className = 'table table-dark table-sm node-table';
+            table.innerHTML = `
+        <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">X</th>
+                <th scope="col">Y</th>
+                <th scope="col" style="width: 80px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>`;
+
+            const tbody = table.querySelector('tbody');
+            let nodes = [];
+            try {
+                nodes = JSON.parse(defaultValue);
+            } catch (e) { console.error("Could not parse polyline nodes for table.", e); }
+
+            nodes.forEach((node, index) => {
+                const tr = document.createElement('tr');
+                tr.dataset.index = index;
+                tr.innerHTML = `
+            <td class="align-middle">${index + 1}</td>
+            <td><input type="number" class="form-control form-control-sm node-x-input" value="${Math.round(node.x)}"></td>
+            <td><input type="number" class="form-control form-control-sm node-y-input" value="${Math.round(node.y)}"></td>
+            <td class="align-middle">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-node" title="Delete Node"><i class="bi bi-trash"></i></button>
+            </td>`;
+                tbody.appendChild(tr);
+            });
+
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.className = 'btn btn-sm btn-outline-success mt-2 btn-add-node';
+            addButton.innerHTML = '<i class="bi bi-plus-circle"></i> Add Node';
+
+            container.appendChild(hiddenTextarea);
+            container.appendChild(table);
+            container.appendChild(addButton);
+            formGroup.appendChild(container);
         }
         return formGroup;
     }
@@ -1385,11 +1447,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Update this for a new property
         const controlGroupMap = {
-            'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius', 'polylineNodes', 'polylineCurveStyle'], icon: 'bi-box-fill' },
-            'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'animationSpeed', 'cycleSpeed'], icon: 'bi-palette-fill' },
+            'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
+            'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'animationSpeed', 'cycleSpeed', 'fillShape'], icon: 'bi-palette-fill' },
             'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir'], icon: 'bi-brush-fill' },
+            'Polyline': { props: ['polylineNodes', 'polylineCurveStyle', 'polyLinefillShape'], icon: 'bi-vector-pen' },
+            'Path-Animation': { props: ['pathAnim_enable', 'pathAnim_shape', 'pathAnim_size', 'pathAnim_speed', 'pathAnim_gradType', 'pathAnim_gradColor1', 'pathAnim_gradColor2', 'pathAnim_useSharpGradient', 'pathAnim_gradientStop', 'pathAnim_animationMode', 'pathAnim_animationSpeed', 'pathAnim_scrollDir', 'pathAnim_cycleColors', 'pathAnim_cycleSpeed', 'pathAnim_trail', 'pathAnim_trailLength'], icon: 'bi-rocket-takeoff-fill' },
             'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'], icon: 'bi-fonts' },
-            'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'fillShape', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
+            'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
             'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce', 'tetrisHoldTime'], icon: 'bi-grid-3x3-gap-fill' },
             'Fire': { props: ['fireSpread'], icon: 'bi-fire' },
             'Pixel-Art': { props: ['pixelArtData'], icon: 'bi-image-fill' },
@@ -1631,6 +1695,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         updateFormValuesFromObjects();
+
+        form.querySelectorAll('fieldset[data-object-id]').forEach(updateDependentControls);
+        form.querySelectorAll('fieldset[data-object-id]').forEach(updateStrokeDependentControls);
     }
 
     /**
@@ -1808,6 +1875,36 @@ document.addEventListener('DOMContentLoaded', function () {
             x: (e.clientX - rect.left) * scaleX,
             y: (e.clientY - rect.top) * scaleY
         };
+    }
+
+    /**
+     * Enables or disables dependent fill controls based on the 'fillShape' checkbox state.
+     * @param {HTMLElement} fieldset - The fieldset element for a specific object.
+     */
+    function updateDependentControls(fieldset) {
+        const id = fieldset.dataset.objectId;
+        const fillShapeToggle = fieldset.querySelector(`[name="obj${id}_fillShape"]`);
+        if (!fillShapeToggle) return;
+
+        const isFillEnabled = fillShapeToggle.checked;
+
+        // List all controls that depend on the fill being enabled
+        const dependentControls = [
+            'gradType', 'useSharpGradient', 'gradientStop', 'gradColor1', 'gradColor2',
+            'cycleColors', 'animationMode', 'animationSpeed', 'cycleSpeed', 'scrollDir'
+        ];
+
+        dependentControls.forEach(prop => {
+            const control = fieldset.querySelector(`[name="obj${id}_${prop}"]`);
+            if (control) {
+                control.disabled = !isFillEnabled;
+                // Also handle associated sliders and hex inputs
+                const slider = fieldset.querySelector(`[name="obj${id}_${prop}_slider"]`);
+                if (slider) slider.disabled = !isFillEnabled;
+                const hexInput = fieldset.querySelector(`[name="obj${id}_${prop}_hex"]`);
+                if (hexInput) hexInput.disabled = !isFillEnabled;
+            }
+        });
     }
 
     /**
@@ -2216,7 +2313,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (key === 'rotationSpeed' && obj._pausedRotationSpeed !== null) {
                     return;
                 }
-                if (propsToScale.includes(key)) {
+                else if (key === 'polylineNodes') {
+                    const controlId = `obj${obj.id}_polylineNodes`;
+                    const container = fieldset.querySelector('.node-table-container');
+                    const hiddenTextarea = fieldset.querySelector(`[name="${controlId}"]`);
+                    if (!container || !hiddenTextarea) return;
+
+                    const nodes = obj.polylineNodes;
+                    hiddenTextarea.value = JSON.stringify(nodes);
+
+                    const tbody = container.querySelector('tbody');
+                    tbody.innerHTML = ''; // Clear the existing table body
+
+                    // Rebuild the table from the object's current node data
+                    nodes.forEach((node, index) => {
+                        const tr = document.createElement('tr');
+                        tr.dataset.index = index;
+                        tr.innerHTML = `
+                        <td class="align-middle">${index + 1}</td>
+                        <td><input type="number" class="form-control form-control-sm node-x-input" value="${Math.round(node.x)}"></td>
+                        <td><input type="number" class="form-control form-control-sm node-y-input" value="${Math.round(node.y)}"></td>
+                        <td class="align-middle">
+                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-node" title="Delete Node"><i class="bi bi-trash"></i></button>
+                        </td>`;
+                        tbody.appendChild(tr);
+                    });
+
+                }
+                // --- END OF MODIFIED PART ---
+                else if (propsToScale.includes(key)) {
                     updateField(key, Math.round(obj[key] / 4));
                 } else if (key === 'gradient') {
                     updateField('gradColor1', obj.gradient.color1);
@@ -2228,18 +2353,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateField('scrollDir', obj.scrollDirection);
                 } else if (key === 'strokeScrollDir') {
                     updateField('strokeScrollDir', obj.strokeScrollDir);
-                } else if (key === 'polylineNodes') {
-                    let nodesValue = obj[key];
-                    if (typeof nodesValue !== 'string') {
-                        nodesValue = JSON.stringify(nodesValue);
-                    }
-                    updateField(key, nodesValue);
                 } else if (typeof obj[key] !== 'object' && typeof obj[key] !== 'function') {
-                    if (typeof obj[key] === 'number') {
-                        updateField(key, Math.round(obj[key]));
-                    } else {
-                        updateField(key, obj[key]);
-                    }
+                    updateField(key, typeof obj[key] === 'number' ? Math.round(obj[key]) : obj[key]);
                 }
             });
         });
@@ -2486,6 +2601,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_rotation`, label: `Object ${newId}: Rotation`, type: 'number', default: '0', min: '-360', max: '360', description: 'The static rotation of the object in degrees.' },
 
             // Fill Style & Animation
+            { property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false', description: 'Fills the interior of the shape with the selected fill style. For polylines, this will close the path.' },
             { property: `obj${newId}_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'linear', values: 'solid,linear,radial,conic,alternating,random,rainbow,rainbow-radial,rainbow-conic', description: 'The type of color fill or gradient to use.' },
             { property: `obj${newId}_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false', description: 'If checked, creates a hard line between colors in Linear/Radial gradients instead of a smooth blend.' },
             { property: `obj${newId}_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100', description: 'For sharp gradients, this is the percentage width of the primary color band.' },
@@ -2521,7 +2637,6 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_frequency`, label: `Object ${newId}: Frequency / Wave Peaks`, type: 'number', default: '5', min: '1', max: '50', description: '(Oscilloscope) The number of wave peaks displayed across the shape.' },
             { property: `obj${newId}_oscDisplayMode`, label: `Object ${newId}: Display Mode`, type: 'combobox', default: 'linear', values: 'linear,radial,seismic', description: '(Oscilloscope) The layout of the oscilloscope animation.' },
             { property: `obj${newId}_pulseDepth`, label: `Object ${newId}: Pulse Depth`, type: 'number', default: '50', min: '0', max: '100', description: 'The intensity of the wave\'s amplitude or pulse effect.' },
-            { property: `obj${newId}_fillShape`, label: `Object ${newId}: Fill Shape`, type: 'boolean', default: 'false', description: 'For linear oscilloscopes, fills the area under the wave.' },
             { property: `obj${newId}_enableWaveAnimation`, label: `Object ${newId}: Enable Wave Animation`, type: 'boolean', default: 'true', description: 'Toggles the movement of the oscilloscope wave.' },
             { property: `obj${newId}_oscAnimationSpeed`, label: `Object ${newId}: Wave Animation Speed`, type: 'number', min: '0', max: '100', default: '10', description: 'Controls the speed of the oscilloscope wave movement, independent of the fill animation.' },
             { property: `obj${newId}_waveStyle`, label: `Object ${newId}: Seismic Wave Style`, type: 'combobox', default: 'wavy', values: 'wavy,round', description: '(Oscilloscope) The style of the seismic wave.' },
@@ -2629,10 +2744,56 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_spawn_matrixGlowSize`, label: `Object ${newId}: Character Glow Size`, type: 'number', default: '10', min: '0', max: '50', description: '(Spawner/Matrix) The size and intensity of the glow effect.' },
 
             // Polyline
-            { property: `obj${newId}_polylineNodes`, label: `Object ${newId}: Nodes`, type: 'textarea', default: '[{"x":50,"y":50},{"x":150,"y":100}]', description: '(Polyline) The JSON data for the polyline nodes.' },
+            { property: `obj${newId}_polylineNodes`, label: `Object ${newId}: Nodes`, type: 'nodetable', default: '[{"x":50,"y":50},{"x":150,"y":100}]', description: '(Polyline) The coordinate data for the polyline nodes.' },
             { property: `obj${newId}_polylineCurveStyle`, label: `Object ${newId}: Curve Style`, type: 'combobox', default: 'straight', values: 'straight,curved', description: '(Polyline) The style of the line segments.' },
+            { property: `obj${newId}_pathAnim_enable`, label: `Object ${newId}: Enable Animation`, type: 'boolean', default: 'false', description: 'Enables an object that travels along the path.' },
+            { property: `obj${newId}_pathAnim_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'circle', values: 'circle,rectangle,star,polygon', description: 'The shape of the traveling object.' },
+            { property: `obj${newId}_pathAnim_size`, label: `Object ${newId}: Size`, type: 'number', default: '10', min: '1', max: '300', description: 'The size of the traveling object in pixels.' },
+            { property: `obj${newId}_pathAnim_speed`, label: `Object ${newId}: Speed`, type: 'number', default: '50', min: '0', max: '20000', description: 'How fast the object travels along the path (pixels per second).' },
+            { property: `obj${newId}_pathAnim_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'solid', values: 'solid,linear,radial,conic,alternating,random,rainbow,rainbow-radial,rainbow-conic' },
+            { property: `obj${newId}_pathAnim_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false' },
+            { property: `obj${newId}_pathAnim_gradientStop`, label: `Object ${newId}: Gradient Stop %`, type: 'number', default: '50', min: '0', max: '100' },
+            { property: `obj${newId}_pathAnim_gradColor1`, label: `Object ${newId}: Color 1`, type: 'color', default: '#FFFFFF' },
+            { property: `obj${newId}_pathAnim_gradColor2`, label: `Object ${newId}: Color 2`, type: 'color', default: '#00BFFF' },
+            { property: `obj${newId}_pathAnim_animationMode`, label: `Object ${newId}: Fill Animation`, type: 'combobox', values: 'loop,bounce', default: 'loop' },
+            { property: `obj${newId}_pathAnim_animationSpeed`, label: `Object ${newId}: Fill Speed`, type: 'number', default: '10', min: '0', max: '100' },
+            { property: `obj${newId}_pathAnim_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', values: 'right,left,up,down', default: 'right' },
+            { property: `obj${newId}_pathAnim_cycleColors`, label: `Object ${newId}: Cycle Colors`, type: 'boolean', default: 'false' },
+            { property: `obj${newId}_pathAnim_cycleSpeed`, label: `Object ${newId}: Color Cycle Speed`, type: 'number', default: '10', min: '0', max: '100' },
+            { property: `obj${newId}_pathAnim_trail`, label: `Object ${newId}: Trail`, type: 'combobox', values: 'None,Fade,Solid', default: 'None', description: 'Adds a trail behind the moving object.' },
+            { property: `obj${newId}_pathAnim_trailLength`, label: `Object ${newId}: Trail Length`, type: 'number', default: '20', min: '1', max: '200', description: 'The length of the trail.' },
         ];
 
+    }
+
+    /**
+     * Enables or disables dependent stroke controls based on the 'enableStroke' checkbox state.
+     * @param {HTMLElement} fieldset - The fieldset element for a specific object.
+     */
+    function updateStrokeDependentControls(fieldset) {
+        const id = fieldset.dataset.objectId;
+        const enableStrokeToggle = fieldset.querySelector(`[name="obj${id}_enableStroke"]`);
+        if (!enableStrokeToggle) return;
+
+        const isStrokeEnabled = enableStrokeToggle.checked;
+
+        const dependentControls = [
+            'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop',
+            'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed',
+            'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode',
+            'strokePhaseOffset', 'strokeScrollDir'
+        ];
+
+        dependentControls.forEach(prop => {
+            const control = fieldset.querySelector(`[name="obj${id}_${prop}"]`);
+            if (control) {
+                control.disabled = !isStrokeEnabled;
+                const slider = fieldset.querySelector(`[name="obj${id}_${prop}_slider"]`);
+                if (slider) slider.disabled = !isStrokeEnabled;
+                const hexInput = fieldset.querySelector(`[name="obj${id}_${prop}_hex"]`);
+                if (hexInput) hexInput.disabled = !isStrokeEnabled;
+            }
+        });
     }
 
     function getLocalDateFromUTC(dateUTC) {
@@ -2975,6 +3136,17 @@ document.addEventListener('DOMContentLoaded', function () {
             dirtyProperties.add(target.name);
         }
 
+        // If a 'fillShape' toggle was changed, update its dependent controls.
+        if (target.name && target.name.endsWith('_fillShape')) {
+            const fieldset = target.closest('fieldset[data-object-id]');
+            if (fieldset) {
+                updateDependentControls(fieldset);
+            }
+            // Add these two lines to update the object and redraw the canvas
+            updateObjectsFromForm();
+            drawFrame();
+        }
+
         if (['enablePalette', 'paletteColor1', 'paletteColor2'].includes(target.name)) {
             updateColorControls();
         }
@@ -3015,7 +3187,76 @@ document.addEventListener('DOMContentLoaded', function () {
                 drawFrame();
             }
         }
-    });;
+    });
+
+    form.addEventListener('input', (e) => {
+        // This part handles live edits to the X/Y input fields
+        const input = e.target;
+        if (input.classList.contains('node-x-input') || input.classList.contains('node-y-input')) {
+            const container = input.closest('.node-table-container');
+            if (container) {
+                const hiddenTextarea = container.querySelector('textarea');
+                const tbody = container.querySelector('tbody');
+                const newNodes = Array.from(tbody.children).map(tr => ({
+                    x: parseFloat(tr.querySelector('.node-x-input').value) || 0,
+                    y: parseFloat(tr.querySelector('.node-y-input').value) || 0,
+                }));
+                hiddenTextarea.value = JSON.stringify(newNodes);
+                // The main form 'input' listener will automatically handle the rest!
+            }
+        }
+    });
+
+    form.addEventListener('click', (e) => {
+        const addBtn = e.target.closest('.btn-add-node');
+        const deleteBtn = e.target.closest('.btn-delete-node');
+
+        if (!addBtn && !deleteBtn) return;
+
+        const container = e.target.closest('.node-table-container');
+        const tbody = container.querySelector('tbody');
+        const hiddenTextarea = container.querySelector('textarea');
+
+        if (addBtn) {
+            const newIndex = tbody.children.length;
+            const lastNode = newIndex > 0 ? tbody.children[newIndex - 1] : null;
+            const lastX = lastNode ? parseInt(lastNode.querySelector('.node-x-input').value, 10) : 0;
+            const lastY = lastNode ? parseInt(lastNode.querySelector('.node-y-input').value, 10) : 0;
+
+            const tr = document.createElement('tr');
+            tr.dataset.index = newIndex;
+            tr.innerHTML = `
+            <td class="align-middle">${newIndex + 1}</td>
+            <td><input type="number" class="form-control form-control-sm node-x-input" value="${lastX + 50}"></td>
+            <td><input type="number" class="form-control form-control-sm node-y-input" value="${lastY + 50}"></td>
+            <td class="align-middle">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-node" title="Delete Node"><i class="bi bi-trash"></i></button>
+            </td>`;
+            tbody.appendChild(tr);
+        }
+
+        if (deleteBtn) {
+            if (tbody.children.length > 2) {
+                deleteBtn.closest('tr').remove();
+                Array.from(tbody.children).forEach((tr, index) => {
+                    tr.dataset.index = index;
+                    tr.firstElementChild.textContent = index + 1;
+                });
+            } else {
+                showToast("A polyline must have at least 2 nodes.", "danger");
+            }
+        }
+
+        const newNodes = Array.from(tbody.children).map(tr => ({
+            x: parseFloat(tr.querySelector('.node-x-input').value) || 0,
+            y: parseFloat(tr.querySelector('.node-y-input').value) || 0,
+        }));
+
+        hiddenTextarea.value = JSON.stringify(newNodes);
+
+        // Trigger an 'input' event, which correctly calls the canvas redraw logic.
+        hiddenTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
 
     // MODIFIED - Added Ctrl+C and Ctrl+V keyboard shortcuts for copy/paste
     function finalizePolyline() {
@@ -3423,10 +3664,27 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
             case 'fit-canvas':
                 selectedObjects.forEach(o => {
+                    // Store the original dimensions before changing them.
+                    const oldWidth = o.width;
+                    const oldHeight = o.height;
+
+                    // Set the new, canvas-filling dimensions.
                     o.x = 0;
                     o.y = 0;
                     o.width = canvas.width;
                     o.height = canvas.height;
+
+                    // If it's a polyline, scale its nodes to fit the new dimensions.
+                    if (o.shape === 'polyline' && oldWidth > 0 && oldHeight > 0) {
+                        const scaleX = o.width / oldWidth;
+                        const scaleY = o.height / oldHeight;
+                        o.polylineNodes = o.polylineNodes.map(node => ({
+                            x: node.x * scaleX,
+                            y: node.y * scaleY
+                        }));
+                    }
+
+                    // Handle text scaling as before.
                     if (o.shape === 'text') {
                         o._updateFontSizeFromHeight();
                     }
@@ -3505,7 +3763,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     y: y,
                     width: 1, // Start with a minimal bounding box
                     height: 1,
-                    polylineNodes: [{x: 0, y: 0}], // First node is at the shape's local origin
+                    polylineNodes: [{ x: 0, y: 0 }], // First node is at the shape's local origin
                     ctx: ctx,
                     enableStroke: true, // Make it visible by default
                     strokeWidth: 4
@@ -4710,12 +4968,19 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('change', (e) => {
         const target = e.target;
 
+        if (target.name && target.name.endsWith('_enableStroke')) {
+            const fieldset = target.closest('fieldset[data-object-id]');
+            if (fieldset) {
+                updateStrokeDependentControls(fieldset);
+            }
+        }
+
         if (target.name) {
             dirtyProperties.add(target.name); // <-- Add this line
         }
 
         // --- START: NEW, CORRECTED LOGIC FOR SHAPE CHANGES ---
-        if (target.name && /_shape$/.test(target.name)) {
+        if (target.name && /^obj\d+_shape$/.test(target.name)) {
             const idMatch = target.name.match(/^obj(\d+)_/);
             if (!idMatch) return;
 
@@ -4798,7 +5063,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (target.name && (
             target.name.includes('_shape') ||
             target.name.includes('_vizDrawStyle') ||
-            target.name.includes('_gradType') ||
             target.name.includes('_numberOfRows') ||
             target.name.includes('_numberOfColumns') ||
             target.name.includes('_oscDisplayMode') ||
