@@ -3493,16 +3493,6 @@ class Shape {
                 const offsetX = -this.width / 2;
                 const offsetY = -this.height / 2;
 
-                // If there is only one node (during creation), draw a handle to show the start point.
-                if (nodes.length === 1) {
-                    if (typeof engine === 'undefined') {
-                        this.ctx.fillStyle = 'rgba(0, 246, 255, 0.8)';
-                        this.ctx.beginPath();
-                        this.ctx.arc(nodes[0].x + offsetX, nodes[0].y + offsetY, 5, 0, 2 * Math.PI);
-                        this.ctx.fill();
-                    }
-                    return;
-                }
 
                 if (this.enableStroke) {
                     this.ctx.setLineDash([]); // Ensure line is solid
@@ -3571,28 +3561,6 @@ class Shape {
                         this.ctx.lineJoin = 'round';
                         this.ctx.lineCap = 'round';
                         this.ctx.stroke();
-                    }
-                } else {
-                    if (typeof engine === 'undefined') {
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(nodes[0].x + offsetX, nodes[0].y + offsetY);
-                        if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
-                            for (let i = 1; i < nodes.length - 1; i++) {
-                                const xc = (nodes[i].x + nodes[i + 1].x) / 2 + offsetX;
-                                const yc = (nodes[i].y + nodes[i + 1].y) / 2 + offsetY;
-                                this.ctx.quadraticCurveTo(nodes[i].x + offsetX, nodes[i].y + offsetY, xc, yc);
-                            }
-                            this.ctx.lineTo(nodes[nodes.length - 1].x + offsetX, nodes[nodes.length - 1].y + offsetY);
-                        } else {
-                            for (let i = 1; i < nodes.length; i++) {
-                                this.ctx.lineTo(nodes[i].x + offsetX, nodes[i].y + offsetY);
-                            }
-                        }
-                        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                        this.ctx.lineWidth = 1;
-                        this.ctx.setLineDash([4, 4]);
-                        this.ctx.stroke();
-                        this.ctx.setLineDash([]);
                     }
                 }
 

@@ -3757,6 +3757,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 const newObjectConfigs = getDefaultObjectConfig(newId).filter(
                     conf => (shapePropertyMap['polyline'] || []).includes(conf.property.substring(conf.property.indexOf('_') + 1))
                 );
+
+            // Manually override the defaults for the new configs to match the instantiated shape
+            const enableStrokeConf = newObjectConfigs.find(c => c.property === `obj${newId}_enableStroke`);
+            if (enableStrokeConf) {
+                enableStrokeConf.default = 'true';
+            }
+            const strokeWidthConf = newObjectConfigs.find(c => c.property === `obj${newId}_strokeWidth`);
+            if (strokeWidthConf) {
+                strokeWidthConf.default = '4';
+            }
+
                 const firstObjectConfigIndex = configStore.findIndex(c => (c.property || '').startsWith('obj'));
                 if (firstObjectConfigIndex === -1) { configStore.push(...newObjectConfigs); }
                 else { configStore.splice(firstObjectConfigIndex, 0, ...newObjectConfigs); }
