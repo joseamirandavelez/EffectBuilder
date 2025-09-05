@@ -280,30 +280,28 @@ function getPatternColor(t, c1, c2) {
     }
 }
 
-function getPointOnQuadraticBezier(p0, p1, p2, t) {
-    const oneMinusT = 1 - t;
-    const x = oneMinusT * oneMinusT * p0.x + 2 * oneMinusT * t * p1.x + t * t * p2.x;
-    const y = oneMinusT * oneMinusT * p0.y + 2 * oneMinusT * t * p1.y + t * t * p2.y;
-    return { x: x, y: y };
-}
-
-function getQuadraticCurveLength(p0, p1, p2, segments = 20) {
-    let length = 0;
-    let lastPoint = p0;
-    for (let i = 1; i <= segments; i++) {
-        const t = i / segments;
-        const currentPoint = getPointOnQuadraticBezier(p0, p1, p2, t);
-        const dx = currentPoint.x - lastPoint.x;
-        const dy = currentPoint.y - lastPoint.y;
-        length += Math.sqrt(dx * dx + dy * dy);
-        lastPoint = currentPoint;
-    }
-    return length;
-}
-
 // Update this for a new property
 class Shape {
-    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx, innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset, animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType, frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed, tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir, strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed, strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold, vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth, enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false, sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier, seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation, strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel, strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed, strimerSnakeProgress, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed, spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path, spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixEnableGlow, spawn_glowSize, spawn_matrixGlowSize, spawn_enableTrail, spawn_trailLength, spawn_audioTarget, spawn_trailSpacing, polylineNodes, polylineCurveStyle, pathAnim_enable, pathAnim_shape, pathAnim_size, pathAnim_speed, pathAnim_gradType, pathAnim_useSharpGradient, pathAnim_gradientStop, pathAnim_gradColor1, pathAnim_gradColor2, pathAnim_cycleColors, pathAnim_cycleSpeed, pathAnim_animationMode, pathAnim_animationSpeed, pathAnim_scrollDir, pathAnim_trail, pathAnim_trailLength }) {
+    constructor({ id, name, shape, x, y, width, height, rotation, gradient, gradType, scrollDirection, cycleColors, cycleSpeed, animationSpeed, ctx,
+        innerDiameter, angularWidth, numberOfSegments, rotationSpeed, useSharpGradient, gradientStop, locked, numberOfRows, numberOfColumns, phaseOffset,
+        animationMode, text, fontSize, textAlign, pixelFont, textAnimation, textAnimationSpeed, showTime, showDate, autoWidth, lineWidth, waveType,
+        frequency, oscDisplayMode, pulseDepth, fillShape, enableWaveAnimation, waveStyle, waveCount, tetrisBlockCount, tetrisAnimation, tetrisSpeed,
+        tetrisBounce, tetrisHoldTime, sides, points, starInnerRadius, enableStroke, strokeWidth, strokeGradType, strokeGradient, strokeScrollDir,
+        strokeCycleColors, strokeCycleSpeed, strokeAnimationSpeed, strokeAnimationMode, strokeUseSharpGradient, strokeGradientStop, strokeRotationSpeed,
+        strokePhaseOffset, fireSpread, pixelArtData, enableAudioReactivity, audioTarget, audioMetric, audioSensitivity, audioSmoothing = 50, beatThreshold,
+        vizBarCount, vizBarSpacing, vizSmoothing, vizStyle, vizLayout, vizDrawStyle, vizUseSegments, vizSegmentCount, vizSegmentSpacing, vizLineWidth,
+        enableSensorReactivity, sensorTarget, sensorValueSource, userSensor, sensorMeterFill, timePlotLineThickness, timePlotFillArea = false,
+        sensorMeterShowValue = false, timePlotAxesStyle = 'None', timePlotTimeScale = 5, gradientSpeedMultiplier, shapeAnimationSpeedMultiplier,
+        seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation,
+        strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel,
+        strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed,
+        strimerSnakeProgress, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed,
+        spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path,
+        spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixEnableGlow, spawn_glowSize, spawn_matrixGlowSize, spawn_enableTrail,
+        spawn_trailLength, spawn_audioTarget, spawn_trailSpacing, polylineNodes, polylineCurveStyle, pathAnim_enable, pathAnim_shape, pathAnim_size,
+        pathAnim_speed, pathAnim_gradType, pathAnim_useSharpGradient, pathAnim_gradientStop, pathAnim_gradColor1, pathAnim_gradColor2,
+        pathAnim_cycleColors, pathAnim_cycleSpeed, pathAnim_animationMode, pathAnim_animationSpeed, pathAnim_scrollDir, pathAnim_trail,
+        pathAnim_trailLength, pathAnim_behavior, pathAnim_objectCount, pathAnim_objectSpacing, pathAnim_trailColor }) {
         // --- ALL properties are assigned here first ---
         this.lastDeltaTime = 0;
         this.dirty = true;
@@ -561,6 +559,36 @@ class Shape {
         // State variables for the animation
         this._cachedPathSegments = null; // To store path calculations for performance
         this.pathAnim_distance = 0;      // Current distance along the path
+
+        this.pathAnim_behavior = pathAnim_behavior || 'Loop';
+        this.pathAnim_objectCount = pathAnim_objectCount || 1;
+        this.pathAnim_objectSpacing = pathAnim_objectSpacing || 100; // Scaled value
+        this.pathAnim_trailColor = pathAnim_trailColor || 'Inherit';
+
+        // State variables
+        this.pathAnim_direction = 1; // For Ping-Pong
+        this.pathAnim_speedBurst = 0; // For audio reactivity
+    }
+
+    _getPointOnQuadraticBezier(p0, p1, p2, t) {
+        const oneMinusT = 1 - t;
+        const x = oneMinusT * oneMinusT * p0.x + 2 * oneMinusT * t * p1.x + t * t * p2.x;
+        const y = oneMinusT * oneMinusT * p0.y + 2 * oneMinusT * t * p1.y + t * t * p2.y;
+        return { x: x, y: y };
+    }
+
+    _getQuadraticCurveLength(p0, p1, p2, segments = 20) {
+        let length = 0;
+        let lastPoint = p0;
+        for (let i = 1; i <= segments; i++) {
+            const t = i / segments;
+            const currentPoint = this._getPointOnQuadraticBezier(p0, p1, p2, t);
+            const dx = currentPoint.x - lastPoint.x;
+            const dy = currentPoint.y - lastPoint.y;
+            length += Math.sqrt(dx * dx + dy * dy);
+            lastPoint = currentPoint;
+        }
+        return length;
     }
 
     _drawSubObject(shape, size) {
@@ -816,26 +844,17 @@ class Shape {
     }
 
     _applyAudioReactivity(audioData) {
-        // Reset all reactive properties at the start of each frame
-        this.internalScale = 1.0;
-        this.colorOverride = null;
-        this.flashOpacity = 0;
-        this.pathAnim_internalScale = 1.0;
-        this.pathAnim_colorOverride = null;
-        this.pathAnim_flashOpacity = 0;
+        // Reset all reactive properties
+        this.internalScale = 1.0; this.colorOverride = null; this.flashOpacity = 0;
+        this.pathAnim_internalScale = 1.0; this.pathAnim_colorOverride = null; this.pathAnim_flashOpacity = 0;
 
-        // Decay any ongoing flash effect
-        if (this.flashDecay > 0) {
-            this.flashDecay -= 0.1;
-        }
+        // Decay flash
+        if (this.flashDecay > 0) { this.flashDecay -= 0.1; }
         this.flashDecay = Math.max(0, this.flashDecay);
 
-        // Exit if reactivity is disabled
-        if (!this.enableAudioReactivity || !audioData || !audioData[this.audioMetric] || this.audioTarget === 'none') {
-            return;
-        }
+        if (!this.enableAudioReactivity || !audioData || !audioData[this.audioMetric] || this.audioTarget === 'none') return;
 
-        // Beat detection logic (remains the same)
+        // Beat detection logic
         const rawAudioValue = audioData[this.audioMetric].avg || 0;
         this.audioHistory.push(rawAudioValue);
         if (this.audioHistory.length > 30) this.audioHistory.shift();
@@ -844,48 +863,43 @@ class Shape {
         const stdDev = Math.sqrt(this.audioHistory.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / n);
         const thresholdMultiplier = 0.5 + ((this.beatThreshold || 30) / 100.0) * 2.0;
         const threshold = mean + thresholdMultiplier * stdDev;
-
+        let reactiveValue = 0;
         if (rawAudioValue > threshold) {
             const sensitivity = (this.audioSensitivity / 100.0) * 1.5;
             this.flashDecay = Math.min(1.5, sensitivity);
         }
+        reactiveValue = this.flashDecay;
 
-        const reactiveValue = this.flashDecay;
-        const randomSign = Math.random() < 0.5 ? -1 : 1;
+        const target = this.pathAnim_enable ? 'path' : 'shape';
 
-        // --- NEW CONDITIONAL LOGIC ---
-        // If path animation is ON, apply effects to the pathAnim_ properties.
-        if (this.pathAnim_enable) {
-            switch (this.audioTarget) {
-                case 'Flash':
-                    if (reactiveValue > 0) {
+        switch (this.audioTarget) {
+            case 'Flash':
+                if (reactiveValue > 0) {
+                    if (target === 'path') {
                         this.pathAnim_colorOverride = '#FFFFFF';
                         this.pathAnim_flashOpacity = Math.min(1.0, reactiveValue);
-                    }
-                    break;
-                case 'Size':
-                    this.pathAnim_internalScale = 1.0 + reactiveValue;
-                    break;
-                case 'Rotation':
-                    // Note: Rotation on the moving object isn't visually distinct, so we skip it.
-                    break;
-            }
-            // If path animation is OFF, apply effects to the main shape's properties.
-        } else {
-            switch (this.audioTarget) {
-                case 'Flash':
-                    if (reactiveValue > 0) {
+                    } else {
                         this.colorOverride = '#FFFFFF';
                         this.flashOpacity = Math.min(1.0, reactiveValue);
                     }
-                    break;
-                case 'Size':
-                    this.internalScale = 1.0 + reactiveValue;
-                    break;
-                case 'Rotation':
-                    this.animationAngle = this.baseAnimationAngle + (randomSign * reactiveValue * 30);
-                    break;
-            }
+                }
+                break;
+            case 'Size':
+                if (target === 'path') { this.pathAnim_internalScale = 1.0 + reactiveValue; }
+                else { this.internalScale = 1.0 + reactiveValue; }
+                break;
+            case 'Path Speed':
+                // This only affects the path animation, so no 'else' is needed.
+                if (reactiveValue > 0) {
+                    this.pathAnim_speedBurst = reactiveValue;
+                }
+                break;
+            case 'Rotation':
+                // Only affects the main shape
+                if (target === 'shape') {
+                    this.animationAngle = this.baseAnimationAngle + ((Math.random() < 0.5 ? -1 : 1) * reactiveValue * 30);
+                }
+                break;
         }
     }
 
@@ -1499,22 +1513,21 @@ class Shape {
         const segments = [];
         let totalLength = 0;
         let currentPoint = { x: nodes[0].x + offsetX, y: nodes[0].y + offsetY };
-
-        const curveDetail = 30; // Number of points to cache for curve speed correction
+        const curveDetail = 30;
 
         if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
             for (let i = 1; i < nodes.length - 1; i++) {
                 const controlPoint = { x: nodes[i].x + offsetX, y: nodes[i].y + offsetY };
                 const endPoint = { x: (nodes[i].x + nodes[i + 1].x) / 2 + offsetX, y: (nodes[i].y + nodes[i + 1].y) / 2 + offsetY };
 
-                const segmentLength = getQuadraticCurveLength(currentPoint, controlPoint, endPoint, curveDetail);
+                const segmentLength = this._getQuadraticCurveLength(currentPoint, controlPoint, endPoint, curveDetail); // <-- UPDATED CALL
                 const lookupTable = [];
                 let lastLutPoint = currentPoint;
                 let cumulativeLength = 0;
 
                 for (let j = 1; j <= curveDetail; j++) {
                     const t = j / curveDetail;
-                    const lutPoint = getPointOnQuadraticBezier(currentPoint, controlPoint, endPoint, t);
+                    const lutPoint = this._getPointOnQuadraticBezier(currentPoint, controlPoint, endPoint, t); // <-- UPDATED CALL
                     const dx = lutPoint.x - lastLutPoint.x;
                     const dy = lutPoint.y - lastLutPoint.y;
                     cumulativeLength += Math.sqrt(dx * dx + dy * dy);
@@ -1548,11 +1561,26 @@ class Shape {
         const { segments, totalLength } = this._calculatePathSegments();
         if (totalLength === 0) return { x: 0, y: 0, angle: 0 };
 
-        // Loop the distance along the path
         let d = distance;
-        if (totalLength > 0) {
+        if (this.pathAnim_behavior === 'Loop' && totalLength > 0) {
             d = distance % totalLength;
             if (d < 0) d += totalLength;
+        }
+
+        const firstSeg = segments[0];
+        const lastSeg = segments[segments.length - 1];
+
+        if (d < 0) {
+            const dx = firstSeg.p1.x - firstSeg.p0.x;
+            const dy = firstSeg.p1.y - firstSeg.p0.y;
+            return { x: firstSeg.p0.x, y: firstSeg.p0.y, angle: Math.atan2(dy, dx) };
+        }
+        if (d > totalLength) {
+            const endPoint = lastSeg.type === 'line' ? lastSeg.p1 : lastSeg.p2;
+            const prevPoint = lastSeg.p0;
+            const dx = endPoint.x - prevPoint.x;
+            const dy = endPoint.y - prevPoint.y;
+            return { x: endPoint.x, y: endPoint.y, angle: Math.atan2(dy, dx) };
         }
 
         for (const seg of segments) {
@@ -1566,7 +1594,6 @@ class Shape {
                     dx = seg.p1.x - seg.p0.x;
                     dy = seg.p1.y - seg.p0.y;
                 } else { // curve
-                    // Find the two points in the lookup table that bracket our distance
                     let t = 0;
                     for (let i = 0; i < seg.lookupTable.length; i++) {
                         if (seg.lookupTable[i].dist >= localDist) {
@@ -1579,7 +1606,7 @@ class Shape {
                         }
                     }
 
-                    p = getPointOnQuadraticBezier(seg.p0, seg.p1, seg.p2, t);
+                    p = this._getPointOnQuadraticBezier(seg.p0, seg.p1, seg.p2, t); // <-- UPDATED CALL
                     const dP0 = { x: 2 * (seg.p1.x - seg.p0.x), y: 2 * (seg.p1.y - seg.p0.y) };
                     const dP1 = { x: 2 * (seg.p2.x - seg.p1.x), y: 2 * (seg.p2.y - seg.p1.y) };
                     dx = (1 - t) * dP0.x + t * dP1.x;
@@ -1588,7 +1615,8 @@ class Shape {
                 return { x: p.x, y: p.y, angle: Math.atan2(dy, dx) };
             }
         }
-        return { x: segments[0]?.p0.x || 0, y: segments[0]?.p0.y || 0, angle: 0 }; // Fallback
+
+        return { x: firstSeg.p0.x, y: firstSeg.p0.y, angle: 0 }; // Fallback
     }
 
     _createLocalStrokeStyle(phase = 0) {
@@ -1780,15 +1808,14 @@ class Shape {
 
         if (this.pathAnim_cycleColors) {
             c1 = `hsl(${this.pathAnim_hue1 % 360}, 100%, 50%)`;
-            c2 = `hsl(${(this.pathAnim_hue1 + 90) % 360}, 100%, 50%)`; // Use a 90-degree offset for the second color
+            c2 = `hsl(${(this.pathAnim_hue1 + 90) % 360}, 100%, 50%)`;
         }
 
         const p = (this.pathAnim_scrollOffset % 1.0 + 1.0) % 1.0;
-        const halfSize = size / 2;
 
         switch (this.pathAnim_gradType) {
             case 'linear':
-                return this._createLinearGradient(c1, c2, p, size, size, this.pathAnim_animationMode, this.pathAnim_useSharpGradient, this.pathAnim_gradientStop);
+                return this._createLinearGradient(c1, c2, p, size, size, this.pathAnim_animationMode, this.pathAnim_useSharpGradient, this.pathAnim_gradientStop, this.pathAnim_scrollDir);
             case 'radial':
                 return this._createRadialGradient(c1, c2, p, size, size, this.pathAnim_animationMode, this.pathAnim_useSharpGradient, this.pathAnim_gradientStop);
             case 'rainbow':
@@ -1800,17 +1827,15 @@ class Shape {
                 const hueOffset = animProgress * 360;
                 let grad;
                 if (this.pathAnim_gradType === 'rainbow-radial') {
-                    grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, halfSize);
+                    grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, size / 2);
                 } else {
-                    grad = this.ctx.createLinearGradient(-halfSize, 0, halfSize, 0);
+                    grad = this.ctx.createLinearGradient(-size / 2, 0, size / 2, 0);
                 }
                 for (let i = 0; i <= 60; i++) {
                     grad.addColorStop(i / 60, `hsl(${(i * 6 + hueOffset) % 360}, 100%, 50%)`);
                 }
                 return grad;
             }
-            // NOTE: Conic, alternating, and random are complex and omitted for this sub-object for simplicity.
-            // They will fall back to solid color.
             case 'solid':
             default:
                 return c1;
@@ -1967,49 +1992,47 @@ class Shape {
      * @returns {CanvasGradient} The generated linear gradient.
      * @private
      */
-    _createLinearGradient(c1, c2, p) {
-        const gradientStop = (typeof this.gradientStop === 'number' && isFinite(this.gradientStop)) ? this.gradientStop / 100.0 : 0.5;
+    _createLinearGradient(c1, c2, p, width = this.width, height = this.height, animationMode = this.animationMode, useSharpGradient = this.useSharpGradient, gradientStop = this.gradientStop, scrollDirection = this.scrollDirection) {
+        const stop = (typeof gradientStop === 'number' && isFinite(gradientStop)) ? gradientStop / 100.0 : 0.5;
         const progress = (typeof p === 'number' && isFinite(p)) ? p : 0;
-        const halfW = this.width / 2;
-        const halfH = this.height / 2;
-        const isVertical = this.scrollDirection === 'up' || this.scrollDirection === 'down';
-        const grad = isVertical ? this.ctx.createLinearGradient(0, -halfH, 0, halfH) : this.ctx.createLinearGradient(-halfW, 0, halfW, 0);
+        const halfW = width / 2;
+        const halfH = height / 2;
 
-        if (this.animationSpeed === 0) {
-            if (this.useSharpGradient) {
-                grad.addColorStop(0, c1);
-                grad.addColorStop(gradientStop, c1);
-                grad.addColorStop(Math.min(1, gradientStop + 0.001), c2);
-                grad.addColorStop(1, c2);
+        const gradCoords = {
+            up: [0, halfH, 0, -halfH], down: [0, -halfH, 0, halfH],
+            left: [halfW, 0, -halfW, 0], right: [-halfW, 0, halfW, 0]
+        };
+        const grad = this.ctx.createLinearGradient(...(gradCoords[scrollDirection] || gradCoords.right));
+
+        if (this.animationSpeed === 0 && this.pathAnim_animationSpeed === 0) {
+            if (useSharpGradient) {
+                grad.addColorStop(0, c1); grad.addColorStop(stop, c1);
+                grad.addColorStop(Math.min(1, stop + 0.001), c2); grad.addColorStop(1, c2);
             } else {
-                grad.addColorStop(0, c1);
-                grad.addColorStop(1, c2);
+                grad.addColorStop(0, c1); grad.addColorStop(1, c2);
             }
             return grad;
         }
 
-        if (this.animationMode.includes('bounce')) {
+        if (animationMode.includes('bounce')) {
             const bounceProgress = (progress < 0.5) ? (progress * 2) : ((1 - progress) * 2);
-            if (this.useSharpGradient) {
-                const p1 = bounceProgress * (1.0 - gradientStop);
-                const p2 = p1 + gradientStop;
+            if (useSharpGradient) {
+                const p1 = bounceProgress * (1.0 - stop);
+                const p2 = p1 + stop;
                 grad.addColorStop(0, c2); grad.addColorStop(p1, c2);
                 grad.addColorStop(p1, c1); grad.addColorStop(p2, c1);
                 grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
-            } else { // New "wave" bounce logic
+            } else {
                 const center = bounceProgress;
-                const p1 = Math.max(0, center - gradientStop / 2);
-                const p2 = Math.min(1, center + gradientStop / 2);
-                grad.addColorStop(0, c1);
-                grad.addColorStop(p1, c1);
+                const p1 = Math.max(0, center - stop / 2);
+                const p2 = Math.min(1, center + stop / 2);
+                grad.addColorStop(0, c1); grad.addColorStop(p1, c1);
                 grad.addColorStop(center, c2);
-                grad.addColorStop(p2, c1);
-                grad.addColorStop(1, c1);
+                grad.addColorStop(p2, c1); grad.addColorStop(1, c1);
             }
         } else { // Loop mode
-            if (this.useSharpGradient) {
-                const p1 = progress;
-                const p2 = p1 + gradientStop;
+            if (useSharpGradient) {
+                const p1 = progress; const p2 = p1 + stop;
                 if (p2 > 1.0) {
                     const wrapped_p2 = p2 - 1.0;
                     grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
@@ -2021,27 +2044,19 @@ class Shape {
                     grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
                 }
             } else {
-                const midPoint = gradientStop;
                 const getPatternColorAtTime = (time) => {
                     const t = (time % 1.0 + 1.0) % 1.0;
-                    if (midPoint <= 0.0001) return c2;
-                    if (midPoint >= 0.9999) return c1;
-                    if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
-                    return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
+                    if (stop <= 0.0001) return c2; if (stop >= 0.9999) return c1;
+                    if (t < stop) return lerpColor(c1, c2, t / stop);
+                    return lerpColor(c2, c1, (t - stop) / (1 - stop));
                 };
-                const stops = [
-                    { pos: 0, color: getPatternColorAtTime(0 - progress) },
-                    { pos: 1, color: getPatternColorAtTime(1 - progress) }
-                ];
+                const stops = [{ pos: 0, color: getPatternColorAtTime(0 - progress) }, { pos: 1, color: getPatternColorAtTime(1 - progress) }];
                 for (let i = -2; i <= 2; i++) {
-                    const c1_pos = i + progress;
-                    const c2_pos = i + midPoint + progress;
+                    const c1_pos = i + progress; const c2_pos = i + stop + progress;
                     if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
                     if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
                 }
-                stops.sort((a, b) => a.pos - b.pos)
-                    .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001)
-                    .forEach(stop => grad.addColorStop(Math.max(0, Math.min(1, stop.pos)), stop.color));
+                stops.sort((a, b) => a.pos - b.pos).filter((s, i, self) => i === 0 || s.pos > self[i - 1].pos + 0.0001).forEach(s => grad.addColorStop(Math.max(0, Math.min(1, s.pos)), s.color));
             }
         }
         return grad;
@@ -2055,35 +2070,32 @@ class Shape {
      * @returns {CanvasGradient} The generated radial gradient.
      * @private
      */
-    _createRadialGradient(c1, c2, p) {
-        const gradientStop = (typeof this.gradientStop === 'number' && isFinite(this.gradientStop)) ? this.gradientStop / 100.0 : 0.5;
+    _createRadialGradient(c1, c2, p, width = this.width, height = this.height, animationMode = this.animationMode, useSharpGradient = this.useSharpGradient, gradientStop = this.gradientStop) {
+        const stop = (typeof gradientStop === 'number' && isFinite(gradientStop)) ? gradientStop / 100.0 : 0.5;
         const progress = (typeof p === 'number' && isFinite(p)) ? p : 0;
-        const maxRadius = Math.max(this.width, this.height) / 2;
+        const maxRadius = Math.max(width, height) / 2;
         if (maxRadius <= 0) return 'black';
         const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
 
-        if (this.animationMode.includes('bounce')) {
+        if (animationMode.includes('bounce')) {
             const bounceProgress = (progress < 0.5) ? (progress * 2) : ((1 - progress) * 2);
-            if (this.useSharpGradient) {
-                const p1 = bounceProgress * (1.0 - gradientStop);
-                const p2 = p1 + gradientStop;
+            if (useSharpGradient) {
+                const p1 = bounceProgress * (1.0 - stop);
+                const p2 = p1 + stop;
                 grad.addColorStop(0, c1); grad.addColorStop(p1, c1);
                 grad.addColorStop(p1, c2); grad.addColorStop(p2, c2);
                 grad.addColorStop(p2, c1); grad.addColorStop(1, c1);
-            } else { // New "ripple" bounce logic
+            } else {
                 const center = bounceProgress;
-                const p1 = Math.max(0, center - gradientStop / 2);
-                const p2 = Math.min(1, center + gradientStop / 2);
-                grad.addColorStop(0, c1);
-                grad.addColorStop(p1, c1);
+                const p1 = Math.max(0, center - stop / 2);
+                const p2 = Math.min(1, center + stop / 2);
+                grad.addColorStop(0, c1); grad.addColorStop(p1, c1);
                 grad.addColorStop(center, c2);
-                grad.addColorStop(p2, c1);
-                grad.addColorStop(1, c1);
+                grad.addColorStop(p2, c1); grad.addColorStop(1, c1);
             }
         } else { // Loop mode
-            if (this.useSharpGradient) {
-                const p1 = progress;
-                const p2 = p1 + gradientStop;
+            if (useSharpGradient) {
+                const p1 = progress; const p2 = p1 + stop;
                 if (p2 > 1.0) {
                     const wrapped_p2 = p2 - 1.0;
                     grad.addColorStop(0, c1); grad.addColorStop(wrapped_p2, c1);
@@ -2095,27 +2107,19 @@ class Shape {
                     grad.addColorStop(p2, c2); grad.addColorStop(1, c2);
                 }
             } else {
-                const midPoint = gradientStop;
                 const getPatternColorAtTime = (time) => {
                     const t = (time % 1.0 + 1.0) % 1.0;
-                    if (midPoint <= 0.0001) return c2;
-                    if (midPoint >= 0.9999) return c1;
-                    if (t < midPoint) return lerpColor(c1, c2, t / midPoint);
-                    return lerpColor(c2, c1, (t - midPoint) / (1 - midPoint));
+                    if (stop <= 0.0001) return c2; if (stop >= 0.9999) return c1;
+                    if (t < stop) return lerpColor(c1, c2, t / stop);
+                    return lerpColor(c2, c1, (t - stop) / (1 - stop));
                 };
-                const stops = [
-                    { pos: 0, color: getPatternColorAtTime(0 - progress) },
-                    { pos: 1, color: getPatternColorAtTime(1 - progress) }
-                ];
+                const stops = [{ pos: 0, color: getPatternColorAtTime(0 - progress) }, { pos: 1, color: getPatternColorAtTime(1 - progress) }];
                 for (let i = -2; i <= 2; i++) {
-                    const c1_pos = i + progress;
-                    const c2_pos = i + midPoint + progress;
+                    const c1_pos = i + progress; const c2_pos = i + stop + progress;
                     if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
                     if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
                 }
-                stops.sort((a, b) => a.pos - b.pos)
-                    .filter((stop, index, self) => index === 0 || stop.pos > self[index - 1].pos + 0.0001)
-                    .forEach(stop => grad.addColorStop(Math.max(0, Math.min(1, stop.pos)), stop.color));
+                stops.sort((a, b) => a.pos - b.pos).filter((s, i, self) => i === 0 || s.pos > self[i - 1].pos + 0.0001).forEach(s => grad.addColorStop(Math.max(0, Math.min(1, s.pos)), s.color));
             }
         }
         return grad;
@@ -2640,17 +2644,68 @@ class Shape {
         }
 
         if (this.shape === 'polyline' && this.pathAnim_enable) {
-            // --- START: NEW SAFETY CHECK ---
             // Ensure the history array exists before trying to use it.
             if (!Array.isArray(this.pathAnim_history)) {
                 this.pathAnim_history = [];
             }
-            // --- END: NEW SAFETY CHECK ---
-
-            const speed = (this.pathAnim_speed || 0) / 4;
-            this.pathAnim_distance += speed * deltaTime;
 
             const { totalLength } = this._calculatePathSegments();
+
+            // Calculate the total distance the leader needs to travel for the *last* object to finish.
+            const objectCount = Math.max(1, this.pathAnim_objectCount || 1);
+            const spacing = (this.pathAnim_objectSpacing || 100) / 4;
+            const swarmTravelDistance = totalLength + ((objectCount - 1) * spacing);
+
+            // Only update the distance if the animation hasn't finished
+            if (this.pathAnim_behavior !== 'Play Once' || this.pathAnim_distance < swarmTravelDistance) {
+                const baseSpeed = (this.pathAnim_speed || 0) / 4;
+                const burstSpeed = this.pathAnim_speedBurst * 500;
+                const finalSpeed = baseSpeed + burstSpeed;
+                this.pathAnim_distance += finalSpeed * deltaTime * this.pathAnim_direction;
+            }
+
+            // --- BEHAVIOR LOGIC ---
+            if (this.pathAnim_behavior === 'Ping-Pong') {
+                // Leader object reverses when it hits the start or end of the path.
+                if (this.pathAnim_direction === 1 && this.pathAnim_distance > totalLength) {
+                    this.pathAnim_distance = totalLength;
+                    this.pathAnim_direction = -1;
+                } else if (this.pathAnim_direction === -1 && this.pathAnim_distance < 0) {
+                    this.pathAnim_distance = 0;
+                    this.pathAnim_direction = 1;
+                }
+            } else { // Loop
+                // The animation resets after the entire swarm has cleared the path.
+                const objectCount = Math.max(1, this.pathAnim_objectCount || 1);
+                const spacing = (this.pathAnim_objectSpacing || 100) / 4;
+                const swarmLength = (objectCount - 1) * spacing;
+                const loopDistance = totalLength + swarmLength;
+
+                if (this.pathAnim_distance > loopDistance) {
+                    this.pathAnim_distance -= loopDistance;
+                }
+            }
+
+            const baseSpeed = (this.pathAnim_speed || 0) / 4;
+            const burstSpeed = this.pathAnim_speedBurst * 500;
+            const finalSpeed = baseSpeed + burstSpeed;
+            this.pathAnim_distance += finalSpeed * deltaTime * this.pathAnim_direction;
+
+            if (this.pathAnim_behavior === 'Ping-Pong') {
+                if (this.pathAnim_distance > totalLength) {
+                    this.pathAnim_distance = totalLength;
+                    this.pathAnim_direction = -1;
+                } else if (this.pathAnim_distance < 0) {
+                    this.pathAnim_distance = 0;
+                    this.pathAnim_direction = 1;
+                }
+            } else { // Loop
+                if (totalLength > 0) {
+                    this.pathAnim_distance %= totalLength;
+                }
+            }
+            this.pathAnim_speedBurst *= 0.95; // Decay the speed burst
+
             if (totalLength > 0 && this.pathAnim_distance > totalLength) {
                 this.pathAnim_distance %= totalLength;
             }
@@ -2665,7 +2720,7 @@ class Shape {
             const { x, y, angle } = this._getPointAndAngleAtDistance(this.pathAnim_distance);
             this.pathAnim_history.unshift({ x, y, angle });
 
-            const trailLength = (this.pathAnim_trailLength || 80) / 4;
+            const trailLength = this.pathAnim_trailLength || 80;
             if (this.pathAnim_history.length > trailLength) {
                 this.pathAnim_history.length = Math.ceil(trailLength);
             }
@@ -3510,73 +3565,94 @@ class Shape {
                     }
                     // --- Stroke is DISABLED ---
                 } else {
-                    // Draw a thin, dotted preview line so the shape is always visible.
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(nodes[0].x + offsetX, nodes[0].y + offsetY);
-                    if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
-                        for (let i = 1; i < nodes.length - 1; i++) {
-                            const xc = (nodes[i].x + nodes[i + 1].x) / 2 + offsetX;
-                            const yc = (nodes[i].y + nodes[i + 1].y) / 2 + offsetY;
-                            this.ctx.quadraticCurveTo(nodes[i].x + offsetX, nodes[i].y + offsetY, xc, yc);
+                    // --- THIS IS THE FIX FOR THE DOTTED LINE ---
+                    // Only draw the dotted preview line if we are NOT in the SignalRGB environment.
+                    // The 'engine' object only exists inside SignalRGB.
+                    if (typeof engine === 'undefined') {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(nodes[0].x + offsetX, nodes[0].y + offsetY);
+                        if (this.polylineCurveStyle === 'curved' && nodes.length > 2) {
+                            for (let i = 1; i < nodes.length - 1; i++) {
+                                const xc = (nodes[i].x + nodes[i + 1].x) / 2 + offsetX;
+                                const yc = (nodes[i].y + nodes[i + 1].y) / 2 + offsetY;
+                                this.ctx.quadraticCurveTo(nodes[i].x + offsetX, nodes[i].y + offsetY, xc, yc);
+                            }
+                            this.ctx.lineTo(nodes[nodes.length - 1].x + offsetX, nodes[nodes.length - 1].y + offsetY);
+                        } else {
+                            for (let i = 1; i < nodes.length; i++) {
+                                this.ctx.lineTo(nodes[i].x + offsetX, nodes[i].y + offsetY);
+                            }
                         }
-                        this.ctx.lineTo(nodes[nodes.length - 1].x + offsetX, nodes[nodes.length - 1].y + offsetY);
-                    } else {
-                        for (let i = 1; i < nodes.length; i++) {
-                            this.ctx.lineTo(nodes[i].x + offsetX, nodes[i].y + offsetY);
-                        }
+                        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                        this.ctx.lineWidth = 1;
+                        this.ctx.setLineDash([4, 4]);
+                        this.ctx.stroke();
+                        this.ctx.setLineDash([]);
                     }
-
-                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                    this.ctx.lineWidth = 1;
-                    this.ctx.setLineDash([4, 4]);
-                    this.ctx.stroke();
-                    this.ctx.setLineDash([]); // Reset for other shapes
                 }
 
                 // --- 3. PATH ANIMATION DRAWING (New) ---
                 // This runs last to draw the animated object on top of the path.
-                if (this.pathAnim_enable && this.pathAnim_history.length > 0) {
-                    const size = (this.pathAnim_size || 40) / 4;
-                    const mainObjectPos = this.pathAnim_history[0];
+                if (this.pathAnim_enable) {
+                    const { totalLength } = this._calculatePathSegments();
+                    if (totalLength <= 0) return;
 
-                    // --- Draw the Trail ---
-                    if (this.pathAnim_trail !== 'None' && this.pathAnim_history.length > 1) {
-                        for (let i = 1; i < this.pathAnim_history.length; i++) {
-                            const pos = this.pathAnim_history[i];
-                            const progress = i / this.pathAnim_history.length;
+                    const baseSize = this.pathAnim_size || 40;
+                    const objectCount = Math.max(1, this.pathAnim_objectCount || 1);
+                    const spacing = this.pathAnim_objectSpacing || 100;
+                    const trailLength = this.pathAnim_trailLength || 80;
 
-                            const trailSize = size * (1 - progress);
-                            if (trailSize < 1) continue;
+                    // Loop for each object in the swarm
+                    for (let i = 0; i < objectCount; i++) {
+                        const objectDistance = this.pathAnim_distance - (i * spacing);
 
-                            this.ctx.save();
-                            this.ctx.translate(pos.x, pos.y);
-                            this.ctx.rotate(pos.angle);
+                        // Draw the Trail for this object
+                        if (this.pathAnim_trail !== 'None' && trailLength > 0) {
+                            const trailSegmentCount = 30; // Use a fixed number of segments for a smooth trail
+                            for (let j = 1; j <= trailSegmentCount; j++) {
+                                const progress = j / trailSegmentCount;
+                                const trailDist = objectDistance - (progress * trailLength * this.pathAnim_direction);
 
-                            if (this.pathAnim_trail === 'Fade') {
-                                this.ctx.globalAlpha = (1 - progress) * 0.7; // Fade out
+                                const { x, y, angle } = this._getPointAndAngleAtDistance(trailDist);
+                                const trailSize = baseSize * (1 - progress); // Trail tapers in size
+                                if (trailSize < 1) continue;
+
+                                this.ctx.save();
+                                this.ctx.translate(x, y);
+                                this.ctx.rotate(angle);
+
+                                let trailFillStyle;
+                                if (this.pathAnim_trailColor === 'Rainbow') {
+                                    const hue = (progress * 360) % 360;
+                                    trailFillStyle = `hsl(${hue}, 100%, 50%)`;
+                                } else {
+                                    trailFillStyle = this._createFillStyleForSubObject(trailSize);
+                                }
+                                this.ctx.fillStyle = trailFillStyle;
+
+                                if (this.pathAnim_trail === 'Fade') {
+                                    this.ctx.globalAlpha = (1 - progress) * 0.7;
+                                }
+
+                                this._drawSubObject(this.pathAnim_shape, trailSize);
+                                this.ctx.restore();
                             }
-
-                            this.ctx.fillStyle = this._createFillStyleForSubObject(trailSize);
-                            this._drawSubObject(this.pathAnim_shape, trailSize);
-                            this.ctx.restore();
                         }
+
+                        // Draw the Main Animated Object (the "leader")
+                        const { x, y, angle } = this._getPointAndAngleAtDistance(objectDistance);
+
+                        this.ctx.save();
+                        this.ctx.translate(x, y);
+                        this.ctx.rotate(angle);
+
+                        if (this.pathAnim_flashOpacity > 0) { this.ctx.globalAlpha = this.pathAnim_flashOpacity; }
+                        this.ctx.scale(this.pathAnim_internalScale, this.pathAnim_internalScale);
+
+                        this.ctx.fillStyle = this.pathAnim_colorOverride || this._createFillStyleForSubObject(baseSize);
+                        this._drawSubObject(this.pathAnim_shape, baseSize);
+                        this.ctx.restore();
                     }
-
-                    // --- Draw the Main Animated Object ---
-                    this.ctx.save();
-                    this.ctx.translate(mainObjectPos.x, mainObjectPos.y);
-                    this.ctx.rotate(mainObjectPos.angle);
-
-                    // Apply reactivity effects
-                    if (this.pathAnim_flashOpacity > 0) {
-                        this.ctx.globalAlpha = this.pathAnim_flashOpacity;
-                    }
-                    this.ctx.scale(this.pathAnim_internalScale, this.pathAnim_internalScale);
-
-                    // Use a separate fill style function for the moving object
-                    this.ctx.fillStyle = this.pathAnim_colorOverride || this._createFillStyleForSubObject(size);
-                    this._drawSubObject(this.pathAnim_shape, size);
-                    this.ctx.restore();
                 }
             } else {
                 this.ctx.beginPath();

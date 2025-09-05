@@ -453,12 +453,12 @@ document.addEventListener('DOMContentLoaded', function () {
         ],
         polyline: [
             'shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'polylineNodes', 'polylineCurveStyle',
-            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
-            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing',
-            'pathAnim_enable', 'pathAnim_shape', 'pathAnim_size', 'pathAnim_speed',
+            'pathAnim_enable', 'pathAnim_shape', 'pathAnim_size', 'pathAnim_speed', 'pathAnim_behavior', 'pathAnim_objectCount', 'pathAnim_objectSpacing',
             'pathAnim_gradType', 'pathAnim_useSharpGradient', 'pathAnim_gradientStop', 'pathAnim_gradColor1', 'pathAnim_gradColor2',
             'pathAnim_cycleColors', 'pathAnim_cycleSpeed', 'pathAnim_animationMode', 'pathAnim_animationSpeed', 'pathAnim_scrollDir',
-            'pathAnim_trail', 'pathAnim_trailLength',
+            'pathAnim_trail', 'pathAnim_trailLength', 'pathAnim_trailColor',
+            'enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir',
+            'enableAudioReactivity', 'audioTarget', 'audioMetric', 'beatThreshold', 'audioSensitivity', 'audioSmoothing'
         ],
     };
 
@@ -1200,21 +1200,23 @@ document.addEventListener('DOMContentLoaded', function () {
         let scriptHTML = '';
         let jsVars = '';
         let allKeys = [];
-        const objectMetaPropMap = {}; // NEW: Map to store which properties are meta tags for each object.
+        const objectMetaPropMap = {};
 
         const minimize = document.getElementById('minimize-props-export')?.checked || false;
         const generalValues = getControlValues();
 
-        // Process General (Global) properties
         configStore.filter(conf => !(conf.property || conf.name).startsWith('obj')).forEach(conf => {
             const key = conf.property || conf.name;
             if (generalValues[key] !== undefined) {
                 allKeys.push(key);
                 let exportValue = generalValues[key];
-
                 if (conf.name && !conf.property) {
                     scriptHTML += `<meta ${key}="${exportValue}" />\n`;
                 } else {
+                    let finalExportValue = exportValue;
+                    if (typeof finalExportValue === 'string') {
+                        finalExportValue = finalExportValue.replace(/"/g, '&quot;');
+                    }
                     const attrs = [`property="${conf.property}"`, `label="${conf.label}"`, `type="${conf.type}"`];
                     if (conf.values) {
                         const sortedValues = conf.values.split(',').sort().join(',');
@@ -1222,21 +1224,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     if (conf.min) attrs.push(`min="${conf.min}"`);
                     if (conf.max) attrs.push(`max="${conf.max}"`);
-                    scriptHTML += `<meta ${attrs.join(' ')} default="${exportValue}" />\n`;
+                    scriptHTML += `<meta ${attrs.join(' ')} default="${finalExportValue}" />\n`;
                 }
             }
         });
 
-        // Process Object-specific properties
         objects.forEach(obj => {
             const name = obj.name || `Object ${obj.id}`;
-            objectMetaPropMap[obj.id] = []; // NEW: Initialize the list for this object.
+            objectMetaPropMap[obj.id] = [];
             const objectConfigs = configStore.filter(c => c.property && c.property.startsWith(`obj${obj.id}_`));
             const validPropsForShape = shapePropertyMap[obj.shape] || shapePropertyMap['rectangle'];
 
             objectConfigs.forEach(conf => {
                 const propName = conf.property.substring(conf.property.indexOf('_') + 1);
-                let liveValue;
+                let liveValue = obj[propName];
 
                 if (propName.startsWith('gradColor')) {
                     liveValue = obj.gradient[propName.replace('gradColor', 'color')];
@@ -1246,8 +1247,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     liveValue = obj.scrollDirection;
                 } else if (propName === 'strokeScrollDir') {
                     liveValue = obj.strokeScrollDir;
-                } else {
-                    liveValue = obj[propName];
                 }
 
                 if (liveValue === undefined) {
@@ -1257,8 +1256,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 allKeys.push(conf.property);
                 let exportValue = liveValue;
+                let exportType = conf.type;
 
-                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize', 'vizBarSpacing', 'vizSegmentSpacing', 'spawn_size', 'spawn_speed', 'spawn_gravity'];
+                const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize', 'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize', 'pathAnim_size', 'pathAnim_speed', 'pathAnim_objectSpacing', 'pathAnim_trailLength'];
                 if (conf.type === 'number' && typeof liveValue === 'number') {
                     exportValue = propsToScale.includes(propName) ? Math.round(liveValue / 4) : Math.round(liveValue);
                 } else if (typeof liveValue === 'boolean') {
@@ -1269,19 +1269,36 @@ document.addEventListener('DOMContentLoaded', function () {
                 const objectSpecificProps = ['shape', 'x', 'y', 'width', 'height', 'rotation'];
                 let writeAsMeta = !minimize || (!objectSpecificProps.includes(propName) && isApplicable);
 
+                if (propName === 'polylineNodes') {
+                    writeAsMeta = false; // Always export polylineNodes as a hard-coded variable
+                }
+
                 if (writeAsMeta) {
-                    objectMetaPropMap[obj.id].push(propName); // NEW: Add this property to the map.
+                    objectMetaPropMap[obj.id].push(propName);
                     conf.label = `${name}: ${conf.label.split(':').slice(1).join(':').trim()}`;
-                    const attrs = [`property="${conf.property}"`, `label="${conf.label}"`, `type="${conf.type}"`];
+                    const attrs = [`property="${conf.property}"`, `label="${conf.label}"`, `type="${exportType}"`];
                     if (conf.values) {
                         const sortedValues = conf.values.split(',').sort().join(',');
                         attrs.push(`values="${sortedValues}"`);
                     }
                     if (conf.min) attrs.push(`min="${conf.min}"`);
                     if (conf.max) attrs.push(`max="${conf.max}"`);
-                    scriptHTML += `<meta ${attrs.join(' ')} default="${exportValue}" />\n`;
+                    let finalExportValue = exportValue;
+                    if (typeof finalExportValue === 'string') {
+                        finalExportValue = finalExportValue.replace(/"/g, '&quot;');
+                    }
+                    scriptHTML += `<meta ${attrs.join(' ')} default="${finalExportValue}" />\n`;
                 } else {
-                    jsVars += `const ${conf.property} = ${JSON.stringify(exportValue)};\n`;
+                    if (propName === 'polylineNodes' && Array.isArray(exportValue)) {
+                        // Manually scale down the node coordinates for export.
+                        const scaledNodes = exportValue.map(node => ({
+                            x: Math.round(node.x / 4),
+                            y: Math.round(node.y / 4)
+                        }));
+                        jsVars += `const ${conf.property} = ${JSON.stringify(scaledNodes)};\n`;
+                    } else {
+                        jsVars += `const ${conf.property} = ${JSON.stringify(exportValue)};\n`;
+                    }
                 }
             });
         });
@@ -1446,12 +1463,16 @@ document.addEventListener('DOMContentLoaded', function () {
         tabContent.id = `object-tab-content-${id}`;
 
         // Update this for a new property
+        //Tabs
         const controlGroupMap = {
             'Geometry': { props: ['shape', 'x', 'y', 'width', 'height', 'rotation', 'rotationSpeed', 'autoWidth', 'innerDiameter', 'numberOfSegments', 'angularWidth', 'sides', 'points', 'starInnerRadius'], icon: 'bi-box-fill' },
-            'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'animationSpeed', 'cycleSpeed', 'fillShape'], icon: 'bi-palette-fill' },
+            'Polyline': { props: ['polylineNodes', 'polylineCurveStyle'], icon: 'bi-vector-pen' },
+            'Path Object': { props: ['pathAnim_enable', 'pathAnim_shape', 'pathAnim_size'], icon: 'bi-box-seam' },
             'Stroke': { props: ['enableStroke', 'strokeWidth', 'strokeGradType', 'strokeUseSharpGradient', 'strokeGradientStop', 'strokeGradColor1', 'strokeGradColor2', 'strokeCycleColors', 'strokeCycleSpeed', 'strokeAnimationSpeed', 'strokeRotationSpeed', 'strokeAnimationMode', 'strokePhaseOffset', 'strokeScrollDir'], icon: 'bi-brush-fill' },
-            'Polyline': { props: ['polylineNodes', 'polylineCurveStyle', 'polyLinefillShape'], icon: 'bi-vector-pen' },
-            'Path-Animation': { props: ['pathAnim_enable', 'pathAnim_shape', 'pathAnim_size', 'pathAnim_speed', 'pathAnim_gradType', 'pathAnim_gradColor1', 'pathAnim_gradColor2', 'pathAnim_useSharpGradient', 'pathAnim_gradientStop', 'pathAnim_animationMode', 'pathAnim_animationSpeed', 'pathAnim_scrollDir', 'pathAnim_cycleColors', 'pathAnim_cycleSpeed', 'pathAnim_trail', 'pathAnim_trailLength'], icon: 'bi-rocket-takeoff-fill' },
+            'Path Movement': { props: ['pathAnim_speed', 'pathAnim_behavior', 'pathAnim_objectCount', 'pathAnim_objectSpacing'], icon: 'bi-rocket-takeoff-fill' },
+            'Object Fill': { props: ['pathAnim_gradType', 'pathAnim_gradColor1', 'pathAnim_gradColor2', 'pathAnim_useSharpGradient', 'pathAnim_gradientStop', 'pathAnim_animationMode', 'pathAnim_animationSpeed', 'pathAnim_scrollDir', 'pathAnim_cycleColors', 'pathAnim_cycleSpeed'], icon: 'bi-palette-fill' },
+            'Object Trail': { props: ['pathAnim_trail', 'pathAnim_trailLength', 'pathAnim_trailColor'], icon: 'bi-stars' },
+            'Fill-Animation': { props: ['gradType', 'gradColor1', 'gradColor2', 'cycleColors', 'useSharpGradient', 'gradientStop', 'animationMode', 'scrollDir', 'phaseOffset', 'numberOfRows', 'numberOfColumns', 'animationSpeed', 'cycleSpeed', 'fillShape'], icon: 'bi-palette-fill' },
             'Text': { props: ['text', 'fontSize', 'textAlign', 'pixelFont', 'textAnimation', 'textAnimationSpeed', 'showTime', 'showDate'], icon: 'bi-fonts' },
             'Oscilloscope': { props: ['lineWidth', 'waveType', 'frequency', 'oscDisplayMode', 'pulseDepth', 'enableWaveAnimation', 'oscAnimationSpeed', 'waveStyle', 'waveCount'], icon: 'bi-graph-up-arrow' },
             'Tetris': { props: ['tetrisBlockCount', 'tetrisAnimation', 'tetrisSpeed', 'tetrisBounce', 'tetrisHoldTime'], icon: 'bi-grid-3x3-gap-fill' },
@@ -2666,7 +2687,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             //Audiop
             { property: `obj${newId}_enableAudioReactivity`, label: `Object ${newId}: Enable Sound Reactivity`, type: 'boolean', default: 'false', description: 'Enables the object to react to sound.' },
-            { property: `obj${newId}_audioTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Flash', values: 'none,Flash,Size,Rotation,Volume Meter', description: 'Which property of the object will be affected by the sound.' },
+            { property: `obj${newId}_audioTarget`, label: `Object ${newId}: Reactive Property`, type: 'combobox', default: 'Flash', values: 'none,Flash,Size,Rotation,Volume Meter,Path Speed', description: 'Which property of the object will be affected by the sound.' },
             { property: `obj${newId}_audioMetric`, label: `Object ${newId}: Audio Metric`, type: 'combobox', default: 'volume', values: 'volume,bass,mids,highs', description: 'Which part of the audio spectrum to react to.' },
             { property: `obj${newId}_beatThreshold`, label: `Object ${newId}: Beat Threshold`, type: 'number', default: '30', min: '1', max: '100', description: 'Sensitivity for beat detection. Higher values are MORE sensitive. Default is 30.' },
             { property: `obj${newId}_audioSensitivity`, label: `Object ${newId}: Sensitivity`, type: 'number', default: '50', min: '0', max: '200', description: 'How strongly the object reacts to the audio metric.' },
@@ -2748,7 +2769,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_polylineCurveStyle`, label: `Object ${newId}: Curve Style`, type: 'combobox', default: 'straight', values: 'straight,curved', description: '(Polyline) The style of the line segments.' },
             { property: `obj${newId}_pathAnim_enable`, label: `Object ${newId}: Enable Animation`, type: 'boolean', default: 'false', description: 'Enables an object that travels along the path.' },
             { property: `obj${newId}_pathAnim_shape`, label: `Object ${newId}: Shape`, type: 'combobox', default: 'circle', values: 'circle,rectangle,star,polygon', description: 'The shape of the traveling object.' },
-            { property: `obj${newId}_pathAnim_size`, label: `Object ${newId}: Size`, type: 'number', default: '10', min: '1', max: '300', description: 'The size of the traveling object in pixels.' },
+            { property: `obj${newId}_pathAnim_size`, label: `Object ${newId}: Size`, type: 'number', default: '10', min: '1', max: '1000', description: 'The size of the traveling object in pixels.' },
             { property: `obj${newId}_pathAnim_speed`, label: `Object ${newId}: Speed`, type: 'number', default: '50', min: '0', max: '20000', description: 'How fast the object travels along the path (pixels per second).' },
             { property: `obj${newId}_pathAnim_gradType`, label: `Object ${newId}: Fill Type`, type: 'combobox', default: 'solid', values: 'solid,linear,radial,conic,alternating,random,rainbow,rainbow-radial,rainbow-conic' },
             { property: `obj${newId}_pathAnim_useSharpGradient`, label: `Object ${newId}: Use Sharp Gradient`, type: 'boolean', default: 'false' },
@@ -2757,11 +2778,15 @@ document.addEventListener('DOMContentLoaded', function () {
             { property: `obj${newId}_pathAnim_gradColor2`, label: `Object ${newId}: Color 2`, type: 'color', default: '#00BFFF' },
             { property: `obj${newId}_pathAnim_animationMode`, label: `Object ${newId}: Fill Animation`, type: 'combobox', values: 'loop,bounce', default: 'loop' },
             { property: `obj${newId}_pathAnim_animationSpeed`, label: `Object ${newId}: Fill Speed`, type: 'number', default: '10', min: '0', max: '100' },
+            { property: `obj${newId}_pathAnim_behavior`, label: `Object ${newId}: Behavior`, type: 'combobox', values: 'Loop,Ping-Pong', default: 'Loop', description: 'How the object behaves when it reaches the end of the path.' },
+            { property: `obj${newId}_pathAnim_objectCount`, label: `Object ${newId}: Object Count`, type: 'number', default: '1', min: '1', max: '100', description: 'The number of objects to animate along the path.' },
+            { property: `obj${newId}_pathAnim_objectSpacing`, label: `Object ${newId}: Object Spacing`, type: 'number', default: '25', min: '0', max: '500', description: 'The distance between each object when Object Count is greater than 1.' },
             { property: `obj${newId}_pathAnim_scrollDir`, label: `Object ${newId}: Scroll Direction`, type: 'combobox', values: 'right,left,up,down', default: 'right' },
             { property: `obj${newId}_pathAnim_cycleColors`, label: `Object ${newId}: Cycle Colors`, type: 'boolean', default: 'false' },
             { property: `obj${newId}_pathAnim_cycleSpeed`, label: `Object ${newId}: Color Cycle Speed`, type: 'number', default: '10', min: '0', max: '100' },
             { property: `obj${newId}_pathAnim_trail`, label: `Object ${newId}: Trail`, type: 'combobox', values: 'None,Fade,Solid', default: 'None', description: 'Adds a trail behind the moving object.' },
             { property: `obj${newId}_pathAnim_trailLength`, label: `Object ${newId}: Trail Length`, type: 'number', default: '20', min: '1', max: '200', description: 'The length of the trail.' },
+            { property: `obj${newId}_pathAnim_trailColor`, label: `Object ${newId}: Trail Color`, type: 'combobox', values: 'Inherit,Rainbow', default: 'Inherit', description: 'The color style of the trail.' },
         ];
 
     }
@@ -2932,6 +2957,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const propName = key.substring(prefix.length);
                 try {
                     let value = eval(key);
+
                     if (value === "true") value = true;
                     if (value === "false") value = false;
 
@@ -4916,7 +4942,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const propsToScale = ['x', 'y', 'width', 'height', 'innerDiameter', 'fontSize'];
+        const propsToScale = [
+            'x', 'y', 'width', 'height', 'innerDiameter', 'fontSize',
+            'lineWidth', 'strokeWidth', 'pulseDepth', 'vizLineWidth', 'strimerBlockSize',
+            'pathAnim_size', 'pathAnim_speed', 'pathAnim_objectSpacing', 'pathAnim_trailLength'
+        ];
         propsToScale.forEach(prop => {
             if (state[prop] !== undefined) {
                 state[prop] *= 4;
