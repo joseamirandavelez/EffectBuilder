@@ -242,7 +242,7 @@
                         <p>This is where you manage all the objects and global settings for your effect.</p>
                         <ul>
                             <li><strong>General Settings:</strong> This panel contains properties for your entire effect, such as its Title, Description, and the Global Overrides.</li>
-                            <li><strong>Add New Object:</strong> Use the green button at the bottom to add a new shape to the canvas.</li>
+                            <li><strong>Add New Object / Polyline:</strong> Use the buttons at the bottom to add a new shape or start drawing a new polyline on the canvas.</li>
                             <li><strong>Object Panels:</strong> Each object gets its own collapsible panel, which contains tabbed sections for different property groups (e.g., Geometry, Fill-Animation, Stroke). You can perform several actions here:
                                 <ul>
                                     <li><strong>Rename:</strong> Click the object's name (e.g., "Object 1") to edit it.</li>
@@ -253,6 +253,29 @@
                             </li>
                             <li><strong class="text-warning">Shape-Specific Settings:</strong> The real power of the builder lies in its specialized shapes. When you change an object's <strong>Shape</strong> property, different settings will appear for shapes like Text, Oscilloscope, Strimer, Tetris, Spawner, and more.</li>
                             <li><strong>Strokes:</strong> You can add an outline to most shapes by enabling it in the <strong>Stroke</strong> tab within an object's panel. You can customize its color, thickness, and even apply its own independent animations.</li>
+                        </ul>
+
+                        <h6 class="text-info mt-4">Using the Polyline Shape</h6>
+                        <p>The Polyline is a powerful tool for creating custom paths and advanced animations. It allows you to draw any shape you can imagine directly on the canvas.</p>
+                        <ul>
+                            <li><strong>Drawing a Polyline:</strong>
+                                <ol>
+                                    <li>Click the <strong><i class="bi bi-pen"></i> Add Polyline</strong> button to activate the drawing tool.</li>
+                                    <li>Click on the canvas to place the starting point (node).</li>
+                                    <li>Continue clicking to add more nodes and define your path.</li>
+                                    <li><strong>Double-click</strong> or press <kbd>Enter</kbd> to finish drawing.</li>
+                                </ol>
+                            </li>
+                            <li><strong>Editing Nodes:</strong> After a polyline is created, you can select it and drag its square node handles to adjust the path. <strong>Double-click</strong> on a line segment to add a new node, or <strong>Alt+Click</strong> on an existing node to delete it.</li>
+                            <li><strong>Curve Styles:</strong> In the Polyline tab, you can change the <code>Curve Style</code>:
+                                <ul>
+                                    <li><code>straight</code>: Connects nodes with sharp, straight lines.</li>
+                                    <li><code>loose-curve</code>: Creates a smooth Bézier curve that is influenced by the nodes.</li>
+                                    <li><code>tight-curve</code>: Creates a smooth spline (Catmull-Rom) that passes directly <em>through</em> every node, perfect for defining precise paths.</li>
+                                </ul>
+                            </li>
+                            <li><strong>Path Animation:</strong> In the <strong>Object</strong> tab, you can enable an animation that travels along your polyline. You can control the animated object's shape, size, speed, and even have multiple objects follow the path with custom spacing.</li>
+                            <li><strong>Along-Path Gradients:</strong> In the <strong>Stroke</strong> tab, you can set the <code>Stroke Scroll Direction</code> to <code>along-path</code> or <code>along-path-reversed</code>. This makes the gradient color flow seamlessly along the entire length of your custom path, from start to end or vice-versa.</li>
                         </ul>
 
                         <h6 class="text-info mt-4">The Canvas & Toolbar (Right Panel)</h6>
