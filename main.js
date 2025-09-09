@@ -2073,18 +2073,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 obj.cycleSpeed = (globalCycle.speed || 0) / 50.0;
             }
 
-            // --- START OPTIMIZATION ---
-            // Only update the object's state if it's actually doing something.
-            if (obj.isAnimationActive()) {
-                obj.updateAnimationState(audioData, sensorData, deltaTime);
-            }
+            // Now, update the animation state using the potentially overridden values
+            obj.updateAnimationState(audioData, sensorData, deltaTime);
 
-            // Only draw the object if it's visible on the canvas.
-            if (!obj.isOutsideCanvas()) {
-                obj.draw(selectedObjectIds.includes(obj.id), audioData, palette);
-            }
-            // --- END OPTIMIZATION ---
-
+            // Draw the object
+            obj.draw(selectedObjectIds.includes(obj.id), audioData, palette);
 
             // Restore original properties so the object's true state is preserved
             obj.cycleColors = originalCycleColors;
@@ -5420,13 +5413,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (undoBtn) {
         undoBtn.addEventListener('click', () => {
             const state = appHistory.undo();
-            if (state) restoreState(state);
+            applyHistoryState(state);
         });
     }
     if (redoBtn) {
         redoBtn.addEventListener('click', () => {
             const state = appHistory.redo();
-            if (state) restoreState(state);
+            applyHistoryState(state);
         });
     }
 

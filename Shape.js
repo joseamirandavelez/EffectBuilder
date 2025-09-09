@@ -1571,92 +1571,51 @@ class Shape {
         return this._cachedPathSegments;
     }
 
-    _getPointAndAngleAtDistance(distance, searchHint = null) {
+    _getPointAndAngleAtDistance(distance) {
         const { segments, totalLength } = this._calculatePathSegments();
-        if (totalLength === 0 || segments.length === 0) return { x: 0, y: 0, angle: 0, segIndex: 0 };
+        if (totalLength === 0) return { x: 0, y: 0, angle: 0 };
 
         const d = distance;
         const firstSeg = segments[0];
         const lastSeg = segments[segments.length - 1];
 
-        if (d <= 0) {
+        if (d < 0) {
             const dx = firstSeg.p1.x - firstSeg.p0.x;
             const dy = firstSeg.p1.y - firstSeg.p0.y;
-            return { x: firstSeg.p0.x, y: firstSeg.p0.y, angle: Math.atan2(dy, dx), segIndex: 0 };
+            return { x: firstSeg.p0.x, y: firstSeg.p0.y, angle: Math.atan2(dy, dx) };
         }
-        if (d >= totalLength) {
+        if (d > totalLength) {
             const endPoint = (lastSeg.type === 'line' || lastSeg.type === 'curve') ? lastSeg.p1 : lastSeg.p2;
             const prevPoint = lastSeg.p0;
             const dx = endPoint.x - prevPoint.x;
             const dy = endPoint.y - prevPoint.y;
-            return { x: endPoint.x, y: endPoint.y, angle: Math.atan2(dy, dx), segIndex: segments.length - 1 };
+            return { x: endPoint.x, y: endPoint.y, angle: Math.atan2(dy, dx) };
         }
 
-        let seg = null;
-        let segIndex = -1;
+        for (const seg of segments) {
+            if (d >= seg.startLength && d <= seg.startLength + seg.length) {
+                const localDist = d - seg.startLength;
+                const t = seg.length > 0 ? localDist / seg.length : 0;
+                let p, p_next;
 
-        // Optimization 1: Use the search hint if available
-        if (searchHint && searchHint.lastIndex >= 0 && searchHint.lastIndex < segments.length) {
-            const hintedSeg = segments[searchHint.lastIndex];
-            if (d >= hintedSeg.startLength && d < hintedSeg.startLength + hintedSeg.length) {
-                seg = hintedSeg;
-                segIndex = searchHint.lastIndex;
-            } else if (searchHint.lastIndex > 0) {
-                const prevSeg = segments[searchHint.lastIndex - 1];
-                if (d >= prevSeg.startLength && d < prevSeg.startLength + prevSeg.length) {
-                    seg = prevSeg;
-                    segIndex = searchHint.lastIndex - 1;
+                if (seg.type === 'line') {
+                    p = { x: seg.p0.x + t * (seg.p1.x - seg.p0.x), y: seg.p0.y + t * (seg.p1.y - seg.p0.y) };
+                    p_next = { x: seg.p0.x + (t + 0.01) * (seg.p1.x - seg.p0.x), y: seg.p0.y + (t + 0.01) * (seg.p1.y - seg.p0.y) };
+                } else if (seg.type === 'tight-curve') {
+                    p = this._getPointOnCatmullRomSpline(seg.p0, seg.p1, seg.p2, seg.p3, t);
+                    p_next = this._getPointOnCatmullRomSpline(seg.p0, seg.p1, seg.p2, seg.p3, t + 0.01);
+                } else { // curve (quadratic)
+                    // ... [Original quadratic bézier logic remains unchanged] ...
+                    p = this._getPointOnQuadraticBezier(seg.p0, seg.p1, seg.p2, t);
+                    p_next = this._getPointOnQuadraticBezier(seg.p0, seg.p1, seg.p2, t + 0.01);
                 }
+
+                const dx = p_next.x - p.x;
+                const dy = p_next.y - p.y;
+                return { x: p.x, y: p.y, angle: Math.atan2(dy, dx) };
             }
         }
-
-        // Optimization 2: Binary search if hint fails or is not provided
-        if (seg === null) {
-            let low = 0;
-            let high = segments.length - 1;
-            while (low <= high) {
-                const mid = Math.floor((low + high) / 2);
-                const currentSeg = segments[mid];
-                const nextSeg = segments[mid + 1];
-                if (d >= currentSeg.startLength && (!nextSeg || d < nextSeg.startLength)) {
-                    seg = currentSeg;
-                    segIndex = mid;
-                    break;
-                } else if (d < currentSeg.startLength) {
-                    high = mid - 1;
-                } else {
-                    low = mid + 1;
-                }
-            }
-        }
-
-        if (!seg) {
-             seg = lastSeg;
-             segIndex = segments.length - 1;
-        }
-
-        if (searchHint) {
-            searchHint.lastIndex = segIndex;
-        }
-
-        const localDist = d - seg.startLength;
-        const t = seg.length > 0 ? localDist / seg.length : 0;
-        let p, p_next;
-
-        if (seg.type === 'line') {
-            p = { x: seg.p0.x + t * (seg.p1.x - seg.p0.x), y: seg.p0.y + t * (seg.p1.y - seg.p0.y) };
-            p_next = { x: seg.p0.x + (t + 0.01) * (seg.p1.x - seg.p0.x), y: seg.p0.y + (t + 0.01) * (seg.p1.y - seg.p0.y) };
-        } else if (seg.type === 'tight-curve') {
-            p = this._getPointOnCatmullRomSpline(seg.p0, seg.p1, seg.p2, seg.p3, t);
-            p_next = this._getPointOnCatmullRomSpline(seg.p0, seg.p1, seg.p2, seg.p3, t + 0.01);
-        } else { // 'curve' (quadratic)
-            p = this._getPointOnQuadraticBezier(seg.p0, seg.p1, seg.p2, t);
-            p_next = this._getPointOnQuadraticBezier(seg.p0, seg.p1, seg.p2, t + 0.01);
-        }
-
-        const dx = p_next.x - p.x;
-        const dy = p_next.y - p.y;
-        return { x: p.x, y: p.y, angle: Math.atan2(dy, dx), segIndex: segIndex };
+        return { x: firstSeg.p0.x, y: firstSeg.p0.y, angle: 0 }; // Fallback
     }
 
     _createLocalStrokeStyle(phase = 0) {
@@ -3583,33 +3542,22 @@ class Shape {
                     const baseSize = this.pathAnim_size || 40;
                     const objectCount = Math.max(1, this.pathAnim_objectCount || 1);
                     const spacing = this.pathAnim_objectSpacing || 100;
+                    const trailLength = this.pathAnim_trailLength || 80;
 
                     for (let i = 0; i < objectCount; i++) {
                         const objectDistance = this.pathAnim_distance - (i * spacing);
-                        const searchHint = { lastIndex: -1 };
 
-                        // Draw Leader Object first to establish the initial search hint
-                        const { x, y, angle } = this._getPointAndAngleAtDistance(objectDistance, searchHint);
-
-                        // Draw Trail using the hint from the leader
-                        if (this.pathAnim_trail !== 'None') {
-                            const trailLength = this.pathAnim_trailLength || 80; // This is a pixel distance now
-                            const trailSpacing = 5; // Fixed pixel spacing for visual consistency
-                            const trailSegmentCount = Math.floor(trailLength / trailSpacing);
-
+                        if (this.pathAnim_trail !== 'None' && trailLength > 0) {
+                            const trailSegmentCount = 30;
                             for (let j = 1; j <= trailSegmentCount; j++) {
-                                const trailDist = objectDistance - (j * trailSpacing * this.pathAnim_direction);
-                                if (trailDist < 0) break;
-
-                                // This call is now highly optimized due to the search hint
-                                const trailPoint = this._getPointAndAngleAtDistance(trailDist, searchHint);
                                 const progress = j / trailSegmentCount;
+                                const trailDist = objectDistance - (progress * trailLength * this.pathAnim_direction);
+                                const { x, y, angle } = this._getPointAndAngleAtDistance(trailDist);
                                 const trailSize = baseSize * (1 - progress);
                                 if (trailSize < 1) continue;
-
                                 this.ctx.save();
-                                this.ctx.translate(trailPoint.x, trailPoint.y);
-                                this.ctx.rotate(trailPoint.angle);
+                                this.ctx.translate(x, y);
+                                this.ctx.rotate(angle);
                                 let trailFillStyle;
                                 if (this.pathAnim_trailColor === 'Rainbow') {
                                     const hue = (progress * 360) % 360;
@@ -3625,8 +3573,7 @@ class Shape {
                                 this.ctx.restore();
                             }
                         }
-
-                        // Now draw the leader on top of the trail
+                        const { x, y, angle } = this._getPointAndAngleAtDistance(objectDistance);
                         this.ctx.save();
                         this.ctx.translate(x, y);
                         this.ctx.rotate(angle);
@@ -3766,25 +3713,5 @@ class Shape {
 
             this.ctx.restore();
         }
-    }
-
-    isAnimationActive() {
-        return (this.animationSpeed > 0 || this.cycleColors || this.rotationSpeed !== 0 ||
-            this.strokeAnimationSpeed > 0 || this.strokeCycleColors || this.strokeRotationSpeed !== 0 ||
-            (this.shape === 'oscilloscope' && this.enableWaveAnimation) ||
-            (this.shape === 'tetris' && this.tetrisBlocks.length > 0 && this.tetrisBlocks.some(b => !b.settled || b.life < 1.0)) ||
-            (this.shape === 'fire' || this.shape === 'fire-radial') ||
-            (this.shape === 'spawner' && this.particles.length > 0) ||
-            (this.shape === 'strimer' && (this.strimerAnimationSpeed > 0 || this.strimerPulseSpeed > 0)) ||
-            (this.shape === 'polyline' && this.pathAnim_enable) ||
-            (this.textAnimation !== 'none') ||
-            this.enableAudioReactivity || this.enableSensorReactivity
-        );
-    }
-
-    isOutsideCanvas() {
-        const bounds = getBoundingBox(this);
-        return (bounds.maxX < 0 || bounds.minX > this.ctx.canvas.width ||
-            bounds.maxY < 0 || bounds.minY > this.ctx.canvas.height);
     }
 }
