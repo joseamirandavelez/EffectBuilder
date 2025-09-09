@@ -3598,7 +3598,7 @@ class Shape {
                             const trailSegmentCount = Math.floor(trailLength / trailSpacing);
 
                             for (let j = 1; j <= trailSegmentCount; j++) {
-                                const trailDist = objectDistance - (j * trailSpacing);
+                                const trailDist = objectDistance - (j * trailSpacing * this.pathAnim_direction);
                                 if (trailDist < 0) break;
 
                                 // This call is now highly optimized due to the search hint
@@ -3766,5 +3766,25 @@ class Shape {
 
             this.ctx.restore();
         }
+    }
+
+    isAnimationActive() {
+        return (this.animationSpeed > 0 || this.cycleColors || this.rotationSpeed !== 0 ||
+            this.strokeAnimationSpeed > 0 || this.strokeCycleColors || this.strokeRotationSpeed !== 0 ||
+            (this.shape === 'oscilloscope' && this.enableWaveAnimation) ||
+            (this.shape === 'tetris' && this.tetrisBlocks.length > 0 && this.tetrisBlocks.some(b => !b.settled || b.life < 1.0)) ||
+            (this.shape === 'fire' || this.shape === 'fire-radial') ||
+            (this.shape === 'spawner' && this.particles.length > 0) ||
+            (this.shape === 'strimer' && (this.strimerAnimationSpeed > 0 || this.strimerPulseSpeed > 0)) ||
+            (this.shape === 'polyline' && this.pathAnim_enable) ||
+            (this.textAnimation !== 'none') ||
+            this.enableAudioReactivity || this.enableSensorReactivity
+        );
+    }
+
+    isOutsideCanvas() {
+        const bounds = getBoundingBox(this);
+        return (bounds.maxX < 0 || bounds.minX > this.ctx.canvas.width ||
+            bounds.maxY < 0 || bounds.minY > this.ctx.canvas.height);
     }
 }

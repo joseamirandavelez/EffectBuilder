@@ -5420,13 +5420,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (undoBtn) {
         undoBtn.addEventListener('click', () => {
             const state = appHistory.undo();
-            applyHistoryState(state);
+            if (state) restoreState(state);
         });
     }
     if (redoBtn) {
         redoBtn.addEventListener('click', () => {
             const state = appHistory.redo();
-            applyHistoryState(state);
+            if (state) restoreState(state);
         });
     }
 
