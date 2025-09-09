@@ -3547,14 +3547,22 @@ class Shape {
                     for (let i = 0; i < objectCount; i++) {
                         const objectDistance = this.pathAnim_distance - (i * spacing);
 
+                        // Draw trail
                         if (this.pathAnim_trail !== 'None' && trailLength > 0) {
                             const trailSegmentCount = 30;
                             for (let j = 1; j <= trailSegmentCount; j++) {
                                 const progress = j / trailSegmentCount;
                                 const trailDist = objectDistance - (progress * trailLength * this.pathAnim_direction);
+
+                                // Skip drawing if segment is outside the path's bounds
+                                if (trailDist < 0 || trailDist > totalLength) {
+                                    continue;
+                                }
+
                                 const { x, y, angle } = this._getPointAndAngleAtDistance(trailDist);
                                 const trailSize = baseSize * (1 - progress);
                                 if (trailSize < 1) continue;
+
                                 this.ctx.save();
                                 this.ctx.translate(x, y);
                                 this.ctx.rotate(angle);
@@ -3573,15 +3581,19 @@ class Shape {
                                 this.ctx.restore();
                             }
                         }
-                        const { x, y, angle } = this._getPointAndAngleAtDistance(objectDistance);
-                        this.ctx.save();
-                        this.ctx.translate(x, y);
-                        this.ctx.rotate(angle);
-                        if (this.pathAnim_flashOpacity > 0) { this.ctx.globalAlpha = this.pathAnim_flashOpacity; }
-                        this.ctx.scale(this.pathAnim_internalScale, this.pathAnim_internalScale);
-                        this.ctx.fillStyle = this.pathAnim_colorOverride || this._createFillStyleForSubObject(baseSize);
-                        this._drawSubObject(this.pathAnim_shape, baseSize);
-                        this.ctx.restore();
+
+                        // Draw main object
+                        if (objectDistance >= 0 && objectDistance <= totalLength) {
+                            const { x, y, angle } = this._getPointAndAngleAtDistance(objectDistance);
+                            this.ctx.save();
+                            this.ctx.translate(x, y);
+                            this.ctx.rotate(angle);
+                            if (this.pathAnim_flashOpacity > 0) { this.ctx.globalAlpha = this.pathAnim_flashOpacity; }
+                            this.ctx.scale(this.pathAnim_internalScale, this.pathAnim_internalScale);
+                            this.ctx.fillStyle = this.pathAnim_colorOverride || this._createFillStyleForSubObject(baseSize);
+                            this._drawSubObject(this.pathAnim_shape, baseSize);
+                            this.ctx.restore();
+                        }
                     }
                 }
             } else {
