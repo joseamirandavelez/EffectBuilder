@@ -1846,63 +1846,6 @@ class Shape {
             return pattern;
         }
 
-        if (this.shape === 'polyline' && (this.strokeScrollDir === 'along-path' || this.strokeScrollDir === 'along-path-reversed')) {
-            const { totalLength } = this._calculatePathSegments();
-            if (totalLength <= 0) return c1;
-
-            const tempCanvas = document.createElement('canvas');
-            // Use a fixed height for the gradient texture for consistency.
-            const textureHeight = 20;
-            tempCanvas.width = totalLength;
-            tempCanvas.height = textureHeight;
-            const tempCtx = tempCanvas.getContext('2d');
-
-            // Create a gradient along the width of this temporary canvas.
-            const grad = tempCtx.createLinearGradient(0, 0, totalLength, 0);
-            const animOffset = (this.strokeScrollOffset % 1.0 + 1.0) % 1.0;
-
-            if (this.strokeGradType === 'rainbow') {
-                const numStops = Math.max(2, Math.floor(totalLength / 20)); // Add more stops for longer lines
-                for (let i = 0; i < numStops; i++) {
-                    const fraction = i / (numStops - 1);
-                    const hue = (fraction * 360 + animOffset * 360) % 360;
-                    grad.addColorStop(fraction, `hsl(${hue}, 100%, 50%)`);
-                }
-            } else { // Standard two-color gradient
-                const getPatternColorAtTime = (time) => {
-                    const t = (time % 1.0 + 1.0) % 1.0;
-                    if (gradientStop <= 0.0001) return c2;
-                    if (gradientStop >= 0.9999) return c1;
-                    if (t < gradientStop) return lerpColor(c1, c2, t / gradientStop);
-                    return lerpColor(c2, c1, (t - gradientStop) / (1 - gradientStop));
-                };
-
-                const stops = [
-                    { pos: 0, color: getPatternColorAtTime(0 - animOffset) },
-                    { pos: 1, color: getPatternColorAtTime(1 - animOffset) }
-                ];
-
-                // Add intermediate stops for seamless looping
-                for (let i = -2; i <= 2; i++) {
-                    const c1_pos = i + animOffset;
-                    const c2_pos = i + gradientStop + animOffset;
-                    if (c1_pos > 0 && c1_pos < 1) stops.push({ pos: c1_pos, color: c1 });
-                    if (c2_pos > 0 && c2_pos < 1) stops.push({ pos: c2_pos, color: c2 });
-                }
-
-                stops.sort((a, b) => a.pos - b.pos)
-                     .filter((s, i, self) => i === 0 || s.pos > self[i - 1].pos + 0.0001)
-                     .forEach(s => grad.addColorStop(Math.max(0, Math.min(1, s.pos)), s.color));
-            }
-
-            tempCtx.fillStyle = grad;
-            tempCtx.fillRect(0, 0, totalLength, textureHeight);
-
-            // Create a pattern from this temporary canvas.
-            // This is much more efficient than creating gradients per segment.
-            return this.ctx.createPattern(tempCanvas, 'repeat');
-        }
-
         return c1; // Fallback
     }
 
@@ -3506,50 +3449,138 @@ class Shape {
                 } catch (e) { nodes = []; }
 
                 if (Array.isArray(nodes) && nodes.length >= 2) {
-                    // --- Build the complete path first ---
-                    const path = new Path2D();
-                    const { segments } = this._calculatePathSegments();
-                    if (segments.length > 0) {
-                        const firstSeg = segments[0];
-                        const firstPoint = (firstSeg.type === 'tight-curve') ? firstSeg.p1 : firstSeg.p0;
-                        path.moveTo(firstPoint.x, firstPoint.y);
-
-                        segments.forEach(seg => {
-                            if (seg.type === 'line') {
-                                path.lineTo(seg.p1.x, seg.p1.y);
-                            } else if (seg.type === 'tight-curve') {
-                                const curveDetail = 30;
-                                for (let j = 1; j <= curveDetail; j++) {
-                                    const t = j / curveDetail;
-                                    const point = this._getPointOnCatmullRomSpline(seg.p0, seg.p1, seg.p2, seg.p3, t);
-                                    path.lineTo(point.x, point.y);
-                                }
-                            } else { // 'curve'
-                                path.quadraticCurveTo(seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y);
-                            }
-                        });
-                    }
-
-                    // --- Stroke the path ---
                     if (this.enableStroke) {
                         this.ctx.setLineDash([]);
                         this.ctx.lineWidth = this.strokeWidth;
                         this.ctx.lineCap = 'round';
                         this.ctx.lineJoin = 'round';
-                        this.ctx.strokeStyle = this._createLocalStrokeStyle();
-                        this.ctx.stroke(path);
-                    } else if (typeof engine === 'undefined') {
-                        // Dotted line placeholder logic for the editor
+
+                        if (this.strokeScrollDir === 'along-path' || this.strokeScrollDir === 'along-path-reversed') {
+                            const { segments, totalLength } = this._calculatePathSegments();
+
+                            if (totalLength > 0) {
+                                for (const seg of segments) {
+                                    const startFraction = seg.startLength / totalLength;
+                                    const endFraction = (seg.startLength + seg.length) / totalLength;
+                                    let grad;
+
+                                    if (seg.type === 'line') {
+                                        grad = this.ctx.createLinearGradient(seg.p0.x, seg.p0.y, seg.p1.x, seg.p1.y);
+                                    } else if (seg.type === 'tight-curve') {
+                                        grad = this.ctx.createLinearGradient(seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y);
+                                    } else { // quadratic 'curve'
+                                        grad = this.ctx.createLinearGradient(seg.p0.x, seg.p0.y, seg.p2.x, seg.p2.y);
+                                    }
+
+                                    const animOffset = (this.strokeScrollOffset % 1.0 + 1.0) % 1.0;
+
+                                    if (this.strokeGradType === 'rainbow') {
+                                        // The static gradient is no longer reversed, only the animation.
+                                        const startHue = (startFraction * 360 + animOffset * 360) % 360;
+                                        const endHue = (endFraction * 360 + animOffset * 360) % 360;
+                                        grad.addColorStop(0, `hsl(${startHue}, 100%, 50%)`);
+                                        grad.addColorStop(1, `hsl(${endHue}, 100%, 50%)`);
+                                    } else {
+                                        // The static gradient is no longer reversed, only the animation.
+                                        const c1 = this.strokeGradient.color1;
+                                        const c2 = this.strokeGradient.color2;
+                                        const startColor = lerpColor(c1, c2, (startFraction + animOffset) % 1.0);
+                                        const endColor = lerpColor(c1, c2, (endFraction + animOffset) % 1.0);
+                                        grad.addColorStop(0, startColor);
+                                        grad.addColorStop(1, endColor);
+                                    }
+
+                                    this.ctx.strokeStyle = grad;
+                                    this.ctx.beginPath();
+
+                                    if (seg.type === 'line') {
+                                        this.ctx.moveTo(seg.p0.x, seg.p0.y);
+                                        this.ctx.lineTo(seg.p1.x, seg.p1.y);
+                                    } else if (seg.type === 'tight-curve') {
+                                        this.ctx.moveTo(seg.p1.x, seg.p1.y);
+                                        const curveDetail = 30;
+                                        for (let j = 1; j <= curveDetail; j++) {
+                                            const t = j / curveDetail;
+                                            const point = this._getPointOnCatmullRomSpline(seg.p0, seg.p1, seg.p2, seg.p3, t);
+                                            this.ctx.lineTo(point.x, point.y);
+                                        }
+                                    } else { // quadratic 'curve'
+                                        this.ctx.moveTo(seg.p0.x, seg.p0.y);
+                                        this.ctx.quadraticCurveTo(seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y);
+                                    }
+                                    this.ctx.stroke();
+                                }
+                            }
+                        } else {
+                            // General stroking logic for non-'along-path' styles
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(nodes[0].x - this.width / 2, nodes[0].y - this.height / 2);
+                            if (this.polylineCurveStyle === 'loose-curve' && nodes.length > 2) {
+                                for (let i = 1; i < nodes.length - 1; i++) {
+                                    const xc = (nodes[i].x + nodes[i + 1].x) / 2 - this.width / 2;
+                                    const yc = (nodes[i].y + nodes[i + 1].y) / 2 - this.height / 2;
+                                    this.ctx.quadraticCurveTo(nodes[i].x - this.width / 2, nodes[i].y - this.height / 2, xc, yc);
+                                }
+                                this.ctx.lineTo(nodes[nodes.length - 1].x - this.width / 2, nodes[nodes.length - 1].y - this.height / 2);
+                            } else if (this.polylineCurveStyle === 'tight-curve') {
+                                const curveDetail = 30;
+                                for (let i = 0; i < nodes.length - 1; i++) {
+                                    const p0 = nodes[i === 0 ? i : i - 1];
+                                    const p1 = nodes[i];
+                                    const p2 = nodes[i + 1];
+                                    const p3 = nodes[i === nodes.length - 2 ? i + 1 : i + 2];
+                                    for (let j = 1; j <= curveDetail; j++) {
+                                        const t = j / curveDetail;
+                                        const point = this._getPointOnCatmullRomSpline(p0, p1, p2, p3, t);
+                                        this.ctx.lineTo(point.x - this.width / 2, point.y - this.height / 2);
+                                    }
+                                }
+                            } else { // Straight
+                                for (let i = 1; i < nodes.length; i++) {
+                                    this.ctx.lineTo(nodes[i].x - this.width / 2, nodes[i].y - this.height / 2);
+                                }
+                            }
+                            this.ctx.strokeStyle = this._createLocalStrokeStyle();
+                            this.ctx.stroke();
+                        }
+                    } else if (typeof engine == 'undefined') {
+                        // Dotted line placeholder logic
                         this.ctx.save();
                         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
                         this.ctx.lineWidth = 2;
                         this.ctx.setLineDash([4, 4]);
-                        this.ctx.stroke(path);
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(nodes[0].x - this.width / 2, nodes[0].y - this.height / 2);
+                        if (this.polylineCurveStyle === 'loose-curve' && nodes.length > 2) {
+                            for (let i = 1; i < nodes.length - 1; i++) {
+                                const xc = (nodes[i].x + nodes[i + 1].x) / 2 - this.width / 2;
+                                const yc = (nodes[i].y + nodes[i + 1].y) / 2 - this.height / 2;
+                                this.ctx.quadraticCurveTo(nodes[i].x - this.width / 2, nodes[i].y - this.height / 2, xc, yc);
+                            }
+                            this.ctx.lineTo(nodes[nodes.length - 1].x - this.width / 2, nodes[nodes.length - 1].y - this.height / 2);
+                        } else if (this.polylineCurveStyle === 'tight-curve') {
+                            const curveDetail = 30;
+                            for (let i = 0; i < nodes.length - 1; i++) {
+                                const p0 = nodes[i === 0 ? i : i - 1];
+                                const p1 = nodes[i];
+                                const p2 = nodes[i + 1];
+                                const p3 = nodes[i === nodes.length - 2 ? i + 1 : i + 2];
+                                for (let j = 1; j <= curveDetail; j++) {
+                                    const t = j / curveDetail;
+                                    const point = this._getPointOnCatmullRomSpline(p0, p1, p2, p3, t);
+                                    this.ctx.lineTo(point.x - this.width / 2, point.y - this.height / 2);
+                                }
+                            }
+                        } else { // Straight
+                            for (let i = 1; i < nodes.length; i++) {
+                                this.ctx.lineTo(nodes[i].x - this.width / 2, nodes[i].y - this.height / 2);
+                            }
+                        }
+                        this.ctx.stroke();
                         this.ctx.restore();
                     }
                 }
 
-                // --- Animate object along the path ---
                 if (this.pathAnim_enable) {
                     const { totalLength } = this._calculatePathSegments();
                     if (totalLength <= 0) return;
