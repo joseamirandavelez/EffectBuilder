@@ -180,6 +180,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const contentDiv = document.createElement('div');
             contentDiv.className = 'd-flex align-items-center flex-grow-1 me-2';
             contentDiv.style.minWidth = '0';
+            const viewCount = project.viewCount || 0;
+            const downloadCount = project.downloadCount || 0;
+
             contentDiv.innerHTML = `
                 ${project.thumbnail ? `<a href="./?effectId=${project.docId}"><img src="${project.thumbnail}" style="width: 160px; height: 100px; object-fit: cover;" class="rounded border me-4"></a>` : ''}
                 <div style="min-width: 0;">
@@ -188,6 +191,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <p class="mb-0 mt-1 small text-body-secondary" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${description}">
                         ${description}
                     </p>
+                    <div class="mt-2 small text-body-secondary">
+                        <span class="me-3" title="Views"><i class="bi bi-eye-fill me-1"></i>${viewCount}</span>
+                        <span title="Downloads"><i class="bi bi-download me-1"></i>${downloadCount}</span>
+                    </div>
                 </div>
             `;
             li.appendChild(contentDiv);
