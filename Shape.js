@@ -557,6 +557,7 @@ class Shape {
         // State variables for the sub-object's fill animation
         this.pathAnim_hue1 = 0;
         this.pathAnim_scrollOffset = 0;
+        this.pathAnim_extraRotation = 0;
 
         // State variables for the animation
         this._cachedPathSegments = null; // To store path calculations for performance
@@ -866,6 +867,7 @@ class Shape {
         // Reset all reactive properties
         this.internalScale = 1.0; this.colorOverride = null; this.flashOpacity = 0;
         this.pathAnim_internalScale = 1.0; this.pathAnim_colorOverride = null; this.pathAnim_flashOpacity = 0;
+        this.pathAnim_extraRotation = 0;
 
         // Decay flash
         if (this.flashDecay > 0) { this.flashDecay -= 0.1; }
@@ -889,35 +891,37 @@ class Shape {
         }
         reactiveValue = this.flashDecay;
 
-        const target = this.pathAnim_enable ? 'path' : 'shape';
+        const isPathAnim = this.pathAnim_enable;
 
         switch (this.audioTarget) {
             case 'Flash':
                 if (reactiveValue > 0) {
+                    // Affects main stroke AND path anim object
                     this.colorOverride = '#FFFFFF';
                     this.flashOpacity = Math.min(1.0, reactiveValue);
-                    if (target === 'path') {
+                    if (isPathAnim) {
                         this.pathAnim_colorOverride = '#FFFFFF';
                         this.pathAnim_flashOpacity = Math.min(1.0, reactiveValue);
                     }
                 }
                 break;
             case 'Size':
-                this.internalScale = 1.0 + reactiveValue;
-                if (target === 'path') {
+                if (isPathAnim) {
                     this.pathAnim_internalScale = 1.0 + reactiveValue;
-                }
-                break;
-            case 'Path Speed':
-                // This only affects the path animation, so no 'else' is needed.
-                if (reactiveValue > 0) {
-                    this.pathAnim_speedBurst = reactiveValue;
+                } else {
+                    this.internalScale = 1.0 + reactiveValue;
                 }
                 break;
             case 'Rotation':
-                // Only affects the main shape
-                if (target === 'shape') {
+                if (isPathAnim) {
+                    this.pathAnim_extraRotation = reactiveValue * 360 * (Math.random() < 0.5 ? -1 : 1);
+                } else {
                     this.animationAngle = this.baseAnimationAngle + ((Math.random() < 0.5 ? -1 : 1) * reactiveValue * 30);
+                }
+                break;
+            case 'Path Speed':
+                if (isPathAnim && reactiveValue > 0) {
+                    this.pathAnim_speedBurst = reactiveValue;
                 }
                 break;
         }
@@ -3577,7 +3581,9 @@ class Shape {
                                 this.ctx.translate(x, y);
                                 this.ctx.rotate(angle);
                                 let trailFillStyle;
-                                if (this.pathAnim_trailColor === 'Rainbow') {
+                                if (this.pathAnim_colorOverride) {
+                                    trailFillStyle = this.pathAnim_colorOverride;
+                                } else if (this.pathAnim_trailColor === 'Rainbow') {
                                     const hue = (progress * 360) % 360;
                                     trailFillStyle = `hsl(${hue}, 100%, 50%)`;
                                 } else {
@@ -3597,7 +3603,7 @@ class Shape {
                             const { x, y, angle } = this._getPointAndAngleAtDistance(objectDistance);
                             this.ctx.save();
                             this.ctx.translate(x, y);
-                            this.ctx.rotate(angle);
+                            this.ctx.rotate(angle + this.pathAnim_extraRotation);
                             if (this.pathAnim_flashOpacity > 0) { this.ctx.globalAlpha = this.pathAnim_flashOpacity; }
                             this.ctx.scale(this.pathAnim_internalScale, this.pathAnim_internalScale);
                             this.ctx.fillStyle = this.pathAnim_colorOverride || this._createFillStyleForSubObject(baseSize);
