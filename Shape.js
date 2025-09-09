@@ -2662,23 +2662,38 @@ class Shape {
             const baseSpeed = this.pathAnim_speed || 0;
             const burstSpeed = this.pathAnim_speedBurst * 500;
             const finalSpeed = baseSpeed + burstSpeed;
-            this.pathAnim_distance += finalSpeed * deltaTime * this.pathAnim_direction;
 
-            if (this.pathAnim_behavior === 'Ping-Pong') {
-                if (this.pathAnim_direction === 1 && (this.pathAnim_distance - swarmLength) >= totalLength) {
-                    this.pathAnim_distance = totalLength + swarmLength;
-                    this.pathAnim_direction = -1;
-                } else if (this.pathAnim_direction === -1 && this.pathAnim_distance < 0) {
-                    this.pathAnim_distance = 0;
-                    this.pathAnim_direction = 1;
+            // Only update distance and history if the object is actually moving
+            if (finalSpeed > 0) {
+                this.pathAnim_distance += finalSpeed * deltaTime * this.pathAnim_direction;
+
+                if (this.pathAnim_behavior === 'Ping-Pong') {
+                    if (this.pathAnim_direction === 1 && (this.pathAnim_distance - swarmLength) >= totalLength) {
+                        this.pathAnim_distance = totalLength + swarmLength;
+                        this.pathAnim_direction = -1;
+                    } else if (this.pathAnim_direction === -1 && this.pathAnim_distance < 0) {
+                        this.pathAnim_distance = 0;
+                        this.pathAnim_direction = 1;
+                    }
+                } else if (this.pathAnim_behavior === 'Loop') {
+                    const loopDistance = totalLength + swarmLength;
+                    if (this.pathAnim_distance > loopDistance) {
+                        this.pathAnim_distance -= loopDistance;
+                    }
                 }
-            } else if (this.pathAnim_behavior === 'Loop') {
-                const loopDistance = totalLength + swarmLength;
-                if (this.pathAnim_distance > loopDistance) {
-                    this.pathAnim_distance -= loopDistance;
+
+                this.pathAnim_speedBurst *= 0.95; // Decay the burst speed
+
+                // Add the current leader position to the history for the trail
+                const { x, y, angle } = this._getPointAndAngleAtDistance(this.pathAnim_distance);
+                this.pathAnim_history.unshift({ x, y, angle });
+
+                // Trim the history to the desired trail length
+                const trailLength = this.pathAnim_trailLength || 80;
+                if (this.pathAnim_history.length > trailLength) {
+                    this.pathAnim_history.length = Math.ceil(trailLength);
                 }
             }
-            this.pathAnim_speedBurst *= 0.95;
 
             const pathAnimSpeed = (this.pathAnim_animationSpeed || 0) * deltaTime;
             const pathCycleSpeed = (this.pathAnim_cycleSpeed || 0) * deltaTime;
@@ -2686,12 +2701,7 @@ class Shape {
             const increment = pathAnimSpeed * 0.025;
             const directionMultiplier = (this.pathAnim_scrollDir === 'left' || this.pathAnim_scrollDir === 'up') ? -1 : 1;
             this.pathAnim_scrollOffset += increment * directionMultiplier;
-            const { x, y, angle } = this._getPointAndAngleAtDistance(this.pathAnim_distance);
-            this.pathAnim_history.unshift({ x, y, angle });
-            const trailLength = this.pathAnim_trailLength || 80;
-            if (this.pathAnim_history.length > trailLength) {
-                this.pathAnim_history.length = Math.ceil(trailLength);
-            }
+
         } else if (this.shape === 'polyline') {
             this.pathAnim_history = [];
         }
@@ -3588,22 +3598,27 @@ class Shape {
                     const baseSize = this.pathAnim_size || 40;
                     const objectCount = Math.max(1, this.pathAnim_objectCount || 1);
                     const spacing = this.pathAnim_objectSpacing || 100;
-                    const trailLength = this.pathAnim_trailLength || 80;
 
+                    // --- Leader and Trail Drawing ---
                     for (let i = 0; i < objectCount; i++) {
                         const objectDistance = this.pathAnim_distance - (i * spacing);
 
-                        if (this.pathAnim_trail !== 'None' && trailLength > 0) {
-                            const trailSegmentCount = 30;
-                            for (let j = 1; j <= trailSegmentCount; j++) {
-                                const progress = j / trailSegmentCount;
-                                const trailDist = objectDistance - (progress * trailLength * this.pathAnim_direction);
-                                const { x, y, angle } = this._getPointAndAngleAtDistance(trailDist);
+                        // Draw Trail using pre-calculated history
+                        if (this.pathAnim_trail !== 'None' && this.pathAnim_history && this.pathAnim_history.length > 1) {
+                            const history = this.pathAnim_history;
+                            const trailLength = history.length;
+
+                            for (let j = 1; j < trailLength; j++) { // Start from 1 to not draw over the leader
+                                const point = history[j];
+                                const progress = j / trailLength;
+
                                 const trailSize = baseSize * (1 - progress);
                                 if (trailSize < 1) continue;
+
                                 this.ctx.save();
-                                this.ctx.translate(x, y);
-                                this.ctx.rotate(angle);
+                                this.ctx.translate(point.x, point.y);
+                                this.ctx.rotate(point.angle);
+
                                 let trailFillStyle;
                                 if (this.pathAnim_trailColor === 'Rainbow') {
                                     const hue = (progress * 360) % 360;
@@ -3612,13 +3627,17 @@ class Shape {
                                     trailFillStyle = this._createFillStyleForSubObject(trailSize);
                                 }
                                 this.ctx.fillStyle = trailFillStyle;
+
                                 if (this.pathAnim_trail === 'Fade') {
                                     this.ctx.globalAlpha = (1 - progress) * 0.7;
                                 }
+
                                 this._drawSubObject(this.pathAnim_shape, trailSize);
                                 this.ctx.restore();
                             }
                         }
+
+                        // Draw Leader Object
                         const { x, y, angle } = this._getPointAndAngleAtDistance(objectDistance);
                         this.ctx.save();
                         this.ctx.translate(x, y);
