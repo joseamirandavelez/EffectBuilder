@@ -295,7 +295,7 @@ class Shape {
         seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation,
         strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel,
         strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed,
-        strimerSnakeProgress, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed,
+        strimerSnakeProgress, sensorColorMode, sensorMidThreshold, sensorMaxThreshold, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed,
         spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path,
         spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixEnableGlow, spawn_glowSize, spawn_matrixGlowSize, spawn_enableTrail,
         spawn_trailLength, spawn_audioTarget, spawn_trailSpacing, polylineNodes, polylineCurveStyle, pathAnim_enable, pathAnim_shape, pathAnim_size,
@@ -486,7 +486,9 @@ class Shape {
         this.strimerSnakeDirection = 'Vertical';
         this.strimerAnimationSpeed = strimerAnimationSpeed || 20;
         this.strimerSnakeProgress = strimerSnakeProgress || 0;
-        this.sensorMeterColorGradient = sensorMeterColorGradient || false;
+        this.sensorColorMode = sensorColorMode || 'None';
+        this.sensorMidThreshold = sensorMidThreshold || 50;
+        this.sensorMaxThreshold = sensorMaxThreshold || 90;
         this.spawn_audioTarget = spawn_audioTarget || 'none';
 
         // Spawner
@@ -934,8 +936,17 @@ class Shape {
                 const fillHeight = this.height * this.sensorMeterFill;
                 const fillY = this.height / 2 - fillHeight;
 
-                // NEW: Gradient coloring based on value
-                if (this.sensorMeterColorGradient) {
+                if (this.sensorColorMode === 'Thresholds') {
+                    const mid = this.sensorMidThreshold;
+                    const max = this.sensorMaxThreshold;
+                    if (this.sensorRawValue >= max) {
+                        this.ctx.fillStyle = "#ff0000"; // "Red"
+                    } else if (this.sensorRawValue >= mid) {
+                        this.ctx.fillStyle = "#ffa500"; // "Orange"
+                    } else {
+                        this.ctx.fillStyle = '#00ff00'; // Green
+                    }
+                } else if (this.sensorColorMode === 'Value-Based Gradient') {
                     let color;
                     if (this.sensorMeterFill < 0.5) {
                         color = lerpColor("#00ff00", "#ffa500", this.sensorMeterFill * 2);
@@ -954,13 +965,13 @@ class Shape {
             if (this.sensorMeterShowValue) {
                 const fontSize = Math.max(10, Math.round(this.width / 3));
                 this.ctx.font = `bold ${fontSize}px Arial`;
-                this.ctx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
+                this.ctx.fillStyle = this.sensorColorMode === 'Thresholds' ? '#FFFFFF' : (this.gradient.color2 || '#FFFFFF');
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'middle';
                 this.ctx.fillText(this.sensorRawValue.toFixed(1), 0, 0); // Display value with one decimal
 
                 this.ctx.font = `bold ${fontSize / 3}px Arial`;
-                this.ctx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
+                this.ctx.fillStyle = this.sensorColorMode === 'Thresholds' ? '#FFFFFF' : (this.gradient.color2 || '#FFFFFF');
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'middle';
                 this.ctx.fillText(this.userSensor, 0, -fontSize / 1.5); // Display value with one decimal
