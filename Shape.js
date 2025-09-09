@@ -1621,18 +1621,18 @@ class Shape {
 
     _getPointAndAngleAtDistance(distance) {
         const { segments, totalLength } = this._calculatePathSegments();
-        if (totalLength === 0) return { x: 0, y: 0, angle: 0 };
+        if (totalLength === 0 || segments.length === 0) return { x: 0, y: 0, angle: 0 };
 
         const d = distance;
         const firstSeg = segments[0];
         const lastSeg = segments[segments.length - 1];
 
-        if (d < 0) {
+        if (d <= 0) {
             const dx = firstSeg.p1.x - firstSeg.p0.x;
             const dy = firstSeg.p1.y - firstSeg.p0.y;
             return { x: firstSeg.p0.x, y: firstSeg.p0.y, angle: Math.atan2(dy, dx) };
         }
-        if (d > totalLength) {
+        if (d >= totalLength) {
             const endPoint = (lastSeg.type === 'line' || lastSeg.type === 'curve') ? lastSeg.p1 : lastSeg.p2;
             const prevPoint = lastSeg.p0;
             const dx = endPoint.x - prevPoint.x;
@@ -1640,30 +1640,49 @@ class Shape {
             return { x: endPoint.x, y: endPoint.y, angle: Math.atan2(dy, dx) };
         }
 
-        for (const seg of segments) {
-            if (d >= seg.startLength && d <= seg.startLength + seg.length) {
-                const localDist = d - seg.startLength;
-                const t = seg.length > 0 ? localDist / seg.length : 0;
-                let p, p_next;
+        // --- OPTIMIZATION: Binary search for the correct segment ---
+        let low = 0;
+        let high = segments.length - 1;
+        let seg = null;
 
-                if (seg.type === 'line') {
-                    p = { x: seg.p0.x + t * (seg.p1.x - seg.p0.x), y: seg.p0.y + t * (seg.p1.y - seg.p0.y) };
-                    p_next = { x: seg.p0.x + (t + 0.01) * (seg.p1.x - seg.p0.x), y: seg.p0.y + (t + 0.01) * (seg.p1.y - seg.p0.y) };
-                } else if (seg.type === 'tight-curve') {
-                    p = this._getPointOnCatmullRomSpline(seg.p0, seg.p1, seg.p2, seg.p3, t);
-                    p_next = this._getPointOnCatmullRomSpline(seg.p0, seg.p1, seg.p2, seg.p3, t + 0.01);
-                } else { // curve (quadratic)
-                    // ... [Original quadratic bézier logic remains unchanged] ...
-                    p = this._getPointOnQuadraticBezier(seg.p0, seg.p1, seg.p2, t);
-                    p_next = this._getPointOnQuadraticBezier(seg.p0, seg.p1, seg.p2, t + 0.01);
-                }
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const currentSeg = segments[mid];
+            const nextSeg = segments[mid + 1];
 
-                const dx = p_next.x - p.x;
-                const dy = p_next.y - p.y;
-                return { x: p.x, y: p.y, angle: Math.atan2(dy, dx) };
+            if (d >= currentSeg.startLength && (!nextSeg || d < nextSeg.startLength)) {
+                seg = currentSeg;
+                break;
+            } else if (d < currentSeg.startLength) {
+                high = mid - 1;
+            } else {
+                low = mid + 1;
             }
         }
-        return { x: firstSeg.p0.x, y: firstSeg.p0.y, angle: 0 }; // Fallback
+
+        if (!seg) {
+             seg = lastSeg; // Fallback in case something goes wrong
+        }
+
+        // --- Calculate point on the found segment ---
+        const localDist = d - seg.startLength;
+        const t = seg.length > 0 ? localDist / seg.length : 0;
+        let p, p_next;
+
+        if (seg.type === 'line') {
+            p = { x: seg.p0.x + t * (seg.p1.x - seg.p0.x), y: seg.p0.y + t * (seg.p1.y - seg.p0.y) };
+            p_next = { x: seg.p0.x + (t + 0.01) * (seg.p1.x - seg.p0.x), y: seg.p0.y + (t + 0.01) * (seg.p1.y - seg.p0.y) };
+        } else if (seg.type === 'tight-curve') {
+            p = this._getPointOnCatmullRomSpline(seg.p0, seg.p1, seg.p2, seg.p3, t);
+            p_next = this._getPointOnCatmullRomSpline(seg.p0, seg.p1, seg.p2, seg.p3, t + 0.01);
+        } else { // 'curve' (quadratic)
+            p = this._getPointOnQuadraticBezier(seg.p0, seg.p1, seg.p2, t);
+            p_next = this._getPointOnQuadraticBezier(seg.p0, seg.p1, seg.p2, t + 0.01);
+        }
+
+        const dx = p_next.x - p.x;
+        const dy = p_next.y - p.y;
+        return { x: p.x, y: p.y, angle: Math.atan2(dy, dx) };
     }
 
     _createLocalStrokeStyle(phase = 0) {
@@ -2686,12 +2705,18 @@ class Shape {
 
                 // Add the current leader position to the history for the trail
                 const { x, y, angle } = this._getPointAndAngleAtDistance(this.pathAnim_distance);
-                this.pathAnim_history.unshift({ x, y, angle });
+                this.pathAnim_history.unshift({ x, y, angle, distance: this.pathAnim_distance });
 
-                // Trim the history to the desired trail length
-                const trailLength = this.pathAnim_trailLength || 80;
-                if (this.pathAnim_history.length > trailLength) {
-                    this.pathAnim_history.length = Math.ceil(trailLength);
+                // Trim the history. It needs to be long enough to cover the full swarm + one trail length.
+                // We estimate the number of points needed based on an average spacing of 5 pixels per point.
+                const trailLengthInPixels = (this.pathAnim_trailLength || 80) * 5;
+                const requiredHistoryDistance = swarmLength + trailLengthInPixels;
+
+                // Find the first point in history that is outside our required distance
+                const cutoffIndex = this.pathAnim_history.findIndex(p => (this.pathAnim_distance - p.distance) > requiredHistoryDistance);
+
+                if (cutoffIndex !== -1) {
+                    this.pathAnim_history.length = cutoffIndex;
                 }
             }
 
@@ -3606,11 +3631,24 @@ class Shape {
                         // Draw Trail using pre-calculated history
                         if (this.pathAnim_trail !== 'None' && this.pathAnim_history && this.pathAnim_history.length > 1) {
                             const history = this.pathAnim_history;
-                            const trailLength = history.length;
+                            const trailPointCount = this.pathAnim_trailLength || 80;
 
-                            for (let j = 1; j < trailLength; j++) { // Start from 1 to not draw over the leader
-                                const point = history[j];
-                                const progress = j / trailLength;
+                            // Find the starting point in history for this specific object's trail
+                            let startIndex = 0;
+                            for (let k = 0; k < history.length; k++) {
+                                if (history[k].distance <= objectDistance) {
+                                    startIndex = k;
+                                    break;
+                                }
+                            }
+
+                            // Draw the trail for this object from the found start point
+                            const trailPointsToDraw = Math.min(trailPointCount, history.length - startIndex -1);
+
+                            for (let j = 1; j < trailPointsToDraw; j++) {
+                                const point = history[startIndex + j];
+                                if (!point) continue;
+                                const progress = j / trailPointsToDraw;
 
                                 const trailSize = baseSize * (1 - progress);
                                 if (trailSize < 1) continue;
