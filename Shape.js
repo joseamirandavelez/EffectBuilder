@@ -1123,29 +1123,6 @@ class Shape {
         return { x: center.x + rotatedX, y: center.y + rotatedY };
     }
 
-    getBoundingBox() {
-        const corners = [
-            this.getWorldCoordsOfCorner('top-left'),
-            this.getWorldCoordsOfCorner('top-right'),
-            this.getWorldCoordsOfCorner('bottom-right'),
-            this.getWorldCoordsOfCorner('bottom-left')
-        ];
-        return {
-            minX: Math.min(...corners.map(c => c.x)),
-            minY: Math.min(...corners.map(c => c.y)),
-            maxX: Math.max(...corners.map(c => c.x)),
-            maxY: Math.max(...corners.map(c => c.y)),
-        };
-    }
-
-    isOutsideCanvas() {
-        if (!this.ctx || !this.ctx.canvas) return false; // Failsafe
-        const box = this.getBoundingBox();
-        const canvas = this.ctx.canvas;
-        // Return true if the bounding box is completely outside the canvas
-        return box.maxX < 0 || box.minX > canvas.width || box.maxY < 0 || box.minY > canvas.height;
-    }
-
     getHandleAtPoint(px, py) {
         if (this.locked) return null;
 
@@ -1358,31 +1335,6 @@ class Shape {
         }
 
         return false;
-    }
-
-    isAnimationActive() {
-        // Generic checks for any animation that costs performance
-        if (this.animationSpeed > 0 || this.cycleSpeed > 0 || this.rotationSpeed > 0 || this.strokeAnimationSpeed > 0 || this.strokeCycleSpeed > 0 || this.strokeRotationSpeed > 0 || this.oscAnimationSpeed > 0) {
-            return true;
-        }
-
-        // Shape-specific checks for animations that don't rely on the generic speed properties
-        switch (this.shape) {
-            case 'spawner':
-            case 'fire':
-            case 'fire-radial':
-                return this.particles.length > 0;
-            case 'tetris':
-                return this.tetrisBlocks.length > 0;
-            case 'audio-visualizer':
-                return true; // Always needs to process audio data
-            case 'text':
-                return this.textAnimation === 'marquee' || this.textAnimation === 'typewriter' || this.textAnimation === 'wave';
-            case 'polyline':
-                return this.pathAnim_enable && this.pathAnim_speed > 0;
-            default:
-                return false;
-        }
     }
 
     update(props) {
@@ -1619,9 +1571,9 @@ class Shape {
         return this._cachedPathSegments;
     }
 
-    _getPointAndAngleAtDistance(distance) {
+    _getPointAndAngleAtDistance(distance, searchHint = null) {
         const { segments, totalLength } = this._calculatePathSegments();
-        if (totalLength === 0 || segments.length === 0) return { x: 0, y: 0, angle: 0 };
+        if (totalLength === 0 || segments.length === 0) return { x: 0, y: 0, angle: 0, segIndex: 0 };
 
         const d = distance;
         const firstSeg = segments[0];
@@ -1630,41 +1582,63 @@ class Shape {
         if (d <= 0) {
             const dx = firstSeg.p1.x - firstSeg.p0.x;
             const dy = firstSeg.p1.y - firstSeg.p0.y;
-            return { x: firstSeg.p0.x, y: firstSeg.p0.y, angle: Math.atan2(dy, dx) };
+            return { x: firstSeg.p0.x, y: firstSeg.p0.y, angle: Math.atan2(dy, dx), segIndex: 0 };
         }
         if (d >= totalLength) {
             const endPoint = (lastSeg.type === 'line' || lastSeg.type === 'curve') ? lastSeg.p1 : lastSeg.p2;
             const prevPoint = lastSeg.p0;
             const dx = endPoint.x - prevPoint.x;
             const dy = endPoint.y - prevPoint.y;
-            return { x: endPoint.x, y: endPoint.y, angle: Math.atan2(dy, dx) };
+            return { x: endPoint.x, y: endPoint.y, angle: Math.atan2(dy, dx), segIndex: segments.length - 1 };
         }
 
-        // --- OPTIMIZATION: Binary search for the correct segment ---
-        let low = 0;
-        let high = segments.length - 1;
         let seg = null;
+        let segIndex = -1;
 
-        while (low <= high) {
-            const mid = Math.floor((low + high) / 2);
-            const currentSeg = segments[mid];
-            const nextSeg = segments[mid + 1];
+        // Optimization 1: Use the search hint if available
+        if (searchHint && searchHint.lastIndex >= 0 && searchHint.lastIndex < segments.length) {
+            const hintedSeg = segments[searchHint.lastIndex];
+            if (d >= hintedSeg.startLength && d < hintedSeg.startLength + hintedSeg.length) {
+                seg = hintedSeg;
+                segIndex = searchHint.lastIndex;
+            } else if (searchHint.lastIndex > 0) {
+                const prevSeg = segments[searchHint.lastIndex - 1];
+                if (d >= prevSeg.startLength && d < prevSeg.startLength + prevSeg.length) {
+                    seg = prevSeg;
+                    segIndex = searchHint.lastIndex - 1;
+                }
+            }
+        }
 
-            if (d >= currentSeg.startLength && (!nextSeg || d < nextSeg.startLength)) {
-                seg = currentSeg;
-                break;
-            } else if (d < currentSeg.startLength) {
-                high = mid - 1;
-            } else {
-                low = mid + 1;
+        // Optimization 2: Binary search if hint fails or is not provided
+        if (seg === null) {
+            let low = 0;
+            let high = segments.length - 1;
+            while (low <= high) {
+                const mid = Math.floor((low + high) / 2);
+                const currentSeg = segments[mid];
+                const nextSeg = segments[mid + 1];
+                if (d >= currentSeg.startLength && (!nextSeg || d < nextSeg.startLength)) {
+                    seg = currentSeg;
+                    segIndex = mid;
+                    break;
+                } else if (d < currentSeg.startLength) {
+                    high = mid - 1;
+                } else {
+                    low = mid + 1;
+                }
             }
         }
 
         if (!seg) {
-             seg = lastSeg; // Fallback in case something goes wrong
+             seg = lastSeg;
+             segIndex = segments.length - 1;
         }
 
-        // --- Calculate point on the found segment ---
+        if (searchHint) {
+            searchHint.lastIndex = segIndex;
+        }
+
         const localDist = d - seg.startLength;
         const t = seg.length > 0 ? localDist / seg.length : 0;
         let p, p_next;
@@ -1682,7 +1656,7 @@ class Shape {
 
         const dx = p_next.x - p.x;
         const dy = p_next.y - p.y;
-        return { x: p.x, y: p.y, angle: Math.atan2(dy, dx) };
+        return { x: p.x, y: p.y, angle: Math.atan2(dy, dx), segIndex: segIndex };
     }
 
     _createLocalStrokeStyle(phase = 0) {
@@ -2681,44 +2655,23 @@ class Shape {
             const baseSpeed = this.pathAnim_speed || 0;
             const burstSpeed = this.pathAnim_speedBurst * 500;
             const finalSpeed = baseSpeed + burstSpeed;
+            this.pathAnim_distance += finalSpeed * deltaTime * this.pathAnim_direction;
 
-            // Only update distance and history if the object is actually moving
-            if (finalSpeed > 0) {
-                this.pathAnim_distance += finalSpeed * deltaTime * this.pathAnim_direction;
-
-                if (this.pathAnim_behavior === 'Ping-Pong') {
-                    if (this.pathAnim_direction === 1 && (this.pathAnim_distance - swarmLength) >= totalLength) {
-                        this.pathAnim_distance = totalLength + swarmLength;
-                        this.pathAnim_direction = -1;
-                    } else if (this.pathAnim_direction === -1 && this.pathAnim_distance < 0) {
-                        this.pathAnim_distance = 0;
-                        this.pathAnim_direction = 1;
-                    }
-                } else if (this.pathAnim_behavior === 'Loop') {
-                    const loopDistance = totalLength + swarmLength;
-                    if (this.pathAnim_distance > loopDistance) {
-                        this.pathAnim_distance -= loopDistance;
-                    }
+            if (this.pathAnim_behavior === 'Ping-Pong') {
+                if (this.pathAnim_direction === 1 && (this.pathAnim_distance - swarmLength) >= totalLength) {
+                    this.pathAnim_distance = totalLength + swarmLength;
+                    this.pathAnim_direction = -1;
+                } else if (this.pathAnim_direction === -1 && this.pathAnim_distance < 0) {
+                    this.pathAnim_distance = 0;
+                    this.pathAnim_direction = 1;
                 }
-
-                this.pathAnim_speedBurst *= 0.95; // Decay the burst speed
-
-                // Add the current leader position to the history for the trail
-                const { x, y, angle } = this._getPointAndAngleAtDistance(this.pathAnim_distance);
-                this.pathAnim_history.unshift({ x, y, angle, distance: this.pathAnim_distance });
-
-                // Trim the history. It needs to be long enough to cover the full swarm + one trail length.
-                // We estimate the number of points needed based on an average spacing of 5 pixels per point.
-                const trailLengthInPixels = (this.pathAnim_trailLength || 80) * 5;
-                const requiredHistoryDistance = swarmLength + trailLengthInPixels;
-
-                // Find the first point in history that is outside our required distance
-                const cutoffIndex = this.pathAnim_history.findIndex(p => (this.pathAnim_distance - p.distance) > requiredHistoryDistance);
-
-                if (cutoffIndex !== -1) {
-                    this.pathAnim_history.length = cutoffIndex;
+            } else if (this.pathAnim_behavior === 'Loop') {
+                const loopDistance = totalLength + swarmLength;
+                if (this.pathAnim_distance > loopDistance) {
+                    this.pathAnim_distance -= loopDistance;
                 }
             }
+            this.pathAnim_speedBurst *= 0.95;
 
             const pathAnimSpeed = (this.pathAnim_animationSpeed || 0) * deltaTime;
             const pathCycleSpeed = (this.pathAnim_cycleSpeed || 0) * deltaTime;
@@ -2726,7 +2679,12 @@ class Shape {
             const increment = pathAnimSpeed * 0.025;
             const directionMultiplier = (this.pathAnim_scrollDir === 'left' || this.pathAnim_scrollDir === 'up') ? -1 : 1;
             this.pathAnim_scrollOffset += increment * directionMultiplier;
-
+            const { x, y, angle } = this._getPointAndAngleAtDistance(this.pathAnim_distance);
+            this.pathAnim_history.unshift({ x, y, angle });
+            const trailLength = this.pathAnim_trailLength || 80;
+            if (this.pathAnim_history.length > trailLength) {
+                this.pathAnim_history.length = Math.ceil(trailLength);
+            }
         } else if (this.shape === 'polyline') {
             this.pathAnim_history = [];
         }
@@ -3477,6 +3435,8 @@ class Shape {
                 }
                 // In Shape.js, inside the draw method, replace the entire polyline block.
 
+            // In Shape.js, inside the draw method, replace the entire polyline block.
+
             } else if (this.shape === 'polyline') {
                 let nodes;
                 try {
@@ -3624,39 +3584,32 @@ class Shape {
                     const objectCount = Math.max(1, this.pathAnim_objectCount || 1);
                     const spacing = this.pathAnim_objectSpacing || 100;
 
-                    // --- Leader and Trail Drawing ---
                     for (let i = 0; i < objectCount; i++) {
                         const objectDistance = this.pathAnim_distance - (i * spacing);
+                        const searchHint = { lastIndex: -1 };
 
-                        // Draw Trail using pre-calculated history
-                        if (this.pathAnim_trail !== 'None' && this.pathAnim_history && this.pathAnim_history.length > 1) {
-                            const history = this.pathAnim_history;
-                            const trailPointCount = this.pathAnim_trailLength || 80;
+                        // Draw Leader Object first to establish the initial search hint
+                        const { x, y, angle } = this._getPointAndAngleAtDistance(objectDistance, searchHint);
 
-                            // Find the starting point in history for this specific object's trail
-                            let startIndex = 0;
-                            for (let k = 0; k < history.length; k++) {
-                                if (history[k].distance <= objectDistance) {
-                                    startIndex = k;
-                                    break;
-                                }
-                            }
+                        // Draw Trail using the hint from the leader
+                        if (this.pathAnim_trail !== 'None') {
+                            const trailLength = this.pathAnim_trailLength || 80; // This is a pixel distance now
+                            const trailSpacing = 5; // Fixed pixel spacing for visual consistency
+                            const trailSegmentCount = Math.floor(trailLength / trailSpacing);
 
-                            // Draw the trail for this object from the found start point
-                            const trailPointsToDraw = Math.min(trailPointCount, history.length - startIndex -1);
+                            for (let j = 1; j <= trailSegmentCount; j++) {
+                                const trailDist = objectDistance - (j * trailSpacing);
+                                if (trailDist < 0) break;
 
-                            for (let j = 1; j < trailPointsToDraw; j++) {
-                                const point = history[startIndex + j];
-                                if (!point) continue;
-                                const progress = j / trailPointsToDraw;
-
+                                // This call is now highly optimized due to the search hint
+                                const trailPoint = this._getPointAndAngleAtDistance(trailDist, searchHint);
+                                const progress = j / trailSegmentCount;
                                 const trailSize = baseSize * (1 - progress);
                                 if (trailSize < 1) continue;
 
                                 this.ctx.save();
-                                this.ctx.translate(point.x, point.y);
-                                this.ctx.rotate(point.angle);
-
+                                this.ctx.translate(trailPoint.x, trailPoint.y);
+                                this.ctx.rotate(trailPoint.angle);
                                 let trailFillStyle;
                                 if (this.pathAnim_trailColor === 'Rainbow') {
                                     const hue = (progress * 360) % 360;
@@ -3665,18 +3618,15 @@ class Shape {
                                     trailFillStyle = this._createFillStyleForSubObject(trailSize);
                                 }
                                 this.ctx.fillStyle = trailFillStyle;
-
                                 if (this.pathAnim_trail === 'Fade') {
                                     this.ctx.globalAlpha = (1 - progress) * 0.7;
                                 }
-
                                 this._drawSubObject(this.pathAnim_shape, trailSize);
                                 this.ctx.restore();
                             }
                         }
 
-                        // Draw Leader Object
-                        const { x, y, angle } = this._getPointAndAngleAtDistance(objectDistance);
+                        // Now draw the leader on top of the trail
                         this.ctx.save();
                         this.ctx.translate(x, y);
                         this.ctx.rotate(angle);
