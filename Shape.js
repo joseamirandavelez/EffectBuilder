@@ -889,23 +889,22 @@ class Shape {
         }
         reactiveValue = this.flashDecay;
 
-        const target = this.pathAnim_enable ? 'path' : 'shape';
-
         switch (this.audioTarget) {
             case 'Flash':
                 if (reactiveValue > 0) {
-                    if (target === 'path') {
+                    this.colorOverride = '#FFFFFF';
+                    this.flashOpacity = Math.min(1.0, reactiveValue);
+                    if (this.pathAnim_enable) {
                         this.pathAnim_colorOverride = '#FFFFFF';
                         this.pathAnim_flashOpacity = Math.min(1.0, reactiveValue);
-                    } else {
-                        this.colorOverride = '#FFFFFF';
-                        this.flashOpacity = Math.min(1.0, reactiveValue);
                     }
                 }
                 break;
             case 'Size':
-                if (target === 'path') { this.pathAnim_internalScale = 1.0 + reactiveValue; }
-                else { this.internalScale = 1.0 + reactiveValue; }
+                this.internalScale = 1.0 + reactiveValue;
+                if (this.pathAnim_enable) {
+                    this.pathAnim_internalScale = 1.0 + reactiveValue;
+                }
                 break;
             case 'Path Speed':
                 // This only affects the path animation, so no 'else' is needed.
@@ -915,9 +914,7 @@ class Shape {
                 break;
             case 'Rotation':
                 // Only affects the main shape
-                if (target === 'shape') {
-                    this.animationAngle = this.baseAnimationAngle + ((Math.random() < 0.5 ? -1 : 1) * reactiveValue * 30);
-                }
+                this.animationAngle = this.baseAnimationAngle + ((Math.random() < 0.5 ? -1 : 1) * reactiveValue * 30);
                 break;
         }
     }
