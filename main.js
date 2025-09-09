@@ -2073,11 +2073,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 obj.cycleSpeed = (globalCycle.speed || 0) / 50.0;
             }
 
-            // Now, update the animation state using the potentially overridden values
-            obj.updateAnimationState(audioData, sensorData, deltaTime);
+            // --- START OPTIMIZATION ---
+            // Only update the object's state if it's actually doing something.
+            if (obj.isAnimationActive()) {
+                obj.updateAnimationState(audioData, sensorData, deltaTime);
+            }
 
-            // Draw the object
-            obj.draw(selectedObjectIds.includes(obj.id), audioData, palette);
+            // Only draw the object if it's visible on the canvas.
+            if (!obj.isOutsideCanvas()) {
+                obj.draw(selectedObjectIds.includes(obj.id), audioData, palette);
+            }
+            // --- END OPTIMIZATION ---
+
 
             // Restore original properties so the object's true state is preserved
             obj.cycleColors = originalCycleColors;

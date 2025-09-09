@@ -1123,6 +1123,29 @@ class Shape {
         return { x: center.x + rotatedX, y: center.y + rotatedY };
     }
 
+    getBoundingBox() {
+        const corners = [
+            this.getWorldCoordsOfCorner('top-left'),
+            this.getWorldCoordsOfCorner('top-right'),
+            this.getWorldCoordsOfCorner('bottom-right'),
+            this.getWorldCoordsOfCorner('bottom-left')
+        ];
+        return {
+            minX: Math.min(...corners.map(c => c.x)),
+            minY: Math.min(...corners.map(c => c.y)),
+            maxX: Math.max(...corners.map(c => c.x)),
+            maxY: Math.max(...corners.map(c => c.y)),
+        };
+    }
+
+    isOutsideCanvas() {
+        if (!this.ctx || !this.ctx.canvas) return false; // Failsafe
+        const box = this.getBoundingBox();
+        const canvas = this.ctx.canvas;
+        // Return true if the bounding box is completely outside the canvas
+        return box.maxX < 0 || box.minX > canvas.width || box.maxY < 0 || box.minY > canvas.height;
+    }
+
     getHandleAtPoint(px, py) {
         if (this.locked) return null;
 
@@ -1335,6 +1358,31 @@ class Shape {
         }
 
         return false;
+    }
+
+    isAnimationActive() {
+        // Generic checks for any animation that costs performance
+        if (this.animationSpeed > 0 || this.cycleSpeed > 0 || this.rotationSpeed > 0 || this.strokeAnimationSpeed > 0 || this.strokeCycleSpeed > 0 || this.strokeRotationSpeed > 0 || this.oscAnimationSpeed > 0) {
+            return true;
+        }
+
+        // Shape-specific checks for animations that don't rely on the generic speed properties
+        switch (this.shape) {
+            case 'spawner':
+            case 'fire':
+            case 'fire-radial':
+                return this.particles.length > 0;
+            case 'tetris':
+                return this.tetrisBlocks.length > 0;
+            case 'audio-visualizer':
+                return true; // Always needs to process audio data
+            case 'text':
+                return this.textAnimation === 'marquee' || this.textAnimation === 'typewriter' || this.textAnimation === 'wave';
+            case 'polyline':
+                return this.pathAnim_enable && this.pathAnim_speed > 0;
+            default:
+                return false;
+        }
     }
 
     update(props) {
