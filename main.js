@@ -657,8 +657,6 @@ document.addEventListener('DOMContentLoaded', function () {
             metaEl.textContent = `By ${project.creatorName || 'Anonymous'} on ${formattedDate}`;
 
             infoDiv.appendChild(nameEl);
-
-            // This line adds the author and date information to the display.
             infoDiv.appendChild(metaEl);
 
             if (project.configs) {
@@ -671,6 +669,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     infoDiv.appendChild(descEl);
                 }
             }
+
+            const statsEl = document.createElement('div');
+            statsEl.className = 'mt-1 small text-body-secondary';
+
+            const viewCount = project.viewCount || 0;
+            const downloadCount = project.downloadCount || 0;
+
+            statsEl.innerHTML = `
+                <span class="me-3" title="Views"><i class="bi bi-eye-fill me-1"></i>${viewCount}</span>
+                <span title="Downloads"><i class="bi bi-download me-1"></i>${downloadCount}</span>
+            `;
+
+            infoDiv.appendChild(statsEl);
             contentDiv.appendChild(infoDiv);
             li.appendChild(contentDiv);
 
@@ -682,6 +693,13 @@ document.addEventListener('DOMContentLoaded', function () {
             loadBtn.innerHTML = '<i class="bi bi-box-arrow-down"></i>';
             loadBtn.title = "Load Effect";
             loadBtn.onclick = () => {
+                const viewCountContainer = li.querySelector('span[title="Views"]');
+                if (viewCountContainer) {
+                    // The textContent of the span is just the number
+                    const currentCount = parseInt(viewCountContainer.textContent.trim()) || 0;
+                    viewCountContainer.innerHTML = `<i class="bi bi-eye-fill me-1"></i>${currentCount + 1}`;
+                }
+
                 loadWorkspace(project);
                 const galleryOffcanvas = bootstrap.Offcanvas.getInstance(galleryOffcanvasEl);
                 galleryOffcanvas.hide();
@@ -2489,6 +2507,20 @@ document.addEventListener('DOMContentLoaded', function () {
     // In main.js, find the loadWorkspace function and replace it
 
     function loadWorkspace(workspace) {
+        if (workspace.docId) {
+            // This is a "fire-and-forget" operation so it doesn't slow down the UI
+            (async () => {
+                try {
+                    const docRef = window.doc(window.db, "projects", workspace.docId);
+                    await window.updateDoc(docRef, {
+                        viewCount: window.increment(1)
+                    });
+                } catch (err) {
+                    console.warn("Could not increment view count:", err);
+                }
+            })();
+        }
+
         currentProjectMetadata = {
             creatorName: workspace.creatorName,
             createdAt: (workspace.createdAt && workspace.createdAt.toDate) ? workspace.createdAt.toDate() : workspace.createdAt
@@ -2888,6 +2920,19 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         }
         return { r: 0, g: 0, b: 0, a: 1 }; // Fallback
+    }
+
+    async function incrementDownloadCount() {
+        if (currentProjectDocId) {
+            try {
+                const docRef = window.doc(window.db, "projects", currentProjectDocId);
+                await window.updateDoc(docRef, {
+                    downloadCount: window.increment(1)
+                });
+            } catch (err) {
+                console.warn("Could not increment download count:", err);
+            }
+        }
     }
 
     async function exportFile() {
@@ -3435,6 +3480,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('export-copy-btn').addEventListener('click', async () => {
         // Run the export process now, with the latest checkbox value
         await exportFile();
+        await incrementDownloadCount();
 
         if (exportPayload.finalHtml) {
             navigator.clipboard.writeText(exportPayload.finalHtml).then(() => {
@@ -3451,6 +3497,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('export-download-btn').addEventListener('click', async () => {
         // Run the export process now, with the latest checkbox value
         await exportFile();
+
+        await incrementDownloadCount();
 
         const { safeFilename, finalHtml, thumbnailDataUrl, imageExtension, exportDate } = exportPayload;
         if (!finalHtml) return;

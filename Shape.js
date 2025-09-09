@@ -3411,7 +3411,7 @@ class Shape {
 
                         if (this.strokeScrollDir === 'along-path' || this.strokeScrollDir === 'along-path-reversed') {
                             const { segments, totalLength } = this._calculatePathSegments();
-
+                            
                             if (totalLength > 0) {
                                 for (const seg of segments) {
                                     const startFraction = seg.startLength / totalLength;
@@ -3427,7 +3427,7 @@ class Shape {
                                     }
 
                                     const animOffset = (this.strokeScrollOffset % 1.0 + 1.0) % 1.0;
-
+                                    
                                     if (this.strokeGradType === 'rainbow') {
                                         // The static gradient is no longer reversed, only the animation.
                                         const startHue = (startFraction * 360 + animOffset * 360) % 360;
@@ -3443,7 +3443,7 @@ class Shape {
                                         grad.addColorStop(0, startColor);
                                         grad.addColorStop(1, endColor);
                                     }
-
+                                    
                                     this.ctx.strokeStyle = grad;
                                     this.ctx.beginPath();
 
