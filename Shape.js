@@ -889,12 +889,14 @@ class Shape {
         }
         reactiveValue = this.flashDecay;
 
+        const target = this.pathAnim_enable ? 'path' : 'shape';
+
         switch (this.audioTarget) {
             case 'Flash':
                 if (reactiveValue > 0) {
                     this.colorOverride = '#FFFFFF';
                     this.flashOpacity = Math.min(1.0, reactiveValue);
-                    if (this.pathAnim_enable) {
+                    if (target === 'path') {
                         this.pathAnim_colorOverride = '#FFFFFF';
                         this.pathAnim_flashOpacity = Math.min(1.0, reactiveValue);
                     }
@@ -902,7 +904,7 @@ class Shape {
                 break;
             case 'Size':
                 this.internalScale = 1.0 + reactiveValue;
-                if (this.pathAnim_enable) {
+                if (target === 'path') {
                     this.pathAnim_internalScale = 1.0 + reactiveValue;
                 }
                 break;
@@ -914,7 +916,9 @@ class Shape {
                 break;
             case 'Rotation':
                 // Only affects the main shape
-                this.animationAngle = this.baseAnimationAngle + ((Math.random() < 0.5 ? -1 : 1) * reactiveValue * 30);
+                if (target === 'shape') {
+                    this.animationAngle = this.baseAnimationAngle + ((Math.random() < 0.5 ? -1 : 1) * reactiveValue * 30);
+                }
                 break;
         }
     }
@@ -2853,10 +2857,8 @@ class Shape {
             this.ctx.scale(this.internalScale, this.internalScale);
         }
 
-        // Apply flash opacity if the effect is active
-        if (this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0) {
-            this.ctx.globalAlpha = this.flashOpacity;
-        }
+        // Flash opacity is now applied on a case-by-case basis within each shape's drawing logic
+        // to avoid affecting UI elements like the polyline placeholder.
 
         const applyStrokeInside = () => {
             if (this.enableStroke && this.strokeWidth > 0) {
@@ -2971,7 +2973,6 @@ class Shape {
                             }
                         }
                     }
-                    this.ctx.globalAlpha = 1.0;
                 } catch (e) { console.error("Failed to draw pixel art:", e); }
             } else if (this.shape === 'tetris') {
                 this.ctx.save();
@@ -2985,7 +2986,6 @@ class Shape {
                     const drawY = block.y - (this.height / 2);
                     this.ctx.fillRect(Math.round(drawX), Math.round(drawY), Math.ceil(block.w), Math.ceil(block.h));
                 });
-                this.ctx.globalAlpha = 1.0;
                 this.ctx.restore();
 
             } else if (this.shape === 'spawner') {
@@ -3333,7 +3333,6 @@ class Shape {
                         this.ctx.fillStyle = style;
                         if (this.fillShape) { this.ctx.fill(); } else { this.ctx.stroke(); }
                     }
-                    this.ctx.globalAlpha = 1.0;
                 } else {
                     const halfW = this.width / 2;
                     const halfH = this.height / 2;
@@ -3412,6 +3411,9 @@ class Shape {
 
                 if (Array.isArray(nodes) && nodes.length >= 2) {
                     if (this.enableStroke) {
+                        if (this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0) {
+                            this.ctx.globalAlpha = this.flashOpacity;
+                        }
                         this.ctx.setLineDash([]);
                         this.ctx.lineWidth = this.strokeWidth;
                         this.ctx.lineCap = 'round';
@@ -3605,6 +3607,9 @@ class Shape {
                     }
                 }
             } else {
+                if (this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0) {
+                    this.ctx.globalAlpha = this.flashOpacity;
+                }
                 this.ctx.beginPath();
                 if (this.shape === 'circle') {
                     this.ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, 2 * Math.PI);
