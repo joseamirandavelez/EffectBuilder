@@ -295,7 +295,7 @@ class Shape {
         seismicAnimationSpeedMultiplier, wavePhaseAngle, oscAnimationSpeed, strimerColumns, strimerBlockCount, strimerBlockSize, strimerAnimation,
         strimerDirection, strimerEasing, strimerBlockSpacing, strimerGlitchFrequency, strimerPulseSync, strimerAudioSensitivity, strimerBassLevel,
         strimerTrebleBoost, strimerAudioSmoothing, strimerPulseSpeed, vizBassLevel, vizTrebleBoost, strimerSnakeIndex, strimerAnimationSpeed,
-        strimerSnakeProgress, sensorMeterColorGradient, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed,
+        strimerSnakeProgress, sensorColorMode, sensorMidThreshold, sensorMaxThreshold, spawn_shapeType, spawn_animation, spawn_count, spawn_spawnRate, spawn_lifetime, spawn_speed,
         spawn_size, spawn_gravity, spawn_spread, spawn_rotationSpeed, spawn_size_randomness, spawn_initialRotation_random, spawn_svg_path,
         spawn_rotationVariance, spawn_speedVariance, spawn_matrixCharSet, spawn_matrixEnableGlow, spawn_glowSize, spawn_matrixGlowSize, spawn_enableTrail,
         spawn_trailLength, spawn_audioTarget, spawn_trailSpacing, polylineNodes, polylineCurveStyle, pathAnim_enable, pathAnim_shape, pathAnim_size,
@@ -486,7 +486,9 @@ class Shape {
         this.strimerSnakeDirection = 'Vertical';
         this.strimerAnimationSpeed = strimerAnimationSpeed || 20;
         this.strimerSnakeProgress = strimerSnakeProgress || 0;
-        this.sensorMeterColorGradient = sensorMeterColorGradient || false;
+        this.sensorColorMode = sensorColorMode || 'None';
+        this.sensorMidThreshold = sensorMidThreshold || 50;
+        this.sensorMaxThreshold = sensorMaxThreshold || 90;
         this.spawn_audioTarget = spawn_audioTarget || 'none';
 
         // Spawner
@@ -555,6 +557,7 @@ class Shape {
         // State variables for the sub-object's fill animation
         this.pathAnim_hue1 = 0;
         this.pathAnim_scrollOffset = 0;
+        this.pathAnim_extraRotation = 0;
 
         // State variables for the animation
         this._cachedPathSegments = null; // To store path calculations for performance
@@ -864,6 +867,7 @@ class Shape {
         // Reset all reactive properties
         this.internalScale = 1.0; this.colorOverride = null; this.flashOpacity = 0;
         this.pathAnim_internalScale = 1.0; this.pathAnim_colorOverride = null; this.pathAnim_flashOpacity = 0;
+        this.pathAnim_extraRotation = 0;
 
         // Decay flash
         if (this.flashDecay > 0) { this.flashDecay -= 0.1; }
@@ -887,34 +891,37 @@ class Shape {
         }
         reactiveValue = this.flashDecay;
 
-        const target = this.pathAnim_enable ? 'path' : 'shape';
+        const isPathAnim = this.pathAnim_enable;
 
         switch (this.audioTarget) {
             case 'Flash':
                 if (reactiveValue > 0) {
-                    if (target === 'path') {
+                    // Affects main stroke AND path anim object
+                    this.colorOverride = '#FFFFFF';
+                    this.flashOpacity = Math.min(1.0, reactiveValue);
+                    if (isPathAnim) {
                         this.pathAnim_colorOverride = '#FFFFFF';
                         this.pathAnim_flashOpacity = Math.min(1.0, reactiveValue);
-                    } else {
-                        this.colorOverride = '#FFFFFF';
-                        this.flashOpacity = Math.min(1.0, reactiveValue);
                     }
                 }
                 break;
             case 'Size':
-                if (target === 'path') { this.pathAnim_internalScale = 1.0 + reactiveValue; }
-                else { this.internalScale = 1.0 + reactiveValue; }
-                break;
-            case 'Path Speed':
-                // This only affects the path animation, so no 'else' is needed.
-                if (reactiveValue > 0) {
-                    this.pathAnim_speedBurst = reactiveValue;
+                if (isPathAnim) {
+                    this.pathAnim_internalScale = 1.0 + reactiveValue;
+                } else {
+                    this.internalScale = 1.0 + reactiveValue;
                 }
                 break;
             case 'Rotation':
-                // Only affects the main shape
-                if (target === 'shape') {
+                if (isPathAnim) {
+                    this.pathAnim_extraRotation = reactiveValue * 360 * (Math.random() < 0.5 ? -1 : 1);
+                } else {
                     this.animationAngle = this.baseAnimationAngle + ((Math.random() < 0.5 ? -1 : 1) * reactiveValue * 30);
+                }
+                break;
+            case 'Path Speed':
+                if (isPathAnim && reactiveValue > 0) {
+                    this.pathAnim_speedBurst = reactiveValue;
                 }
                 break;
         }
@@ -934,8 +941,17 @@ class Shape {
                 const fillHeight = this.height * this.sensorMeterFill;
                 const fillY = this.height / 2 - fillHeight;
 
-                // NEW: Gradient coloring based on value
-                if (this.sensorMeterColorGradient) {
+                if (this.sensorColorMode === 'Thresholds') {
+                    const mid = this.sensorMidThreshold;
+                    const max = this.sensorMaxThreshold;
+                    if (this.sensorRawValue >= max) {
+                        this.ctx.fillStyle = "#ff0000"; // "Red"
+                    } else if (this.sensorRawValue >= mid) {
+                        this.ctx.fillStyle = "#ffa500"; // "Orange"
+                    } else {
+                        this.ctx.fillStyle = '#00ff00'; // Green
+                    }
+                } else if (this.sensorColorMode === 'Value-Based Gradient') {
                     let color;
                     if (this.sensorMeterFill < 0.5) {
                         color = lerpColor("#00ff00", "#ffa500", this.sensorMeterFill * 2);
@@ -954,13 +970,13 @@ class Shape {
             if (this.sensorMeterShowValue) {
                 const fontSize = Math.max(10, Math.round(this.width / 3));
                 this.ctx.font = `bold ${fontSize}px Arial`;
-                this.ctx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
+                this.ctx.fillStyle = this.sensorColorMode === 'Thresholds' ? '#FFFFFF' : (this.gradient.color2 || '#FFFFFF');
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'middle';
                 this.ctx.fillText(this.sensorRawValue.toFixed(1), 0, 0); // Display value with one decimal
 
                 this.ctx.font = `bold ${fontSize / 3}px Arial`;
-                this.ctx.fillStyle = this.gradient.color2 || '#FFFFFF'; // Use Color 2
+                this.ctx.fillStyle = this.sensorColorMode === 'Thresholds' ? '#FFFFFF' : (this.gradient.color2 || '#FFFFFF');
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'middle';
                 this.ctx.fillText(this.userSensor, 0, -fontSize / 1.5); // Display value with one decimal
@@ -2845,10 +2861,8 @@ class Shape {
             this.ctx.scale(this.internalScale, this.internalScale);
         }
 
-        // Apply flash opacity if the effect is active
-        if (this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0) {
-            this.ctx.globalAlpha = this.flashOpacity;
-        }
+        // Flash opacity is now applied on a case-by-case basis within each shape's drawing logic
+        // to avoid affecting UI elements like the polyline placeholder.
 
         const applyStrokeInside = () => {
             if (this.enableStroke && this.strokeWidth > 0) {
@@ -2963,7 +2977,6 @@ class Shape {
                             }
                         }
                     }
-                    this.ctx.globalAlpha = 1.0;
                 } catch (e) { console.error("Failed to draw pixel art:", e); }
             } else if (this.shape === 'tetris') {
                 this.ctx.save();
@@ -2977,7 +2990,6 @@ class Shape {
                     const drawY = block.y - (this.height / 2);
                     this.ctx.fillRect(Math.round(drawX), Math.round(drawY), Math.ceil(block.w), Math.ceil(block.h));
                 });
-                this.ctx.globalAlpha = 1.0;
                 this.ctx.restore();
 
             } else if (this.shape === 'spawner') {
@@ -3325,7 +3337,6 @@ class Shape {
                         this.ctx.fillStyle = style;
                         if (this.fillShape) { this.ctx.fill(); } else { this.ctx.stroke(); }
                     }
-                    this.ctx.globalAlpha = 1.0;
                 } else {
                     const halfW = this.width / 2;
                     const halfH = this.height / 2;
@@ -3404,6 +3415,9 @@ class Shape {
 
                 if (Array.isArray(nodes) && nodes.length >= 2) {
                     if (this.enableStroke) {
+                        if (this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0) {
+                            this.ctx.globalAlpha = this.flashOpacity;
+                        }
                         this.ctx.setLineDash([]);
                         this.ctx.lineWidth = this.strokeWidth;
                         this.ctx.lineCap = 'round';
@@ -3567,7 +3581,9 @@ class Shape {
                                 this.ctx.translate(x, y);
                                 this.ctx.rotate(angle);
                                 let trailFillStyle;
-                                if (this.pathAnim_trailColor === 'Rainbow') {
+                                if (this.pathAnim_colorOverride) {
+                                    trailFillStyle = this.pathAnim_colorOverride;
+                                } else if (this.pathAnim_trailColor === 'Rainbow') {
                                     const hue = (progress * 360) % 360;
                                     trailFillStyle = `hsl(${hue}, 100%, 50%)`;
                                 } else {
@@ -3587,7 +3603,7 @@ class Shape {
                             const { x, y, angle } = this._getPointAndAngleAtDistance(objectDistance);
                             this.ctx.save();
                             this.ctx.translate(x, y);
-                            this.ctx.rotate(angle);
+                            this.ctx.rotate(angle + this.pathAnim_extraRotation);
                             if (this.pathAnim_flashOpacity > 0) { this.ctx.globalAlpha = this.pathAnim_flashOpacity; }
                             this.ctx.scale(this.pathAnim_internalScale, this.pathAnim_internalScale);
                             this.ctx.fillStyle = this.pathAnim_colorOverride || this._createFillStyleForSubObject(baseSize);
@@ -3597,6 +3613,9 @@ class Shape {
                     }
                 }
             } else {
+                if (this.enableAudioReactivity && this.audioTarget === 'Flash' && this.flashOpacity > 0) {
+                    this.ctx.globalAlpha = this.flashOpacity;
+                }
                 this.ctx.beginPath();
                 if (this.shape === 'circle') {
                     this.ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, 2 * Math.PI);
